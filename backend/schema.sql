@@ -57,6 +57,7 @@ CREATE TABLE pemeliharaan (
     deskripsi       TEXT,
     request_document_name TEXT,
     request_document_file_data TEXT,
+    request_document_file_path TEXT,
     tanggal         DATE NOT NULL DEFAULT CURRENT_DATE,
     status          status_tahap NOT NULL DEFAULT 'pending',
     tanggal_selesai  DATE,
@@ -70,6 +71,7 @@ CREATE TABLE pemeliharaan (
     stage1_hps      NUMERIC(18,2),
     stage1_document_name TEXT,
     stage1_document_file_data TEXT,
+    stage1_document_file_path TEXT,
     stage1_boq_file_data TEXT,
     stage2_payment_method VARCHAR(20),
     stage2_vendor   VARCHAR(150),
@@ -78,8 +80,10 @@ CREATE TABLE pemeliharaan (
     stage2_invoice_amount NUMERIC(18,2),
     stage2_invoice_document_name TEXT,
     stage2_invoice_document_file_data TEXT,
+    stage2_invoice_document_file_path TEXT,
     stage3_documentation_names TEXT,
     stage3_documentation_files TEXT,
+    stage3_documentation_file_paths TEXT,
     stage3_bast_notes TEXT,
     catatan         TEXT,
     created_by      INTEGER REFERENCES users(id),
@@ -102,6 +106,7 @@ CREATE TABLE pengadaan (
     deskripsi           TEXT,
     request_document_name TEXT,
     request_document_file_data TEXT,
+    request_document_file_path TEXT,
     stage2_vendor       VARCHAR(150),
     stage2_invoice_number VARCHAR(100),
     stage2_invoice_date DATE,
@@ -114,11 +119,15 @@ CREATE TABLE pengadaan (
     tahap3_status       status_tahap NOT NULL DEFAULT 'pending', -- Dokumentasi & Finalisasi
     stage2_invoice_document_name TEXT,
     stage2_invoice_document_file_data TEXT,
+    stage2_invoice_document_file_path TEXT,
     stage2_invoice_file_data TEXT,
+    stage2_invoice_file_path TEXT,
     stage2_payment_proof_name TEXT,
     stage2_payment_proof_file_data TEXT,
+    stage2_payment_proof_file_path TEXT,
     stage3_final_document_name TEXT,
     stage3_final_document_file_data TEXT,
+    stage3_final_document_file_path TEXT,
     catatan             TEXT,
     created_by          INTEGER REFERENCES users(id),
     updated_by          INTEGER REFERENCES users(id),
@@ -144,6 +153,7 @@ CREATE TABLE IF NOT EXISTS kendaraan (
     next_tax        VARCHAR(50),
     photo_name      TEXT,
     photo_file_data TEXT,
+    photo_file_path TEXT,
     created_by      INTEGER REFERENCES users(id),
     updated_by      INTEGER REFERENCES users(id),
     created_at      TIMESTAMP NOT NULL DEFAULT NOW(),
@@ -239,6 +249,7 @@ CREATE TABLE IF NOT EXISTS ruang_rapat (
                     CHECK (surat_status IN ('belum','ditinjau','diterima')),
     surat_name      VARCHAR(255),
     surat_file_data TEXT,
+    surat_file_path TEXT,
     created_by      INTEGER REFERENCES users(id),
     updated_by      INTEGER REFERENCES users(id),
     created_at      TIMESTAMP NOT NULL DEFAULT NOW(),
@@ -248,3 +259,47 @@ CREATE TABLE IF NOT EXISTS ruang_rapat (
 
 CREATE INDEX IF NOT EXISTS idx_ruang_rapat_date_room ON ruang_rapat (booking_date, room);
 CREATE INDEX IF NOT EXISTS idx_ruang_rapat_pic ON ruang_rapat (pic);
+
+-- ---------------------------------------------------------
+-- AUTO TANGGAL SELESAI (DB SOURCE OF TRUTH)
+-- ---------------------------------------------------------
+CREATE OR REPLACE FUNCTION set_tanggal_selesai_pemeliharaan()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF NEW.status = 'selesai' OR NEW.tahap3_status = 'selesai' THEN
+        NEW.status := 'selesai';
+        NEW.tahap3_status := 'selesai';
+        NEW.tanggal_selesai := COALESCE(NEW.tanggal_selesai, CURRENT_DATE);
+    ELSIF NEW.status IS DISTINCT FROM OLD.status AND NEW.status <> 'selesai' THEN
+        NEW.tanggal_selesai := NULL;
+    END IF;
+    NEW.updated_at := NOW();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_tanggal_selesai_pemeliharaan ON pemeliharaan;
+CREATE TRIGGER trg_tanggal_selesai_pemeliharaan
+BEFORE INSERT OR UPDATE OF status, tahap3_status, tanggal_selesai ON pemeliharaan
+FOR EACH ROW EXECUTE FUNCTION set_tanggal_selesai_pemeliharaan();
+
+CREATE OR REPLACE FUNCTION set_tanggal_selesai_pengadaan()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF NEW.status = 'selesai' OR NEW.tahap3_status = 'selesai' THEN
+        NEW.status := 'selesai';
+        NEW.tahap3_status := 'selesai';
+        NEW.tanggal_selesai := COALESCE(NEW.tanggal_selesai, CURRENT_DATE);
+    ELSIF NEW.status IS DISTINCT FROM OLD.status AND NEW.status <> 'selesai' THEN
+        NEW.tanggal_selesai := NULL;
+    END IF;
+    NEW.updated_at := NOW();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_tanggal_selesai_pengadaan ON pengadaan;
+CREATE TRIGGER trg_tanggal_selesai_pengadaan
+BEFORE INSERT OR UPDATE OF status, tahap3_status, tanggal_selesai ON pengadaan
+FOR EACH ROW EXECUTE FUNCTION set_tanggal_selesai_pengadaan();
+

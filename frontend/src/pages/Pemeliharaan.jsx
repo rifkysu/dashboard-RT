@@ -74,7 +74,7 @@ export default function Pemeliharaan() {
       const payload = {};
       const fields = [
         'judul','lokasi','titik_lokasi','kategori','deskripsi','tanggal','status','jenis_pekerjaan','urgensi','metode_pengadaan',
-        'tahap1_status','tahap2_status','tahap3_status','tanggal_selesai','stage1_boq','stage1_boq_file_data','stage1_hps','stage1_document_name','stage1_document_file_data',
+        'tahap1_status','tahap2_status','tahap3_status','stage1_boq','stage1_boq_file_data','stage1_hps','stage1_document_name','stage1_document_file_data',
         'stage2_payment_method','stage2_vendor','stage2_invoice_number','stage2_invoice_date','stage2_invoice_amount','stage2_invoice_document_name','stage2_invoice_document_file_data',
         'stage3_documentation_names','stage3_documentation_files','stage3_bast_notes','catatan'
       ];
@@ -87,6 +87,8 @@ export default function Pemeliharaan() {
       if (finish) {
         payload.tahap3_status = 'selesai';
         payload.status = 'selesai';
+        // Jangan ambil tanggal_selesai dari draft lama. Finish Tahap 3 selalu meminta DB mengisinya.
+        payload.tanggal_selesai = new Date().toISOString().slice(0, 10);
       } else if (nextStageNo) {
         payload[selectedStage.field] = 'selesai';
         payload.status = 'on_progress';

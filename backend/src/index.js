@@ -14,6 +14,7 @@ const dashboardRoutes = require('./routes/dashboard');
 const ruangRapatRoutes = require('./routes/ruangRapat');
 const pool = require('./db');
 const logger = require('./logger');
+const { ensureUploadRoot } = require('./fileStorage');
 
 const app = express();
 
@@ -39,6 +40,7 @@ app.use(createRateLimiter({ windowMs: 60 * 1000, max: 180, message: 'Terlalu ban
 // File upload disimpan sebagai Base64 di payload JSON; naikkan limit agar dokumen tidak ditolak 413.
 app.use(express.json({ limit: '25mb', strict: true }));
 app.use(express.urlencoded({ extended: false, limit: '2mb', parameterLimit: 100 }));
+ensureUploadRoot();
 app.use(validateCommonInput);
 // Jangan expose folder upload sebagai static publik. File sensitif sebaiknya disajikan lewat endpoint yang terautentikasi.
 // app.use('/uploads', express.static(...));
@@ -73,21 +75,25 @@ async function ensurePemeliharaanStageColumns() {
     "CREATE INDEX IF NOT EXISTS idx_ruang_rapat_pic ON ruang_rapat(pic)",
     "ALTER TABLE ruang_rapat ADD COLUMN IF NOT EXISTS surat_name VARCHAR(255)",
     "ALTER TABLE ruang_rapat ADD COLUMN IF NOT EXISTS surat_file_data TEXT",
+    "ALTER TABLE ruang_rapat ADD COLUMN IF NOT EXISTS surat_file_path TEXT",
 
     "ALTER TABLE pengadaan ADD COLUMN IF NOT EXISTS lokasi VARCHAR(150)",
     "ALTER TABLE pengadaan ADD COLUMN IF NOT EXISTS kategori VARCHAR(100)",
     "ALTER TABLE pengadaan ADD COLUMN IF NOT EXISTS deskripsi TEXT",
     "ALTER TABLE pengadaan ADD COLUMN IF NOT EXISTS request_document_name TEXT",
     "ALTER TABLE pengadaan ADD COLUMN IF NOT EXISTS request_document_file_data TEXT",
+    "ALTER TABLE pengadaan ADD COLUMN IF NOT EXISTS request_document_file_path TEXT",
     "ALTER TABLE pengadaan ADD COLUMN IF NOT EXISTS tanggal_selesai DATE",
     "ALTER TABLE pemeliharaan ADD COLUMN IF NOT EXISTS jenis_pekerjaan VARCHAR(100)",
     "ALTER TABLE pemeliharaan ADD COLUMN IF NOT EXISTS request_document_name TEXT",
     "ALTER TABLE pemeliharaan ADD COLUMN IF NOT EXISTS request_document_file_data TEXT",
+    "ALTER TABLE pemeliharaan ADD COLUMN IF NOT EXISTS request_document_file_path TEXT",
     "ALTER TABLE pemeliharaan ADD COLUMN IF NOT EXISTS urgensi VARCHAR(20) DEFAULT 'sedang'",
     "ALTER TABLE pemeliharaan ADD COLUMN IF NOT EXISTS stage1_boq TEXT",
     "ALTER TABLE pemeliharaan ADD COLUMN IF NOT EXISTS stage1_hps NUMERIC(18,2)",
     "ALTER TABLE pemeliharaan ADD COLUMN IF NOT EXISTS stage1_document_name TEXT",
     "ALTER TABLE pemeliharaan ADD COLUMN IF NOT EXISTS stage1_boq_file_data TEXT",
+    "ALTER TABLE pemeliharaan ADD COLUMN IF NOT EXISTS stage1_boq_file_path TEXT",
     "ALTER TABLE pemeliharaan ADD COLUMN IF NOT EXISTS stage2_payment_method VARCHAR(20)",
     "ALTER TABLE pemeliharaan ADD COLUMN IF NOT EXISTS stage2_vendor VARCHAR(150)",
     "ALTER TABLE pemeliharaan ADD COLUMN IF NOT EXISTS stage2_invoice_number VARCHAR(100)",
@@ -95,21 +101,28 @@ async function ensurePemeliharaanStageColumns() {
     "ALTER TABLE pemeliharaan ADD COLUMN IF NOT EXISTS stage2_invoice_amount NUMERIC(18,2)",
     "ALTER TABLE pemeliharaan ADD COLUMN IF NOT EXISTS stage2_invoice_document_name TEXT",
     "ALTER TABLE pemeliharaan ADD COLUMN IF NOT EXISTS stage1_document_file_data TEXT",
+    "ALTER TABLE pemeliharaan ADD COLUMN IF NOT EXISTS stage1_document_file_path TEXT",
     "ALTER TABLE pemeliharaan ADD COLUMN IF NOT EXISTS stage2_invoice_document_file_data TEXT",
+    "ALTER TABLE pemeliharaan ADD COLUMN IF NOT EXISTS stage2_invoice_document_file_path TEXT",
     "ALTER TABLE pemeliharaan ADD COLUMN IF NOT EXISTS stage3_documentation_files TEXT",
+    "ALTER TABLE pemeliharaan ADD COLUMN IF NOT EXISTS stage3_documentation_file_paths TEXT",
     "ALTER TABLE pemeliharaan ADD COLUMN IF NOT EXISTS stage3_documentation_names TEXT",
     "ALTER TABLE pemeliharaan ADD COLUMN IF NOT EXISTS stage3_bast_notes TEXT",
     "ALTER TABLE pemeliharaan ADD COLUMN IF NOT EXISTS tanggal_selesai DATE",
     "ALTER TABLE pengadaan ADD COLUMN IF NOT EXISTS stage2_invoice_document_name TEXT",
     "ALTER TABLE pengadaan ADD COLUMN IF NOT EXISTS stage2_invoice_file_data TEXT",
+    "ALTER TABLE pengadaan ADD COLUMN IF NOT EXISTS stage2_invoice_file_path TEXT",
     "ALTER TABLE pengadaan ADD COLUMN IF NOT EXISTS stage2_payment_proof_name TEXT",
     "ALTER TABLE pengadaan ADD COLUMN IF NOT EXISTS stage2_payment_proof_file_data TEXT",
+    "ALTER TABLE pengadaan ADD COLUMN IF NOT EXISTS stage2_payment_proof_file_path TEXT",
     "ALTER TABLE pengadaan ADD COLUMN IF NOT EXISTS stage3_final_document_name TEXT",
     "ALTER TABLE pengadaan ADD COLUMN IF NOT EXISTS stage3_final_document_file_data TEXT",
+    "ALTER TABLE pengadaan ADD COLUMN IF NOT EXISTS stage3_final_document_file_path TEXT",
     "CREATE TABLE IF NOT EXISTS kendaraan (id SERIAL PRIMARY KEY, name VARCHAR(150) NOT NULL, plate VARCHAR(30) NOT NULL UNIQUE, type VARCHAR(100) NOT NULL, sub VARCHAR(150), status VARCHAR(30) NOT NULL DEFAULT 'Tersedia', tax VARCHAR(50), next_tax VARCHAR(50), photo_name TEXT, photo_file_data TEXT, created_by INTEGER REFERENCES users(id), updated_by INTEGER REFERENCES users(id), created_at TIMESTAMP NOT NULL DEFAULT NOW(), updated_at TIMESTAMP NOT NULL DEFAULT NOW())",
     "CREATE INDEX IF NOT EXISTS idx_kendaraan_plate ON kendaraan(plate)",
     "ALTER TABLE kendaraan ADD COLUMN IF NOT EXISTS photo_name TEXT",
     "ALTER TABLE kendaraan ADD COLUMN IF NOT EXISTS photo_file_data TEXT",
+    "ALTER TABLE kendaraan ADD COLUMN IF NOT EXISTS photo_file_path TEXT",
     "ALTER TABLE kendaraan ADD COLUMN IF NOT EXISTS created_by INTEGER REFERENCES users(id)",
     "ALTER TABLE kendaraan ADD COLUMN IF NOT EXISTS updated_by INTEGER REFERENCES users(id)",
     "ALTER TABLE kendaraan ADD COLUMN IF NOT EXISTS created_at TIMESTAMP NOT NULL DEFAULT NOW()",

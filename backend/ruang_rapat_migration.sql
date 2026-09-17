@@ -35,3 +35,4 @@ CREATE INDEX IF NOT EXISTS idx_ruang_rapat_pic
 
 ALTER TABLE ruang_rapat ADD COLUMN IF NOT EXISTS surat_name VARCHAR(255);
 ALTER TABLE ruang_rapat ADD COLUMN IF NOT EXISTS surat_file_data TEXT;
+ALTER TABLE ruang_rapat ADD COLUMN IF NOT EXISTS surat_file_path TEXT;

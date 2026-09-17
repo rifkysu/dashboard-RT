@@ -9,6 +9,7 @@ ALTER TABLE pengadaan ADD COLUMN IF NOT EXISTS stage2_invoice_amount NUMERIC(18,
 ALTER TABLE pengadaan ADD COLUMN IF NOT EXISTS deskripsi TEXT;
 ALTER TABLE pengadaan ADD COLUMN IF NOT EXISTS request_document_name TEXT;
 ALTER TABLE pengadaan ADD COLUMN IF NOT EXISTS request_document_file_data TEXT;
+ALTER TABLE pengadaan ADD COLUMN IF NOT EXISTS request_document_file_path TEXT;
 ALTER TABLE pengadaan ADD COLUMN IF NOT EXISTS tanggal_selesai DATE;
 
 -- Migrasi data lama agar informasi vendor/invoice tidak hilang.
@@ -30,3 +31,12 @@ ALTER TABLE pengadaan DROP COLUMN IF EXISTS nilai_invoice;
 
 -- Pastikan tanggal permintaan disimpan sebagai tanggal kalender tanpa konversi timezone.
 ALTER TABLE pengadaan ALTER COLUMN tanggal TYPE DATE USING tanggal::date;
+
+ALTER TABLE pengadaan ADD COLUMN IF NOT EXISTS stage2_invoice_file_data TEXT;
+ALTER TABLE pengadaan ADD COLUMN IF NOT EXISTS stage2_invoice_file_path TEXT;
+
+ALTER TABLE pengadaan ADD COLUMN IF NOT EXISTS stage2_payment_proof_file_data TEXT;
+ALTER TABLE pengadaan ADD COLUMN IF NOT EXISTS stage2_payment_proof_file_path TEXT;
+
+ALTER TABLE pengadaan ADD COLUMN IF NOT EXISTS stage3_final_document_file_data TEXT;
+ALTER TABLE pengadaan ADD COLUMN IF NOT EXISTS stage3_final_document_file_path TEXT;

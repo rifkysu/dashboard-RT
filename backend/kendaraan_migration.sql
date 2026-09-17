@@ -23,6 +23,7 @@ CREATE INDEX IF NOT EXISTS idx_kendaraan_plate ON kendaraan(plate);
 
 ALTER TABLE kendaraan ADD COLUMN IF NOT EXISTS photo_name TEXT;
 ALTER TABLE kendaraan ADD COLUMN IF NOT EXISTS photo_file_data TEXT;
+ALTER TABLE kendaraan ADD COLUMN IF NOT EXISTS photo_file_path TEXT;
 ALTER TABLE kendaraan ADD COLUMN IF NOT EXISTS created_by INTEGER REFERENCES users(id);
 ALTER TABLE kendaraan ADD COLUMN IF NOT EXISTS updated_by INTEGER REFERENCES users(id);
 ALTER TABLE kendaraan ADD COLUMN IF NOT EXISTS created_at TIMESTAMP NOT NULL DEFAULT NOW();

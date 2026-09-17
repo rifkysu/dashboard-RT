@@ -1,5 +1,6 @@
 const express = require('express');
 const pool = require('../db');
+const { saveDataUrl } = require('../fileStorage');
 const { requireAuth, requireRole, EDITOR_ROLES } = require('../middleware/auth');
 const logger = require('../logger');
 
@@ -40,9 +41,9 @@ router.post('/', requireRole(EDITOR_ROLES), async (req, res) => {
     if (photo_name != null && !validateText(photo_name, 255)) return res.status(400).json({ message: 'Nama file foto tidak valid.' });
 
     const result = await pool.query(
-      `INSERT INTO kendaraan (name, plate, type, sub, status, tax, next_tax, photo_name, photo_file_data, created_by, updated_by)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$10) RETURNING *`,
-      [name.trim(), plate.trim(), type.trim(), sub || null, status || 'Tersedia', tax || '-', next_tax || '-', photo_name || null, photo_file_data || null, req.user.id]
+      `INSERT INTO kendaraan (name, plate, type, sub, status, tax, next_tax, photo_name, photo_file_data, photo_file_path, created_by, updated_by)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING *`,
+      [name.trim(), plate.trim(), type.trim(), sub || null, status || 'Tersedia', tax || '-', next_tax || '-', photo_name || null, photo_file_data || null, photo_file_data ? await saveDataUrl(photo_file_data, photo_name, 'kendaraan') : null, req.user.id, req.user.id]
     );
     res.status(201).json({ data: result.rows[0] });
   } catch (err) {
@@ -54,13 +55,16 @@ router.post('/', requireRole(EDITOR_ROLES), async (req, res) => {
 
 router.put('/:id', requireRole(EDITOR_ROLES), async (req, res) => {
   try {
-    const fields = ['name','plate','type','sub','status','tax','next_tax','photo_name','photo_file_data'];
+    const fields = ['name','plate','type','sub','status','tax','next_tax','photo_name','photo_file_data','photo_file_path'];
     if (req.body.status !== undefined && !ALLOWED_STATUS.includes(req.body.status)) return res.status(400).json({ message: 'Status kendaraan tidak valid.' });
     if (req.body.photo_file_data !== undefined && !validPhotoData(req.body.photo_file_data)) return res.status(400).json({ message: 'Foto tidak valid. Gunakan JPG, PNG, atau WebP dengan ukuran maksimal 6MB.' });
     if (req.body.photo_name !== undefined && !validateText(req.body.photo_name, 255)) return res.status(400).json({ message: 'Nama file foto tidak valid.' });
 
     const sets = [];
     const values = [];
+    if (Object.prototype.hasOwnProperty.call(req.body, 'photo_file_data') && req.body.photo_file_data) {
+      req.body.photo_file_path = await saveDataUrl(req.body.photo_file_data, req.body.photo_name, 'kendaraan');
+    }
     for (const field of fields) {
       if (req.body[field] !== undefined) {
         if (['name','plate','type'].includes(field) && !validateText(req.body[field], field === 'type' ? 100 : field === 'plate' ? 30 : 150, true)) return res.status(400).json({ message: `Field ${field} tidak valid.` });

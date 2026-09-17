@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Biro Umum & Rumah Tangga</title>
-  <!-- Tailwind via CDN: cara paling stabil supaya tidak ada masalah konfigurasi PostCSS -->
+  <!-- Tailwind CDN dipakai sebagai enhancement; app-theme.css menyediakan fallback visual/layout agar aplikasi tidak menjadi putih saat CDN tidak tersedia. -->
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
@@ -24,6 +24,27 @@
       },
     };
   </script>
+
+  <style id="biro-umum-fallback">
+    /* Fallback penting: jangan bergantung pada Tailwind CDN untuk warna/layout dasar. */
+    html,body,#root{margin:0;min-height:100%;width:100%;}
+    body{background:#08111f;color:#e5edf8;font-family:Inter,Arial,sans-serif;}
+    button,input,select,textarea{font:inherit;}
+    button{cursor:pointer;}
+    .app-shell-bg{min-height:100vh;background:radial-gradient(circle at 20% 0%,rgba(59,130,246,.18),transparent 34%),radial-gradient(circle at 90% 20%,rgba(16,185,129,.14),transparent 32%),#08111f;}
+    .app-shell-bg>.ml-56{min-height:100vh;margin-left:15rem;}
+    .app-main{min-height:100vh;box-sizing:border-box;padding:28px;background:radial-gradient(circle at 12% 5%,rgba(59,130,246,.14),transparent 30%),radial-gradient(circle at 88% 10%,rgba(139,92,246,.12),transparent 28%),linear-gradient(135deg,#091321,#0d1728 48%,#07131d);}
+    .menu-page{color:#e5edf8;}
+    .menu-hero{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:22px 24px;border-radius:24px;color:#fff;position:relative;overflow:hidden;box-shadow:0 20px 50px rgba(0,0,0,.25);}
+    .menu-hero h1{margin:0;color:#fff!important}.menu-hero p{margin:.35rem 0 0;color:rgba(255,255,255,.76)!important}.menu-kicker{display:inline-block;font-size:10px;font-weight:800;letter-spacing:.18em;opacity:.78;margin-bottom:7px}.menu-hero-icon{width:58px;height:58px;border-radius:18px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.18)}
+    .menu-kendaraan .menu-hero{background:linear-gradient(135deg,#0369a1,#2563eb 55%,#4f46e5)}.menu-pemeliharaan .menu-hero{background:linear-gradient(135deg,#047857,#0f766e 55%,#2563eb)}.menu-pengadaan .menu-hero{background:linear-gradient(135deg,#b45309,#d97706 55%,#ea580c)}.menu-ruang-rapat .menu-hero{background:linear-gradient(135deg,#6d28d9,#7c3aed 55%,#c026d3)}.menu-dashboard .menu-hero{background:linear-gradient(135deg,#4338ca,#2563eb 55%,#0891b2)}.menu-settings .menu-hero{background:linear-gradient(135deg,#334155,#475569 55%,#6366f1)}
+    .menu-page .bg-white,.menu-page .bg-white\/75,.menu-page .bg-white\/80,.menu-page .bg-white\/85,.menu-page .bg-white\/90{background:linear-gradient(145deg,rgba(20,32,51,.96),rgba(12,23,39,.95))!important;color:#e5edf8;}
+    .menu-page .text-slate-900,.menu-page .text-slate-800,.menu-page h1,.menu-page h2,.menu-page h3,.menu-page h4{color:#f8fafc!important}.menu-page .text-slate-700{color:#d1d9e6!important}.menu-page .text-slate-600,.menu-page .text-slate-500{color:#9aa9bc!important}.menu-page .text-slate-400{color:#72839a!important}
+    .menu-page table{width:100%;border-collapse:collapse}.menu-page thead{background:rgba(31,45,68,.9)!important}.menu-page td,.menu-page th{padding:10px 12px}.menu-page tr{border-color:rgba(148,163,184,.13)!important}
+    .menu-page input:not([type=radio]):not([type=checkbox]),.menu-page select,.menu-page textarea{background:rgba(7,18,31,.82)!important;color:#f1f5f9!important;border:1px solid rgba(148,163,184,.25)!important;border-radius:10px;}
+    .menu-page input::placeholder,.menu-page textarea::placeholder{color:#64748b!important}
+    @media(max-width:900px){.app-shell-bg>.ml-56{margin-left:0}.app-main{padding:16px}.menu-hero{padding:18px}.menu-hero-icon{display:none}}
+  </style>
   <style>
     * { scrollbar-width: thin; scrollbar-color: #cbd5e1 transparent; }
     ::selection { background: #c7d2fe; color: #312e81; }

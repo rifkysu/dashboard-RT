@@ -1,6 +1,7 @@
 const express = require('express');
 const crypto = require('crypto');
 const pool = require('../db');
+const { saveDataUrl } = require('../fileStorage');
 const { requireAuth, requireRole, EDITOR_ROLES } = require('../middleware/auth');
 const logger = require('../logger');
 
@@ -8,7 +9,7 @@ const router = express.Router();
 router.use(requireAuth);
 
 const MAX_DOCUMENT_DATA_LENGTH = 12 * 1024 * 1024;
-const ALLOWED_DOCUMENT_PREFIXES = ['data:application/pdf;base64,', 'data:image/jpeg;base64,', 'data:image/png;base64,', 'data:image/webp;base64,'];
+const ALLOWED_DOCUMENT_PREFIXES = ['data:application/pdf;base64,', 'data:image/jpeg;base64,', 'data:image/png;base64,', 'data:image/webp;base64,', 'data:application/msword;base64,', 'data:application/vnd.openxmlformats-officedocument.wordprocessingml.document;base64,', 'data:application/vnd.ms-excel;base64,', 'data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,'];
 
 function validDocumentData(value) {
   return value == null || (typeof value === 'string' && value.length <= MAX_DOCUMENT_DATA_LENGTH && ALLOWED_DOCUMENT_PREFIXES.some((prefix) => value.startsWith(prefix)));
@@ -25,7 +26,6 @@ router.get('/', async (req, res) => {
     const { status, kategori, lokasi, search } = req.query;
     const conditions = [];
     const values = [];
-
     for (const [key, value] of Object.entries(req.query)) {
       if (!['status','kategori','lokasi','search'].includes(key)) {
         return res.status(400).json({ message: `Parameter filter tidak dikenal: ${key}` });
@@ -91,11 +91,12 @@ router.post('/', async (req, res) => {
     }
 
     const kode = generateKode();
+    const request_document_file_path = request_document_file_data ? await saveDataUrl(request_document_file_data, request_document_name, 'pengadaan') : null;
     const result = await pool.query(
-      `INSERT INTO pengadaan (kode, nama_barang_jasa, kategori, lokasi, metode_pengadaan, nilai_hps, tanggal, deskripsi, request_document_name, request_document_file_data, created_by)
-       VALUES ($1,$2,$3,$4,$5,$6,COALESCE($7, CURRENT_DATE),$8,$9,$10,$11)
+      `INSERT INTO pengadaan (kode, nama_barang_jasa, kategori, lokasi, metode_pengadaan, nilai_hps, tanggal, deskripsi, request_document_name, request_document_file_data, request_document_file_path, created_by)
+       VALUES ($1,$2,$3,$4,$5,$6,COALESCE($7, CURRENT_DATE),$8,$9,$10,$11,$12)
        RETURNING *`,
-      [kode, nama_barang_jasa, kategori || null, lokasi || null, metode_pengadaan || null, nilai_hps || null, tanggal || null, deskripsi || null, request_document_name || null, request_document_file_data || null, req.user.id]
+      [kode, nama_barang_jasa, kategori || null, lokasi || null, metode_pengadaan || null, nilai_hps || null, tanggal || null, deskripsi || null, request_document_name || null, request_document_file_data || null, request_document_file_path, req.user.id]
     );
 
     res.status(201).json({ data: result.rows[0] });
@@ -123,7 +124,7 @@ router.put('/:id', requireRole(EDITOR_ROLES), async (req, res) => {
 
     const fields = ['nama_barang_jasa','kategori','lokasi','metode_pengadaan','nilai_hps','stage2_vendor','stage2_invoice_number','stage2_invoice_date','stage2_invoice_amount',
                      'tanggal','tanggal_selesai','status','tahap1_status','tahap2_status','tahap3_status','catatan',
-                     'stage2_invoice_document_name','stage2_invoice_file_data','stage2_payment_proof_name','stage2_payment_proof_file_data','stage3_final_document_name','stage3_final_document_file_data'];
+                     'stage2_invoice_document_name','stage2_invoice_file_data','stage2_invoice_file_path','stage2_payment_proof_name','stage2_payment_proof_file_data','stage2_payment_proof_file_path','stage3_final_document_name','stage3_final_document_file_data','stage3_final_document_file_path'];
 
     for (const field of ['request_document_file_data', 'stage2_invoice_file_data', 'stage2_payment_proof_file_data', 'stage3_final_document_file_data']) {
       if (req.body[field] !== undefined && !validDocumentData(req.body[field])) {
@@ -133,15 +134,25 @@ router.put('/:id', requireRole(EDITOR_ROLES), async (req, res) => {
 
     // Jika status menjadi selesai, catat tanggal selesai otomatis. Jika dibuka kembali, kosongkan tanggalnya.
     if (req.body.status === 'selesai') {
-      // Tanggal selesai hanya boleh terisi ketika status benar-benar Selesai.
-      // Jika tidak dikirim dari frontend, isi otomatis dengan tanggal lokal server.
-      if (!req.body.tanggal_selesai) {
-        const now = new Date();
-        req.body.tanggal_selesai = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-      }
+      // Sumber kebenaran tanggal selesai adalah database trigger.
+      // Paksa nilai tanggal agar null dari frontend tidak dapat menghapusnya.
+      const now = new Date();
+      req.body.tanggal_selesai = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
     } else if (req.body.status !== undefined) {
       // Pending / On Progress tidak boleh memiliki tanggal selesai.
       req.body.tanggal_selesai = null;
+    }
+
+    const pathFields = {
+      request_document_file_data: ['request_document_file_path','request_document_name'],
+      stage2_invoice_file_data: ['stage2_invoice_file_path','stage2_invoice_document_name'],
+      stage2_payment_proof_file_data: ['stage2_payment_proof_file_path','stage2_payment_proof_name'],
+      stage3_final_document_file_data: ['stage3_final_document_file_path','stage3_final_document_name'],
+    };
+    for (const [dataField, [pathField, nameField]] of Object.entries(pathFields)) {
+      if (Object.prototype.hasOwnProperty.call(req.body, dataField) && req.body[dataField]) {
+        req.body[pathField] = await saveDataUrl(req.body[dataField], req.body[nameField], 'pengadaan');
+      }
     }
 
     const sets = [];

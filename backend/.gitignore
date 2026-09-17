@@ -1,0 +1,3 @@
+# Runtime user uploads: keep folders, ignore uploaded file contents
+uploads/*/*/*/*
+!uploads/*/*/*/.gitkeep

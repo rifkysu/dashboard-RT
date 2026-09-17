@@ -1,5 +1,6 @@
 const express = require('express');
 const pool = require('../db');
+const { saveDataUrl } = require('../fileStorage');
 const { requireAuth, requireRole, EDITOR_ROLES } = require('../middleware/auth');
 const logger = require('../logger');
 
@@ -26,7 +27,7 @@ router.get('/', async (req, res) => {
   try {
     const result = await pool.query(`SELECT id, agenda AS title, room, pic, booking_date AS date,
       TO_CHAR(start_time, 'HH24:MI') AS start, TO_CHAR(end_time, 'HH24:MI') AS end,
-      surat_status AS status, surat_name, surat_file_data, created_at, updated_at FROM ruang_rapat ORDER BY booking_date, start_time, id`);
+      surat_status AS status, surat_name, surat_file_data, surat_file_path, created_at, updated_at FROM ruang_rapat ORDER BY booking_date, start_time, id`);
     res.json({ data: result.rows });
   } catch (err) {
     logger.error('GET ruang rapat gagal', { error: err, user_id: req.user?.id });
@@ -49,10 +50,10 @@ router.post('/', requireRole(EDITOR_ROLES), async (req, res) => {
     const conflict = await pool.query(`SELECT id FROM ruang_rapat WHERE room=$1 AND booking_date=$2 AND start_time < $4::time AND end_time > $3::time LIMIT 1`, [room, date, start, end]);
     if (conflict.rows.length) return res.status(409).json({ message: 'Ruangan sudah dibooking pada waktu tersebut.' });
 
-    const result = await pool.query(`INSERT INTO ruang_rapat (agenda, room, pic, booking_date, start_time, end_time, surat_status, surat_name, surat_file_data, created_by, updated_by)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$10) RETURNING id, agenda AS title, room, pic, booking_date AS date,
+    const result = await pool.query(`INSERT INTO ruang_rapat (agenda, room, pic, booking_date, start_time, end_time, surat_status, surat_name, surat_file_data, surat_file_path, created_by, updated_by)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING id, agenda AS title, room, pic, booking_date AS date,
       TO_CHAR(start_time, 'HH24:MI') AS start, TO_CHAR(end_time, 'HH24:MI') AS end, surat_status AS status, surat_name, surat_file_data`,
-      [title.trim(), room, pic.trim(), date, start, end, status || 'belum', surat_name || null, surat_file_data || null, req.user.id]);
+      [title.trim(), room, pic.trim(), date, start, end, status || 'belum', surat_name || null, surat_file_data || null, surat_file_data ? await saveDataUrl(surat_file_data, surat_name, 'ruang-rapat') : null, req.user.id, req.user.id]);
     res.status(201).json({ data: result.rows[0] });
   } catch (err) {
     logger.error('POST ruang rapat gagal', { error: err, user_id: req.user?.id });
@@ -62,7 +63,7 @@ router.post('/', requireRole(EDITOR_ROLES), async (req, res) => {
 
 router.put('/:id', requireRole(EDITOR_ROLES), async (req, res) => {
   try {
-    const fields = { title: 'agenda', room: 'room', pic: 'pic', date: 'booking_date', start: 'start_time', end: 'end_time', status: 'surat_status', surat_name: 'surat_name', surat_file_data: 'surat_file_data' };
+    const fields = { title: 'agenda', room: 'room', pic: 'pic', date: 'booking_date', start: 'start_time', end: 'end_time', status: 'surat_status', surat_name: 'surat_name', surat_file_data: 'surat_file_data', surat_file_path: 'surat_file_path' };
     const sets = [], values = [];
     for (const [input, column] of Object.entries(fields)) {
       if (req.body[input] !== undefined) {

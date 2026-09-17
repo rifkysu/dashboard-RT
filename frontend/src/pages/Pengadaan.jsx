@@ -65,7 +65,7 @@ export default function Pengadaan() {
       const payload = {};
       const fields = [
         'nama_barang_jasa', 'kategori', 'lokasi', 'metode_pengadaan', 'nilai_hps', 'deskripsi', 'request_document_name', 'request_document_file_data',
-        'stage2_vendor', 'stage2_invoice_number', 'stage2_invoice_amount', 'tanggal', 'tanggal_selesai', 'status', 'stage2_invoice_document_name', 'stage2_invoice_file_data', 'stage2_payment_proof_name', 'stage2_payment_proof_file_data', 'stage3_final_document_name', 'stage3_final_document_file_data', 'tahap1_status', 'tahap2_status', 'tahap3_status', 'catatan',
+        'stage2_vendor', 'stage2_invoice_number', 'stage2_invoice_amount', 'tanggal', 'status', 'stage2_invoice_document_name', 'stage2_invoice_file_data', 'stage2_payment_proof_name', 'stage2_payment_proof_file_data', 'stage3_final_document_name', 'stage3_final_document_file_data', 'tahap1_status', 'tahap2_status', 'tahap3_status', 'catatan',
       ];
       fields.forEach((field) => {
         if (draft[field] !== undefined) payload[field] = draft[field] === '' ? null : draft[field];
@@ -76,6 +76,8 @@ export default function Pengadaan() {
       if (finish) {
         payload.tahap3_status = 'selesai';
         payload.status = 'selesai';
+        // Jangan ambil tanggal_selesai dari draft lama. Finish Tahap 3 selalu meminta DB mengisinya.
+        payload.tanggal_selesai = new Date().toISOString().slice(0, 10);
       } else if (nextStageNo) {
         payload[selectedStage.field] = 'selesai';
         payload.status = 'on_progress';
