@@ -54,7 +54,7 @@ router.get('/', async (req, res) => {
 
     const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
     const result = await pool.query(
-      `SELECT g.*, u.nama_lengkap AS pic
+      `SELECT g.*, g.tanggal::text AS tanggal, g.tanggal_selesai::text AS tanggal_selesai, u.nama_lengkap AS pic
        FROM pengadaan g
        LEFT JOIN users u ON u.id = g.created_by
        ${where}
@@ -70,7 +70,7 @@ router.get('/', async (req, res) => {
 
 router.get('/:id', async (req, res) => {
   try {
-    const result = await pool.query('SELECT * FROM pengadaan WHERE id = $1', [req.params.id]);
+    const result = await pool.query('SELECT *, tanggal::text AS tanggal, tanggal_selesai::text AS tanggal_selesai FROM pengadaan WHERE id = $1', [req.params.id]);
     if (result.rows.length === 0) return res.status(404).json({ message: 'Data tidak ditemukan.' });
     res.json({ data: result.rows[0] });
   } catch (err) {
@@ -109,7 +109,7 @@ router.post('/', async (req, res) => {
 router.put('/:id', requireRole(EDITOR_ROLES), async (req, res) => {
   try {
     const { id } = req.params;
-    const currentResult = await pool.query('SELECT * FROM pengadaan WHERE id = $1', [id]);
+    const currentResult = await pool.query('SELECT *, tanggal::text AS tanggal, tanggal_selesai::text AS tanggal_selesai FROM pengadaan WHERE id = $1', [id]);
     if (currentResult.rows.length === 0) return res.status(404).json({ message: 'Data tidak ditemukan.' });
     const current = currentResult.rows[0];
 

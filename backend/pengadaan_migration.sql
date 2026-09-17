@@ -1,3 +1,4 @@
+ALTER TABLE pengadaan ADD COLUMN IF NOT EXISTS tanggal DATE;
 -- Migration Pengadaan terbaru
 -- Vendor dan Nilai Invoice hanya diinput pada Tahap 2 (Invoice & Pembayaran).
 
@@ -26,3 +27,6 @@ WHERE status = 'selesai' AND tanggal_selesai IS NULL;
 ALTER TABLE pengadaan DROP COLUMN IF EXISTS vendor;
 ALTER TABLE pengadaan DROP COLUMN IF EXISTS nomor_invoice;
 ALTER TABLE pengadaan DROP COLUMN IF EXISTS nilai_invoice;
+
+-- Pastikan tanggal permintaan disimpan sebagai tanggal kalender tanpa konversi timezone.
+ALTER TABLE pengadaan ALTER COLUMN tanggal TYPE DATE USING tanggal::date;

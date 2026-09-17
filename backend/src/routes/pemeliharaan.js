@@ -54,7 +54,7 @@ router.get('/', async (req, res) => {
 
     const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
     const result = await pool.query(
-      `SELECT p.*, u.nama_lengkap AS pic
+      `SELECT p.*, p.tanggal::text AS tanggal, p.tanggal_selesai::text AS tanggal_selesai, u.nama_lengkap AS pic
        FROM pemeliharaan p
        LEFT JOIN users u ON u.id = p.created_by
        ${where}
@@ -71,7 +71,7 @@ router.get('/', async (req, res) => {
 // GET /api/pemeliharaan/:id
 router.get('/:id', async (req, res) => {
   try {
-    const result = await pool.query('SELECT * FROM pemeliharaan WHERE id = $1', [req.params.id]);
+    const result = await pool.query('SELECT *, tanggal::text AS tanggal, tanggal_selesai::text AS tanggal_selesai FROM pemeliharaan WHERE id = $1', [req.params.id]);
     if (result.rows.length === 0) return res.status(404).json({ message: 'Data tidak ditemukan.' });
     res.json({ data: result.rows[0] });
   } catch (err) {

@@ -1,3 +1,4 @@
+ALTER TABLE pemeliharaan ADD COLUMN IF NOT EXISTS tanggal DATE;
 -- Migration Pemeliharaan
 
 ALTER TABLE pemeliharaan ADD COLUMN IF NOT EXISTS stage1_document_file_data TEXT;
@@ -13,3 +14,6 @@ ALTER TABLE pemeliharaan ADD COLUMN IF NOT EXISTS request_document_file_data TEX
 UPDATE pemeliharaan
 SET tanggal_selesai = CURRENT_DATE
 WHERE status = 'selesai' AND tanggal_selesai IS NULL;
+
+-- Pastikan tanggal permintaan disimpan sebagai tanggal kalender tanpa konversi timezone.
+ALTER TABLE pemeliharaan ALTER COLUMN tanggal TYPE DATE USING tanggal::date;
