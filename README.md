@@ -212,3 +212,5 @@ Setelah perubahan role, user perlu login ulang agar token/JWT mendapatkan role t
 =======
 # dashboard-RT
 
+untuk menjalankan aplikasi ini harus menggunakan node js versi 20
+

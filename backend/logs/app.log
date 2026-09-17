@@ -1752,3 +1752,8 @@
 {"time":"2026-09-17T03:10:09.773Z","level":"info","message":"HTTP request","meta":{"request_id":"a6b63324db0d9fdb2ad0a9c7","method":"GET","path":"/me","status":304,"duration_ms":1,"user_id":1,"role":"pic"}}
 {"time":"2026-09-17T03:10:09.960Z","level":"info","message":"HTTP request","meta":{"request_id":"a7bdea294650b6b7d4ca9b99","method":"GET","path":"/","status":200,"duration_ms":129,"user_id":1,"role":"pic"}}
 {"time":"2026-09-17T03:10:10.114Z","level":"info","message":"HTTP request","meta":{"request_id":"660c44b4eb3d8adb22596789","method":"GET","path":"/","status":304,"duration_ms":150,"user_id":1,"role":"pic"}}
+{"time":"2026-09-17T03:19:00.296Z","level":"info","message":"DB connected","meta":{"database":"biro_umum_db","host":"localhost","port":5432}}
+{"time":"2026-09-17T03:19:00.332Z","level":"info","message":"HTTP request","meta":{"request_id":"d8cd0ba6c52ec58944f74ded","method":"GET","path":"/","status":304,"duration_ms":112,"user_id":1,"role":"pic"}}
+{"time":"2026-09-17T03:19:00.356Z","level":"info","message":"HTTP request","meta":{"request_id":"3316c88cd4554711310e8631","method":"GET","path":"/","status":304,"duration_ms":22,"user_id":1,"role":"pic"}}
+{"time":"2026-09-17T03:19:02.406Z","level":"info","message":"HTTP request","meta":{"request_id":"d5c4977fe446a52cb31e6945","method":"GET","path":"/","status":304,"duration_ms":198,"user_id":1,"role":"pic"}}
+{"time":"2026-09-17T03:19:02.617Z","level":"info","message":"HTTP request","meta":{"request_id":"3b5afd43e83451128d920f72","method":"GET","path":"/","status":304,"duration_ms":207,"user_id":1,"role":"pic"}}
