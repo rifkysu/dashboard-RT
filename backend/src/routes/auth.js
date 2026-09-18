@@ -2,17 +2,16 @@ const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const passport = require('passport');
-const pool = require('../db');
+const prisma = require('../prisma');
 const { requireAuth } = require('../middleware/auth');
 const { createRateLimiter, normalizeEmail, isSafeText } = require('../middleware/security');
 
 const router = express.Router();
 
-// Role yang BOLEH dipilih sendiri saat mendaftar.
-// "pic" SENGAJA tidak dimasukkan di sini -> tidak muncul & tidak bisa
-// dipilih dari form Daftar Akun Baru. Role "pic" hanya bisa diberikan
-// oleh admin/kabag langsung lewat pgAdmin4 (lihat README.md).
+// Pendaftaran mandiri selalu membuat akun Karyawan.
+// Perubahan role dilakukan dari menu Pengaturan oleh Kabag/Admin atau via pgAdmin4.
 const SELF_REGISTER_ROLES = ['karyawan'];
+const MANAGED_ROLES = ['karyawan', 'kabag', 'pic'];
 
 const loginLimiter = createRateLimiter({
   windowMs: 15 * 60 * 1000,
@@ -76,27 +75,71 @@ router.post('/register', registerLimiter, async (req, res) => {
       });
     }
 
-    const existing = await pool.query('SELECT id FROM users WHERE email = $1', [email]);
-    if (existing.rows.length > 0) {
+    const existing = await prisma.user.findUnique({ where: { email }, select: { id: true } });
+    if (existing) {
       return res.status(409).json({ message: 'Email sudah terdaftar. Silakan login.' });
     }
 
     const password_hash = await bcrypt.hash(password, 12);
 
-    const result = await pool.query(
-      `INSERT INTO users (nama_lengkap, email, password_hash, no_hp, unit_kerja, role)
-       VALUES ($1, $2, $3, $4, $5, $6)
-       RETURNING id, nama_lengkap, email, no_hp, unit_kerja, role, created_at`,
-      [nama_lengkap, email, password_hash, no_hp || null, unit_kerja || null, role]
-    );
-
-    const user = result.rows[0];
+    const user = await prisma.user.create({ data: { nama_lengkap, email, password_hash, no_hp: no_hp || null, unit_kerja: unit_kerja || null, role } });
     const token = signToken(user);
 
     res.status(201).json({ token, user });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Terjadi kesalahan server saat mendaftar.' });
+  }
+});
+
+// ---------------------------------------------------------
+// GET /api/auth/users - daftar user untuk pengelolaan role
+// Kabag boleh mengelola Karyawan/PIC, Admin boleh mengelola semua role non-admin.
+// ---------------------------------------------------------
+router.get('/users', requireAuth, async (req, res) => {
+  try {
+    if (!['kabag', 'admin'].includes(req.user.role)) {
+      return res.status(403).json({ message: 'Hanya Kabag atau Admin yang dapat mengelola role.' });
+    }
+    const users = await prisma.user.findMany({
+      select: { id: true, nama_lengkap: true, email: true, unit_kerja: true, role: true, is_active: true, created_at: true },
+      orderBy: { id: 'asc' },
+    });
+    res.json({ data: users });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Gagal mengambil daftar pengguna.', error_code: err.code || 'DB_ERROR' });
+  }
+});
+
+// ---------------------------------------------------------
+// PUT /api/auth/users/:id/role - ubah role user
+// ---------------------------------------------------------
+router.put('/users/:id/role', requireAuth, async (req, res) => {
+  try {
+    if (!['kabag', 'admin'].includes(req.user.role)) {
+      return res.status(403).json({ message: 'Hanya Kabag atau Admin yang dapat mengubah role.' });
+    }
+    const id = Number(req.params.id);
+    const role = String(req.body.role || '').toLowerCase();
+    if (!Number.isInteger(id) || !MANAGED_ROLES.includes(role)) {
+      return res.status(400).json({ message: 'ID user atau role tidak valid.' });
+    }
+    const target = await prisma.user.findUnique({ where: { id }, select: { id: true, role: true } });
+    if (!target) return res.status(404).json({ message: 'User tidak ditemukan.' });
+    // Admin tidak dapat diturunkan oleh Kabag. Kabag juga tidak dapat mengubah akun Admin.
+    if (req.user.role === 'kabag' && target.role === 'admin') {
+      return res.status(403).json({ message: 'Akun Admin hanya dapat dikelola oleh Admin.' });
+    }
+    if (req.user.role === 'kabag' && id === Number(req.user.id) && role !== 'kabag') {
+      return res.status(403).json({ message: 'Kabag tidak dapat menurunkan role akun sendiri.' });
+    }
+    const updated = await prisma.user.update({ where: { id }, data: { role }, select: { id: true, nama_lengkap: true, email: true, unit_kerja: true, role: true, is_active: true, created_at: true } });
+    res.json({ message: 'Role berhasil diperbarui.', user: updated });
+  } catch (err) {
+    console.error(err);
+    if (err.code === 'P2025') return res.status(404).json({ message: 'User tidak ditemukan.' });
+    res.status(500).json({ message: 'Gagal memperbarui role.', error_code: err.code || 'DB_ERROR' });
   }
 });
 
@@ -114,8 +157,7 @@ router.post('/login', loginLimiter, async (req, res) => {
       return res.status(400).json({ message: 'Email dan kata sandi wajib diisi.' });
     }
 
-    const result = await pool.query('SELECT * FROM users WHERE email = $1 AND is_active = TRUE', [email]);
-    const user = result.rows[0];
+    const user = await prisma.user.findFirst({ where: { email, is_active: true } });
 
     if (!user || !user.password_hash) {
       return res.status(401).json({ message: 'Email atau kata sandi salah.' });
@@ -139,14 +181,11 @@ router.post('/login', loginLimiter, async (req, res) => {
 // ---------------------------------------------------------
 router.get('/me', requireAuth, async (req, res) => {
   try {
-    const result = await pool.query(
-      'SELECT id, nama_lengkap, email, no_hp, unit_kerja, role, sso_provider, created_at FROM users WHERE id = $1',
-      [req.user.id]
-    );
-    if (result.rows.length === 0) {
+    const user = await prisma.user.findUnique({ where: { id: Number(req.user.id) }, select: { id: true, nama_lengkap: true, email: true, no_hp: true, unit_kerja: true, role: true, sso_provider: true, created_at: true } });
+    if (!user) {
       return res.status(404).json({ message: 'User tidak ditemukan.' });
     }
-    res.json({ user: result.rows[0] });
+    res.json({ user });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Terjadi kesalahan server.' });

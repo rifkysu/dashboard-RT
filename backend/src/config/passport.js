@@ -1,6 +1,6 @@
 const passport = require('passport');
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
-const pool = require('../db');
+const prisma = require('../prisma');
 
 // Strategy SSO Google. Alur:
 // 1. User klik "Masuk dengan Akun Kemenaker / Intranet" di frontend
@@ -32,25 +32,15 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
           }
 
           // Cari user berdasarkan email
-          let result = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
-          let user = result.rows[0];
+          let user = await prisma.user.findUnique({ where: { email } });
 
           if (!user) {
             // Belum ada -> buat akun baru otomatis dengan role default "karyawan".
             // password_hash NULL karena user ini hanya login lewat SSO.
-            const insert = await pool.query(
-              `INSERT INTO users (nama_lengkap, email, password_hash, role, sso_provider, sso_subject)
-               VALUES ($1, $2, NULL, 'karyawan', 'google', $3)
-               RETURNING *`,
-              [nama_lengkap, email, profile.id]
-            );
-            user = insert.rows[0];
+            user = await prisma.user.create({ data: { nama_lengkap, email, password_hash: null, role: 'karyawan', sso_provider: 'google', sso_subject: profile.id } });
           } else if (!user.sso_provider) {
             // User sudah ada (daftar manual sebelumnya) -> tandai juga bisa SSO
-            await pool.query(
-              `UPDATE users SET sso_provider = 'google', sso_subject = $1 WHERE id = $2`,
-              [profile.id, user.id]
-            );
+            user = await prisma.user.update({ where: { id: user.id }, data: { sso_provider: 'google', sso_subject: profile.id } });
           }
 
           return done(null, user);
