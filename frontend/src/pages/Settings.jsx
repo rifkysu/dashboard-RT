@@ -1,24 +1,29 @@
-import React,{useEffect,useState} from 'react';
+import React,{useState} from 'react';
 import {useAuth} from '../context/AuthContext';
-import api from '../api';
 
-const roleLabel={karyawan:'Karyawan',kabag:'Kepala Bagian',pic:'PIC',admin:'Admin'};
-const roleOptions=['karyawan','kabag','pic'];
+const roleLabel = { karyawan:'Karyawan', kabag:'Kepala Bagian', pic:'PIC', admin:'Admin' };
 
 export default function Settings(){
- const {user}=useAuth(); const [notif,setNotif]=useState(true); const [users,setUsers]=useState([]); const [loadingUsers,setLoadingUsers]=useState(false); const [error,setError]=useState(''); const [saving,setSaving]=useState(null);
- const canManage=['kabag','admin'].includes(user?.role);
- const loadUsers=async()=>{if(!canManage)return;setLoadingUsers(true);setError('');try{const r=await api.get('/auth/users');setUsers(r.data.data||[]);}catch(e){setError(e.response?.data?.message||'Gagal memuat pengguna.');}finally{setLoadingUsers(false);}};
- useEffect(()=>{loadUsers();},[user?.role]);
- const changeRole=async(id,role)=>{setSaving(id);setError('');try{const r=await api.put(`/auth/users/${id}/role`,{role});setUsers(v=>v.map(x=>x.id===id?r.data.user:x));}catch(e){setError(e.response?.data?.message||'Gagal mengubah role.');}finally{setSaving(null);}};
- return <div className="menu-page menu-settings max-w-5xl mx-auto">
-  <div className="settings-profile-strip"><div className="settings-profile-avatar">{(user?.nama_lengkap||'U').trim().charAt(0).toUpperCase()}</div><div className="min-w-0"><div className="settings-profile-name">{user?.nama_lengkap||'-'}</div><div className="settings-profile-role">{roleLabel[user?.role]||user?.role||'-'}</div></div></div>
-  <div className="menu-hero mb-6"><div><span className="menu-kicker">KONFIGURASI • SISTEM</span><h1 className="text-3xl font-bold">Settings</h1><p className="text-sm mt-1">Pengaturan akun dan hak akses Biro Umum.</p></div><div className="menu-hero-icon"><span className="material-symbols-outlined">settings</span></div></div>
-  {error&&<div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
-  <div className="space-y-4">
-   <section className="bg-white border border-slate-300 rounded-xl p-5"><h2 className="font-bold mb-4">Profil Pengguna</h2><div className="grid md:grid-cols-3 gap-4 text-sm"><div><label className="text-xs text-slate-500">Nama Lengkap</label><p className="mt-1 border rounded p-2.5">{user?.nama_lengkap||'-'}</p></div><div><label className="text-xs text-slate-500">Email</label><p className="mt-1 border rounded p-2.5">{user?.email||'-'}</p></div><div><label className="text-xs text-slate-500">Peran</label><p className="mt-1 border rounded p-2.5 font-semibold">{roleLabel[user?.role]||user?.role||'-'}</p></div></div></section>
-   {canManage&&<section className="bg-white border border-slate-300 rounded-xl p-5"><div className="flex items-center justify-between gap-3 mb-4"><div><h2 className="font-bold">Kelola Role Pengguna</h2><p className="text-xs text-slate-500 mt-1">Kabag/Admin dapat mengubah role tanpa membuka pgAdmin4.</p></div><button onClick={loadUsers} disabled={loadingUsers} className="px-3 py-2 rounded-lg border text-xs font-semibold hover:bg-slate-50">{loadingUsers?'Memuat...':'Refresh'}</button></div><div className="overflow-x-auto"><table className="w-full text-xs"><thead className="bg-slate-50"><tr><th className="text-left px-3 py-3">Nama</th><th className="text-left px-3 py-3">Email</th><th className="text-left px-3 py-3">Unit</th><th className="text-left px-3 py-3">Role</th><th className="text-left px-3 py-3">Aksi</th></tr></thead><tbody>{loadingUsers?<tr><td colSpan="5" className="p-6 text-center">Memuat pengguna...</td></tr>:users.map(x=><tr key={x.id} className="border-t"><td className="px-3 py-3 font-semibold">{x.nama_lengkap}</td><td className="px-3 py-3">{x.email}</td><td className="px-3 py-3">{x.unit_kerja||'-'}</td><td className="px-3 py-3">{roleLabel[x.role]||x.role}</td><td className="px-3 py-3"><select value={x.role} disabled={saving===x.id || (user?.role==='kabag'&&x.role==='admin')} onChange={e=>changeRole(x.id,e.target.value)} className="border rounded-lg px-2 py-1.5 bg-white"><option value="karyawan">Karyawan</option><option value="kabag">Kabag</option><option value="pic">PIC</option></select>{saving===x.id&&<span className="ml-2 text-slate-400">Menyimpan...</span>}</td></tr>)}{!users.length&&!loadingUsers&&<tr><td colSpan="5" className="p-6 text-center text-slate-400">Belum ada pengguna.</td></tr>}</tbody></table></div></section>}
-   <section className="bg-white border border-slate-300 rounded-xl p-5"><h2 className="font-bold">Preferensi</h2><label className="flex items-center justify-between py-4"><span><b className="block text-sm">Notifikasi</b><small className="text-xs text-slate-500">Terima pemberitahuan terkait aktivitas layanan.</small></span><input type="checkbox" checked={notif} onChange={e=>setNotif(e.target.checked)} className="w-5 h-5"/></label></section>
-  </div>
+ const {user}=useAuth(); const [notif,setNotif]=useState(true);
+ return <div className="menu-page menu-settings max-w-4xl mx-auto">
+   <div className="settings-profile-strip">
+     <div className="settings-profile-avatar">{(user?.nama_lengkap||'U').trim().charAt(0).toUpperCase()}</div>
+     <div className="min-w-0">
+       <div className="settings-profile-name">{user?.nama_lengkap||'-'}</div>
+       <div className="settings-profile-role">{roleLabel[user?.role]||user?.role||'-'}</div>
+     </div>
+   </div>
+   <div className="menu-hero mb-6"><div><span className="menu-kicker">KONFIGURASI • SISTEM</span><h1 className="text-3xl font-bold">Settings</h1><p className="text-sm mt-1">Pengaturan akun dan preferensi sistem Biro Umum.</p></div><div className="menu-hero-icon"><span className="material-symbols-outlined">settings</span></div></div>
+   <div className="space-y-4">
+     <section className="bg-white border border-slate-300 rounded-md p-5">
+       <h2 className="font-bold mb-4">Profil Pengguna</h2>
+       <div className="grid md:grid-cols-2 gap-4 text-sm">
+         <div><label className="text-xs text-slate-500">Nama Lengkap</label><p className="mt-1 border rounded p-2.5">{user?.nama_lengkap||'-'}</p></div>
+         <div><label className="text-xs text-slate-500">Email</label><p className="mt-1 border rounded p-2.5">{user?.email||'-'}</p></div>
+         <div><label className="text-xs text-slate-500">Peran</label><p className="mt-1 border rounded p-2.5">{roleLabel[user?.role]||user?.role||'-'}</p></div>
+       </div>
+     </section>
+     <section className="bg-white border border-slate-300 rounded-md p-5"><h2 className="font-bold">Preferensi</h2><label className="flex items-center justify-between py-4"><span><b className="block text-sm">Notifikasi</b><small className="text-xs text-slate-500">Terima pemberitahuan terkait aktivitas layanan.</small></span><input type="checkbox" checked={notif} onChange={e=>setNotif(e.target.checked)} className="w-5 h-5"/></label></section>
+   </div>
  </div>;
 }

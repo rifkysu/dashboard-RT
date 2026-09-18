@@ -44,7 +44,7 @@ export function AuthProvider({ children }) {
 
   // Role yang boleh mengedit modul Pemeliharaan & Pengadaan.
   // karyawan sengaja TIDAK termasuk -> tombol edit disembunyikan / dinonaktifkan.
-  const canEdit = user && ['kabag', 'pic', 'admin'].includes(user.role);
+  const canEdit = user && ['kabag', 'pic'].includes(user.role);
 
   return (
     <AuthContext.Provider value={{ user, loading, login, logout, canEdit }}>

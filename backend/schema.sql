@@ -215,7 +215,7 @@ VALUES
 INSERT INTO pengadaan (kode, nama_barang_jasa, kategori, nilai_hps, tanggal, status, tahap1_status, tahap2_status, tahap3_status)
 VALUES
 ('PGD-2024-001', 'Pengadaan Kertas & ATK Kantor Triwulan IV', 'Barang Habis Pakai', 25000000, '2024-10-05', 'pending', 'pending', 'pending', 'pending'),
-('PGD-2024-002', 'Jasa Perawatan Genset Gedung Utama', 'Jasa', 18500000, '2024-10-02', 'on_progress', 'selesai', 'on_progress', 'pending');
+('PGD-2024-002', 'Jasa Perawatan Genset Gedung Utama', 'Jasa', 'PT Karya Listrik Mandiri', 18500000, '2024-10-02', 'on_progress', 'selesai', 'on_progress', 'pending');
 
 -- ---------------------------------------------------------
 -- CATATAN AKUN AWAL

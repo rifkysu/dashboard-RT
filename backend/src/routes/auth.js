@@ -8,10 +8,11 @@ const { createRateLimiter, normalizeEmail, isSafeText } = require('../middleware
 
 const router = express.Router();
 
-// Pendaftaran mandiri selalu membuat akun Karyawan.
-// Perubahan role dilakukan dari menu Pengaturan oleh Kabag/Admin atau via pgAdmin4.
+// Role yang BOLEH dipilih sendiri saat mendaftar.
+// "pic" SENGAJA tidak dimasukkan di sini -> tidak muncul & tidak bisa
+// dipilih dari form Daftar Akun Baru. Role "pic" hanya bisa diberikan
+// oleh admin/kabag langsung lewat pgAdmin4 (lihat README.md).
 const SELF_REGISTER_ROLES = ['karyawan'];
-const MANAGED_ROLES = ['karyawan', 'kabag', 'pic'];
 
 const loginLimiter = createRateLimiter({
   windowMs: 15 * 60 * 1000,
@@ -89,57 +90,6 @@ router.post('/register', registerLimiter, async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Terjadi kesalahan server saat mendaftar.' });
-  }
-});
-
-// ---------------------------------------------------------
-// GET /api/auth/users - daftar user untuk pengelolaan role
-// Kabag boleh mengelola Karyawan/PIC, Admin boleh mengelola semua role non-admin.
-// ---------------------------------------------------------
-router.get('/users', requireAuth, async (req, res) => {
-  try {
-    if (!['kabag', 'admin'].includes(req.user.role)) {
-      return res.status(403).json({ message: 'Hanya Kabag atau Admin yang dapat mengelola role.' });
-    }
-    const users = await prisma.user.findMany({
-      select: { id: true, nama_lengkap: true, email: true, unit_kerja: true, role: true, is_active: true, created_at: true },
-      orderBy: { id: 'asc' },
-    });
-    res.json({ data: users });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Gagal mengambil daftar pengguna.', error_code: err.code || 'DB_ERROR' });
-  }
-});
-
-// ---------------------------------------------------------
-// PUT /api/auth/users/:id/role - ubah role user
-// ---------------------------------------------------------
-router.put('/users/:id/role', requireAuth, async (req, res) => {
-  try {
-    if (!['kabag', 'admin'].includes(req.user.role)) {
-      return res.status(403).json({ message: 'Hanya Kabag atau Admin yang dapat mengubah role.' });
-    }
-    const id = Number(req.params.id);
-    const role = String(req.body.role || '').toLowerCase();
-    if (!Number.isInteger(id) || !MANAGED_ROLES.includes(role)) {
-      return res.status(400).json({ message: 'ID user atau role tidak valid.' });
-    }
-    const target = await prisma.user.findUnique({ where: { id }, select: { id: true, role: true } });
-    if (!target) return res.status(404).json({ message: 'User tidak ditemukan.' });
-    // Admin tidak dapat diturunkan oleh Kabag. Kabag juga tidak dapat mengubah akun Admin.
-    if (req.user.role === 'kabag' && target.role === 'admin') {
-      return res.status(403).json({ message: 'Akun Admin hanya dapat dikelola oleh Admin.' });
-    }
-    if (req.user.role === 'kabag' && id === Number(req.user.id) && role !== 'kabag') {
-      return res.status(403).json({ message: 'Kabag tidak dapat menurunkan role akun sendiri.' });
-    }
-    const updated = await prisma.user.update({ where: { id }, data: { role }, select: { id: true, nama_lengkap: true, email: true, unit_kerja: true, role: true, is_active: true, created_at: true } });
-    res.json({ message: 'Role berhasil diperbarui.', user: updated });
-  } catch (err) {
-    console.error(err);
-    if (err.code === 'P2025') return res.status(404).json({ message: 'User tidak ditemukan.' });
-    res.status(500).json({ message: 'Gagal memperbarui role.', error_code: err.code || 'DB_ERROR' });
   }
 });
 
