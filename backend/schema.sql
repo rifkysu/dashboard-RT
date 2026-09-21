@@ -101,6 +101,7 @@ CREATE TABLE pengadaan (
     nama_barang_jasa    VARCHAR(255) NOT NULL,
     kategori            VARCHAR(100),
     lokasi              VARCHAR(150),
+    titik_lokasi        VARCHAR(255),
     metode_pengadaan   VARCHAR(50),
     nilai_hps           NUMERIC(18,2),
     deskripsi           TEXT,

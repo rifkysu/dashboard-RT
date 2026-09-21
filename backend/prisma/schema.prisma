@@ -107,6 +107,7 @@ model Pengadaan {
   nama_barang_jasa    String       @db.VarChar(255)
   kategori            String?      @db.VarChar(100)
   lokasi              String?      @db.VarChar(150)
+  titik_lokasi        String?      @db.VarChar(255)
   metode_pengadaan    String?      @db.VarChar(50)
   nilai_hps           Decimal?     @db.Decimal(18,2)
   deskripsi           String?

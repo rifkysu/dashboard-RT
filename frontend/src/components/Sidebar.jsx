@@ -16,10 +16,10 @@ export default function Sidebar() {
   const roleLabel = { karyawan: 'Karyawan', kabag: 'Kepala Bagian', pic: 'PIC', admin: 'Admin' };
 
   return (
-    <aside className="bg-slate-950 fixed left-0 top-0 h-full w-60 flex flex-col z-20 shadow-2xl shadow-slate-900/20">
-      <div className="px-5 py-6 border-b border-white/10 bg-gradient-to-br from-slate-900 via-slate-950 to-indigo-950">
+    <aside className="bg-slate-900 fixed left-0 top-0 h-full w-60 flex flex-col z-20 shadow-2xl shadow-slate-900/20">
+      <div className="px-5 py-6 border-b border-white/10 bg-gradient-to-br from-slate-900 via-slate-900 to-slate-800">
         <div className="flex items-center gap-3">
-          <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white shadow-lg shadow-indigo-900/40">
+          <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-slate-600 to-slate-800 flex items-center justify-center text-white shadow-lg shadow-slate-900/20">
             <span className="material-symbols-outlined text-[23px]">account_balance</span>
           </div>
           <div>
@@ -37,11 +37,11 @@ export default function Sidebar() {
             }`}>
             {({isActive}) => <>
               <span className={`w-10 h-10 rounded-xl flex items-center justify-center transition ${
-                item.tone === 'indigo' ? 'bg-indigo-500/15 text-indigo-400 group-hover:bg-indigo-500/25' :
-                item.tone === 'emerald' ? 'bg-emerald-500/15 text-emerald-400 group-hover:bg-emerald-500/25' :
-                item.tone === 'amber' ? 'bg-amber-500/15 text-amber-400 group-hover:bg-amber-500/25' :
-                item.tone === 'sky' ? 'bg-sky-500/15 text-sky-400 group-hover:bg-sky-500/25' :
-                'bg-violet-500/15 text-violet-400 group-hover:bg-violet-500/25'
+                item.tone === 'indigo' ? 'bg-slate-700 text-slate-200 group-hover:bg-slate-600' :
+                item.tone === 'emerald' ? 'bg-emerald-500/15 text-emerald-300 group-hover:bg-emerald-500/25' :
+                item.tone === 'amber' ? 'bg-amber-500/15 text-amber-300 group-hover:bg-amber-500/25' :
+                item.tone === 'sky' ? 'bg-teal-500/15 text-teal-300 group-hover:bg-teal-500/25' :
+                'bg-violet-500/15 text-violet-300 group-hover:bg-violet-500/25'
               } ${isActive ? 'ring-1 ring-slate-200/80' : ''}`}>
                 <span className="material-symbols-outlined text-[20px]">{item.icon}</span>
               </span>
@@ -52,7 +52,7 @@ export default function Sidebar() {
         ))}
       </nav>
       <div className="px-3 pb-4">
-        <div className="mx-1 mb-3 p-3 rounded-2xl bg-gradient-to-r from-indigo-500/15 to-blue-500/10 border border-white/10">
+        <div className="mx-1 mb-3 p-3 rounded-2xl bg-gradient-to-r from-slate-700 to-slate-800 border border-white/10">
           <div className="flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-sm shadow-emerald-400 animate-pulse"></span>
             <span className="text-[11px] font-semibold text-slate-300">Sistem Aktif</span>

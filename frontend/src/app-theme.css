@@ -1,129 +1,77 @@
+:root { color-scheme: light; }
+html, body, #root { min-height:100%; }
+body { min-height:100vh; background:#f3f6fa !important; color:#1e293b; }
+.app-shell-bg { background:linear-gradient(135deg,#dbeafe 0%,#bfdbfe 45%,#e0f2fe 100%); }
+main.app-main { background:linear-gradient(135deg,#dbeafe 0%,#bfdbfe 50%,#e0f2fe 100%) !important; min-height:100vh; }
+.menu-page { color:#1e293b; position:relative; }
+.menu-page h1,.menu-page h2,.menu-page h3,.menu-page h4,.menu-page .text-slate-900,.menu-page .text-slate-800 { color:#172033 !important; }
+.menu-page .text-slate-700 { color:#475569 !important; }
+.menu-page .text-slate-600,.menu-page .text-slate-500 { color:#64748b !important; }
+.menu-page .text-slate-400 { color:#94a3b8 !important; }
 
-/* Premium visual theme for authenticated application menus */
-:root { color-scheme: dark; }
-body { min-height: 100vh; background: #08111f !important; }
-.app-shell-bg { background: radial-gradient(circle at 20% 0%, rgba(59,130,246,.18), transparent 34%), radial-gradient(circle at 90% 20%, rgba(16,185,129,.14), transparent 32%), #08111f; }
-
-/* Main workspace */
-main.app-main {
-  background:
-    radial-gradient(circle at 12% 5%, rgba(59,130,246,.14), transparent 30%),
-    radial-gradient(circle at 88% 10%, rgba(139,92,246,.12), transparent 28%),
-    linear-gradient(135deg,#091321 0%,#0d1728 48%,#07131d 100%) !important;
-}
-.menu-page { color:#e5edf8; }
-.menu-page h1,.menu-page h2,.menu-page h3,.menu-page h4,.menu-page .text-slate-900,.menu-page .text-slate-800 { color:#f8fafc !important; }
-.menu-page .text-slate-700 { color:#cbd5e1 !important; }
-.menu-page .text-slate-600,.menu-page .text-slate-500 { color:#94a3b8 !important; }
-.menu-page .text-slate-400 { color:#64748b !important; }
-
-/* Cards / panels: no more flat white blocks */
-.menu-page .bg-white,
-.menu-page .bg-white\/75,
-.menu-page .bg-white\/80,
-.menu-page .bg-white\/85,
-.menu-page .bg-white\/90 {
-  background: linear-gradient(145deg, rgba(20,32,51,.94), rgba(12,23,39,.92)) !important;
-  color:#e5edf8;
-  border-color:rgba(148,163,184,.16) !important;
-  box-shadow:0 18px 45px rgba(0,0,0,.20), inset 0 1px 0 rgba(255,255,255,.035);
-}
-.menu-page .bg-slate-50,
-.menu-page .bg-slate-50\/50,
-.menu-page .bg-slate-50\/70,
-.menu-page .bg-slate-100,
-.menu-page .bg-slate-100\/80 {
-  background:rgba(15,28,46,.72) !important;
-  color:#dbe5f2;
-}
-.menu-page .border-slate-200,.menu-page .border-slate-300,.menu-page .border-slate-100,
-.menu-page .border-white\/80 { border-color:rgba(148,163,184,.16) !important; }
-.menu-page .divide-slate-200 > :not([hidden]) ~ :not([hidden]) { border-color:rgba(148,163,184,.13) !important; }
-.menu-page .border-b,.menu-page .border-t { border-color:rgba(148,163,184,.14) !important; }
-.menu-page tr:hover { background:rgba(59,130,246,.07) !important; }
-.menu-page thead { background:rgba(30,41,59,.78) !important; }
-.menu-page .shadow-sm,.menu-page .shadow-lg { box-shadow:0 18px 45px rgba(0,0,0,.18); }
-
-/* Inputs remain clear and readable */
-.menu-page input:not([type="radio"]):not([type="checkbox"]),
-.menu-page select,
-.menu-page textarea {
-  background:rgba(7,18,31,.82) !important;
-  color:#f1f5f9 !important;
-  border-color:rgba(148,163,184,.25) !important;
-}
-.menu-page input::placeholder,.menu-page textarea::placeholder { color:#64748b !important; }
-.menu-page option { background:#0f1b2d; color:#f8fafc; }
-
-/* Dashboard cards get a little extra depth */
-.menu-page button.bg-white { color:#f8fafc; }
-.menu-page .hover\\:bg-slate-50:hover { background:rgba(51,65,85,.45) !important; }
-
-/* Keep dialogs/forms light and highly readable */
-.menu-page .fixed .bg-white,
-.menu-page .fixed .bg-white\/95,
-.menu-page .fixed .bg-white\/90 {
-  background:#f8fafc !important;
-  color:#0f172a !important;
+/* Soft panels instead of one blue/dark theme everywhere. */
+.menu-page .bg-white,.menu-page .bg-white\/75,.menu-page .bg-white\/80,.menu-page .bg-white\/85,.menu-page .bg-white\/90 {
+  background:rgba(255,255,255,.92) !important;
+  color:#1e293b !important;
   border-color:#e2e8f0 !important;
+  box-shadow:0 10px 28px rgba(15,23,42,.07);
 }
-.menu-page .fixed h1,.menu-page .fixed h2,.menu-page .fixed h3,.menu-page .fixed h4,
-.menu-page .fixed .text-slate-900,.menu-page .fixed .text-slate-800 { color:#0f172a !important; }
+.menu-page .bg-slate-50,.menu-page .bg-slate-50\/50,.menu-page .bg-slate-50\/70,.menu-page .bg-slate-100,.menu-page .bg-slate-100\/80 {
+  background:#f1f5f9 !important; color:#334155 !important;
+}
+.menu-page .border-slate-200,.menu-page .border-slate-300,.menu-page .border-slate-100,.menu-page .border-white\/80 { border-color:#e2e8f0 !important; }
+.menu-page .divide-slate-200 > :not([hidden]) ~ :not([hidden]) { border-color:#e2e8f0 !important; }
+.menu-page .border-b,.menu-page .border-t { border-color:#e5e7eb !important; }
+.menu-page tr:hover { background:rgba(15,23,42,.035) !important; }
+.menu-page thead { background:#f1f5f9 !important; }
+.menu-page .shadow-sm,.menu-page .shadow-lg { box-shadow:0 10px 28px rgba(15,23,42,.07); }
+
+.menu-page input:not([type="radio"]):not([type="checkbox"]),.menu-page select,.menu-page textarea {
+  background:#fff !important; color:#1e293b !important; border-color:#cbd5e1 !important;
+}
+.menu-page input::placeholder,.menu-page textarea::placeholder { color:#94a3b8 !important; }
+.menu-page option { background:#fff; color:#1e293b; }
+.menu-page .fixed .bg-white,.menu-page .fixed .bg-white\/95,.menu-page .fixed .bg-white\/90 { background:#fff !important; color:#0f172a !important; border-color:#e2e8f0 !important; }
+.menu-page .fixed h1,.menu-page .fixed h2,.menu-page .fixed h3,.menu-page .fixed h4,.menu-page .fixed .text-slate-900,.menu-page .fixed .text-slate-800 { color:#0f172a !important; }
 .menu-page .fixed .text-slate-700 { color:#334155 !important; }
 .menu-page .fixed .text-slate-600,.menu-page .fixed .text-slate-500 { color:#64748b !important; }
-.menu-page .fixed input:not([type="radio"]):not([type="checkbox"]),
-.menu-page .fixed select,.menu-page .fixed textarea { background:#f8fafc !important; color:#0f172a !important; border-color:#cbd5e1 !important; }
+.menu-page .fixed input:not([type="radio"]):not([type="checkbox"]),.menu-page .fixed select,.menu-page .fixed textarea { background:#fff !important; color:#0f172a !important; border-color:#cbd5e1 !important; }
 
-/* Page title accent */
-.menu-page > div:first-child h1 { letter-spacing:-.025em; }
-
-/* Per-menu identity: colorful top header + eliminate remaining light blocks */
-.app-main { min-height:100vh; }
-.menu-page { position:relative; }
-.menu-page .bg-white, .menu-page .bg-white\/85, .menu-page .bg-white\/90, .menu-page .bg-white\/80, .menu-page .bg-white\/75 { background:linear-gradient(145deg,rgba(18,31,51,.96),rgba(10,22,37,.95)) !important; color:#e5edf8 !important; }
-.menu-page .bg-slate-50, .menu-page .bg-slate-100 { background:rgba(25,39,61,.72) !important; color:#dbe5f2 !important; }
-.menu-page table thead { background:rgba(31,45,68,.9) !important; }
-.menu-page table tbody tr { border-color:rgba(148,163,184,.13) !important; }
-.menu-page .text-slate-900,.menu-page .text-slate-800 { color:#f8fafc !important; }
-.menu-page .text-slate-700 { color:#d1d9e6 !important; }
-.menu-page .text-slate-600,.menu-page .text-slate-500 { color:#9aa9bc !important; }
-.menu-page .text-slate-400 { color:#72839a !important; }
-.menu-page .border-slate-200,.menu-page .border-slate-300,.menu-page .border-slate-100,.menu-page .border-white\/80 { border-color:rgba(148,163,184,.17) !important; }
-.menu-hero { display:flex; align-items:center; justify-content:space-between; gap:20px; padding:22px 24px; border-radius:24px; color:#fff; position:relative; overflow:hidden; box-shadow:0 20px 50px rgba(0,0,0,.25); }
+.menu-hero { display:flex; align-items:center; justify-content:space-between; gap:20px; padding:22px 24px; border-radius:24px; color:#fff; position:relative; overflow:hidden; box-shadow:0 16px 35px rgba(15,23,42,.12); }
 .menu-hero:after { content:''; position:absolute; width:240px; height:240px; right:-70px; top:-100px; border-radius:50%; background:rgba(255,255,255,.12); }
-.menu-kicker { display:inline-block; font-size:10px; font-weight:800; letter-spacing:.18em; opacity:.78; margin-bottom:7px; }
+.menu-kicker { display:inline-block; font-size:10px; font-weight:800; letter-spacing:.18em; opacity:.82; margin-bottom:7px; }
 .menu-hero h1 { color:#fff !important; }
-.menu-hero p { color:rgba(255,255,255,.76) !important; }
-.menu-hero-icon { width:58px; height:58px; border-radius:18px; display:flex; align-items:center; justify-content:center; background:rgba(255,255,255,.14); border:1px solid rgba(255,255,255,.18); position:relative; z-index:1; }
+.menu-hero p { color:rgba(255,255,255,.82) !important; }
+.menu-hero-icon { width:58px; height:58px; border-radius:18px; display:flex; align-items:center; justify-content:center; background:rgba(255,255,255,.15); border:1px solid rgba(255,255,255,.22); position:relative; z-index:1; }
 .menu-hero-icon .material-symbols-outlined { font-size:30px; }
-.menu-kendaraan .menu-hero { background:linear-gradient(135deg,#0369a1,#2563eb 55%,#4f46e5); }
-.menu-pemeliharaan .menu-hero { background:linear-gradient(135deg,#047857,#0f766e 55%,#2563eb); }
-.menu-pengadaan .menu-hero { background:linear-gradient(135deg,#b45309,#d97706 55%,#ea580c); }
-.menu-ruang-rapat .menu-hero { background:linear-gradient(135deg,#6d28d9,#7c3aed 55%,#c026d3); }
-.menu-dashboard .menu-hero { background:linear-gradient(135deg,#4338ca,#2563eb 55%,#0891b2); }
-.menu-settings .menu-hero { background:linear-gradient(135deg,#334155,#475569 55%,#6366f1); }
-.detail-btn { display:inline-flex; align-items:center; gap:5px; padding:7px 11px; border-radius:10px; background:rgba(37,99,235,.14); color:#60a5fa; border:1px solid rgba(96,165,250,.22); font-size:11px; font-weight:800; transition:.2s; }
-.detail-btn:hover { background:rgba(37,99,235,.25); transform:translateY(-1px); }
-.vehicle-detail-modal { background:#f8fafc; color:#0f172a; }
-.vehicle-detail-head { padding:22px 24px; background:linear-gradient(135deg,#0369a1,#2563eb 55%,#4f46e5); color:#fff; display:flex; align-items:center; justify-content:space-between; }
+.menu-kendaraan .menu-hero { background:linear-gradient(135deg,#0f766e,#14b8a6); }
+.menu-pemeliharaan .menu-hero { background:linear-gradient(135deg,#166534,#22c55e); }
+.menu-pengadaan .menu-hero { background:linear-gradient(135deg,#9a3412,#f97316); }
+.menu-ruang-rapat .menu-hero { background:linear-gradient(135deg,#6b21a8,#a855f7); }
+.menu-dashboard .menu-hero { background:linear-gradient(135deg,#334155,#64748b); }
+.menu-settings .menu-hero { background:linear-gradient(135deg,#475569,#94a3b8); }
+
+/* Subtle menu identity: different accent borders, not all-blue controls. */
+.menu-pengadaan .bg-white\/85,.menu-pengadaan .bg-white\/90 { border-left:3px solid #f97316 !important; }
+.menu-pemeliharaan .bg-white\/85,.menu-pemeliharaan .bg-white\/90 { border-left:3px solid #22c55e !important; }
+.menu-kendaraan .bg-white\/85,.menu-kendaraan .bg-white\/90 { border-left:3px solid #14b8a6 !important; }
+.menu-ruang-rapat .bg-white\/85,.menu-ruang-rapat .bg-white\/90 { border-left:3px solid #a855f7 !important; }
+.detail-btn { display:inline-flex; align-items:center; gap:5px; padding:7px 11px; border-radius:10px; background:#f1f5f9; color:#475569; border:1px solid #e2e8f0; font-size:11px; font-weight:800; transition:.2s; }
+.detail-btn:hover { background:#e2e8f0; transform:translateY(-1px); }
+.vehicle-detail-modal { background:#fff; color:#0f172a; }
+.vehicle-detail-head { padding:22px 24px; background:linear-gradient(135deg,#0f766e,#14b8a6); color:#fff; display:flex; align-items:center; justify-content:space-between; }
 .vehicle-detail-icon { width:52px; height:52px; border-radius:16px; display:flex; align-items:center; justify-content:center; background:rgba(255,255,255,.15); border:1px solid rgba(255,255,255,.2); }
 .vehicle-close { width:40px; height:40px; border-radius:12px; background:rgba(255,255,255,.12); color:#fff; display:flex; align-items:center; justify-content:center; }
 .vehicle-close:hover { background:rgba(255,255,255,.22); }
 .detail-field { padding:12px 14px; border:1px solid #e2e8f0; border-radius:14px; background:#fff; }
 .detail-label { font-size:10px; text-transform:uppercase; letter-spacing:.08em; font-weight:800; color:#64748b; }
 .detail-value { font-size:13px; font-weight:700; color:#0f172a; margin-top:4px; word-break:break-word; }
+.settings-profile-strip { display:flex; align-items:center; gap:12px; margin-bottom:16px; padding:12px 16px; border-radius:18px; background:#fff; border:1px solid #e2e8f0; box-shadow:0 10px 25px rgba(15,23,42,.06); }
+.settings-profile-avatar { width:40px; height:40px; border-radius:13px; display:flex; align-items:center; justify-content:center; background:linear-gradient(135deg,#64748b,#94a3b8); color:#fff; font-size:15px; font-weight:900; }
+.settings-profile-name { color:#172033; font-size:14px; font-weight:800; line-height:1.2; }
+.settings-profile-role { color:#64748b; font-size:11px; font-weight:600; margin-top:3px; }
 
-
-/* Top bar removed: identity is shown only on Settings */
-.settings-profile-strip {
-  display:flex; align-items:center; gap:12px; margin-bottom:16px; padding:12px 16px;
-  border-radius:18px; background:linear-gradient(135deg,rgba(20,32,51,.96),rgba(12,23,39,.94));
-  border:1px solid rgba(148,163,184,.16); box-shadow:0 12px 30px rgba(0,0,0,.16);
-}
-.settings-profile-avatar {
-  width:40px; height:40px; border-radius:13px; display:flex; align-items:center; justify-content:center;
-  background:linear-gradient(135deg,#6366f1,#8b5cf6); color:#fff; font-size:15px; font-weight:900;
-  box-shadow:0 8px 20px rgba(99,102,241,.25);
-}
-.settings-profile-name { color:#f8fafc; font-size:14px; font-weight:800; line-height:1.2; }
-.settings-profile-role { color:#94a3b8; font-size:11px; font-weight:600; margin-top:3px; }
+/* Ruang Rapat: kalender tetap bernuansa biru di area kanan, sementara tanggal libur diberi merah. */
+.menu-ruang-rapat .calendar-shell { background:linear-gradient(135deg,#eff6ff,#dbeafe) !important; border-color:#93c5fd !important; }
+.menu-ruang-rapat .calendar-toolbar { background:linear-gradient(135deg,#1d4ed8,#2563eb) !important; color:#fff !important; }
+.menu-ruang-rapat .calendar-toolbar * { color:#fff !important; }

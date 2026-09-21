@@ -9,8 +9,10 @@ const statusPill = {
 };
 const statusLabel = { pending: 'Pending', on_progress: 'On Progress', selesai: 'Selesai' };
 
+const LOCATION_OPTIONS = ['Graha Kemnaker', 'Gatsu 51', 'Wisma Ciloto', 'Rumah Dinas', 'RC Walang', 'RC Kranji'];
+
 const emptyForm = {
-  nama_barang_jasa: '', kategori: 'barang', lokasi: '', metode_pengadaan: '', nilai_hps: '', tanggal: '', deskripsi: '', request_document_name: '', request_document_file_data: null,
+  nama_barang_jasa: '', kategori: 'barang', lokasi: '', titik_lokasi: '', metode_pengadaan: '', nilai_hps: '', tanggal: '', deskripsi: '', request_document_name: '', request_document_file_data: null,
 };
 
 const stages = [
@@ -64,7 +66,7 @@ export default function Pengadaan() {
     try {
       const payload = {};
       const fields = [
-        'nama_barang_jasa', 'kategori', 'lokasi', 'metode_pengadaan', 'nilai_hps', 'deskripsi', 'request_document_name', 'request_document_file_data',
+        'nama_barang_jasa', 'kategori', 'lokasi', 'titik_lokasi', 'metode_pengadaan', 'nilai_hps', 'deskripsi', 'request_document_name', 'request_document_file_data',
         'stage2_vendor', 'stage2_invoice_number', 'stage2_invoice_amount', 'tanggal', 'status', 'stage2_invoice_document_name', 'stage2_invoice_file_data', 'stage2_payment_proof_name', 'stage2_payment_proof_file_data', 'stage3_final_document_name', 'stage3_final_document_file_data', 'tahap1_status', 'tahap2_status', 'tahap3_status', 'catatan',
       ];
       fields.forEach((field) => {
@@ -109,6 +111,7 @@ export default function Pengadaan() {
         nama_barang_jasa: form.nama_barang_jasa,
         kategori: form.kategori,
         lokasi: form.lokasi,
+        titik_lokasi: form.titik_lokasi,
         metode_pengadaan: form.metode_pengadaan,
         tanggal: form.tanggal,
         deskripsi: form.deskripsi,
@@ -122,7 +125,7 @@ export default function Pengadaan() {
   const visibleData = data.filter((row) => {
     const value = (v) => String(v || '').trim().toLowerCase();
     const categoryMatch = !filters.kategori || value(row.kategori) === value(filters.kategori);
-    const locationMatch = !filters.lokasi || value(row.lokasi).includes(value(filters.lokasi));
+    const locationMatch = !filters.lokasi || value(row.lokasi) === value(filters.lokasi);
     const statusMatch = !filters.status || row.status === filters.status;
     const idMatch = !filters.id || value(row.kode).includes(value(filters.id));
     const nameMatch = !filters.nama || value(row.nama_barang_jasa).includes(value(filters.nama));
@@ -142,8 +145,8 @@ export default function Pengadaan() {
       return mulaiMatch && sampaiMatch;
     });
     if (!exportData.length) return alert('Tidak ada data yang sesuai dengan filter dan rentang tanggal untuk diekspor.');
-    const headers = ['ID Request','Nama Barang/Jasa','Lokasi','Kategori','PIC','Nama Vendor','Nilai Invoice','Tanggal Input','Status','Tanggal Selesai'];
-    const body = exportData.map(row => [row.kode,row.nama_barang_jasa,row.lokasi || '-',row.kategori || '-',row.pic || '-',row.stage2_vendor || '-',row.stage2_invoice_amount ? `Rp ${money(row.stage2_invoice_amount)}` : '-',String(row.tanggal || '').slice(0,10),statusLabel[row.status] || row.status,row.status === 'selesai' ? (String(row.tanggal_selesai || '').slice(0,10) || '-') : '-']);
+    const headers = ['ID Request','Nama Barang/Jasa','Lokasi','Titik Lokasi','Kategori','PIC','Nama Vendor','Nilai Invoice','Tanggal Input','Status','Tanggal Selesai'];
+    const body = exportData.map(row => [row.kode,row.nama_barang_jasa,row.lokasi || '-',row.titik_lokasi || '-',row.kategori || '-',row.pic || '-',row.stage2_vendor || '-',row.stage2_invoice_amount ? `Rp ${money(row.stage2_invoice_amount)}` : '-',String(row.tanggal || '').slice(0,10),statusLabel[row.status] || row.status,row.status === 'selesai' ? (String(row.tanggal_selesai || '').slice(0,10) || '-') : '-']);
     const html = `<table><thead><tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr></thead><tbody>${body.map(r => `<tr>${r.map(v => `<td>${String(v).replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]))}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
     const blob = new Blob([`\ufeff${html}`], { type: 'application/vnd.ms-excel' });
     const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `pengadaan_filtered_${new Date().toISOString().slice(0,10)}.xls`; a.click(); URL.revokeObjectURL(url);
@@ -182,12 +185,12 @@ export default function Pengadaan() {
       <div className="bg-white/90 backdrop-blur rounded-2xl border border-white/80 overflow-hidden shadow-lg shadow-slate-200/40">
         <div className="overflow-x-auto"><table className="w-full text-sm">
           <thead className="bg-slate-50 border-b border-slate-200 sticky top-0 z-10"><tr>
-            {['ID Request','Nama Barang/Jasa','Lokasi','Kategori','PIC','Nama Vendor','Nilai Invoice','Tanggal Input','Status','Tanggal Selesai','Aksi (Tahapan Alur)'].map((h) => <th key={h} className="py-3 px-5 text-left text-xs font-semibold text-slate-500 uppercase whitespace-nowrap">{h}</th>)}
+            {['ID Request','Nama Barang/Jasa','Lokasi / Titik Lokasi','Kategori','PIC','Nama Vendor','Nilai Invoice','Tanggal Input','Status','Tanggal Selesai','Aksi (Tahapan Alur)'].map((h) => <th key={h} className="py-3 px-5 text-left text-xs font-semibold text-slate-500 uppercase whitespace-nowrap">{h}</th>)}
           </tr>
           <tr className="bg-white border-b border-slate-200">
             <th className="p-2"><input placeholder="Filter ID" value={filters.id} onChange={e=>setFilters(f=>({...f,id:e.target.value}))} className="w-full h-8 px-2 text-xs border rounded"/></th>
             <th className="p-2"><input placeholder="Filter nama" value={filters.nama} onChange={e=>setFilters(f=>({...f,nama:e.target.value}))} className="w-full h-8 px-2 text-xs border rounded"/></th>
-            <th className="p-2"><input placeholder="Filter lokasi" value={filters.lokasi} onChange={e=>setFilters(f=>({...f,lokasi:e.target.value}))} className="w-full h-8 px-2 text-xs border rounded"/></th>
+            <th className="p-2"><select value={filters.lokasi} onChange={e=>setFilters(f=>({...f,lokasi:e.target.value}))} className="w-full h-8 px-2 text-xs border rounded"><option value="">Semua</option>{LOCATION_OPTIONS.map(loc=><option key={loc} value={loc}>{loc}</option>)}</select></th>
             <th className="p-2"><select value={filters.kategori} onChange={e=>setFilters(f=>({...f,kategori:e.target.value}))} className="w-full h-8 text-xs border rounded"><option value="">Semua</option><option value="barang">Barang</option><option value="jasa">Jasa</option></select></th>
             <th className="p-2"><input type="text" placeholder="Filter PIC" value={filters.pic} onChange={e=>setFilters(f=>({...f,pic:e.target.value}))} className="w-full h-8 px-2 text-xs border rounded"/></th>
             <th className="p-2"><input type="text" placeholder="Filter vendor" value={filters.vendor} onChange={e=>setFilters(f=>({...f,vendor:e.target.value}))} className="w-full h-8 px-2 text-xs border rounded"/></th>
@@ -198,12 +201,12 @@ export default function Pengadaan() {
             <th></th>
           </tr></thead>
           <tbody className="divide-y divide-slate-100">
-            {loading && <tr><td colSpan={11} className="py-8 text-center text-slate-400">Memuat data...</td></tr>}
-            {!loading && visibleData.length === 0 && <tr><td colSpan={11} className="py-8 text-center text-slate-400">Belum ada data.</td></tr>}
+            {loading && <tr><td colSpan={12} className="py-8 text-center text-slate-400">Memuat data...</td></tr>}
+            {!loading && visibleData.length === 0 && <tr><td colSpan={12} className="py-8 text-center text-slate-400">Belum ada data.</td></tr>}
             {visibleData.map((row) => <tr key={row.id} className="hover:bg-slate-50/50">
               <td className="py-3 px-5 font-semibold text-slate-800">#{row.kode}</td>
               <td className="py-3 px-5 max-w-[220px] truncate font-semibold text-slate-800">{row.nama_barang_jasa}</td>
-              <td className="py-3 px-5 text-slate-500">{row.lokasi || '-'}</td>
+              <td className="py-3 px-5 text-slate-500"><div>{row.lokasi || '-'}</div><div className="text-xs text-slate-400 mt-0.5">{row.titik_lokasi || '-'}</div></td>
               <td className="py-3 px-5"><span className="inline-flex px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 text-xs font-semibold capitalize">{row.kategori || '-'}</span></td>
               <td className="py-3 px-5 text-slate-700 font-medium">{row.pic || '-'}</td>
               <td className="py-3 px-5 text-slate-500">{row.stage2_vendor || '-'}</td>
@@ -407,7 +410,7 @@ function AddModal({ form, setForm, error, onClose, onSubmit }) {
         {error && <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{error}</div>}
         <div><label className="block text-xs font-semibold text-slate-700 mb-2">Kategori</label><div className="flex gap-6">{[['barang','Barang'],['jasa','Jasa']].map(([v,l])=><label key={v} className="flex items-center gap-2 text-sm text-slate-600"><input type="radio" name="kategori_pengadaan" checked={form.kategori===v} onChange={()=>setForm({...form,kategori:v})}/>{l}</label>)}</div></div>
         <div><label className="block text-xs font-semibold text-slate-700 mb-1.5">Nama Barang / Jasa *</label><input required value={form.nama_barang_jasa} onChange={e=>setForm({...form,nama_barang_jasa:e.target.value})} className={inputClass}/></div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3"><div><label className="block text-xs font-semibold text-slate-700 mb-1.5">Metode Pengadaan</label><select value={form.metode_pengadaan} onChange={e=>setForm({...form,metode_pengadaan:e.target.value})} className={inputClass}><option value="">Pilih Metode Pengadaan</option><option>Lelang</option><option>E-Purchasing</option><option>Pengadaan Langsung (PL)</option></select></div><div><label className="block text-xs font-semibold text-slate-700 mb-1.5">Lokasi *</label><select required value={form.lokasi} onChange={e=>setForm({...form,lokasi:e.target.value})} className={inputClass}><option value="">Pilih Lokasi</option><option>Graha Kemnaker</option><option>Gatsu 51</option><option>Wisma Ciloto</option><option>Rumah Dinas</option></select></div></div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3"><div><label className="block text-xs font-semibold text-slate-700 mb-1.5">Metode Pengadaan</label><select value={form.metode_pengadaan} onChange={e=>setForm({...form,metode_pengadaan:e.target.value})} className={inputClass}><option value="">Pilih Metode Pengadaan</option><option>Lelang</option><option>E-Purchasing</option><option>Pengadaan Langsung (PL)</option></select></div><div><label className="block text-xs font-semibold text-slate-700 mb-1.5">Lokasi *</label><select required value={form.lokasi} onChange={e=>setForm({...form,lokasi:e.target.value})} className={inputClass}><option value="">Pilih Lokasi</option>{LOCATION_OPTIONS.map(loc=><option key={loc} value={loc}>{loc}</option>)}</select></div></div><div><label className="block text-xs font-semibold text-slate-700 mb-1.5">Titik Lokasi</label><input value={form.titik_lokasi} onChange={e=>setForm({...form,titik_lokasi:e.target.value})} placeholder="Contoh: Gedung A lantai 2 / Ruang 201" className={inputClass}/></div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3"><div><label className="block text-xs font-semibold text-slate-700 mb-1.5">Tanggal</label><input type="date" value={form.tanggal} onChange={e=>setForm({...form,tanggal:e.target.value})} className={inputClass}/></div></div>
         <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-800"><b>Nilai HPS</b> tidak diinput saat membuat pengadaan. Nilai HPS diisi pada <b>Aksi Tahap 1 (Analisa & HPS)</b>.</div>
         <div><label className="block text-xs font-semibold text-slate-700 mb-1.5">Deskripsi Detail</label><textarea maxLength={500} value={form.deskripsi} onChange={e=>setForm({...form,deskripsi:e.target.value})} rows={4} className="w-full px-3 py-3 rounded-lg border border-slate-300 bg-slate-50/70 text-sm outline-none focus:bg-white focus:border-slate-900"/><div className="text-right text-[11px] text-slate-500 mt-1">{form.deskripsi.length}/500 karakter</div></div>

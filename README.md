@@ -270,3 +270,10 @@ npm run db:verify
 ```
 
 Lalu jalankan `npm start`. Di terminal harus muncul `Prisma connected` dan server pada port 4000.
+
+
+## Update lokasi Pengadaan & Pemeliharaan
+
+Versi ini menambahkan pilihan lokasi standar pada Pengadaan dan Pemeliharaan: `Graha Kemnaker`, `Gatsu 51`, `Wisma Ciloto`, `Rumah Dinas`, `RC Walang`, dan `RC Kranji`. Filter lokasi sekarang menggunakan dropdown dengan pilihan yang sama.
+
+Pengadaan juga memiliki field `titik_lokasi` seperti Pemeliharaan. Field ini adalah keterangan titik/detail lokasi (misalnya `Gedung A lantai 2 / Ruang 201`) dan tampil di tabel Pengadaan. Jalankan `backend/pengadaan_titik_lokasi_migration.sql` sekali pada database `biro_umum_db` sebelum memakai fitur ini. Migration aman untuk data lama karena hanya `ADD COLUMN IF NOT EXISTS` dan membuat index.
