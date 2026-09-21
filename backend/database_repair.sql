@@ -38,7 +38,6 @@ CREATE TABLE IF NOT EXISTS pengadaan (
   nama_barang_jasa VARCHAR(255) NOT NULL,
   kategori VARCHAR(100),
   lokasi VARCHAR(150),
-  titik_lokasi VARCHAR(255),
   metode_pengadaan VARCHAR(50),
   nilai_hps NUMERIC(18,2),
   deskripsi TEXT,
@@ -72,7 +71,6 @@ CREATE TABLE IF NOT EXISTS pengadaan (
   created_at TIMESTAMP NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
-ALTER TABLE pengadaan ADD COLUMN IF NOT EXISTS titik_lokasi VARCHAR(255);
 ALTER TABLE pengadaan ADD COLUMN IF NOT EXISTS nilai_hps NUMERIC(18,2);
 ALTER TABLE pengadaan ADD COLUMN IF NOT EXISTS deskripsi TEXT;
 ALTER TABLE pengadaan ADD COLUMN IF NOT EXISTS request_document_name TEXT;

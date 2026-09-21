@@ -36,3 +36,11 @@ CREATE INDEX IF NOT EXISTS idx_ruang_rapat_pic
 ALTER TABLE ruang_rapat ADD COLUMN IF NOT EXISTS surat_name VARCHAR(255);
 ALTER TABLE ruang_rapat ADD COLUMN IF NOT EXISTS surat_file_data TEXT;
 ALTER TABLE ruang_rapat ADD COLUMN IF NOT EXISTS surat_file_path TEXT;
+
+
+-- Nomor HP PIC agar ikut tampil pada Jadwal Rapat dan halaman Read Only.
+ALTER TABLE ruang_rapat ADD COLUMN IF NOT EXISTS pic_phone VARCHAR(30);
+-- Data lama tidak dihapus. Isi sementara hanya untuk memenuhi NOT NULL setelah data lama diperiksa.
+UPDATE ruang_rapat SET pic_phone='-' WHERE pic_phone IS NULL;
+ALTER TABLE ruang_rapat ALTER COLUMN pic_phone SET NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_ruang_rapat_pic_phone ON ruang_rapat (pic_phone);

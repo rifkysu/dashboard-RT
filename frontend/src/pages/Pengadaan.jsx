@@ -9,8 +9,6 @@ const statusPill = {
 };
 const statusLabel = { pending: 'Pending', on_progress: 'On Progress', selesai: 'Selesai' };
 
-const LOCATION_OPTIONS = ['Graha Kemnaker', 'Gatsu 51', 'Wisma Ciloto', 'Rumah Dinas', 'RC Walang', 'RC Kranji'];
-
 const emptyForm = {
   nama_barang_jasa: '', kategori: 'barang', lokasi: '', titik_lokasi: '', metode_pengadaan: '', nilai_hps: '', tanggal: '', deskripsi: '', request_document_name: '', request_document_file_data: null,
 };
@@ -184,14 +182,14 @@ export default function Pengadaan() {
       </div>
 
       <div className="bg-white/90 backdrop-blur rounded-2xl border border-white/80 overflow-hidden shadow-lg shadow-slate-200/40">
-        <div className="overflow-x-auto"><table className="w-full min-w-[1500px] text-sm">
+        <div className="overflow-x-auto"><table className="w-full text-sm">
           <thead className="bg-slate-50 border-b border-slate-200 sticky top-0 z-10"><tr>
             {['ID Request','Nama Barang/Jasa','Lokasi','Titik Lokasi','Kategori','PIC RT','Nama Perusahaan','Nilai Invoice','Tanggal Input','Status','Tanggal Selesai','Aksi (Tahapan Alur)'].map((h) => <th key={h} className="py-3 px-5 text-left text-xs font-semibold text-slate-500 uppercase whitespace-nowrap">{h}</th>)}
           </tr>
           <tr className="bg-white border-b border-slate-200">
             <th className="p-2"><input placeholder="Filter ID" value={filters.id} onChange={e=>setFilters(f=>({...f,id:e.target.value}))} className="w-full h-8 px-2 text-xs border rounded"/></th>
             <th className="p-2"><input placeholder="Filter nama" value={filters.nama} onChange={e=>setFilters(f=>({...f,nama:e.target.value}))} className="w-full h-8 px-2 text-xs border rounded"/></th>
-            <th className="p-2"><select value={filters.lokasi} onChange={e=>setFilters(f=>({...f,lokasi:e.target.value}))} className="w-full h-8 px-2 text-xs border rounded"><option value="">Semua</option>{LOCATION_OPTIONS.map(loc=><option key={loc} value={loc}>{loc}</option>)}</select></th>
+            <th className="p-2"><select value={filters.lokasi} onChange={e=>setFilters(f=>({...f,lokasi:e.target.value}))} className="w-full h-8 text-xs border rounded"><option value="">Semua Lokasi</option><option>Graha Kemnaker</option><option>Gatsu 51</option><option>Wisma Ciloto</option><option>Rumah Dinas</option><option>RC Walang</option><option>RC Kranji</option></select></th>
             <th className="p-2"><input type="text" placeholder="Filter titik lokasi" value={filters.titik_lokasi} onChange={e=>setFilters(f=>({...f,titik_lokasi:e.target.value}))} className="w-full h-8 px-2 text-xs border rounded"/></th>
             <th className="p-2"><select value={filters.kategori} onChange={e=>setFilters(f=>({...f,kategori:e.target.value}))} className="w-full h-8 text-xs border rounded"><option value="">Semua</option><option value="barang">Barang</option><option value="jasa">Jasa</option></select></th>
             <th className="p-2"><input type="text" placeholder="Filter PIC RT" value={filters.pic} onChange={e=>setFilters(f=>({...f,pic:e.target.value}))} className="w-full h-8 px-2 text-xs border rounded"/></th>
@@ -208,8 +206,8 @@ export default function Pengadaan() {
             {visibleData.map((row) => <tr key={row.id} className="hover:bg-slate-50/50">
               <td className="py-3 px-5 font-semibold text-slate-800">#{row.kode}</td>
               <td className="py-3 px-5 max-w-[220px] truncate font-semibold text-slate-800">{row.nama_barang_jasa}</td>
-              <td className="py-3 px-5 text-slate-500 whitespace-nowrap">{row.lokasi || '-'}</td>
-              <td className="py-3 px-5 text-slate-500 min-w-[180px]">{row.titik_lokasi || '-'}</td>
+              <td className="py-3 px-5 text-slate-500">{row.lokasi || '-'}</td>
+              <td className="py-3 px-5 text-slate-500">{row.titik_lokasi || '-'}</td>
               <td className="py-3 px-5"><span className="inline-flex px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 text-xs font-semibold capitalize">{row.kategori || '-'}</span></td>
               <td className="py-3 px-5 text-slate-700 font-medium">{row.pic || '-'}</td>
               <td className="py-3 px-5 text-slate-500">{row.stage2_vendor || '-'}</td>
@@ -276,7 +274,7 @@ function StageModal({ row, stage, draft, setDraft, canEdit, roleLabel, saving, o
             </button>; })}
           </div></div>
 
-          <div className="bg-slate-100 rounded-xl p-4 sm:p-5 flex flex-wrap items-center justify-between gap-3 mb-8"><div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-slate-700"><span><b>Barang/Jasa:</b> {row.nama_barang_jasa}</span><span className="hidden sm:inline text-slate-300">•</span><span><b>Lokasi:</b> {row.lokasi || '-'}</span><span className="hidden sm:inline text-slate-300">•</span><span><b>Status:</b> {statusLabel[row.status]}</span></div><span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${statusPill[stageStatus]}`}>{statusLabel[stageStatus]}</span></div>
+          <div className="bg-slate-100 rounded-xl p-4 sm:p-5 flex flex-wrap items-center justify-between gap-3 mb-8"><div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-slate-700"><span><b>Barang/Jasa:</b> {row.nama_barang_jasa}</span><span className="hidden sm:inline text-slate-300">•</span><span><b>Lokasi:</b> {row.lokasi || '-'}</span>{row.titik_lokasi && <><span className="hidden sm:inline text-slate-300">•</span><span><b>Titik Lokasi:</b> {row.titik_lokasi}</span></>}<span className="hidden sm:inline text-slate-300">•</span><span><b>Status:</b> {statusLabel[row.status]}</span></div><span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${statusPill[stageStatus]}`}>{statusLabel[stageStatus]}</span></div>
 
           {stage.no === 1 && <PengadaanStageOne draft={draft} update={update} readOnly={readOnly} />}
           {stage.no === 2 && <PengadaanStageTwo draft={draft} update={update} readOnly={readOnly} onView={onView} />}
@@ -340,7 +338,7 @@ function PengadaanStageTwo({ draft, update, readOnly, onView }) {
   );
 
   return <section className="bg-white/90 backdrop-blur rounded-2xl shadow-lg shadow-slate-200/40 p-6 md:p-8 border border-white/80"><h2 className="text-xl font-semibold text-slate-900 mb-6">Invoice & Pembayaran</h2><div className="space-y-7">
-    <div><label className={labelClass}>1. INFORMASI VENDOR <span className="text-red-600">*</span></label><input disabled={readOnly} value={draft.stage2_vendor || ''} onChange={(e) => update('stage2_vendor', e.target.value)} className={inputClass}/></div>
+    <div><label className={labelClass}>1. NAMA PERUSAHAAN <span className="text-red-600">*</span></label><input disabled={readOnly} value={draft.stage2_vendor || ''} onChange={(e) => update('stage2_vendor', e.target.value)} className={inputClass}/></div>
     <div><label className={labelClass}>2. NOMOR INVOICE / KUITANSI</label><input disabled={readOnly} value={draft.stage2_invoice_number || ''} onChange={(e) => update('stage2_invoice_number', e.target.value)} className={inputClass}/></div>
     <div><label className={labelClass}>3. NOMINAL TAGIHAN INVOICE</label><div className="flex"><span className="inline-flex items-center px-3 rounded-l-lg border border-r-0 border-slate-300 bg-slate-100 text-sm font-semibold text-slate-600">Rp</span><input disabled={readOnly} type="number" min="0" value={draft.stage2_invoice_amount ?? ''} onChange={(e) => update('stage2_invoice_amount', e.target.value)} className="w-full h-11 px-3 rounded-r-lg border border-slate-300 bg-slate-50/70 text-sm outline-none focus:bg-white focus:border-slate-900 disabled:opacity-70" /></div>{draft.stage2_invoice_amount && <p className="text-xs text-slate-500 mt-1">Rp {money(draft.stage2_invoice_amount)}</p>}</div>
     <div><label className={labelClass}>4. TANGGAL PENGADAAN / INVOICE</label><input disabled={readOnly} type="date" value={draft.tanggal || ''} onChange={(e) => update('tanggal', e.target.value)} className={inputClass}/></div>
@@ -413,7 +411,8 @@ function AddModal({ form, setForm, error, onClose, onSubmit }) {
         {error && <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{error}</div>}
         <div><label className="block text-xs font-semibold text-slate-700 mb-2">Kategori</label><div className="flex gap-6">{[['barang','Barang'],['jasa','Jasa']].map(([v,l])=><label key={v} className="flex items-center gap-2 text-sm text-slate-600"><input type="radio" name="kategori_pengadaan" checked={form.kategori===v} onChange={()=>setForm({...form,kategori:v})}/>{l}</label>)}</div></div>
         <div><label className="block text-xs font-semibold text-slate-700 mb-1.5">Nama Barang / Jasa *</label><input required value={form.nama_barang_jasa} onChange={e=>setForm({...form,nama_barang_jasa:e.target.value})} className={inputClass}/></div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3"><div><label className="block text-xs font-semibold text-slate-700 mb-1.5">Metode Pengadaan</label><select value={form.metode_pengadaan} onChange={e=>setForm({...form,metode_pengadaan:e.target.value})} className={inputClass}><option value="">Pilih Metode Pengadaan</option><option>Lelang</option><option>E-Purchasing</option><option>Pengadaan Langsung (PL)</option></select></div><div><label className="block text-xs font-semibold text-slate-700 mb-1.5">Lokasi *</label><select required value={form.lokasi} onChange={e=>setForm({...form,lokasi:e.target.value})} className={inputClass}><option value="">Pilih Lokasi</option>{LOCATION_OPTIONS.map(loc=><option key={loc} value={loc}>{loc}</option>)}</select></div></div><div><label className="block text-xs font-semibold text-slate-700 mb-1.5">Titik Lokasi</label><input value={form.titik_lokasi} onChange={e=>setForm({...form,titik_lokasi:e.target.value})} placeholder="Contoh: Gedung A lantai 2 / Ruang 201" className={inputClass}/></div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3"><div><label className="block text-xs font-semibold text-slate-700 mb-1.5">Metode Pengadaan</label><select value={form.metode_pengadaan} onChange={e=>setForm({...form,metode_pengadaan:e.target.value})} className={inputClass}><option value="">Pilih Metode Pengadaan</option><option>Lelang</option><option>E-Purchasing</option><option>Pengadaan Langsung (PL)</option></select></div><div><label className="block text-xs font-semibold text-slate-700 mb-1.5">Lokasi *</label><select required value={form.lokasi} onChange={e=>setForm({...form,lokasi:e.target.value})} className={inputClass}><option value="">Pilih Lokasi</option><option>Graha Kemnaker</option><option>Gatsu 51</option><option>Wisma Ciloto</option><option>Rumah Dinas</option><option>RC Walang</option><option>RC Kranji</option></select></div></div>
+        <div><label className="block text-xs font-semibold text-slate-700 mb-1.5">Titik Lokasi</label><input value={form.titik_lokasi} onChange={e=>setForm({...form,titik_lokasi:e.target.value})} placeholder="Contoh: link Google Maps atau keterangan titik lokasi" className={inputClass}/></div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3"><div><label className="block text-xs font-semibold text-slate-700 mb-1.5">Tanggal</label><input type="date" value={form.tanggal} onChange={e=>setForm({...form,tanggal:e.target.value})} className={inputClass}/></div></div>
         <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-800"><b>Nilai HPS</b> tidak diinput saat membuat pengadaan. Nilai HPS diisi pada <b>Aksi Tahap 1 (Analisa & HPS)</b>.</div>
         <div><label className="block text-xs font-semibold text-slate-700 mb-1.5">Deskripsi Detail</label><textarea maxLength={500} value={form.deskripsi} onChange={e=>setForm({...form,deskripsi:e.target.value})} rows={4} className="w-full px-3 py-3 rounded-lg border border-slate-300 bg-slate-50/70 text-sm outline-none focus:bg-white focus:border-slate-900"/><div className="text-right text-[11px] text-slate-500 mt-1">{form.deskripsi.length}/500 karakter</div></div>

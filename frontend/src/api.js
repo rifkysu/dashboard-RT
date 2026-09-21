@@ -21,7 +21,10 @@ api.interceptors.response.use(
     if (err.response && err.response.status === 401) {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
-      if (window.location.pathname !== '/login') {
+      const publicPath = window.location.pathname === '/login' || window.location.pathname === '/jadwal-rapat';
+      const isAuthMe = String(err.config?.url || '').includes('/auth/me');
+      const isPublicSchedule = String(err.config?.url || '').includes('/ruang-rapat/public-schedule');
+      if (!publicPath && !isAuthMe && !isPublicSchedule) {
         window.location.href = '/login';
       }
     }
