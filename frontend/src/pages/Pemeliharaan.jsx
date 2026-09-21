@@ -149,7 +149,7 @@ export default function Pemeliharaan() {
       return mulaiMatch && sampaiMatch;
     });
     if (!exportData.length) return alert('Tidak ada data yang sesuai dengan filter dan rentang tanggal untuk diekspor.');
-    const headers = ['ID Request','Nama Pekerjaan','Lokasi','Titik Lokasi','Kategori','PIC','Nama Vendor','Nilai Invoice','Tanggal Input','Status','Tanggal Selesai'];
+    const headers = ['ID Request','Nama Pekerjaan','Lokasi','Titik Lokasi','Kategori','PIC RT','Nama Perusahaan','Nilai Invoice','Tanggal Input','Status','Tanggal Selesai'];
     const body = exportData.map(row => [row.kode, row.judul, row.lokasi, row.titik_lokasi || '-', row.kategori, row.pic || '-', row.stage2_vendor || '-', row.stage2_invoice_amount !== null && row.stage2_invoice_amount !== undefined && row.stage2_invoice_amount !== '' ? `Rp ${money(row.stage2_invoice_amount)}` : '-', String(row.tanggal || '').slice(0,10), statusLabel[row.status] || row.status, row.status === 'selesai' ? (String(row.tanggal_selesai || '').slice(0,10) || '-') : '-']);
     const html = `<table><thead><tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr></thead><tbody>${body.map(r => `<tr>${r.map(v => `<td>${String(v).replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]))}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
     const blob = new Blob([`\ufeff${html}`], { type: 'application/vnd.ms-excel' });
@@ -190,7 +190,7 @@ export default function Pemeliharaan() {
       <div className="bg-white/90 backdrop-blur rounded-2xl border border-white/80 overflow-hidden shadow-lg shadow-slate-200/40">
         <div className="overflow-x-auto"><table className="w-full text-sm">
           <thead className="bg-slate-50 border-b border-slate-200 sticky top-0 z-10"><tr>
-            {['ID Request','Nama Pekerjaan','Lokasi','Titik Lokasi','Kategori','PIC','Nama Vendor','Nilai Invoice','Tanggal Input','Status','Tanggal Selesai','Aksi (Tahapan Alur)'].map((h) => <th key={h} className="py-3 px-5 text-left text-xs font-semibold text-slate-500 uppercase whitespace-nowrap">{h}</th>)}
+            {['ID Request','Nama Pekerjaan','Lokasi','Titik Lokasi','Kategori','PIC RT','Nama Perusahaan','Nilai Invoice','Tanggal Input','Status','Tanggal Selesai','Aksi (Tahapan Alur)'].map((h) => <th key={h} className="py-3 px-5 text-left text-xs font-semibold text-slate-500 uppercase whitespace-nowrap">{h}</th>)}
           </tr>
           <tr className="bg-white border-b border-slate-200">
             <th className="p-2"><input placeholder="Filter ID" value={filters.id} onChange={e=>setFilters(f=>({...f,id:e.target.value}))} className="w-full h-8 px-2 text-xs border rounded"/></th>
@@ -198,8 +198,8 @@ export default function Pemeliharaan() {
             <th className="p-2"><select value={filters.lokasi} onChange={e=>setFilters(f=>({...f,lokasi:e.target.value}))} className="w-full h-8 px-2 text-xs border rounded"><option value="">Semua</option>{LOCATION_OPTIONS.map(loc=><option key={loc} value={loc}>{loc}</option>)}</select></th>
             <th className="p-2"><input type="text" placeholder="Filter titik lokasi" value={filters.titik_lokasi} onChange={e=>setFilters(f=>({...f,titik_lokasi:e.target.value}))} className="w-full h-8 px-2 text-xs border rounded"/></th>
             <th className="p-2"><select value={filters.kategori} onChange={e=>setFilters(f=>({...f,kategori:e.target.value}))} className="w-full h-8 text-xs border rounded"><option value="">Semua</option><option value="sarana">Sarana</option><option value="prasarana">Prasarana</option></select></th>
-            <th className="p-2"><input type="text" placeholder="Filter PIC" value={filters.pic} onChange={e=>setFilters(f=>({...f,pic:e.target.value}))} className="w-full h-8 px-2 text-xs border rounded"/></th>
-            <th className="p-2"><input type="text" placeholder="Filter Nama Vendor" value={filters.vendor} onChange={e=>setFilters(f=>({...f,vendor:e.target.value}))} className="w-full h-8 px-2 text-xs border rounded"/></th>
+            <th className="p-2"><input type="text" placeholder="Filter PIC RT" value={filters.pic} onChange={e=>setFilters(f=>({...f,pic:e.target.value}))} className="w-full h-8 px-2 text-xs border rounded"/></th>
+            <th className="p-2"><input type="text" placeholder="Filter Nama Perusahaan" value={filters.vendor} onChange={e=>setFilters(f=>({...f,vendor:e.target.value}))} className="w-full h-8 px-2 text-xs border rounded"/></th>
             <th className="p-2"><input type="text" inputMode="numeric" placeholder="Filter Nilai Invoice" value={filters.invoice_amount} onChange={e=>setFilters(f=>({...f,invoice_amount:e.target.value}))} className="w-full h-8 px-2 text-xs border rounded"/></th>
             <th className="p-2"><input type="date" title="Filter tanggal input" value={filters.tanggal_input} onChange={e=>setFilters(f=>({...f,tanggal_input:e.target.value}))} className="w-full h-8 px-2 text-xs border rounded"/></th>
             <th className="p-2"><select value={filters.status} onChange={e=>setFilters(f=>({...f,status:e.target.value}))} className="w-full h-8 text-xs border rounded"><option value="">Semua</option><option value="pending">Pending</option><option value="on_progress">On Progress</option><option value="selesai">Selesai</option></select></th>
