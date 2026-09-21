@@ -42,7 +42,7 @@ export default function Pengadaan() {
   const [saving, setSaving] = useState(false);
   const [viewer, setViewer] = useState({open:false,name:'',data:''});
   const [exportDateRange, setExportDateRange] = useState({ mulai: '', sampai: '' });
-  const [filters, setFilters] = useState({ kategori: '', lokasi: '', status: '', id: '', nama: '', pic: '', vendor: '', nilai_invoice: '', tanggal_input: '', tanggal_selesai: '' });
+  const [filters, setFilters] = useState({ kategori: '', lokasi: '', titik_lokasi: '', status: '', id: '', nama: '', pic: '', vendor: '', nilai_invoice: '', tanggal_input: '', tanggal_selesai: '' });
 
   function load() {
     setLoading(true);
@@ -126,6 +126,7 @@ export default function Pengadaan() {
     const value = (v) => String(v || '').trim().toLowerCase();
     const categoryMatch = !filters.kategori || value(row.kategori) === value(filters.kategori);
     const locationMatch = !filters.lokasi || value(row.lokasi) === value(filters.lokasi);
+    const pointMatch = !filters.titik_lokasi || value(row.titik_lokasi).includes(value(filters.titik_lokasi));
     const statusMatch = !filters.status || row.status === filters.status;
     const idMatch = !filters.id || value(row.kode).includes(value(filters.id));
     const nameMatch = !filters.nama || value(row.nama_barang_jasa).includes(value(filters.nama));
@@ -134,7 +135,7 @@ export default function Pengadaan() {
     const invoiceMatch = !filters.nilai_invoice || value(row.stage2_invoice_amount).includes(value(filters.nilai_invoice));
     const tanggalInputMatch = !filters.tanggal_input || String(row.tanggal || '').slice(0, 10) === filters.tanggal_input;
     const tanggalSelesaiMatch = !filters.tanggal_selesai || String(row.tanggal_selesai || '').slice(0, 10) === filters.tanggal_selesai;
-    return categoryMatch && locationMatch && statusMatch && idMatch && nameMatch && picMatch && vendorMatch && invoiceMatch && tanggalInputMatch && tanggalSelesaiMatch;
+    return categoryMatch && locationMatch && pointMatch && statusMatch && idMatch && nameMatch && picMatch && vendorMatch && invoiceMatch && tanggalInputMatch && tanggalSelesaiMatch;
   });
 
   function exportExcel() {
@@ -183,14 +184,15 @@ export default function Pengadaan() {
       </div>
 
       <div className="bg-white/90 backdrop-blur rounded-2xl border border-white/80 overflow-hidden shadow-lg shadow-slate-200/40">
-        <div className="overflow-x-auto"><table className="w-full text-sm">
+        <div className="overflow-x-auto"><table className="w-full min-w-[1500px] text-sm">
           <thead className="bg-slate-50 border-b border-slate-200 sticky top-0 z-10"><tr>
-            {['ID Request','Nama Barang/Jasa','Lokasi / Titik Lokasi','Kategori','PIC','Nama Vendor','Nilai Invoice','Tanggal Input','Status','Tanggal Selesai','Aksi (Tahapan Alur)'].map((h) => <th key={h} className="py-3 px-5 text-left text-xs font-semibold text-slate-500 uppercase whitespace-nowrap">{h}</th>)}
+            {['ID Request','Nama Barang/Jasa','Lokasi','Titik Lokasi','Kategori','PIC','Nama Vendor','Nilai Invoice','Tanggal Input','Status','Tanggal Selesai','Aksi (Tahapan Alur)'].map((h) => <th key={h} className="py-3 px-5 text-left text-xs font-semibold text-slate-500 uppercase whitespace-nowrap">{h}</th>)}
           </tr>
           <tr className="bg-white border-b border-slate-200">
             <th className="p-2"><input placeholder="Filter ID" value={filters.id} onChange={e=>setFilters(f=>({...f,id:e.target.value}))} className="w-full h-8 px-2 text-xs border rounded"/></th>
             <th className="p-2"><input placeholder="Filter nama" value={filters.nama} onChange={e=>setFilters(f=>({...f,nama:e.target.value}))} className="w-full h-8 px-2 text-xs border rounded"/></th>
             <th className="p-2"><select value={filters.lokasi} onChange={e=>setFilters(f=>({...f,lokasi:e.target.value}))} className="w-full h-8 px-2 text-xs border rounded"><option value="">Semua</option>{LOCATION_OPTIONS.map(loc=><option key={loc} value={loc}>{loc}</option>)}</select></th>
+            <th className="p-2"><input type="text" placeholder="Filter titik lokasi" value={filters.titik_lokasi} onChange={e=>setFilters(f=>({...f,titik_lokasi:e.target.value}))} className="w-full h-8 px-2 text-xs border rounded"/></th>
             <th className="p-2"><select value={filters.kategori} onChange={e=>setFilters(f=>({...f,kategori:e.target.value}))} className="w-full h-8 text-xs border rounded"><option value="">Semua</option><option value="barang">Barang</option><option value="jasa">Jasa</option></select></th>
             <th className="p-2"><input type="text" placeholder="Filter PIC" value={filters.pic} onChange={e=>setFilters(f=>({...f,pic:e.target.value}))} className="w-full h-8 px-2 text-xs border rounded"/></th>
             <th className="p-2"><input type="text" placeholder="Filter vendor" value={filters.vendor} onChange={e=>setFilters(f=>({...f,vendor:e.target.value}))} className="w-full h-8 px-2 text-xs border rounded"/></th>
@@ -206,7 +208,8 @@ export default function Pengadaan() {
             {visibleData.map((row) => <tr key={row.id} className="hover:bg-slate-50/50">
               <td className="py-3 px-5 font-semibold text-slate-800">#{row.kode}</td>
               <td className="py-3 px-5 max-w-[220px] truncate font-semibold text-slate-800">{row.nama_barang_jasa}</td>
-              <td className="py-3 px-5 text-slate-500"><div>{row.lokasi || '-'}</div><div className="text-xs text-slate-400 mt-0.5">{row.titik_lokasi || '-'}</div></td>
+              <td className="py-3 px-5 text-slate-500 whitespace-nowrap">{row.lokasi || '-'}</td>
+              <td className="py-3 px-5 text-slate-500 min-w-[180px]">{row.titik_lokasi || '-'}</td>
               <td className="py-3 px-5"><span className="inline-flex px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 text-xs font-semibold capitalize">{row.kategori || '-'}</span></td>
               <td className="py-3 px-5 text-slate-700 font-medium">{row.pic || '-'}</td>
               <td className="py-3 px-5 text-slate-500">{row.stage2_vendor || '-'}</td>
