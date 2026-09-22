@@ -7,8 +7,11 @@ fs.mkdirSync(logDir, { recursive: true });
 
 function serialize(value) {
   if (value instanceof Error) return { name: value.name, message: value.message, stack: value.stack, code: value.code, detail: value.detail, hint: value.hint, position: value.position };
-  if (typeof value === 'object') {
-    try { return JSON.parse(JSON.stringify(value)); } catch { return String(value); }
+  if (Array.isArray(value)) return value.map(serialize);
+  if (value && typeof value === 'object') {
+    const out = {};
+    for (const [k, v] of Object.entries(value)) out[k] = serialize(v);
+    return out;
   }
   return value;
 }

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import api from '../api';
 import { useAuth } from '../context/AuthContext';
 import BrandMark from '../components/BrandMark';
+import PaymentMethodDetail from '../components/PaymentMethodDetail';
 
 const statusPill = {
   pending: 'bg-red-50 text-red-700',
@@ -66,7 +67,7 @@ export default function Pengadaan() {
       const payload = {};
       const fields = [
         'nama_barang_jasa', 'kategori', 'lokasi', 'titik_lokasi', 'metode_pengadaan', 'nilai_hps', 'deskripsi', 'request_document_name', 'request_document_file_data',
-        'stage2_vendor', 'stage2_invoice_number', 'stage2_invoice_amount', 'tanggal', 'status', 'stage2_invoice_document_name', 'stage2_invoice_file_data', 'stage2_payment_proof_name', 'stage2_payment_proof_file_data', 'stage3_final_document_name', 'stage3_final_document_file_data', 'tahap1_status', 'tahap2_status', 'tahap3_status', 'catatan',
+        'stage2_payment_method', 'stage2_payment_number', 'stage2_ls_date', 'stage2_vendor', 'stage2_invoice_number', 'stage2_invoice_amount', 'tanggal', 'status', 'stage2_invoice_document_name', 'stage2_invoice_file_data', 'stage2_payment_proof_name', 'stage2_payment_proof_file_data', 'stage3_final_document_name', 'stage3_final_document_file_data', 'tahap1_status', 'tahap2_status', 'tahap3_status', 'catatan',
       ];
       fields.forEach((field) => {
         if (draft[field] !== undefined) payload[field] = draft[field] === '' ? null : draft[field];
@@ -341,12 +342,16 @@ function PengadaanStageTwo({ draft, update, readOnly, onView }) {
     </div>
   );
 
+  const methods = [['GUP','payments','Ganti Uang Persediaan','Untuk pengadaan operasional rutin menggunakan uang persediaan yang ada di bendahara.'],['TUP','price_change','Tambahan Uang Persediaan','Kebutuhan mendesak melebihi pagu UP reguler.'],['LS','account_balance','Pembayaran Langsung','Pembayaran langsung melalui KPPN / rekening kas umum ke penyedia.']];
   return <section className="bg-white/90 backdrop-blur rounded-2xl shadow-lg shadow-slate-200/40 p-6 md:p-8 border border-white/80"><h2 className="text-xl font-semibold text-slate-900 mb-6">Invoice & Pembayaran</h2><div className="space-y-7">
-    <div><label className={labelClass}>1. NAMA PERUSAHAAN <span className="text-red-600">*</span></label><input disabled={readOnly} value={draft.stage2_vendor || ''} onChange={(e) => update('stage2_vendor', e.target.value)} className={inputClass}/></div>
-    <div><label className={labelClass}>2. NOMOR INVOICE / KUITANSI</label><input disabled={readOnly} value={draft.stage2_invoice_number || ''} onChange={(e) => update('stage2_invoice_number', e.target.value)} className={inputClass}/></div>
-    <div><label className={labelClass}>3. NOMINAL TAGIHAN INVOICE</label><div className="flex"><span className="inline-flex items-center px-3 rounded-l-lg border border-r-0 border-slate-300 bg-slate-100 text-sm font-semibold text-slate-600">Rp</span><input disabled={readOnly} type="number" min="0" value={draft.stage2_invoice_amount ?? ''} onChange={(e) => update('stage2_invoice_amount', e.target.value)} className="w-full h-11 px-3 rounded-r-lg border border-slate-300 bg-slate-50/70 text-sm outline-none focus:bg-white focus:border-slate-900 disabled:opacity-70" /></div>{draft.stage2_invoice_amount && <p className="text-xs text-slate-500 mt-1">Rp {money(draft.stage2_invoice_amount)}</p>}</div>
-    <div><label className={labelClass}>4. TANGGAL PENGADAAN / INVOICE</label><input disabled={readOnly} type="date" value={draft.tanggal || ''} onChange={(e) => update('tanggal', e.target.value)} className={inputClass}/></div>
-    <div className="pt-1"><div className="mb-4"><h3 className="text-base font-semibold text-slate-900">5. DOKUMEN PENDUKUNG PEMBAYARAN</h3><p className="text-xs text-slate-500 mt-1">Unggah dokumen yang relevan dengan transaksi pengadaan agar proses verifikasi lebih lengkap.</p></div><div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <div><label className={labelClass}>1. METODE PEMBAYARAN <span className="text-red-600">*</span></label><div className="grid grid-cols-1 md:grid-cols-3 gap-3">{methods.map(([v,icon,title,desc]) => <label key={v} className={`flex gap-3 p-4 rounded-xl border cursor-pointer ${draft.stage2_payment_method === v ? 'border-slate-900 bg-slate-50' : 'border-slate-200 bg-white'} ${readOnly ? 'cursor-default opacity-75' : ''}`}><input disabled={readOnly} type="radio" name="payment" checked={draft.stage2_payment_method === v} onChange={() => { update('stage2_payment_method', v); update('stage2_payment_number', null); update('stage2_ls_date', null); }} className="mt-1"/><span className="material-symbols-outlined text-slate-700">{icon}</span><span><b className="block text-sm text-slate-800">{v} — {title}</b><span className="text-xs text-slate-500 leading-5">{desc}</span></span></label>)}</div>
+      {draft.stage2_payment_method && <div className="mt-4 p-4 rounded-xl bg-slate-50 border border-slate-200 max-w-sm"><PaymentMethodDetail method={draft.stage2_payment_method} numberValue={draft.stage2_payment_number} dateValue={draft.stage2_ls_date} onNumberChange={(v) => update('stage2_payment_number', v)} onDateChange={(v) => update('stage2_ls_date', v)} readOnly={readOnly} inputClass={inputClass} labelClass="block text-xs font-semibold text-slate-600 mb-1.5" /></div>}
+    </div>
+    <div><label className={labelClass}>2. NAMA PERUSAHAAN <span className="text-red-600">*</span></label><input disabled={readOnly} value={draft.stage2_vendor || ''} onChange={(e) => update('stage2_vendor', e.target.value)} className={inputClass}/></div>
+    <div><label className={labelClass}>3. NOMOR INVOICE / KUITANSI</label><input disabled={readOnly} value={draft.stage2_invoice_number || ''} onChange={(e) => update('stage2_invoice_number', e.target.value)} className={inputClass}/></div>
+    <div><label className={labelClass}>4. NOMINAL TAGIHAN INVOICE</label><div className="flex"><span className="inline-flex items-center px-3 rounded-l-lg border border-r-0 border-slate-300 bg-slate-100 text-sm font-semibold text-slate-600">Rp</span><input disabled={readOnly} type="number" min="0" value={draft.stage2_invoice_amount ?? ''} onChange={(e) => update('stage2_invoice_amount', e.target.value)} className="w-full h-11 px-3 rounded-r-lg border border-slate-300 bg-slate-50/70 text-sm outline-none focus:bg-white focus:border-slate-900 disabled:opacity-70" /></div>{draft.stage2_invoice_amount && <p className="text-xs text-slate-500 mt-1">Rp {money(draft.stage2_invoice_amount)}</p>}</div>
+    <div><label className={labelClass}>5. TANGGAL PENGADAAN / INVOICE</label><input disabled={readOnly} type="date" value={draft.tanggal || ''} onChange={(e) => update('tanggal', e.target.value)} className={inputClass}/></div>
+    <div className="pt-1"><div className="mb-4"><h3 className="text-base font-semibold text-slate-900">6. DOKUMEN PENDUKUNG PEMBAYARAN</h3><p className="text-xs text-slate-500 mt-1">Unggah dokumen yang relevan dengan transaksi pengadaan agar proses verifikasi lebih lengkap.</p></div><div className="grid grid-cols-1 md:grid-cols-2 gap-4">
       {fileCard('Invoice / Kuitansi Sah', 'Pilih dokumen invoice / kuitansi', 'stage2_invoice_document_name', 'stage2_invoice_file_data', 'description')}
       {fileCard('Bukti Pembayaran', 'Pilih bukti pembayaran / transfer', 'stage2_payment_proof_name', 'stage2_payment_proof_file_data', 'receipt_long')}
     </div></div>
