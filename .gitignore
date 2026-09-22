@@ -2,3 +2,9 @@
 .env
 backend/.env
 *.env
+
+# Dependencies & generated runtime files
+node_modules/
+backend/logs/
+*.log
+frontend/dist/
