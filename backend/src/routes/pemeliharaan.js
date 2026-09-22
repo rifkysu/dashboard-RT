@@ -3,11 +3,13 @@ const crypto = require('crypto');
 const prisma = require('../prisma');
 const { saveDataUrl } = require('../fileStorage');
 const { requireAuth, requireRole, EDITOR_ROLES } = require('../middleware/auth');
+const { requireNotInMaintenance } = require('../middleware/maintenance');
 const { signToken } = require('../token');
 const logger = require('../logger');
 
 const router = express.Router();
 router.use(requireAuth);
+router.use(requireNotInMaintenance('pemeliharaan'));
 const MAX_DOCUMENT_DATA_LENGTH = 12 * 1024 * 1024;
 const ALLOWED_DOCUMENT_PREFIXES = ['data:application/pdf;base64,','data:image/jpeg;base64,','data:image/png;base64,','data:image/webp;base64,','data:application/msword;base64,','data:application/vnd.openxmlformats-officedocument.wordprocessingml.document;base64,','data:application/vnd.ms-excel;base64,','data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,'];
 const validDocumentData = (v) => v == null || (typeof v === 'string' && v.length <= MAX_DOCUMENT_DATA_LENGTH && ALLOWED_DOCUMENT_PREFIXES.some(p => v.startsWith(p)));
@@ -60,7 +62,8 @@ router.put('/:id',requireRole(EDITOR_ROLES),async(req,res)=>{try{
  const pathFields={request_document_file_data:['request_document_file_path','request_document_name'],stage1_boq_file_data:['stage1_boq_file_path','stage1_boq'],stage1_document_file_data:['stage1_document_file_path','stage1_document_name'],stage2_invoice_document_file_data:['stage2_invoice_document_file_path','stage2_invoice_document_name']};
  for(const [df,[pf,nf]] of Object.entries(pathFields)) if(body[df]) body[pf]=await saveDataUrl(body[df],body[nf],'pemeliharaan');
  if(body.stage2_payment_number!==undefined&&body.stage2_payment_number!==null&&body.stage2_payment_number!==''){const n=Number(body.stage2_payment_number);if(!Number.isInteger(n)||n<1||n>20)return res.status(400).json({message:'Nomor GUP/TUP tidak valid (1-20).'});}
- const allowed=['judul','lokasi','titik_lokasi','kategori','deskripsi','tanggal','status','tahap1_status','tahap2_status','tahap3_status','tanggal_selesai','catatan','jenis_pekerjaan','urgensi','metode_pengadaan','request_document_name','request_document_file_data','request_document_file_path','stage1_boq','stage1_boq_file_data','stage1_boq_file_path','stage1_hps','stage1_document_name','stage1_document_file_data','stage1_document_file_path','stage2_payment_method','stage2_payment_number','stage2_ls_date','stage2_vendor','stage2_invoice_number','stage2_invoice_date','stage2_invoice_amount','stage2_invoice_document_name','stage2_invoice_document_file_data','stage2_invoice_document_file_path','stage3_documentation_names','stage3_documentation_files','stage3_documentation_file_paths','stage3_bast_notes'];
+ if(body.stage2_budget_source!==undefined&&body.stage2_budget_source!==null&&body.stage2_budget_source!==''&&!['RM','PNBP'].includes(body.stage2_budget_source))return res.status(400).json({message:'Asal anggaran tidak valid (RM atau PNBP).'});
+ const allowed=['judul','lokasi','titik_lokasi','kategori','deskripsi','tanggal','status','tahap1_status','tahap2_status','tahap3_status','tanggal_selesai','catatan','jenis_pekerjaan','urgensi','metode_pengadaan','request_document_name','request_document_file_data','request_document_file_path','stage1_boq','stage1_boq_file_data','stage1_boq_file_path','stage1_hps','stage1_document_name','stage1_document_file_data','stage1_document_file_path','stage2_payment_method','stage2_payment_number','stage2_ls_date','stage2_budget_source','stage2_vendor','stage2_invoice_number','stage2_invoice_date','stage2_invoice_amount','stage2_invoice_document_name','stage2_invoice_document_file_data','stage2_invoice_document_file_path','stage3_documentation_names','stage3_documentation_files','stage3_documentation_file_paths','stage3_bast_notes'];
  const DATE_FIELDS=['tanggal','tanggal_selesai','stage2_invoice_date','stage2_ls_date'];
  const data={};for(const f of allowed){if(body[f]===undefined)continue;if(DATE_FIELDS.includes(f))data[f]=body[f]?new Date(`${String(body[f]).slice(0,10)}T00:00:00Z`):null;else if(f==='stage2_payment_number')data[f]=body[f]===''||body[f]==null?null:Number(body[f]);else data[f]=body[f];}
  data.updated_by=req.user.id;

@@ -9,6 +9,27 @@ export function AuthProvider({ children }) {
     return raw ? JSON.parse(raw) : null;
   });
   const [loading, setLoading] = useState(true);
+  const [maintenance, setMaintenance] = useState({});
+
+  function refreshMaintenance() {
+    if (!localStorage.getItem('token')) return;
+    api.get('/maintenance').then((res) => {
+      const map = {};
+      (res.data.data || []).forEach((row) => { map[row.menu_key] = row; });
+      setMaintenance(map);
+    }).catch(() => {});
+  }
+
+  // Refetch role/data user terkini dari server. Dipanggil saat mount dan
+  // berkala, supaya perubahan role lewat pgAdmin4 (mis. dijadikan admin)
+  // langsung kebaca di UI tanpa perlu logout/login ulang.
+  function refreshUser({ onError } = {}) {
+    if (!localStorage.getItem('token')) return Promise.resolve();
+    return api.get('/auth/me').then((res) => {
+      setUser(res.data.user);
+      localStorage.setItem('user', JSON.stringify(res.data.user));
+    }).catch((err) => { if (onError) onError(err); });
+  }
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -16,30 +37,30 @@ export function AuthProvider({ children }) {
       setLoading(false);
       return;
     }
-    api
-      .get('/auth/me')
-      .then((res) => {
-        setUser(res.data.user);
-        localStorage.setItem('user', JSON.stringify(res.data.user));
-      })
-      .catch(() => {
+    refreshUser({
+      onError: () => {
         localStorage.removeItem('token');
         localStorage.removeItem('user');
         setUser(null);
-      })
-      .finally(() => setLoading(false));
+      },
+    }).finally(() => setLoading(false));
+    refreshMaintenance();
+    const timer = setInterval(() => { refreshUser(); refreshMaintenance(); }, 30000);
+    return () => clearInterval(timer);
   }, []);
 
   function login(token, userData) {
     localStorage.setItem('token', token);
     localStorage.setItem('user', JSON.stringify(userData));
     setUser(userData);
+    refreshMaintenance();
   }
 
   function logout() {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     setUser(null);
+    setMaintenance({});
   }
 
   // Dipanggil setelah backend mempromosikan karyawan -> PIC (mis. saat menambah
@@ -68,8 +89,15 @@ export function AuthProvider({ children }) {
     return false;
   }
 
+  // Menu sedang maintenance & user bukan admin -> akses diblokir di frontend
+  // (backend juga menolak request-nya sebagai lapisan kedua).
+  function isMenuDown(menuKey) {
+    if (user?.role === 'admin') return false;
+    return !!maintenance[menuKey]?.is_active;
+  }
+
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, refreshAuth, canEdit, canEditRow }}>
+    <AuthContext.Provider value={{ user, loading, login, logout, refreshAuth, refreshUser, canEdit, canEditRow, maintenance, refreshMaintenance, isMenuDown }}>
       {children}
     </AuthContext.Provider>
   );

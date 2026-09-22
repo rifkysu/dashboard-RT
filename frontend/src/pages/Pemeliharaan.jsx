@@ -26,6 +26,14 @@ const stages = [
 const inputClass = 'w-full h-11 px-3 rounded-lg border border-slate-300 bg-slate-50/70 text-sm text-slate-800 outline-none focus:bg-white focus:border-slate-900 focus:ring-2 focus:ring-slate-900/10';
 const labelClass = 'block text-sm font-semibold text-slate-800 mb-2';
 
+function paymentLabel(row) {
+  if (!row.stage2_payment_method) return '-';
+  const parts = [row.stage2_payment_method];
+  if (row.stage2_payment_number) parts.push(row.stage2_payment_number);
+  if (row.stage2_budget_source) parts.push(row.stage2_budget_source);
+  return parts.join(' ');
+}
+
 function money(value) {
   if (value === null || value === undefined || value === '') return '';
   return new Intl.NumberFormat('id-ID').format(Number(value));
@@ -44,7 +52,7 @@ export default function Pemeliharaan() {
   const [saving, setSaving] = useState(false);
   const [viewer, setViewer] = useState({open:false,name:'',data:''});
   const [exportDateRange, setExportDateRange] = useState({ mulai: '', sampai: '' });
-  const [filters, setFilters] = useState({ kategori: '', lokasi: '', titik_lokasi: '', status: '', id: '', nama: '', pic: '', tanggal_input: '', tanggal_selesai: '', vendor: '', invoice_amount: '' });
+  const [filters, setFilters] = useState({ kategori: '', lokasi: '', titik_lokasi: '', status: '', id: '', nama: '', pic: '', tanggal_input: '', tanggal_selesai: '', vendor: '', transaksi: '', invoice_amount: '' });
 
   function load() {
     setLoading(true);
@@ -77,7 +85,7 @@ export default function Pemeliharaan() {
       const fields = [
         'judul','lokasi','titik_lokasi','kategori','deskripsi','tanggal','status','jenis_pekerjaan','urgensi','metode_pengadaan',
         'tahap1_status','tahap2_status','tahap3_status','stage1_boq','stage1_boq_file_data','stage1_hps','stage1_document_name','stage1_document_file_data',
-        'stage2_payment_method','stage2_payment_number','stage2_ls_date','stage2_vendor','stage2_invoice_number','stage2_invoice_date','stage2_invoice_amount','stage2_invoice_document_name','stage2_invoice_document_file_data',
+        'stage2_payment_method','stage2_payment_number','stage2_ls_date','stage2_budget_source','stage2_vendor','stage2_invoice_number','stage2_invoice_date','stage2_invoice_amount','stage2_invoice_document_name','stage2_invoice_document_file_data',
         'stage3_documentation_names','stage3_documentation_files','stage3_bast_notes','catatan'
       ];
       fields.forEach((field) => {
@@ -139,8 +147,9 @@ export default function Pemeliharaan() {
     const tanggalInputMatch = !filters.tanggal_input || String(row.tanggal || '').slice(0, 10) === filters.tanggal_input;
     const tanggalSelesaiMatch = !filters.tanggal_selesai || String(row.tanggal_selesai || '').slice(0, 10) === filters.tanggal_selesai;
     const vendorMatch = !filters.vendor || value(row.stage2_vendor).includes(value(filters.vendor));
+    const transaksiMatch = !filters.transaksi || value(paymentLabel(row)).includes(value(filters.transaksi));
     const invoiceAmountMatch = !filters.invoice_amount || value(row.stage2_invoice_amount).includes(value(filters.invoice_amount));
-    return categoryMatch && locationMatch && pointMatch && statusMatch && idMatch && nameMatch && picMatch && tanggalInputMatch && tanggalSelesaiMatch && vendorMatch && invoiceAmountMatch;
+    return categoryMatch && locationMatch && pointMatch && statusMatch && idMatch && nameMatch && picMatch && tanggalInputMatch && tanggalSelesaiMatch && vendorMatch && transaksiMatch && invoiceAmountMatch;
   });
 
   function exportExcel() {
@@ -151,8 +160,8 @@ export default function Pemeliharaan() {
       return mulaiMatch && sampaiMatch;
     });
     if (!exportData.length) return alert('Tidak ada data yang sesuai dengan filter dan rentang tanggal untuk diekspor.');
-    const headers = ['ID Request','Nama Pekerjaan','Lokasi','Titik Lokasi','Kategori','PIC RT','Nama Perusahaan','Nilai Invoice','Tanggal Input','Status','Tanggal Selesai'];
-    const body = exportData.map(row => [row.kode, row.judul, row.lokasi, row.titik_lokasi || '-', row.kategori, row.pic || '-', row.stage2_vendor || '-', row.stage2_invoice_amount !== null && row.stage2_invoice_amount !== undefined && row.stage2_invoice_amount !== '' ? `Rp ${money(row.stage2_invoice_amount)}` : '-', String(row.tanggal || '').slice(0,10), statusLabel[row.status] || row.status, row.status === 'selesai' ? (String(row.tanggal_selesai || '').slice(0,10) || '-') : '-']);
+    const headers = ['ID Request','Nama Pekerjaan','Lokasi','Titik Lokasi','Kategori','PIC RT','Nama Perusahaan','Transaksi','Nilai Invoice','Tanggal Input','Status','Tanggal Selesai'];
+    const body = exportData.map(row => [row.kode, row.judul, row.lokasi, row.titik_lokasi || '-', row.kategori, row.pic || '-', row.stage2_vendor || '-', paymentLabel(row), row.stage2_invoice_amount !== null && row.stage2_invoice_amount !== undefined && row.stage2_invoice_amount !== '' ? `Rp ${money(row.stage2_invoice_amount)}` : '-', String(row.tanggal || '').slice(0,10), statusLabel[row.status] || row.status, row.status === 'selesai' ? (String(row.tanggal_selesai || '').slice(0,10) || '-') : '-']);
     const html = `<table><thead><tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr></thead><tbody>${body.map(r => `<tr>${r.map(v => `<td>${String(v).replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]))}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
     const blob = new Blob([`\ufeff${html}`], { type: 'application/vnd.ms-excel' });
     const url = URL.createObjectURL(blob); const a = document.createElement('a');
@@ -192,7 +201,7 @@ export default function Pemeliharaan() {
       <div className="bg-white/90 backdrop-blur rounded-2xl border border-white/80 overflow-hidden shadow-lg shadow-slate-200/40">
         <div className="overflow-x-auto"><table className="w-full text-sm">
           <thead className="bg-slate-50 border-b border-slate-200 sticky top-0 z-10"><tr>
-            {['ID Request','Nama Pekerjaan','Lokasi','Titik Lokasi','Kategori','PIC RT','Nama Perusahaan','Nilai Invoice','Tanggal Input','Status','Tanggal Selesai','Aksi (Tahapan Alur)'].map((h) => <th key={h} className="py-3 px-5 text-left text-xs font-semibold text-slate-500 uppercase whitespace-nowrap">{h}</th>)}
+            {['ID Request','Nama Pekerjaan','Lokasi','Titik Lokasi','Kategori','PIC RT','Nama Perusahaan','Transaksi','Nilai Invoice','Tanggal Input','Status','Tanggal Selesai','Aksi (Tahapan Alur)'].map((h) => <th key={h} className="py-3 px-5 text-left text-xs font-semibold text-slate-500 uppercase whitespace-nowrap">{h}</th>)}
           </tr>
           <tr className="bg-white border-b border-slate-200">
             <th className="p-2"><input placeholder="Filter ID" value={filters.id} onChange={e=>setFilters(f=>({...f,id:e.target.value}))} className="w-full h-8 px-2 text-xs border rounded"/></th>
@@ -202,6 +211,7 @@ export default function Pemeliharaan() {
             <th className="p-2"><select value={filters.kategori} onChange={e=>setFilters(f=>({...f,kategori:e.target.value}))} className="w-full h-8 text-xs border rounded"><option value="">Semua</option><option value="sarana">Sarana</option><option value="prasarana">Prasarana</option></select></th>
             <th className="p-2"><input type="text" placeholder="Filter PIC RT" value={filters.pic} onChange={e=>setFilters(f=>({...f,pic:e.target.value}))} className="w-full h-8 px-2 text-xs border rounded"/></th>
             <th className="p-2"><input type="text" placeholder="Filter Nama Perusahaan" value={filters.vendor} onChange={e=>setFilters(f=>({...f,vendor:e.target.value}))} className="w-full h-8 px-2 text-xs border rounded"/></th>
+            <th className="p-2"><input type="text" placeholder="Filter Transaksi" value={filters.transaksi} onChange={e=>setFilters(f=>({...f,transaksi:e.target.value}))} className="w-full h-8 px-2 text-xs border rounded"/></th>
             <th className="p-2"><input type="text" inputMode="numeric" placeholder="Filter Nilai Invoice" value={filters.invoice_amount} onChange={e=>setFilters(f=>({...f,invoice_amount:e.target.value}))} className="w-full h-8 px-2 text-xs border rounded"/></th>
             <th className="p-2"><input type="date" title="Filter tanggal input" value={filters.tanggal_input} onChange={e=>setFilters(f=>({...f,tanggal_input:e.target.value}))} className="w-full h-8 px-2 text-xs border rounded"/></th>
             <th className="p-2"><select value={filters.status} onChange={e=>setFilters(f=>({...f,status:e.target.value}))} className="w-full h-8 text-xs border rounded"><option value="">Semua</option><option value="pending">Pending</option><option value="on_progress">On Progress</option><option value="selesai">Selesai</option></select></th>
@@ -209,8 +219,8 @@ export default function Pemeliharaan() {
             <th></th>
           </tr></thead>
           <tbody className="divide-y divide-slate-100">
-            {loading && <tr><td colSpan={12} className="py-8 text-center text-slate-400">Memuat data...</td></tr>}
-            {!loading && visibleData.length === 0 && <tr><td colSpan={12} className="py-8 text-center text-slate-400">Belum ada data.</td></tr>}
+            {loading && <tr><td colSpan={13} className="py-8 text-center text-slate-400">Memuat data...</td></tr>}
+            {!loading && visibleData.length === 0 && <tr><td colSpan={13} className="py-8 text-center text-slate-400">Belum ada data.</td></tr>}
             {visibleData.map((row) => <tr key={row.id} className="hover:bg-slate-50/50">
               <td className="py-3 px-5 font-semibold text-slate-800">#{row.kode}</td>
               <td className="py-3 px-5 max-w-[220px] truncate font-semibold text-slate-800">{row.judul}</td>
@@ -219,6 +229,7 @@ export default function Pemeliharaan() {
               <td className="py-3 px-5"><span className="inline-flex px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 text-xs font-semibold capitalize">{row.kategori}</span></td>
               <td className="py-3 px-5 text-slate-700 font-medium">{row.pic || '-'}</td>
               <td className="py-3 px-5 text-slate-700 font-medium">{row.stage2_vendor || '-'}</td>
+              <td className="py-3 px-5"><span className="inline-flex px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 text-xs font-semibold whitespace-nowrap">{paymentLabel(row)}</span></td>
               <td className="py-3 px-5 text-slate-700 font-medium whitespace-nowrap">{row.stage2_invoice_amount !== null && row.stage2_invoice_amount !== undefined && row.stage2_invoice_amount !== '' ? `Rp ${money(row.stage2_invoice_amount)}` : '-'}</td>
               <td className="py-3 px-5 text-slate-500">{row.tanggal?.slice(0,10)}</td>
               <td className="py-3 px-5"><span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-semibold ${statusPill[row.status]}`}>{statusLabel[row.status]}</span></td>
@@ -326,7 +337,7 @@ function StageTwo({ draft, update, readOnly, fileName, onView }) {
   const methods = [['GUP','payments','Ganti Uang Persediaan','Untuk pengadaan operasional rutin menggunakan uang persediaan yang ada di bendahara.'],['TUP','price_change','Tambahan Uang Persediaan','Kebutuhan mendesak melebihi pagu UP reguler.'],['LS','account_balance','Pembayaran Langsung','Pembayaran langsung melalui KPPN / rekening kas umum ke penyedia.']];
   return <section className="bg-white/90 backdrop-blur rounded-2xl shadow-lg shadow-slate-200/40 p-6 md:p-8 border border-white/80"><h2 className="text-xl font-semibold text-slate-900 mb-6">Invoice & Pembayaran</h2><div className="space-y-7">
     <div><label className={labelClass}>1. METODE PEMBAYARAN <span className="text-red-600">*</span></label><div className="grid grid-cols-1 md:grid-cols-3 gap-3">{methods.map(([v,icon,title,desc]) => <label key={v} className={`flex gap-3 p-4 rounded-xl border cursor-pointer ${draft.stage2_payment_method === v ? 'border-slate-900 bg-slate-50' : 'border-slate-200 bg-white'} ${readOnly ? 'cursor-default opacity-75' : ''}`}><input disabled={readOnly} type="radio" name="payment" checked={draft.stage2_payment_method === v} onChange={() => { update('stage2_payment_method', v); update('stage2_payment_number', null); update('stage2_ls_date', null); }} className="mt-1"/><span className="material-symbols-outlined text-slate-700">{icon}</span><span><b className="block text-sm text-slate-800">{v} — {title}</b><span className="text-xs text-slate-500 leading-5">{desc}</span></span></label>)}</div>
-      {draft.stage2_payment_method && <div className="mt-4 p-4 rounded-xl bg-slate-50 border border-slate-200 max-w-sm"><PaymentMethodDetail method={draft.stage2_payment_method} numberValue={draft.stage2_payment_number} dateValue={draft.stage2_ls_date} onNumberChange={(v) => update('stage2_payment_number', v)} onDateChange={(v) => update('stage2_ls_date', v)} readOnly={readOnly} inputClass={inputClass} labelClass="block text-xs font-semibold text-slate-600 mb-1.5" /></div>}
+      {draft.stage2_payment_method && <div className="mt-4 p-4 rounded-xl bg-slate-50 border border-slate-200 max-w-xl"><PaymentMethodDetail method={draft.stage2_payment_method} numberValue={draft.stage2_payment_number} dateValue={draft.stage2_ls_date} budgetSource={draft.stage2_budget_source} onNumberChange={(v) => update('stage2_payment_number', v)} onDateChange={(v) => update('stage2_ls_date', v)} onBudgetSourceChange={(v) => update('stage2_budget_source', v)} readOnly={readOnly} inputClass={inputClass} labelClass="block text-xs font-semibold text-slate-600 mb-1.5" /></div>}
     </div>
     <div><label className={labelClass}>2. INFORMASI PEMBAYARAN</label><div className="grid grid-cols-1 md:grid-cols-3 gap-4"><div><label className="block text-xs font-semibold text-slate-600 mb-1.5">Nama Perusahaan *</label><input disabled={readOnly} value={draft.stage2_vendor || ''} onChange={(e) => update('stage2_vendor', e.target.value)} className={inputClass}/></div><div><label className="block text-xs font-semibold text-slate-600 mb-1.5">Nomor Faktur / Kuitansi *</label><input disabled={readOnly} value={draft.stage2_invoice_number || ''} onChange={(e) => update('stage2_invoice_number', e.target.value)} className={inputClass}/></div><div><label className="block text-xs font-semibold text-slate-600 mb-1.5">Tanggal Faktur *</label><input disabled={readOnly} type="date" value={draft.stage2_invoice_date || ''} onChange={(e) => update('stage2_invoice_date', e.target.value)} className={inputClass}/></div></div></div>
     <div><label className={labelClass}>3. NOMINAL TAGIHAN INVOICE</label><div className="flex"><span className="inline-flex items-center px-3 rounded-l-lg border border-r-0 border-slate-300 bg-slate-100 text-sm font-semibold text-slate-600">Rp</span><input disabled={readOnly} type="number" min="0" value={draft.stage2_invoice_amount ?? ''} onChange={(e) => update('stage2_invoice_amount', e.target.value)} className="w-full h-11 px-3 rounded-r-lg border border-slate-300 bg-slate-50/70 text-sm outline-none focus:bg-white focus:border-slate-900 disabled:opacity-70" /></div>{draft.stage2_invoice_amount && <p className="text-xs text-slate-500 mt-1">Rp {money(draft.stage2_invoice_amount)}</p>}</div>

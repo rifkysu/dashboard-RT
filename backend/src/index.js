@@ -12,6 +12,7 @@ const pengadaanRoutes = require('./routes/pengadaan');
 const kendaraanRoutes = require('./routes/kendaraan');
 const dashboardRoutes = require('./routes/dashboard');
 const ruangRapatRoutes = require('./routes/ruangRapat');
+const maintenanceRoutes = require('./routes/maintenance');
 const logger = require('./logger');
 const { ensureUploadRoot } = require('./fileStorage');
 
@@ -65,6 +66,7 @@ app.use('/api/pengadaan', pengadaanRoutes);
 app.use('/api/kendaraan', kendaraanRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/ruang-rapat', ruangRapatRoutes);
+app.use('/api/maintenance', maintenanceRoutes);
 
 
 const PORT = Number(process.env.PORT) || 4000;

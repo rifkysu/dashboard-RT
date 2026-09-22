@@ -4,15 +4,15 @@ import { useAuth } from '../context/AuthContext';
 import BrandMark from './BrandMark';
 
 const menu = [
-  { to: '/dashboard', icon: 'dashboard', label: 'Dashboard', tone: 'indigo' },
-  { to: '/pemeliharaan', icon: 'build', label: 'Pemeliharaan', tone: 'emerald' },
-  { to: '/pengadaan', icon: 'shopping_cart', label: 'Pengadaan', tone: 'amber' },
-  { to: '/kendaraan', icon: 'directions_car', label: 'Kendaraan', tone: 'sky' },
-  { to: '/ruang-rapat', icon: 'calendar_month', label: 'Jadwal Ruang Rapat', tone: 'violet' },
+  { to: '/dashboard', icon: 'dashboard', label: 'Dashboard', tone: 'indigo', menuKey: 'dashboard' },
+  { to: '/pemeliharaan', icon: 'build', label: 'Pemeliharaan', tone: 'emerald', menuKey: 'pemeliharaan' },
+  { to: '/pengadaan', icon: 'shopping_cart', label: 'Pengadaan', tone: 'amber', menuKey: 'pengadaan' },
+  { to: '/kendaraan', icon: 'directions_car', label: 'Kendaraan', tone: 'sky', menuKey: 'kendaraan' },
+  { to: '/ruang-rapat', icon: 'calendar_month', label: 'Jadwal Ruang Rapat', tone: 'violet', menuKey: 'ruang-rapat' },
 ];
 
 export default function Sidebar() {
-  const { user, logout } = useAuth();
+  const { user, logout, isMenuDown } = useAuth();
   const navigate = useNavigate();
   const roleLabel = { karyawan: 'Karyawan', kabag: 'Kepala Bagian', pic: 'PIC', admin: 'Admin' };
 
@@ -29,7 +29,9 @@ export default function Sidebar() {
       </div>
       <nav className="flex-1 px-3 py-5 overflow-y-auto">
         <p className="px-3 mb-3 text-[10px] uppercase tracking-[0.18em] font-bold text-slate-400">Menu Utama</p>
-        {menu.map((item) => (
+        {menu.map((item) => {
+          const down = isMenuDown(item.menuKey);
+          return (
           <NavLink key={item.to} to={item.to}
             className={({isActive}) => `group flex items-center gap-3 px-3 py-3 mb-2 rounded-2xl text-sm transition-all duration-200 ${
               isActive ? 'bg-slate-900 text-white shadow-lg shadow-slate-900/15' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
@@ -45,10 +47,12 @@ export default function Sidebar() {
                 <span className="material-symbols-outlined text-[20px]">{item.icon}</span>
               </span>
               <span className={isActive ? 'font-bold' : 'font-medium'}>{item.label}</span>
-              {isActive && <span className="material-symbols-outlined ml-auto text-[17px] text-white/70">chevron_right</span>}
+              {down && <span className={`ml-auto text-[9px] font-bold px-1.5 py-0.5 rounded-full ${isActive ? 'bg-amber-400 text-amber-950' : 'bg-amber-100 text-amber-700'}`}>MAINTENANCE</span>}
+              {!down && isActive && <span className="material-symbols-outlined ml-auto text-[17px] text-white/70">chevron_right</span>}
             </>}
           </NavLink>
-        ))}
+          );
+        })}
       </nav>
       <div className="px-3 pb-4">
         <div className="mx-1 mb-3 p-3 rounded-2xl bg-gradient-to-r from-indigo-50 to-blue-50 border border-indigo-100">
