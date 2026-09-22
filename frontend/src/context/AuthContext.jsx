@@ -49,6 +49,17 @@ export function AuthProvider({ children }) {
     return () => clearInterval(timer);
   }, []);
 
+  // Live-reload lewat SSE: begitu admin toggle maintenance di menu mana pun,
+  // semua user yang sedang buka web langsung ke-blokir/ke-buka real-time,
+  // tanpa perlu refresh manual atau nunggu polling 30 detik.
+  useEffect(() => {
+    if (!user?.id) return;
+    const streamUrl = `${import.meta.env.VITE_API_URL || 'http://localhost:4000/api'}/maintenance/stream`;
+    const es = new EventSource(streamUrl);
+    es.onmessage = () => refreshMaintenance();
+    return () => es.close();
+  }, [user?.id]);
+
   function login(token, userData) {
     localStorage.setItem('token', token);
     localStorage.setItem('user', JSON.stringify(userData));

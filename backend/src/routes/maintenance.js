@@ -1,10 +1,30 @@
 const express = require('express');
+const { EventEmitter } = require('events');
 const prisma = require('../prisma');
 const { requireAuth, requireRole } = require('../middleware/auth');
 const logger = require('../logger');
 
 const router = express.Router();
 const MENU_KEYS = ['dashboard', 'pemeliharaan', 'pengadaan', 'kendaraan', 'ruang-rapat'];
+
+// Bus internal untuk broadcast SSE tiap admin toggle maintenance, supaya
+// semua user yang sedang buka web langsung ke-update real-time tanpa perlu
+// refresh/polling.
+const bus = new EventEmitter();
+bus.setMaxListeners(0);
+const broadcastChange = () => bus.emit('change');
+
+// SSE stream: cuma sinyal "ada perubahan" (bukan data itu sendiri), jadi aman
+// dibuat publik -- EventSource browser native tidak bisa kirim header
+// Authorization. Data asli tetap lewat GET '/' yang ber-otentikasi.
+router.get('/stream', (req, res) => {
+  res.writeHead(200, { 'Content-Type': 'text/event-stream; charset=utf-8', 'Cache-Control': 'no-cache, no-transform', 'Connection': 'keep-alive' });
+  res.write('retry: 3000\n\n');
+  const send = () => { try { res.write(`data: ${Date.now()}\n\n`); } catch {} };
+  bus.on('change', send);
+  const heartbeat = setInterval(() => { try { res.write(': heartbeat\n\n'); } catch {} }, 25000);
+  req.on('close', () => { clearInterval(heartbeat); bus.off('change', send); });
+});
 
 router.use(requireAuth);
 
@@ -38,6 +58,7 @@ router.put('/:menu_key', requireRole(['admin']), async (req, res) => {
       update: data,
       create: { menu_key, is_active: is_active ?? false, message: message || null, updated_by: req.user.id },
     });
+    broadcastChange();
     res.json({ data: row });
   } catch (err) {
     logger.error('PUT maintenance gagal', { error: err });
