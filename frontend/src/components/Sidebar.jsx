@@ -61,7 +61,7 @@ export default function Sidebar() {
           <NavLink to="/settings" className={({isActive}) => `flex items-center gap-3 px-3 py-3 rounded-xl text-sm transition ${isActive ? 'bg-slate-100 text-slate-900' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900'}`}>
             <span className="w-9 h-9 rounded-xl bg-slate-100 flex items-center justify-center"><span className="material-symbols-outlined text-[18px]">settings</span></span> Settings
           </NavLink>
-          <button onClick={() => { logout(); navigate('/login'); }} className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-sm text-slate-500 hover:bg-red-50 hover:text-red-500 transition">
+          <button onClick={() => { logout(); navigate('/'); }} className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-sm text-slate-500 hover:bg-red-50 hover:text-red-500 transition">
             <span className="w-9 h-9 rounded-xl bg-slate-100 flex items-center justify-center"><span className="material-symbols-outlined text-[18px]">logout</span></span> Logout
           </button>
         </div>

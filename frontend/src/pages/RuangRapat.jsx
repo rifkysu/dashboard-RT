@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import api from '../api';
 import DocumentViewer from '../components/DocumentViewer';
+import { holidayLabel } from '../utils/holidays';
 
 const STATUS_META = {
   belum: { label: 'Belum Ada Surat', card: 'bg-red-50 border-red-300 text-red-900', badge: 'bg-red-100 text-red-700 border-red-200', dot: 'bg-red-500' },
@@ -19,17 +20,7 @@ function formatDateLabel(dateString) { if (!dateString) return 'Pilih hari'; con
 function getDayKey(dateString) { const d = new Date(`${dateString}T00:00:00`); return dayNames[(d.getDay()+6)%7]; }
 function fileToDataUrl(file) { return new Promise((resolve,reject)=>{ const r=new FileReader(); r.onload=()=>resolve(r.result); r.onerror=reject; r.readAsDataURL(file); }); }
 function isWeekend(dateString){const d=new Date(`${dateString}T00:00:00`);return d.getDay()===0||d.getDay()===6;}
-const CUTI_BERSAMA_2026 = {
-  '2026-02-16': 'Cuti Bersama Tahun Baru Imlek',
-  '2026-03-18': 'Cuti Bersama Hari Suci Nyepi',
-  '2026-03-20': 'Cuti Bersama Idul Fitri',
-  '2026-03-23': 'Cuti Bersama Idul Fitri',
-  '2026-03-24': 'Cuti Bersama Idul Fitri',
-  '2026-05-15': 'Cuti Bersama Kenaikan Isa Almasih',
-  '2026-05-28': 'Cuti Bersama Idul Adha',
-  '2026-12-24': 'Cuti Bersama Natal',
-};
-function cutiBersamaLabel(dateString){ return CUTI_BERSAMA_2026[dateString] || null; }
+const cutiBersamaLabel = holidayLabel;
 
 export default function RuangRapat() {
   const [items,setItems]=useState([]), [loading,setLoading]=useState(true), [error,setError]=useState('');
@@ -38,7 +29,7 @@ export default function RuangRapat() {
   const [weekStart,setWeekStart]=useState(mondayOf()), [form,setForm]=useState(emptyForm), [saving,setSaving]=useState(false);
 
   const loadBookings=async()=>{ try{const r=await api.get('/ruang-rapat');setItems(r.data.data||[]);setError('');}catch(e){setError(e.response?.data?.message||'Gagal memuat jadwal dari database.');}finally{setLoading(false);} };
-  useEffect(()=>{loadBookings(); const timer=setInterval(()=>{setWeekStart(mondayOf());loadBookings();},30000); return()=>clearInterval(timer);},[]);
+  useEffect(()=>{loadBookings(); const timer=setInterval(loadBookings,30000); return()=>clearInterval(timer);},[]);
   const weekDates=useMemo(()=>{const start=new Date(`${weekStart}T00:00:00`);return Array.from({length:7},(_,i)=>{const d=new Date(start);d.setDate(start.getDate()+i);return localDateISO(d);});},[weekStart]);
 
   const saveBooking=async(e)=>{e.preventDefault();setSaving(true);try{const r=await api.post('/ruang-rapat',form);setItems(p=>[...p,r.data.data].sort((a,b)=>`${a.date} ${a.start}`.localeCompare(`${b.date} ${b.start}`)));setShowBook(false);setForm({...emptyForm,date:''});setError('');}catch(e){setError(e.response?.data?.message||'Gagal menyimpan booking.');}finally{setSaving(false);}};
@@ -52,7 +43,7 @@ export default function RuangRapat() {
     <div className="flex flex-col lg:flex-row justify-between items-start gap-4 mb-5"><div><h1 className="text-3xl font-bold">Jadwal & Booking Ruang Rapat</h1><p className="text-sm text-slate-600 mt-1">Minggu aktif tersinkron otomatis setiap 30 detik. Klik booking untuk Edit, surat, atau Cancel Booking.</p></div><button onClick={()=>{setError('');setForm({...emptyForm,date:localDateISO()});setShowBook(true)}} className="bg-black text-white rounded-lg px-4 py-2.5 text-xs font-semibold shadow-sm">＋ Book Ruangan Rapat</button></div>
     <div className="bg-white border border-slate-200 rounded-xl p-4 mb-5 shadow-sm"><div className="flex flex-wrap items-center gap-3 text-xs font-medium"><span className="font-bold text-slate-700 mr-2">Petunjuk warna surat:</span>{Object.entries(STATUS_META).map(([k,m])=><span key={k} className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full border ${m.badge}`}><span className={`w-2.5 h-2.5 rounded-full ${m.dot}`}/>{m.label}</span>)}<span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border bg-amber-100 text-amber-800 border-amber-200"><span className="w-2.5 h-2.5 rounded-full bg-amber-500"/>Cuti Bersama</span></div></div>
     {error&&<div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-xs font-medium text-red-700">{error}</div>}
-    <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm"><div className="p-4 border-b flex flex-col sm:flex-row justify-between gap-3 sm:items-center"><div><div className="font-bold text-sm">Kalender Booking Ruang Rapat</div><div className="text-xs text-slate-500 mt-1">Senin–Minggu · tanggal otomatis mengikuti minggu berjalan.</div></div><div className="flex items-center gap-2 text-xs"><button onClick={()=>moveWeek(-1)} className="border rounded px-2.5 py-1.5 hover:bg-slate-50">‹</button><span className="font-semibold px-2">{formatDateLabel(weekDates[0])} – {formatDateLabel(weekDates[6])}</span><button onClick={()=>moveWeek(1)} className="border rounded px-2.5 py-1.5 hover:bg-slate-50">›</button></div></div>
+    <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm"><div className="p-4 border-b flex flex-col sm:flex-row justify-between gap-3 sm:items-center"><div><div className="font-bold text-sm">Kalender Booking Ruang Rapat</div><div className="text-xs text-slate-500 mt-1">Senin–Minggu · navigasi bebas ke minggu berapa pun.</div></div><div className="flex items-center gap-2 text-xs"><button onClick={()=>moveWeek(-1)} className="border rounded px-2.5 py-1.5 hover:bg-slate-50">‹</button><span className="font-semibold px-2 whitespace-nowrap">{formatDateLabel(weekDates[0])} – {formatDateLabel(weekDates[6])}</span><button onClick={()=>moveWeek(1)} className="border rounded px-2.5 py-1.5 hover:bg-slate-50">›</button><button onClick={()=>setWeekStart(mondayOf())} className="border rounded px-3 py-1.5 hover:bg-slate-50 font-semibold text-slate-600">Hari Ini</button></div></div>
       <div className="overflow-x-auto">
         <table className="min-w-[1400px] w-full border-collapse">
           <thead>

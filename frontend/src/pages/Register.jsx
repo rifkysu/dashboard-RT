@@ -74,7 +74,12 @@ export default function Register() {
       </header>
 
       <main className="flex-1 flex items-center justify-center p-6 md:p-10">
-        <div className="w-full max-w-[560px] bg-white rounded-2xl shadow-xl shadow-slate-200/60 border border-slate-200/80 p-8 sm:p-10 relative overflow-hidden">
+        <div className="w-full max-w-[560px]">
+        <Link to="/" className="inline-flex items-center gap-1.5 text-sm text-slate-600 hover:text-slate-900 font-semibold mb-4">
+          <span className="material-symbols-outlined text-[18px]">arrow_back</span>
+          Kembali ke Menu Utama
+        </Link>
+        <div className="bg-white rounded-2xl shadow-xl shadow-slate-200/60 border border-slate-200/80 p-8 sm:p-10 relative overflow-hidden">
           <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-emerald-500 via-blue-600 to-slate-900"></div>
 
           <div className="mb-8">
@@ -237,6 +242,7 @@ export default function Register() {
               </Link>
             </p>
           </div>
+        </div>
         </div>
       </main>
 
