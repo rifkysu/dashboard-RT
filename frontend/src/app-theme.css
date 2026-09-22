@@ -1,21 +1,21 @@
 
-/* Clean, bright white theme for authenticated application menus */
+/* Bright, premium light-blue theme for authenticated application menus */
 :root { color-scheme: light; }
-body { min-height: 100vh; background: #f8fafc !important; }
+body { min-height: 100vh; background: #eaf1fb !important; }
 .app-shell-bg {
   background:
-    radial-gradient(circle at 15% 0%, rgba(59,130,246,.07), transparent 34%),
-    radial-gradient(circle at 90% 15%, rgba(16,185,129,.06), transparent 32%),
-    radial-gradient(circle at 50% 100%, rgba(139,92,246,.05), transparent 40%),
-    #f8fafc;
+    radial-gradient(circle at 15% 0%, rgba(59,130,246,.14), transparent 38%),
+    radial-gradient(circle at 90% 15%, rgba(16,185,129,.10), transparent 34%),
+    radial-gradient(circle at 50% 100%, rgba(139,92,246,.08), transparent 42%),
+    linear-gradient(180deg, #eef3fb 0%, #e7eff9 100%);
 }
 
 /* Main workspace */
 main.app-main {
   background:
-    radial-gradient(circle at 10% 0%, rgba(59,130,246,.06), transparent 30%),
-    radial-gradient(circle at 90% 8%, rgba(139,92,246,.05), transparent 28%),
-    #f8fafc !important;
+    radial-gradient(circle at 10% 0%, rgba(59,130,246,.10), transparent 32%),
+    radial-gradient(circle at 90% 8%, rgba(139,92,246,.08), transparent 30%),
+    linear-gradient(180deg, #eef3fb 0%, #e7eff9 100%) !important;
 }
 .menu-page { color:#1e293b; }
 .menu-page h1,.menu-page h2,.menu-page h3,.menu-page h4,.menu-page .text-slate-900,.menu-page .text-slate-800 { color:#0f172a !important; }

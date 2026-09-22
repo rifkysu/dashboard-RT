@@ -33,6 +33,8 @@ model User {
   sso_provider    String?   @db.VarChar(30)
   sso_subject     String?   @db.VarChar(255)
   is_active       Boolean   @default(true)
+  reset_token         String?   @unique @db.VarChar(128)
+  reset_token_expires DateTime?
   created_at      DateTime  @default(now())
   updated_at      DateTime  @updatedAt
 

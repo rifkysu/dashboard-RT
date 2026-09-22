@@ -3,6 +3,7 @@ const crypto = require('crypto');
 const prisma = require('../prisma');
 const { saveDataUrl } = require('../fileStorage');
 const { requireAuth, requireRole, EDITOR_ROLES } = require('../middleware/auth');
+const { signToken } = require('../token');
 const logger = require('../logger');
 
 const router = express.Router();
@@ -34,11 +35,23 @@ router.post('/',async(req,res)=>{try{
  if(request_document_file_data!==undefined&&!validDocumentData(request_document_file_data))return res.status(400).json({message:'Dokumen permintaan tidak valid.'});
  const path=request_document_file_data?await saveDataUrl(request_document_file_data,request_document_name,'pemeliharaan'):null;
  const row=await prisma.pemeliharaan.create({data:{kode:generateKode(),judul,lokasi,titik_lokasi:titik_lokasi||null,kategori,deskripsi:deskripsi||null,tanggal: tanggal?new Date(`${tanggal}T00:00:00Z`):new Date(),jenis_pekerjaan:jenis_pekerjaan||null,urgensi:urgensi||'sedang',metode_pengadaan:metode_pengadaan||null,request_document_name:request_document_name||null,request_document_file_data:request_document_file_data||null,request_document_file_path:path,created_by:req.user.id}});
- res.status(201).json({data:serialize(row)});
+ // Karyawan yang membuat permintaan otomatis dipromosikan jadi PIC atas permintaan itu sendiri.
+ let promotion=null;
+ if(req.user.role==='karyawan'){
+   const updatedUser=await prisma.user.update({where:{id:req.user.id},data:{role:'pic'}});
+   promotion={token:signToken(updatedUser),user:{id:updatedUser.id,nama_lengkap:updatedUser.nama_lengkap,email:updatedUser.email,no_hp:updatedUser.no_hp,unit_kerja:updatedUser.unit_kerja,role:updatedUser.role}};
+ }
+ res.status(201).json({data:serialize(row),...(promotion||{})});
 }catch(err){logger.error('POST pemeliharaan gagal',{error:err,user_id:req.user?.id});res.status(500).json({message:'Gagal membuat permintaan pemeliharaan.'});}});
 
 router.put('/:id',requireRole(EDITOR_ROLES),async(req,res)=>{try{
  const id=Number(req.params.id); if(!Number.isInteger(id))return res.status(400).json({message:'ID tidak valid.'});
+ // PIC hanya boleh mengedit data yang dia buat sendiri (kabag & admin tetap bebas mengedit semua data).
+ if(req.user.role==='pic'){
+   const existing=await prisma.pemeliharaan.findUnique({where:{id},select:{created_by:true}});
+   if(!existing)return res.status(404).json({message:'Data tidak ditemukan.'});
+   if(existing.created_by!==req.user.id)return res.status(403).json({message:'Anda hanya dapat mengedit data pemeliharaan yang Anda tambahkan sendiri.'});
+ }
  const body={...req.body};
  if(body.status==='selesai') body.tanggal_selesai=new Date();
  if(body.status && body.status!=='selesai' && body.tanggal_selesai===undefined) body.tanggal_selesai=null;
@@ -52,5 +65,13 @@ router.put('/:id',requireRole(EDITOR_ROLES),async(req,res)=>{try{
  const row=await prisma.pemeliharaan.update({where:{id},data});res.json({data:serialize(row)});
 }catch(err){logger.error('PUT pemeliharaan gagal',{error:err,user_id:req.user?.id});if(err.code==='P2025')return res.status(404).json({message:'Data tidak ditemukan.'});res.status(500).json({message:'Gagal memperbarui data pemeliharaan.'});}});
 
-router.delete('/:id',requireRole(EDITOR_ROLES),async(req,res)=>{try{await prisma.pemeliharaan.delete({where:{id:Number(req.params.id)}});res.json({message:'Data berhasil dihapus.'});}catch(err){if(err.code==='P2025')return res.status(404).json({message:'Data tidak ditemukan.'});logger.error('DELETE pemeliharaan gagal',{error:err});res.status(500).json({message:'Gagal menghapus data.'});}});
+router.delete('/:id',requireRole(EDITOR_ROLES),async(req,res)=>{try{
+ const id=Number(req.params.id);
+ if(req.user.role==='pic'){
+   const existing=await prisma.pemeliharaan.findUnique({where:{id},select:{created_by:true}});
+   if(!existing)return res.status(404).json({message:'Data tidak ditemukan.'});
+   if(existing.created_by!==req.user.id)return res.status(403).json({message:'Anda hanya dapat menghapus data pemeliharaan yang Anda tambahkan sendiri.'});
+ }
+ await prisma.pemeliharaan.delete({where:{id}});res.json({message:'Data berhasil dihapus.'});
+}catch(err){if(err.code==='P2025')return res.status(404).json({message:'Data tidak ditemukan.'});logger.error('DELETE pemeliharaan gagal',{error:err});res.status(500).json({message:'Gagal menghapus data.'});}});
 module.exports=router;

@@ -1,6 +1,7 @@
 import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import BrandMark from './BrandMark';
 
 const menu = [
   { to: '/dashboard', icon: 'dashboard', label: 'Dashboard', tone: 'indigo' },
@@ -19,9 +20,7 @@ export default function Sidebar() {
     <aside className="bg-white fixed left-0 top-0 h-full w-60 flex flex-col z-20 border-r border-slate-200 shadow-xl shadow-slate-900/5">
       <div className="px-5 py-6 border-b border-slate-100">
         <div className="flex items-center gap-3">
-          <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white shadow-lg shadow-indigo-900/20">
-            <span className="material-symbols-outlined text-[23px]">account_balance</span>
-          </div>
+          <BrandMark size="md" />
           <div>
             <h1 className="text-base font-bold text-slate-900">Biro Umum</h1>
             <p className="text-[10px] uppercase tracking-[0.18em] text-slate-400 mt-1">Rumah Tangga</p>

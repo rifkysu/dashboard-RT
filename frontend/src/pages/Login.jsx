@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import api from '../api';
 import { useAuth } from '../context/AuthContext';
+import BrandMark from '../components/BrandMark';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -36,9 +37,7 @@ export default function Login() {
     <div className="min-h-screen flex flex-col justify-between">
       <header className="w-full border-b border-slate-200 bg-white px-6 py-4 flex items-center justify-between sticky top-0 z-20">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-slate-900 flex items-center justify-center text-white">
-            <span className="material-symbols-outlined text-[22px]">account_balance</span>
-          </div>
+          <BrandMark size="sm" />
           <div>
             <h1 className="text-base font-bold text-slate-900 leading-none">Biro Umum</h1>
             <p className="text-xs text-slate-500 mt-0.5">Rumah Tangga &amp; Administrasi</p>
@@ -92,9 +91,14 @@ export default function Login() {
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">
-                Kata Sandi
-              </label>
+              <div className="flex items-center justify-between mb-2">
+                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider">
+                  Kata Sandi
+                </label>
+                <Link to="/forgot-password" className="text-xs font-semibold text-blue-600 hover:text-blue-700">
+                  Lupa kata sandi?
+                </Link>
+              </div>
               <div className="relative">
                 <span className="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-[20px]">
                   key

@@ -1,10 +1,12 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 const passport = require('passport');
 const prisma = require('../prisma');
 const { requireAuth } = require('../middleware/auth');
 const { createRateLimiter, normalizeEmail, isSafeText } = require('../middleware/security');
+const { signToken } = require('../token');
 
 const router = express.Router();
 
@@ -26,18 +28,20 @@ const registerLimiter = createRateLimiter({
   message: 'Terlalu banyak percobaan pendaftaran dari alamat ini.',
 });
 
-function signToken(user) {
-  return jwt.sign(
-    {
-      id: user.id,
-      email: user.email,
-      role: user.role,
-      nama_lengkap: user.nama_lengkap,
-    },
-    process.env.JWT_SECRET,
-    { expiresIn: process.env.JWT_EXPIRES_IN || '8h', algorithm: 'HS256' }
-  );
-}
+const forgotPasswordLimiter = createRateLimiter({
+  windowMs: 60 * 60 * 1000,
+  max: 5,
+  message: 'Terlalu banyak permintaan reset password. Silakan coba lagi nanti.',
+});
+
+const resetPasswordLimiter = createRateLimiter({
+  windowMs: 60 * 60 * 1000,
+  max: 20,
+  message: 'Terlalu banyak percobaan reset password. Silakan coba lagi nanti.',
+});
+
+const RESET_TOKEN_TTL_MS = 60 * 60 * 1000; // 1 jam
+const hashResetToken = (token) => crypto.createHash('sha256').update(token).digest('hex');
 
 function sanitizeUser(user) {
   const { password_hash, ...rest } = user;
@@ -123,6 +127,75 @@ router.post('/login', loginLimiter, async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Terjadi kesalahan server saat login.' });
+  }
+});
+
+// ---------------------------------------------------------
+// POST /api/auth/forgot-password
+// Sistem belum terhubung ke layanan email, jadi endpoint ini
+// mengembalikan link reset langsung di response. Admin/HR bisa
+// meneruskan link tsb secara manual (WA/Slack/dsb) ke user yang
+// lupa password. Link berlaku 1 jam.
+// ---------------------------------------------------------
+router.post('/forgot-password', forgotPasswordLimiter, async (req, res) => {
+  try {
+    const email = normalizeEmail(req.body.email);
+    if (typeof email !== 'string' || email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return res.status(400).json({ message: 'Format email tidak valid.' });
+    }
+
+    const user = await prisma.user.findFirst({ where: { email, is_active: true } });
+    if (!user) {
+      return res.status(404).json({ message: 'Email tidak ditemukan atau akun tidak aktif.' });
+    }
+
+    const rawToken = crypto.randomBytes(32).toString('hex');
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { reset_token: hashResetToken(rawToken), reset_token_expires: new Date(Date.now() + RESET_TOKEN_TTL_MS) },
+    });
+
+    const resetUrl = `${process.env.FRONTEND_URL}/reset-password?token=${rawToken}`;
+    res.json({
+      message: 'Link reset password berhasil dibuat. Sistem belum terhubung ke email, jadi salin/kirim link ini secara manual ke pengguna. Link berlaku 1 jam.',
+      resetUrl,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Terjadi kesalahan server saat membuat link reset.' });
+  }
+});
+
+// ---------------------------------------------------------
+// POST /api/auth/reset-password
+// ---------------------------------------------------------
+router.post('/reset-password', resetPasswordLimiter, async (req, res) => {
+  try {
+    const { token, password } = req.body;
+    if (typeof token !== 'string' || token.length < 32 || token.length > 256) {
+      return res.status(400).json({ message: 'Token reset tidak valid.' });
+    }
+    if (typeof password !== 'string' || password.length < 8 || password.length > 128) {
+      return res.status(400).json({ message: 'Kata sandi minimal 8 karakter.' });
+    }
+
+    const user = await prisma.user.findFirst({
+      where: { reset_token: hashResetToken(token), reset_token_expires: { gt: new Date() } },
+    });
+    if (!user) {
+      return res.status(400).json({ message: 'Token reset tidak valid atau sudah kedaluwarsa. Silakan minta link reset baru.' });
+    }
+
+    const password_hash = await bcrypt.hash(password, 12);
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { password_hash, reset_token: null, reset_token_expires: null },
+    });
+
+    res.json({ message: 'Kata sandi berhasil diubah. Silakan login dengan kata sandi baru.' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Terjadi kesalahan server saat mereset kata sandi.' });
   }
 });
 

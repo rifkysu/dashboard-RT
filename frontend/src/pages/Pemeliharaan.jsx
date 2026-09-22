@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import api from '../api';
 import { useAuth } from '../context/AuthContext';
 import DocumentViewer from '../components/DocumentViewer';
+import BrandMark from '../components/BrandMark';
 
 const statusPill = {
   pending: 'bg-red-50 text-red-700',
@@ -30,7 +31,7 @@ function money(value) {
 }
 
 export default function Pemeliharaan() {
-  const { user, canEdit } = useAuth();
+  const { user, canEditRow, refreshAuth } = useAuth();
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
@@ -68,7 +69,7 @@ export default function Pemeliharaan() {
   }
 
   async function saveStage(nextStageNo = null, finish = false) {
-    if (!canEdit || !selectedRow || !selectedStage) return;
+    if (!selectedRow || !selectedStage || !canEditRow(selectedRow)) return;
     setSaving(true);
     try {
       const payload = {};
@@ -115,10 +116,12 @@ export default function Pemeliharaan() {
   async function handleAdd(e) {
     e.preventDefault(); setError('');
     try {
-      await api.post('/pemeliharaan', {
+      const res = await api.post('/pemeliharaan', {
         judul: form.judul, lokasi: form.lokasi, titik_lokasi: form.titik_lokasi,
         kategori: form.kategori, tanggal: form.tanggal, deskripsi: form.deskripsi, jenis_pekerjaan: form.jenis_pekerjaan, urgensi: form.urgensi, request_document_name: form.request_document_name || null, request_document_file_data: form.request_document_file_data || null,
       });
+      // Kalau backend mempromosikan role karyawan -> PIC, sinkronkan token & user di sesi ini.
+      if (res.data.token) refreshAuth(res.data.token, res.data.user);
       setShowAddForm(false); setForm(emptyForm); load();
     } catch (err) { setError(err.response?.data?.message || 'Gagal menambahkan permintaan.'); }
   }
@@ -226,11 +229,12 @@ export default function Pemeliharaan() {
                   // Karyawan selalu dapat melihat Tahap 1, 2, dan 3.
                   // Kabag/PIC mengikuti alur berurutan: Tahap 2 baru muncul
                   // setelah Tahap 1 selesai, dan Tahap 3 setelah Tahap 2 selesai.
+                  const rowEditable = canEditRow(row);
                   const previousStageDone = stage.no === 1 || row[stages[stage.no - 2].field] === 'selesai';
-                  const visibleForRole = !canEdit || previousStageDone;
+                  const visibleForRole = !rowEditable || previousStageDone;
                   if (!visibleForRole) return null;
 
-                  return <button key={stage.field} type="button" onClick={() => openStage(row, stage)} title={`${stage.title} — ${canEdit ? 'lihat/edit' : 'lihat'}`} className={`w-9 h-9 rounded-lg border flex items-center justify-center shadow-sm transition ${done ? 'bg-slate-900 text-white border-slate-900' : active ? 'bg-blue-100 text-blue-700 border-blue-200' : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'}`}><span className="material-symbols-outlined text-[18px]">{stage.icon}</span></button>;
+                  return <button key={stage.field} type="button" onClick={() => openStage(row, stage)} title={`${stage.title} — ${rowEditable ? 'lihat/edit' : 'lihat'}`} className={`w-9 h-9 rounded-lg border flex items-center justify-center shadow-sm transition ${done ? 'bg-slate-900 text-white border-slate-900' : active ? 'bg-blue-100 text-blue-700 border-blue-200' : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'}`}><span className="material-symbols-outlined text-[18px]">{stage.icon}</span></button>;
                 })}
               </div></td>
             </tr>)}
@@ -240,7 +244,7 @@ export default function Pemeliharaan() {
       <div className="flex justify-center py-4"><button onClick={()=>window.scrollTo({top:document.body.scrollHeight,behavior:'smooth'})} className="px-4 py-2 rounded-lg border border-slate-300 text-sm font-semibold text-slate-600">Scroll ke bawah ↓</button></div>
 
       {selectedRow && selectedStage && <StageModal
-        row={selectedRow} stage={selectedStage} draft={draft} setDraft={setDraft} canEdit={canEdit} roleLabel={roleLabel}
+        row={selectedRow} stage={selectedStage} draft={draft} setDraft={setDraft} canEdit={canEditRow(selectedRow)} roleLabel={roleLabel}
         saving={saving} onClose={closeStage} onSave={saveStage}
         onBack={() => selectedStage.no > 1 && openStage(selectedRow, stages[selectedStage.no - 2])}
         onNext={() => saveStage(selectedStage.no + 1)}
@@ -264,7 +268,7 @@ function StageModal({ row, stage, draft, setDraft, canEdit, roleLabel, saving, o
     <div className="min-h-full flex items-start justify-center">
       <div className="w-full max-w-6xl bg-[#f7f9fb] rounded-xl shadow-2xl overflow-hidden">
         <div className="bg-white border-b border-slate-200 px-5 md:px-8 py-5 flex items-center justify-between">
-          <div className="flex items-center gap-3"><div className="w-9 h-9 rounded-lg bg-slate-900 flex items-center justify-center"><span className="material-symbols-outlined text-white text-[20px]">account_balance</span></div><div><div className="font-semibold text-slate-900">Biro Umum</div><div className="text-[10px] uppercase tracking-wider text-slate-500">Rumah Tangga</div></div></div>
+          <div className="flex items-center gap-3"><BrandMark size="xs" /><div><div className="font-semibold text-slate-900">Biro Umum</div><div className="text-[10px] uppercase tracking-wider text-slate-500">Rumah Tangga</div></div></div>
           <button onClick={onClose} className="w-10 h-10 rounded-lg flex items-center justify-center text-slate-500 hover:bg-slate-100"><span className="material-symbols-outlined">close</span></button>
         </div>
 
@@ -290,7 +294,7 @@ function StageModal({ row, stage, draft, setDraft, canEdit, roleLabel, saving, o
           {stage.no === 2 && <StageTwo draft={draft} update={update} readOnly={readOnly} fileName={fileName} onView={onView} />}
           {stage.no === 3 && <StageThree draft={draft} update={update} readOnly={readOnly} fileName={fileName} onView={onView} />}
 
-          {!canEdit && <div className="mt-6 bg-slate-100 border border-slate-200 rounded-xl p-4 text-sm text-slate-600"><b>Mode lihat saja.</b> Role {roleLabel} dapat melihat seluruh data Tahap {stage.no}, tetapi tidak dapat mengubah atau menyimpan perubahan. Pengeditan hanya untuk Kabag dan PIC.</div>}
+          {!canEdit && <div className="mt-6 bg-slate-100 border border-slate-200 rounded-xl p-4 text-sm text-slate-600"><b>Mode lihat saja.</b> Anda dapat melihat seluruh data Tahap {stage.no}, tetapi tidak dapat mengubah atau menyimpan perubahan. Pengeditan hanya untuk Kabag, Admin, dan PIC yang menambahkan permintaan ini.</div>}
 
           <div className="mt-8 flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-slate-200 pt-5">
             <div>{stage.no > 1 && <button disabled={saving} onClick={onBack} className="px-4 py-2.5 rounded-lg border border-slate-300 bg-white text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50"><span className="material-symbols-outlined text-[17px] align-middle mr-1">arrow_back</span>Kembali ke Tahap {stage.no - 1}</button>}</div>
