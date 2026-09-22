@@ -7,7 +7,7 @@ const STATUS_META = {
   ditinjau: { label: 'Surat Ditinjau', card: 'bg-blue-50 border-blue-300 text-blue-900', badge: 'bg-blue-100 text-blue-700 border-blue-200', dot: 'bg-blue-500' },
   diterima: { label: 'Surat Diterima', card: 'bg-green-50 border-green-300 text-green-900', badge: 'bg-green-100 text-green-700 border-green-200', dot: 'bg-green-500' },
 };
-const ROOMS = ['Ruang Rapat Utama (Kapasitas 50)','Ruang Rapat Nusantara (Kapasitas 20)','Ruang VIP Eksekutif (Kapasitas 10)','Ruang Diskusi Mini (Kapasitas 5)'];
+const ROOMS = ['SERBAGUNA','SETJEN II','TRI DHARMA','BIRO UMUM','GRAHA KEMNAKER'];
 const dayNames = ['Senin','Selasa','Rabu','Kamis','Jumat','Sabtu','Minggu'];
 const emptyForm = { title:'', room:ROOMS[0], pic:'', pic_phone:'', date:'', start:'', end:'', status:'belum' };
 const MAX_FILE = 8 * 1024 * 1024;
@@ -45,6 +45,7 @@ export default function RuangRapat() {
   const updateSelected=async(payload)=>{setSaving(true);try{const r=await api.put(`/ruang-rapat/${selected.id}`,payload);setItems(p=>p.map(x=>x.id===selected.id?r.data.data:x));setSelected(r.data.data);setMode('detail');setError('');}catch(e){setError(e.response?.data?.message||'Gagal memperbarui booking.');}finally{setSaving(false);}};
   const cancelBooking=async()=>{if(!selected||!window.confirm(`Batalkan booking "${selected.title}"?`))return;setSaving(true);try{await api.delete(`/ruang-rapat/${selected.id}`);setItems(p=>p.filter(x=>x.id!==selected.id));setSelected(null);setError('');}catch(e){setError(e.response?.data?.message||'Gagal membatalkan booking.');}finally{setSaving(false);}};
   const moveWeek=(delta)=>{const d=new Date(`${weekStart}T00:00:00`);d.setDate(d.getDate()+delta*7);setWeekStart(localDateISO(d));};
+  const roomRows=useMemo(()=>{const extra=[...new Set(items.map(x=>x.room).filter(r=>r&&!ROOMS.includes(r)))].sort();return [...ROOMS,...extra];},[items]);
 
   return <div className="menu-page menu-ruang-rapat max-w-[1400px] mx-auto">
     <div className="menu-hero mb-6"><div><span className="menu-kicker">BOOKING • RUANG RAPAT</span><h1 className="text-3xl font-bold">Jadwal Ruang Rapat</h1><p className="text-sm mt-1">Kalender otomatis mengikuti tanggal dan waktu komputer saat ini.</p></div><div className="menu-hero-icon"><span className="material-symbols-outlined">calendar_month</span></div></div>
@@ -52,7 +53,51 @@ export default function RuangRapat() {
     <div className="bg-white border border-slate-200 rounded-xl p-4 mb-5 shadow-sm"><div className="flex flex-wrap items-center gap-3 text-xs font-medium"><span className="font-bold text-slate-700 mr-2">Petunjuk warna surat:</span>{Object.entries(STATUS_META).map(([k,m])=><span key={k} className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full border ${m.badge}`}><span className={`w-2.5 h-2.5 rounded-full ${m.dot}`}/>{m.label}</span>)}<span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border bg-amber-100 text-amber-800 border-amber-200"><span className="w-2.5 h-2.5 rounded-full bg-amber-500"/>Cuti Bersama</span></div></div>
     {error&&<div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-xs font-medium text-red-700">{error}</div>}
     <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm"><div className="p-4 border-b flex flex-col sm:flex-row justify-between gap-3 sm:items-center"><div><div className="font-bold text-sm">Kalender Booking Ruang Rapat</div><div className="text-xs text-slate-500 mt-1">Senin–Minggu · tanggal otomatis mengikuti minggu berjalan.</div></div><div className="flex items-center gap-2 text-xs"><button onClick={()=>moveWeek(-1)} className="border rounded px-2.5 py-1.5 hover:bg-slate-50">‹</button><span className="font-semibold px-2">{formatDateLabel(weekDates[0])} – {formatDateLabel(weekDates[6])}</span><button onClick={()=>moveWeek(1)} className="border rounded px-2.5 py-1.5 hover:bg-slate-50">›</button></div></div>
-      <div className="overflow-x-auto"><div className="min-w-[1180px] grid grid-cols-7 divide-x divide-slate-200">{weekDates.map(date=>{const day=getDayKey(date), dayItems=items.filter(x=>x.date===date), today=localDateISO()===date; const cuti=cutiBersamaLabel(date); return <div key={date} className={`min-h-[430px] ${cuti?'bg-amber-50/50':isWeekend(date)?'bg-red-50/30':'bg-slate-50/50'}`}><div className={`p-3 border-b ${today?'bg-violet-100':cuti?'bg-amber-100/70':'bg-slate-100/80'}`}><div className={`text-xs font-bold ${cuti?'text-amber-700':isWeekend(date)?'text-red-600':'text-slate-800'}`}>{day}{today?' • HARI INI':''}</div><div className="text-[11px] text-slate-500">{new Date(`${date}T00:00:00`).getDate()} {new Date(`${date}T00:00:00`).toLocaleString('id-ID',{month:'short'})}</div>{cuti&&<div className="mt-1 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-200/70 text-amber-800 text-[9px] font-bold"><span className="material-symbols-outlined text-[11px]">event_busy</span>{cuti}</div>}</div><div className="p-2.5 space-y-2.5">{loading?<div className="text-[11px] text-slate-400 text-center py-10">Memuat...</div>:dayItems.length===0?<div className="text-[11px] text-slate-400 text-center py-10">Belum ada booking</div>:dayItems.map(x=>{const m=STATUS_META[x.status]||STATUS_META.belum;return <button key={x.id} type="button" onClick={()=>{setSelected(x);setMode('detail')}} className={`w-full text-left border rounded-xl p-3 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${m.card}`}><div className="flex items-start justify-between gap-2"><span className="text-[10px] font-bold">{x.start} – {x.end}</span><span className={`text-[9px] px-2 py-1 rounded-full border ${m.badge}`}>{m.label}</span></div><div className="font-bold text-xs mt-2">{x.title}</div><div className="text-[10px] mt-1 opacity-80">▣ {x.room}</div><div className="text-[10px] mt-1 font-semibold">♙ PIC: {x.pic}</div><div className="text-[10px] mt-1 font-semibold">☎ {x.pic_phone||'-'}</div>{x.surat_name&&<div className="text-[9px] mt-2 truncate opacity-75">📄 {x.surat_name}</div>}</button>})}</div></div>})}</div></div>
+      <div className="overflow-x-auto">
+        <table className="min-w-[1400px] w-full border-collapse">
+          <thead>
+            <tr>
+              <th className="sticky left-0 z-10 bg-slate-100/95 backdrop-blur border-b border-r border-slate-200 text-left p-3 text-[11px] font-bold text-slate-700 uppercase tracking-wider w-[170px]">Ruangan</th>
+              {weekDates.map(date=>{const day=getDayKey(date), today=localDateISO()===date; const cuti=cutiBersamaLabel(date); return (
+                <th key={date} className={`border-b border-l border-slate-200 p-3 min-w-[170px] align-top ${today?'bg-violet-100':cuti?'bg-amber-100/70':isWeekend(date)?'bg-red-50/60':'bg-slate-100/80'}`}>
+                  <div className={`text-xs font-bold text-left ${cuti?'text-amber-700':isWeekend(date)?'text-red-600':'text-slate-800'}`}>{day}{today?' • HARI INI':''}</div>
+                  <div className="text-[11px] font-normal text-left text-slate-500">{new Date(`${date}T00:00:00`).getDate()} {new Date(`${date}T00:00:00`).toLocaleString('id-ID',{month:'short'})}</div>
+                  {cuti&&<div className="mt-1 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-200/70 text-amber-800 text-[9px] font-bold"><span className="material-symbols-outlined text-[11px]">event_busy</span>{cuti}</div>}
+                </th>
+              );})}
+            </tr>
+          </thead>
+          <tbody>
+            {roomRows.map(room=>(
+              <tr key={room}>
+                <td className="sticky left-0 z-10 bg-white border-r border-b border-slate-200 p-3 text-xs font-bold text-slate-800 align-top w-[170px]">{room}</td>
+                {weekDates.map(date=>{
+                  const cellItems=items.filter(x=>x.room===room && x.date===date);
+                  const cuti=cutiBersamaLabel(date);
+                  return (
+                    <td key={date} className={`border-b border-l border-slate-200 p-2 align-top min-w-[170px] ${cuti?'bg-amber-50/40':isWeekend(date)?'bg-red-50/20':''}`}>
+                      <div className="space-y-2 min-h-[76px]">
+                        {loading?<div className="text-[10px] text-slate-400 text-center py-6">Memuat...</div>:
+                          cellItems.length===0?
+                            <div className="w-full min-h-[60px] rounded-lg border border-dashed border-slate-200 text-slate-300 text-[10px] font-medium flex items-center justify-center">Kosong</div>
+                          :cellItems.map(x=>{const m=STATUS_META[x.status]||STATUS_META.belum; return (
+                            <button key={x.id} type="button" onClick={()=>{setSelected(x);setMode('detail')}} className={`w-full text-left border rounded-lg p-2.5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${m.card}`}>
+                              <div className="flex items-start justify-between gap-1"><span className="text-[9px] font-bold">{x.start}–{x.end}</span><span className={`text-[8px] px-1.5 py-0.5 rounded-full border ${m.badge}`}>{m.label}</span></div>
+                              <div className="font-bold text-[11px] mt-1.5 leading-snug">{x.title}</div>
+                              <div className="text-[9px] mt-1 font-semibold">♙ {x.pic}</div>
+                              {x.surat_name&&<div className="text-[8px] mt-1 truncate opacity-75">📄 {x.surat_name}</div>}
+                            </button>
+                          );})
+                        }
+                      </div>
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
     {showBook&&<BookModal form={form} setForm={setForm} saving={saving} error={error} onClose={()=>setShowBook(false)} onSubmit={saveBooking}/>} 
     <DocumentViewer open={viewer.open} name={viewer.name} data={viewer.data} onClose={()=>setViewer({open:false,name:'',data:''})} />

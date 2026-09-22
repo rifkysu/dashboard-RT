@@ -1,7 +1,7 @@
 const express=require('express');const prisma=require('../prisma');const {saveDataUrl}=require('../fileStorage');const {requireAuth,requireRole,EDITOR_ROLES}=require('../middleware/auth');const logger=require('../logger');
 const router=express.Router();
 const STATUS=['belum','ditinjau','diterima'];
-const ROOMS=['Ruang Rapat Utama (Kapasitas 50)','Ruang Rapat Nusantara (Kapasitas 20)','Ruang VIP Eksekutif (Kapasitas 10)','Ruang Diskusi Mini (Kapasitas 5)'];
+const ROOMS=['SERBAGUNA','SETJEN II','TRI DHARMA','BIRO UMUM','GRAHA KEMNAKER'];
 const PREFIX=['data:application/pdf;base64,','data:image/jpeg;base64,','data:image/png;base64,'];
 const validFile=v=>v==null||(typeof v==='string'&&v.length<=8*1024*1024&&PREFIX.some(p=>v.startsWith(p)));
 const validText=(v,m)=>typeof v==='string'&&v.trim().length>0&&v.length<=m;
