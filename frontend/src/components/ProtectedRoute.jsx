@@ -20,6 +20,7 @@ export default function ProtectedRoute({ children, menuKey }) {
   const [collapsed, setCollapsed] = useState(() => {
     try { return localStorage.getItem('sidebarCollapsed') === '1'; } catch { return false; }
   });
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   function toggleSidebar() {
     setCollapsed((c) => {
@@ -34,9 +35,15 @@ export default function ProtectedRoute({ children, menuKey }) {
   const down = menuKey && isMenuDown(menuKey);
   return (
     <div className="app-shell-bg min-h-screen">
-      <Sidebar collapsed={collapsed} onToggle={toggleSidebar} />
-      <div className={`min-h-screen transition-all duration-300 ${collapsed ? 'ml-20' : 'ml-60'}`}>
-        <main className="app-main p-5 md:p-7 min-h-screen">
+      <Sidebar collapsed={collapsed} onToggle={toggleSidebar} mobileOpen={mobileOpen} onMobileClose={() => setMobileOpen(false)} />
+      <div className={`min-h-screen transition-all duration-300 ml-0 ${collapsed ? 'md:ml-20' : 'md:ml-60'}`}>
+        <header className="md:hidden sticky top-0 z-20 bg-white border-b border-slate-200 px-4 py-3 flex items-center gap-3">
+          <button type="button" onClick={() => setMobileOpen(true)} aria-label="Buka menu" className="w-10 h-10 rounded-xl flex items-center justify-center text-slate-700 hover:bg-slate-100">
+            <span className="material-symbols-outlined">menu</span>
+          </button>
+          <span className="font-bold text-slate-900 text-sm">Biro Umum</span>
+        </header>
+        <main className="app-main p-4 sm:p-5 md:p-7 min-h-screen">
           {down ? <MaintenanceNotice message={maintenance[menuKey]?.message} /> : children}
         </main>
       </div>

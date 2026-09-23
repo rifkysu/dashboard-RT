@@ -14,7 +14,7 @@ const FEATURES = [
 
 function LandingMaintenanceNotice({ message }) {
   return (
-    <div className="min-h-screen flex items-center justify-center px-4">
+    <div className="min-h-screen flex items-center justify-center px-4" style={{ fontFamily: 'Arial, Helvetica, sans-serif' }}>
       <div className="max-w-xl w-full bg-white border border-amber-200 rounded-2xl shadow-sm p-8 text-center">
         <div className="w-16 h-16 rounded-2xl bg-amber-100 text-amber-600 flex items-center justify-center mx-auto mb-4">
           <span className="material-symbols-outlined text-[32px]">build</span>
@@ -51,7 +51,7 @@ export default function Landing() {
   if (landingDown) return <LandingMaintenanceNotice message={landingDown.message} />;
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col" style={{ fontFamily: 'Arial, Helvetica, sans-serif' }}>
       {/* Utility bar */}
       <div className="hidden sm:flex w-full bg-slate-900 text-white text-xs px-6 py-1.5 items-center justify-between">
         <div className="flex items-center gap-1.5 text-white/70">
@@ -187,7 +187,7 @@ export default function Landing() {
           {/* Feature strip */}
           <div id="fitur" className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 scroll-mt-24">
             {FEATURES.map((f) => (
-              <div key={f.label} className="bg-white rounded-2xl border border-slate-200 shadow-lg shadow-slate-200/50 p-4 md:p-5">
+              <div key={f.label} className="bg-white rounded-2xl border-2 border-slate-200 hover:border-indigo-300 shadow-lg shadow-slate-200/50 p-4 md:p-5 transition">
                 <div className={`w-11 h-11 rounded-xl bg-gradient-to-br ${f.gradient} flex items-center justify-center text-white shadow-sm mb-3`}>
                   <span className="material-symbols-outlined text-[22px]">{f.icon}</span>
                 </div>
@@ -198,16 +198,28 @@ export default function Landing() {
           </div>
 
           {/* Schedule */}
-          <div id="jadwal" className="mt-10 mb-6 scroll-mt-24">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-md bg-blue-50 text-blue-700 text-xs font-semibold mb-3">
-              <span className="material-symbols-outlined text-[16px]">calendar_month</span>
-              Jadwal Ruang Rapat
-            </div>
-            <h3 className="text-2xl md:text-3xl font-bold text-slate-900">Cek Ketersediaan Ruang Rapat</h3>
-            <p className="text-sm text-slate-500 mt-1.5 max-w-2xl">Lihat jadwal dan ketersediaan ruang rapat secara real-time, tanpa perlu login.</p>
-          </div>
+          <div id="jadwal" className="scroll-mt-24 mt-14 relative overflow-hidden rounded-3xl border border-white/20 bg-gradient-to-br from-indigo-700 via-blue-700 to-violet-700 p-5 md:p-10 shadow-xl shadow-indigo-900/20">
+            <div
+              className="absolute inset-0 opacity-[0.15]"
+              style={{ backgroundImage: 'radial-gradient(currentColor 1.5px, transparent 1.5px)', backgroundSize: '22px 22px', color: '#ffffff' }}
+            ></div>
+            <div className="absolute -top-20 -right-16 w-72 h-72 rounded-full bg-white/10 blur-3xl"></div>
+            <div className="absolute -bottom-24 -left-20 w-80 h-80 rounded-full bg-fuchsia-400/20 blur-3xl"></div>
+            <div className="absolute top-1/3 right-1/4 w-40 h-40 rounded-full bg-sky-300/20 blur-3xl"></div>
 
-          <RuangRapatSchedule />
+            <div className="relative">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-md bg-white/15 border border-white/20 text-white text-xs font-semibold mb-3 backdrop-blur">
+                <span className="material-symbols-outlined text-[16px]">calendar_month</span>
+                Jadwal Ruang Rapat
+              </div>
+              <h3 className="text-2xl md:text-3xl font-bold text-white">Cek Ketersediaan Ruang Rapat</h3>
+              <p className="text-sm text-white/80 mt-1.5 max-w-2xl">Lihat jadwal dan ketersediaan ruang rapat secara real-time, tanpa perlu login.</p>
+            </div>
+
+            <div className="relative mt-6">
+              <RuangRapatSchedule />
+            </div>
+          </div>
 
           {/* Closing CTA */}
           <div className="my-10 relative overflow-hidden rounded-2xl bg-gradient-to-r from-slate-900 via-slate-800 to-indigo-900 p-6 md:p-8 flex flex-col md:flex-row items-center justify-between gap-5 shadow-xl">

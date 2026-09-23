@@ -230,6 +230,16 @@ Langkah aktifkan Google SSO untuk uji coba:
 
 ## BAGIAN 5 — RINGKASAN ATURAN HAK AKSES (RBAC)
 
+### Alur mendapatkan role (penting dipahami sebelum maintenance)
+Semua akun **selalu mulai dari role `karyawan`** — tidak ada jalur pendaftaran/login yang langsung memberi role lebih tinggi:
+
+1. **Daftar mandiri** (form Register) → role `karyawan`.
+2. **Login SSO pertama kali** (email belum terdaftar) → backend otomatis buat akun baru role `karyawan` juga (`backend/src/config/passport.js`). Kalau email itu ternyata **sudah ada** duluan (misalnya sudah di-upgrade manual lewat pgAdmin4), SSO **tidak** menimpa/reset role yang sudah ada.
+3. **Auto-promote ke PIC** — begitu seorang `karyawan` berhasil menambahkan permintaan baru **di Pemeliharaan ATAU Pengadaan** (endpoint `POST /pemeliharaan` atau `POST /pengadaan`), backend otomatis update role user itu jadi `pic` **saat itu juga**, lalu kirim token JWT baru di response supaya sesi langsung ter-update tanpa logout/login ulang (`refreshAuth` di frontend). Promosi ini **berlaku global** (bukan per-modul) — cukup sekali nambah di modul mana pun, role langsung `pic` di semua tempat.
+4. **PIC (lewat pgAdmin4), Kabag, dan Admin** — role-role ini **tidak bisa** didapat otomatis lewat aksi apa pun di aplikasi (selain auto-promote PIC di poin 3); satu-satunya cara adalah admin/DBA mengubahnya manual lewat pgAdmin4 (lihat query di Bagian 1).
+
+Ringkasnya: **Register/SSO → Karyawan → (nambah permintaan) → PIC → (manual pgAdmin4) → Kabag/Admin**.
+
 | Role | Bisa buka data? | Bisa tambah permintaan baru? | Bisa edit / proses tahapan? | Bisa dipilih saat daftar akun? |
 |---|:---:|:---:|:---:|:---:|
 | Karyawan | ✅ | ✅ (otomatis jadi PIC setelahnya) | ❌ | ✅ (satu-satunya) |

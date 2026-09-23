@@ -124,8 +124,9 @@ router.post('/login', loginLimiter, async (req, res) => {
       return res.status(401).json({ message: 'Email atau kata sandi salah.' });
     }
 
-    const token = signToken(user);
-    res.json({ token, user: sanitizeUser(user) });
+    const updated = await prisma.user.update({ where: { id: user.id }, data: { last_login_at: new Date() } });
+    const token = signToken(updated);
+    res.json({ token, user: sanitizeUser(updated) });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Terjadi kesalahan server saat login.' });
@@ -234,7 +235,8 @@ if (ssoEnabled) {
     passport.authenticate('google', { session: false, failureRedirect: `${process.env.FRONTEND_URL}/login?sso=gagal` }),
     async (req, res) => {
       // req.user diisi oleh strategy passport-google-oauth20 (lihat config/passport.js)
-      const token = signToken(req.user);
+      const updated = await prisma.user.update({ where: { id: req.user.id }, data: { last_login_at: new Date() } });
+      const token = signToken(updated);
       // Redirect kembali ke frontend membawa token di query string.
       res.redirect(`${process.env.FRONTEND_URL}/sso-callback?token=${token}`);
     }

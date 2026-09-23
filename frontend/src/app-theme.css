@@ -108,12 +108,20 @@ main.app-main {
 .menu-hero p { color:rgba(255,255,255,.82) !important; }
 .menu-hero-icon { width:58px; height:58px; border-radius:18px; display:flex; align-items:center; justify-content:center; background:rgba(255,255,255,.16); border:1px solid rgba(255,255,255,.22); position:relative; z-index:1; }
 .menu-hero-icon .material-symbols-outlined { font-size:30px; }
+@media (max-width: 480px) {
+  .menu-hero { padding:16px 18px; border-radius:18px; gap:12px; }
+  .menu-hero h1 { font-size:20px !important; line-height:1.25; }
+  .menu-hero p { font-size:12px !important; }
+  .menu-hero-icon { width:42px; height:42px; border-radius:13px; }
+  .menu-hero-icon .material-symbols-outlined { font-size:22px; }
+}
 .menu-kendaraan .menu-hero { background:linear-gradient(135deg,#0369a1,#2563eb 55%,#4f46e5); }
 .menu-pemeliharaan .menu-hero { background:linear-gradient(135deg,#047857,#0f766e 55%,#2563eb); }
 .menu-pengadaan .menu-hero { background:linear-gradient(135deg,#b45309,#d97706 55%,#ea580c); }
 .menu-ruang-rapat .menu-hero { background:linear-gradient(135deg,#6d28d9,#7c3aed 55%,#c026d3); }
 .menu-dashboard .menu-hero { background:linear-gradient(135deg,#4338ca,#2563eb 55%,#0891b2); }
 .menu-settings .menu-hero { background:linear-gradient(135deg,#334155,#475569 55%,#6366f1); }
+.menu-akun .menu-hero { background:linear-gradient(135deg,#9d174d,#be185d 55%,#db2777); }
 .detail-btn { display:inline-flex; align-items:center; gap:5px; padding:7px 11px; border-radius:10px; background:rgba(37,99,235,.08); color:#2563eb; border:1px solid rgba(37,99,235,.18); font-size:11px; font-weight:800; transition:.2s; }
 .detail-btn:hover { background:rgba(37,99,235,.14); transform:translateY(-1px); }
 .vehicle-detail-modal { background:#ffffff; color:#0f172a; }

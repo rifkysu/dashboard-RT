@@ -1,6 +1,164 @@
-const express=require('express');const prisma=require('../prisma');const {saveDataUrl}=require('../fileStorage');const {requireAuth,requireRole,EDITOR_ROLES}=require('../middleware/auth');const {requireNotInMaintenance}=require('../middleware/maintenance');const logger=require('../logger');
-const router=express.Router();router.use(requireAuth);router.use(requireNotInMaintenance('kendaraan'));const MAX=8*1024*1024;const PREFIX=['data:image/jpeg;base64,','data:image/png;base64,','data:image/webp;base64,'];const STATUS=['Tersedia','Digunakan','Servis'];const valid=v=>v==null||(typeof v==='string'&&v.length<=MAX&&PREFIX.some(p=>v.startsWith(p)));const text=(v,m,req=false)=>(v==null||v==='')?!req:typeof v==='string'&&v.trim().length>0&&v.length<=m;
-router.get('/',async(req,res)=>{try{const rows=await prisma.kendaraan.findMany({orderBy:[{created_at:'desc'},{id:'desc'}]});res.json({data:rows});}catch(err){logger.error('GET kendaraan gagal',{error:err});res.status(500).json({message:'Gagal mengambil data kendaraan.'});}});
-router.post('/',requireRole(EDITOR_ROLES),async(req,res)=>{try{const {name,plate,type,sub,status,tax,next_tax,photo_name,photo_file_data}=req.body;if(!text(name,150,true)||!text(plate,30,true)||!text(type,100,true))return res.status(400).json({message:'Nama kendaraan, nomor polisi, dan jenis wajib diisi.'});if(!STATUS.includes(status||'Tersedia'))return res.status(400).json({message:'Status kendaraan tidak valid.'});if(!valid(photo_file_data))return res.status(400).json({message:'Foto tidak valid.'});if(photo_name!=null&&!text(photo_name,255))return res.status(400).json({message:'Nama file foto tidak valid.'});const path=photo_file_data?await saveDataUrl(photo_file_data,photo_name,'kendaraan'):null;const row=await prisma.kendaraan.create({data:{name:name.trim(),plate:plate.trim(),type:type.trim(),sub:sub||null,status:status||'Tersedia',tax:tax||'-',next_tax:next_tax||'-',photo_name:photo_name||null,photo_file_data:photo_file_data||null,photo_file_path:path,created_by:req.user.id,updated_by:req.user.id}});res.status(201).json({data:row});}catch(err){logger.error('POST kendaraan gagal',{error:err});if(err.code==='P2002')return res.status(409).json({message:'Nomor polisi sudah terdaftar.'});res.status(500).json({message:'Gagal menambahkan kendaraan.'});}});
-router.put('/:id',requireRole(EDITOR_ROLES),async(req,res)=>{try{const id=Number(req.params.id);const body={...req.body};if(body.status!==undefined&&!STATUS.includes(body.status))return res.status(400).json({message:'Status kendaraan tidak valid.'});if(body.photo_file_data!==undefined&&!valid(body.photo_file_data))return res.status(400).json({message:'Foto tidak valid.'});if(body.photo_name!==undefined&&!text(body.photo_name,255))return res.status(400).json({message:'Nama file foto tidak valid.'});if(body.photo_file_data)body.photo_file_path=await saveDataUrl(body.photo_file_data,body.photo_name,'kendaraan');const allowed=['name','plate','type','sub','status','tax','next_tax','photo_name','photo_file_data','photo_file_path'];const data={};for(const f of allowed)if(body[f]!==undefined)data[f]=body[f];if(data.name!==undefined&&!text(data.name,150,true)||data.plate!==undefined&&!text(data.plate,30,true)||data.type!==undefined&&!text(data.type,100,true))return res.status(400).json({message:'Data kendaraan tidak valid.'});if(!Object.keys(data).length)return res.status(400).json({message:'Tidak ada field yang diubah.'});data.updated_by=req.user.id;const row=await prisma.kendaraan.update({where:{id},data});res.json({data:row});}catch(err){if(err.code==='P2025')return res.status(404).json({message:'Kendaraan tidak ditemukan.'});if(err.code==='P2002')return res.status(409).json({message:'Nomor polisi sudah terdaftar.'});logger.error('PUT kendaraan gagal',{error:err});res.status(500).json({message:'Gagal memperbarui kendaraan.'});}});
-router.delete('/:id',requireRole(EDITOR_ROLES),async(req,res)=>{try{await prisma.kendaraan.delete({where:{id:Number(req.params.id)}});res.json({message:'Kendaraan berhasil dihapus.'});}catch(err){if(err.code==='P2025')return res.status(404).json({message:'Kendaraan tidak ditemukan.'});res.status(500).json({message:'Gagal menghapus kendaraan.'});}});module.exports=router;
+const express = require('express');
+const prisma = require('../prisma');
+const { saveDataUrl } = require('../fileStorage');
+const { isGenuineDocumentDataUrl } = require('../fileSignature');
+const { requireAuth, requireRole, EDITOR_ROLES } = require('../middleware/auth');
+const { requireNotInMaintenance } = require('../middleware/maintenance');
+const logger = require('../logger');
+
+const router = express.Router();
+router.use(requireAuth);
+router.use(requireNotInMaintenance('kendaraan'));
+
+const MAX_PHOTO_BYTES = 4 * 1024 * 1024; // foto sudah dikompres di client, 4MB base64 cukup longgar
+const MAX_PHOTOS = 6;
+const STATUS = ['Tersedia', 'Digunakan', 'Servis'];
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+const text = (v, m, req = false) => (v == null || v === '') ? !req : typeof v === 'string' && v.trim().length > 0 && v.length <= m;
+const validDate = (v) => v == null || v === '' || DATE_RE.test(v);
+const toDate = (v) => (v == null || v === '') ? null : new Date(`${v}T00:00:00Z`);
+const dateOnly = (v) => v == null ? null : v.toISOString().slice(0, 10);
+
+function parsePhotos(row) {
+  let photos = [];
+  try { photos = row.photos ? JSON.parse(row.photos) : []; } catch { photos = []; }
+  return photos;
+}
+// Frontend cuma butuh preview + nama; array asli (dengan base64) tetap dikirim
+// supaya galeri foto kendaraan bisa langsung ditampilkan tanpa request tambahan.
+const serialize = (row) => row ? ({
+  ...row,
+  tanggal_perolehan: dateOnly(row.tanggal_perolehan),
+  masa_berlaku_stnk: dateOnly(row.masa_berlaku_stnk),
+  waktu_pajak: dateOnly(row.waktu_pajak),
+  photos: parsePhotos(row),
+  photo_file_paths: undefined,
+}) : row;
+
+// Validasi array foto: maks 6, tiap item {name, data} dan `data`-nya benar-benar
+// gambar asli (magic number dicek lewat isGenuineDocumentDataUrl), bukan cuma
+// klaim Content-Type dari client.
+function validatePhotos(photos) {
+  if (photos === undefined) return { ok: true, items: undefined };
+  if (!Array.isArray(photos) || photos.length > MAX_PHOTOS) return { ok: false };
+  for (const p of photos) {
+    if (!p || typeof p.name !== 'string' || p.name.length > 255) return { ok: false };
+    if (!isGenuineDocumentDataUrl(p.data, MAX_PHOTO_BYTES)) return { ok: false };
+  }
+  return { ok: true, items: photos };
+}
+
+router.get('/', async (req, res) => {
+  try {
+    const rows = await prisma.kendaraan.findMany({ orderBy: [{ created_at: 'desc' }, { id: 'desc' }] });
+    res.json({ data: rows.map(serialize) });
+  } catch (err) {
+    logger.error('GET kendaraan gagal', { error: err });
+    res.status(500).json({ message: 'Gagal mengambil data kendaraan.' });
+  }
+});
+
+router.post('/', requireRole(EDITOR_ROLES), async (req, res) => {
+  try {
+    const { nama_barang, merk, tipe, no_bpkb, plate, jenis, sub, status, tanggal_perolehan, masa_berlaku_stnk, waktu_pajak, photos } = req.body;
+
+    if (!text(nama_barang, 150, true) || !text(merk, 100, true) || !text(tipe, 100, true) || !text(plate, 30, true) || !text(jenis, 30, true)) {
+      return res.status(400).json({ message: 'Nama barang, merk, tipe, nomor polisi, dan jenis wajib diisi.' });
+    }
+    if (!STATUS.includes(status || 'Tersedia')) return res.status(400).json({ message: 'Status kendaraan tidak valid.' });
+    if (no_bpkb != null && !text(no_bpkb, 50)) return res.status(400).json({ message: 'Nomor BPKB tidak valid.' });
+    if (!validDate(tanggal_perolehan) || !validDate(masa_berlaku_stnk) || !validDate(waktu_pajak)) {
+      return res.status(400).json({ message: 'Format tanggal tidak valid.' });
+    }
+    const photoCheck = validatePhotos(photos);
+    if (!photoCheck.ok) return res.status(400).json({ message: 'Foto kendaraan tidak valid (maksimal 6 foto, harus gambar asli).' });
+    const photoItems = photoCheck.items || [];
+
+    const savedPaths = [];
+    for (const p of photoItems) savedPaths.push({ name: p.name, path: await saveDataUrl(p.data, p.name, 'kendaraan') });
+
+    const row = await prisma.kendaraan.create({
+      data: {
+        nama_barang: nama_barang.trim(),
+        merk: merk.trim(),
+        tipe: tipe.trim(),
+        no_bpkb: no_bpkb ? no_bpkb.trim() : null,
+        plate: plate.trim(),
+        jenis: jenis.trim(),
+        sub: sub || null,
+        status: status || 'Tersedia',
+        tanggal_perolehan: toDate(tanggal_perolehan),
+        masa_berlaku_stnk: toDate(masa_berlaku_stnk),
+        waktu_pajak: toDate(waktu_pajak),
+        photos: photoItems.length ? JSON.stringify(photoItems) : null,
+        photo_file_paths: savedPaths.length ? JSON.stringify(savedPaths) : null,
+        created_by: req.user.id,
+        updated_by: req.user.id,
+      },
+    });
+    res.status(201).json({ data: serialize(row) });
+  } catch (err) {
+    logger.error('POST kendaraan gagal', { error: err });
+    if (err.code === 'P2002') return res.status(409).json({ message: 'Nomor polisi sudah terdaftar.' });
+    res.status(500).json({ message: 'Gagal menambahkan kendaraan.' });
+  }
+});
+
+router.put('/:id', requireRole(EDITOR_ROLES), async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    const body = { ...req.body };
+
+    if (body.status !== undefined && !STATUS.includes(body.status)) return res.status(400).json({ message: 'Status kendaraan tidak valid.' });
+    if (body.no_bpkb !== undefined && body.no_bpkb != null && !text(body.no_bpkb, 50)) return res.status(400).json({ message: 'Nomor BPKB tidak valid.' });
+    for (const f of ['tanggal_perolehan', 'masa_berlaku_stnk', 'waktu_pajak']) {
+      if (body[f] !== undefined && !validDate(body[f])) return res.status(400).json({ message: 'Format tanggal tidak valid.' });
+    }
+    const photoCheck = validatePhotos(body.photos);
+    if (!photoCheck.ok) return res.status(400).json({ message: 'Foto kendaraan tidak valid (maksimal 6 foto, harus gambar asli).' });
+
+    const data = {};
+    for (const f of ['nama_barang', 'merk', 'tipe', 'no_bpkb', 'plate', 'jenis', 'sub', 'status']) {
+      if (body[f] !== undefined) data[f] = typeof body[f] === 'string' ? body[f].trim() || null : body[f];
+    }
+    for (const f of ['tanggal_perolehan', 'masa_berlaku_stnk', 'waktu_pajak']) {
+      if (body[f] !== undefined) data[f] = toDate(body[f]);
+    }
+    if (data.nama_barang !== undefined && !text(data.nama_barang, 150, true)) return res.status(400).json({ message: 'Nama barang tidak valid.' });
+    if (data.merk !== undefined && !text(data.merk, 100, true)) return res.status(400).json({ message: 'Merk tidak valid.' });
+    if (data.tipe !== undefined && !text(data.tipe, 100, true)) return res.status(400).json({ message: 'Tipe tidak valid.' });
+    if (data.plate !== undefined && !text(data.plate, 30, true)) return res.status(400).json({ message: 'Nomor polisi tidak valid.' });
+    if (data.jenis !== undefined && !text(data.jenis, 30, true)) return res.status(400).json({ message: 'Jenis kendaraan tidak valid.' });
+
+    if (photoCheck.items !== undefined) {
+      const savedPaths = [];
+      for (const p of photoCheck.items) savedPaths.push({ name: p.name, path: await saveDataUrl(p.data, p.name, 'kendaraan') });
+      data.photos = photoCheck.items.length ? JSON.stringify(photoCheck.items) : null;
+      data.photo_file_paths = savedPaths.length ? JSON.stringify(savedPaths) : null;
+    }
+
+    if (!Object.keys(data).length) return res.status(400).json({ message: 'Tidak ada field yang diubah.' });
+    data.updated_by = req.user.id;
+    const row = await prisma.kendaraan.update({ where: { id }, data });
+    res.json({ data: serialize(row) });
+  } catch (err) {
+    if (err.code === 'P2025') return res.status(404).json({ message: 'Kendaraan tidak ditemukan.' });
+    if (err.code === 'P2002') return res.status(409).json({ message: 'Nomor polisi sudah terdaftar.' });
+    logger.error('PUT kendaraan gagal', { error: err });
+    res.status(500).json({ message: 'Gagal memperbarui kendaraan.' });
+  }
+});
+
+router.delete('/:id', requireRole(EDITOR_ROLES), async (req, res) => {
+  try {
+    await prisma.kendaraan.delete({ where: { id: Number(req.params.id) } });
+    res.json({ message: 'Kendaraan berhasil dihapus.' });
+  } catch (err) {
+    if (err.code === 'P2025') return res.status(404).json({ message: 'Kendaraan tidak ditemukan.' });
+    logger.error('DELETE kendaraan gagal', { error: err });
+    res.status(500).json({ message: 'Gagal menghapus kendaraan.' });
+  }
+});
+
+module.exports = router;

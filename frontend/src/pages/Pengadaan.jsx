@@ -3,11 +3,14 @@ import api from '../api';
 import { useAuth } from '../context/AuthContext';
 import BrandMark from '../components/BrandMark';
 import PaymentMethodDetail from '../components/PaymentMethodDetail';
+import { verifyFileIsGenuine } from '../utils/fileSignature';
+
+const FILE_SIGNATURE_REJECT_MESSAGE = 'File yang diupload tidak terdeteksi sebagai dokumen/gambar asli (kemungkinan file diubah namanya atau berupa script). Harap upload dokumen PDF/JPG/PNG asli.';
 
 const statusPill = {
-  pending: 'bg-red-50 text-red-700',
-  on_progress: 'bg-amber-50 text-amber-700',
-  selesai: 'bg-emerald-50 text-emerald-700',
+  pending: 'bg-red-50 text-red-700 border border-red-200',
+  on_progress: 'bg-amber-50 text-amber-700 border border-amber-200',
+  selesai: 'bg-emerald-50 text-emerald-700 border border-emerald-200',
 };
 const statusLabel = { pending: 'Pending', on_progress: 'On Progress', selesai: 'Selesai' };
 
@@ -132,6 +135,16 @@ export default function Pengadaan() {
     } catch (err) { setError(err.response?.data?.message || 'Gagal menambahkan pengadaan.'); }
   }
 
+  async function handleDelete(row) {
+    if (!window.confirm(`Hapus pengadaan "${row.nama_barang_jasa}" (#${row.kode})? Tindakan ini tidak dapat dibatalkan.`)) return;
+    try {
+      await api.delete(`/pengadaan/${row.id}`);
+      setData((current) => current.filter((item) => item.id !== row.id));
+    } catch (err) {
+      alert(err.response?.data?.message || 'Gagal menghapus data.');
+    }
+  }
+
   const visibleData = data.filter((row) => {
     const value = (v) => String(v || '').trim().toLowerCase();
     const categoryMatch = !filters.kategori || value(row.kategori) === value(filters.kategori);
@@ -167,8 +180,8 @@ export default function Pengadaan() {
   const roleLabel = user?.role === 'kabag' ? 'Kabag' : user?.role === 'pic' ? 'PIC' : 'Karyawan';
 
   return (
-    <div className="menu-page menu-pengadaan relative">
-      <div className="menu-hero mb-6"><div><span className="menu-kicker">PENGADAAN • BARANG & JASA</span><h1 className="text-2xl font-bold text-slate-900">Pengadaan</h1><p className="text-sm text-slate-600 mt-1">Kelola dan pantau proses pengadaan barang dan jasa.</p></div><div className="menu-hero-icon"><span className="material-symbols-outlined">shopping_cart</span></div></div>
+    <div className="menu-page menu-pengadaan relative" style={{ fontFamily: 'Arial, Helvetica, sans-serif' }}>
+      <div className="menu-hero mb-6"><div><span className="menu-kicker">PENGADAAN • BARANG & JASA</span><h1 className="text-2xl font-bold">Pengadaan</h1><p className="text-sm mt-1">Kelola dan pantau proses pengadaan barang dan jasa.</p></div><div className="menu-hero-icon"><span className="material-symbols-outlined">shopping_cart</span></div></div>
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-6">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Daftar Permintaan Pengadaan</h1>
@@ -196,10 +209,10 @@ export default function Pengadaan() {
 
       <div className="bg-white/90 backdrop-blur rounded-2xl border border-white/80 overflow-hidden shadow-lg shadow-slate-200/40">
         <div className="overflow-x-auto"><table className="w-full text-sm">
-          <thead className="bg-slate-50 border-b border-slate-200 sticky top-0 z-10"><tr>
-            {['ID Request','Nama Barang/Jasa','Lokasi','Titik Lokasi','Kategori','PIC RT','Nama Perusahaan','Transaksi','Nilai Invoice','Tanggal Input','Status','Tanggal Selesai','Aksi (Tahapan Alur)'].map((h) => <th key={h} className="py-3 px-5 text-left text-xs font-semibold text-slate-500 uppercase whitespace-nowrap">{h}</th>)}
+          <thead className="bg-slate-50 border-b-2 border-slate-200 sticky top-0 z-10"><tr className="divide-x divide-slate-200">
+            {['ID Request','Nama Barang/Jasa','Lokasi','Titik Lokasi','Kategori','PIC RT','Nama Perusahaan','Transaksi','Nilai Invoice','Tanggal Input','Status','Tanggal Selesai','Aksi (Tahapan Alur)','Hapus'].map((h) => <th key={h} className="py-3 px-5 text-left text-xs font-semibold text-slate-500 uppercase whitespace-nowrap">{h}</th>)}
           </tr>
-          <tr className="bg-white border-b border-slate-200">
+          <tr className="bg-white border-b-2 border-slate-200 divide-x divide-slate-200">
             <th className="p-2"><input placeholder="Filter ID" value={filters.id} onChange={e=>setFilters(f=>({...f,id:e.target.value}))} className="w-full h-8 px-2 text-xs border rounded"/></th>
             <th className="p-2"><input placeholder="Filter nama" value={filters.nama} onChange={e=>setFilters(f=>({...f,nama:e.target.value}))} className="w-full h-8 px-2 text-xs border rounded"/></th>
             <th className="p-2"><select value={filters.lokasi} onChange={e=>setFilters(f=>({...f,lokasi:e.target.value}))} className="w-full h-8 text-xs border rounded"><option value="">Semua Lokasi</option><option>Graha Kemnaker</option><option>Gatsu 51</option><option>Wisma Ciloto</option><option>Rumah Dinas</option><option>RC Walang</option><option>RC Kranji</option></select></th>
@@ -213,19 +226,20 @@ export default function Pengadaan() {
             <th className="p-2"><select value={filters.status} onChange={e=>setFilters(f=>({...f,status:e.target.value}))} className="w-full h-8 text-xs border rounded"><option value="">Semua</option><option value="pending">Pending</option><option value="on_progress">On Progress</option><option value="selesai">Selesai</option></select></th>
             <th className="p-2"><input type="date" title="Filter tanggal selesai" value={filters.tanggal_selesai} onChange={e=>setFilters(f=>({...f,tanggal_selesai:e.target.value}))} className="w-full h-8 px-2 text-xs border rounded"/></th>
             <th></th>
+            <th></th>
           </tr></thead>
           <tbody className="divide-y divide-slate-100">
-            {loading && <tr><td colSpan={13} className="py-8 text-center text-slate-400">Memuat data...</td></tr>}
-            {!loading && visibleData.length === 0 && <tr><td colSpan={13} className="py-8 text-center text-slate-400">Belum ada data.</td></tr>}
-            {visibleData.map((row) => <tr key={row.id} className="hover:bg-slate-50/50">
+            {loading && <tr><td colSpan={14} className="py-8 text-center text-slate-400">Memuat data...</td></tr>}
+            {!loading && visibleData.length === 0 && <tr><td colSpan={14} className="py-8 text-center text-slate-400">Belum ada data.</td></tr>}
+            {visibleData.map((row) => <tr key={row.id} className="divide-x divide-slate-100 hover:bg-slate-50/50">
               <td className="py-3 px-5 font-semibold text-slate-800">#{row.kode}</td>
               <td className="py-3 px-5 max-w-[220px] truncate font-semibold text-slate-800">{row.nama_barang_jasa}</td>
               <td className="py-3 px-5 text-slate-500">{row.lokasi || '-'}</td>
               <td className="py-3 px-5 text-slate-500">{row.titik_lokasi || '-'}</td>
-              <td className="py-3 px-5"><span className="inline-flex px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 text-xs font-semibold capitalize">{row.kategori || '-'}</span></td>
+              <td className="py-3 px-5"><span className="inline-flex px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-200 text-xs font-semibold capitalize">{row.kategori || '-'}</span></td>
               <td className="py-3 px-5 text-slate-700 font-medium">{row.pic || '-'}</td>
               <td className="py-3 px-5 text-slate-500">{row.stage2_vendor || '-'}</td>
-              <td className="py-3 px-5"><span className="inline-flex px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 text-xs font-semibold whitespace-nowrap">{paymentLabel(row)}</span></td>
+              <td className="py-3 px-5"><span className="inline-flex px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 border border-slate-300 text-xs font-semibold whitespace-nowrap">{paymentLabel(row)}</span></td>
               <td className="py-3 px-5 text-slate-500">{row.stage2_invoice_amount ? `Rp ${money(row.stage2_invoice_amount)}` : '-'}</td>
               <td className="py-3 px-5 text-slate-500">{row.tanggal?.slice(0,10)}</td>
               <td className="py-3 px-5"><span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-semibold ${statusPill[row.status]}`}>{statusLabel[row.status]}</span></td>
@@ -240,6 +254,17 @@ export default function Pengadaan() {
                   return <button key={stage.field} type="button" onClick={() => openStage(row, stage)} title={`${stage.title} — ${rowEditable ? 'lihat/edit' : 'lihat'}`} className={`w-9 h-9 rounded-lg border flex items-center justify-center shadow-sm transition ${done ? 'bg-slate-900 text-white border-slate-900' : active ? 'bg-blue-100 text-blue-700 border-blue-200' : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'}`}><span className="material-symbols-outlined text-[18px]">{stage.icon}</span></button>;
                 })}
               </div></td>
+              <td className="py-3 px-5">
+                {canEditRow(row) ? (
+                  <button type="button" onClick={() => handleDelete(row)} title="Hapus pengadaan (hanya pembuat yang bisa menghapus)" className="w-9 h-9 rounded-lg border border-red-200 bg-red-50 text-red-600 flex items-center justify-center shadow-sm hover:bg-red-100 transition">
+                    <span className="material-symbols-outlined text-[18px]">delete</span>
+                  </button>
+                ) : (
+                  <span className="w-9 h-9 rounded-lg border border-slate-100 bg-slate-50 text-slate-300 flex items-center justify-center" title="Hanya pembuat pengadaan yang bisa menghapus">
+                    <span className="material-symbols-outlined text-[18px]">lock</span>
+                  </span>
+                )}
+              </td>
             </tr>)}
           </tbody>
         </table></div>
@@ -292,7 +317,7 @@ function StageModal({ row, stage, draft, setDraft, canEdit, roleLabel, saving, o
 
           <div className="bg-slate-100 rounded-xl p-4 sm:p-5 flex flex-wrap items-center justify-between gap-3 mb-8"><div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-slate-700"><span><b>Barang/Jasa:</b> {row.nama_barang_jasa}</span><span className="hidden sm:inline text-slate-300">•</span><span><b>Lokasi:</b> {row.lokasi || '-'}</span>{row.titik_lokasi && <><span className="hidden sm:inline text-slate-300">•</span><span><b>Titik Lokasi:</b> {row.titik_lokasi}</span></>}<span className="hidden sm:inline text-slate-300">•</span><span><b>Status:</b> {statusLabel[row.status]}</span></div><span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${statusPill[stageStatus]}`}>{statusLabel[stageStatus]}</span></div>
 
-          {stage.no === 1 && <PengadaanStageOne draft={draft} update={update} readOnly={readOnly} />}
+          {stage.no === 1 && <PengadaanStageOne draft={draft} update={update} readOnly={readOnly} onView={onView} />}
           {stage.no === 2 && <PengadaanStageTwo draft={draft} update={update} readOnly={readOnly} onView={onView} />}
           {stage.no === 3 && <PengadaanStageThree draft={draft} update={update} readOnly={readOnly} onView={onView} />}
 
@@ -308,8 +333,21 @@ function StageModal({ row, stage, draft, setDraft, canEdit, roleLabel, saving, o
   </div>;
 }
 
-function PengadaanStageOne({ draft, update, readOnly }) {
+function PengadaanStageOne({ draft, update, readOnly, onView }) {
   return <section className="bg-white/90 backdrop-blur rounded-2xl shadow-lg shadow-slate-200/40 p-6 md:p-8 border border-white/80"><h2 className="text-xl font-semibold text-slate-900 mb-6">Data Analisa Harga Perkiraan Sendiri (HPS)</h2><div className="space-y-7">
+    {draft.request_document_name && (
+      <div>
+        <label className={labelClass}>Dokumen Permintaan Awal</label>
+        <div className="flex items-center gap-4 p-4 rounded-xl border border-slate-200 bg-slate-50">
+          <span className="w-11 h-11 rounded-lg bg-white flex items-center justify-center shadow-sm"><span className="material-symbols-outlined text-slate-600">description</span></span>
+          <div className="min-w-0 flex-1">
+            <div className="text-sm font-semibold text-slate-800 truncate">{draft.request_document_name}</div>
+            <div className="text-xs text-slate-500 mt-1">Dilampirkan saat pengadaan pertama kali dibuat</div>
+          </div>
+          <button type="button" onClick={() => onView(draft.request_document_name, draft.request_document_file_data)} className="px-3 py-2 rounded-lg bg-white border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-100">👁 Lihat</button>
+        </div>
+      </div>
+    )}
     <div><label className={labelClass}>Metode Pengadaan <span className="text-red-600">*</span></label><select disabled={readOnly} value={draft.metode_pengadaan || ''} onChange={(e) => update('metode_pengadaan', e.target.value)} className={inputClass}><option value="">Pilih Metode Pengadaan</option><option>Lelang</option><option>E-Purchasing</option><option>Pengadaan Langsung (PL)</option></select></div>
     <div><label className={labelClass}>Nama Barang / Jasa <span className="text-red-600">*</span></label><input disabled={readOnly} value={draft.nama_barang_jasa || ''} onChange={(e) => update('nama_barang_jasa', e.target.value)} className={inputClass}/></div>
     <div><label className={labelClass}>Input Nilai HPS <span className="text-red-600">*</span></label><div className="flex"><span className="inline-flex items-center px-3 rounded-l-lg border border-r-0 border-slate-300 bg-slate-100 text-sm font-semibold text-slate-600">Rp</span><input disabled={readOnly} type="number" min="0" value={draft.nilai_hps ?? ''} onChange={(e) => update('nilai_hps', e.target.value)} className="w-full h-11 px-3 rounded-r-lg border border-slate-300 bg-slate-50/70 text-sm outline-none focus:bg-white focus:border-slate-900 disabled:opacity-70" /></div>{draft.nilai_hps && <p className="text-xs text-slate-500 mt-1">Rp {money(draft.nilai_hps)}</p>}</div>
@@ -318,7 +356,7 @@ function PengadaanStageOne({ draft, update, readOnly }) {
 }
 
 function PengadaanStageTwo({ draft, update, readOnly, onView }) {
-  const handleFile = (nameField, dataField, file) => {
+  const handleFile = async (nameField, dataField, file) => {
     if (!file) return;
     if (file.size > 8 * 1024 * 1024) {
       alert('Ukuran file maksimal 8MB.');
@@ -327,6 +365,10 @@ function PengadaanStageTwo({ draft, update, readOnly, onView }) {
     const allowed = ['application/pdf', 'image/jpeg', 'image/png'];
     if (!allowed.includes(file.type)) {
       alert('Format file hanya PDF, JPG, atau PNG.');
+      return;
+    }
+    if (!(await verifyFileIsGenuine(file))) {
+      alert(FILE_SIGNATURE_REJECT_MESSAGE);
       return;
     }
     update(nameField, file.name);
@@ -370,7 +412,7 @@ function PengadaanStageTwo({ draft, update, readOnly, onView }) {
 }
 
 function PengadaanStageThree({ draft, update, readOnly, onView }) {
-  const handleFile = (file) => {
+  const handleFile = async (file) => {
     if (!file) return;
     if (file.size > 8 * 1024 * 1024) {
       alert('Ukuran file maksimal 8MB.');
@@ -379,6 +421,10 @@ function PengadaanStageThree({ draft, update, readOnly, onView }) {
     const allowed = ['application/pdf', 'image/jpeg', 'image/png'];
     if (!allowed.includes(file.type)) {
       alert('Format file hanya PDF, JPG, atau PNG.');
+      return;
+    }
+    if (!(await verifyFileIsGenuine(file))) {
+      alert(FILE_SIGNATURE_REJECT_MESSAGE);
       return;
     }
     update('stage3_final_document_name', file.name);
@@ -436,7 +482,7 @@ function AddModal({ form, setForm, error, onClose, onSubmit }) {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3"><div><label className="block text-xs font-semibold text-slate-700 mb-1.5">Tanggal</label><input type="date" value={form.tanggal} onChange={e=>setForm({...form,tanggal:e.target.value})} className={inputClass}/></div></div>
         <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-800"><b>Nilai HPS</b> tidak diinput saat membuat pengadaan. Nilai HPS diisi pada <b>Aksi Tahap 1 (Analisa & HPS)</b>.</div>
         <div><label className="block text-xs font-semibold text-slate-700 mb-1.5">Deskripsi Detail</label><textarea maxLength={500} value={form.deskripsi} onChange={e=>setForm({...form,deskripsi:e.target.value})} rows={4} className="w-full px-3 py-3 rounded-lg border border-slate-300 bg-slate-50/70 text-sm outline-none focus:bg-white focus:border-slate-900"/><div className="text-right text-[11px] text-slate-500 mt-1">{form.deskripsi.length}/500 karakter</div></div>
-        <div><div className="flex items-center justify-between gap-3 mb-1.5"><label className="block text-xs font-semibold text-slate-700">Upload Dokumen Pendukung</label><span className="text-[11px] text-slate-500">PDF, JPG, PNG, WebP · Maks. 8MB</span></div><label className="relative flex items-center gap-3 p-4 rounded-lg border border-dashed border-slate-300 bg-slate-50 cursor-pointer hover:bg-slate-100"><span className="w-10 h-10 rounded-lg bg-white flex items-center justify-center shadow-sm"><span className="material-symbols-outlined text-slate-600">upload_file</span></span><div className="min-w-0 flex-1"><div className="text-sm font-semibold text-slate-800 truncate">{form.request_document_name || 'Pilih dokumen pendukung'}</div><div className="text-xs text-slate-500 mt-1">Lampiran permintaan awal (opsional)</div></div><span className="px-3 py-2 rounded-lg bg-white border border-slate-200 text-xs font-semibold text-slate-700">Pilih Berkas</span><input type="file" className="absolute inset-0 opacity-0 cursor-pointer" accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp" onChange={e=>{const f=e.target.files?.[0];if(!f)return;if(f.size>8*1024*1024){alert('Ukuran dokumen maksimal 8MB.');e.target.value='';return;}const r=new FileReader();r.onload=()=>setForm({...form,request_document_name:f.name,request_document_file_data:r.result});r.readAsDataURL(f);}}/></label></div>
+        <div><div className="flex items-center justify-between gap-3 mb-1.5"><label className="block text-xs font-semibold text-slate-700">Upload Dokumen Pendukung</label><span className="text-[11px] text-slate-500">PDF, JPG, PNG, WebP · Maks. 8MB</span></div><label className="relative flex items-center gap-3 p-4 rounded-lg border border-dashed border-slate-300 bg-slate-50 cursor-pointer hover:bg-slate-100"><span className="w-10 h-10 rounded-lg bg-white flex items-center justify-center shadow-sm"><span className="material-symbols-outlined text-slate-600">upload_file</span></span><div className="min-w-0 flex-1"><div className="text-sm font-semibold text-slate-800 truncate">{form.request_document_name || 'Pilih dokumen pendukung'}</div><div className="text-xs text-slate-500 mt-1">Lampiran permintaan awal (opsional)</div></div><span className="px-3 py-2 rounded-lg bg-white border border-slate-200 text-xs font-semibold text-slate-700">Pilih Berkas</span><input type="file" className="absolute inset-0 opacity-0 cursor-pointer" accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp" onChange={async e=>{const f=e.target.files?.[0];if(!f)return;if(f.size>8*1024*1024){alert('Ukuran dokumen maksimal 8MB.');e.target.value='';return;}if(!(await verifyFileIsGenuine(f))){alert(FILE_SIGNATURE_REJECT_MESSAGE);e.target.value='';return;}const r=new FileReader();r.onload=()=>setForm({...form,request_document_name:f.name,request_document_file_data:r.result});r.readAsDataURL(f);}}/></label></div>
       </div>
       <div className="px-6 py-4 border-t border-slate-200 flex justify-end gap-3"><button type="button" onClick={onClose} className="px-4 py-2.5 text-sm font-semibold text-slate-700">Batal</button><button type="submit" className="px-5 py-2.5 bg-slate-900 text-white text-sm font-semibold rounded-lg">Simpan Pengadaan</button></div>
     </form></div></div>;

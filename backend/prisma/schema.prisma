@@ -35,6 +35,7 @@ model User {
   is_active       Boolean   @default(true)
   reset_token         String?   @unique @db.VarChar(128)
   reset_token_expires DateTime?
+  last_login_at   DateTime?
   created_at      DateTime  @default(now())
   updated_at      DateTime  @updatedAt
 
@@ -174,22 +175,28 @@ model Pengadaan {
   @@map("pengadaan")
 }
 
+// Kolom mengikuti format aset BMN standar (Nama Barang, Merk, Tipe, No BPKB,
+// No Polisi, Tanggal Perolehan, Masa Berlaku STNK, Waktu Pajak) + galeri
+// hingga 6 foto per kendaraan (dikompres di client sebelum diupload).
 model Kendaraan {
-  id             Int       @id @default(autoincrement())
-  name           String    @db.VarChar(150)
-  plate          String    @unique @db.VarChar(30)
-  type           String    @db.VarChar(100)
-  sub            String?   @db.VarChar(150)
-  status         String    @default("Tersedia") @db.VarChar(30)
-  tax            String?   @db.VarChar(50)
-  next_tax       String?   @db.VarChar(50)
-  photo_name     String?
-  photo_file_data String?
-  photo_file_path String?
-  created_by     Int?
-  updated_by     Int?
-  created_at     DateTime  @default(now())
-  updated_at     DateTime  @updatedAt
+  id                Int       @id @default(autoincrement())
+  nama_barang       String    @db.VarChar(150)
+  merk              String    @db.VarChar(100)
+  tipe              String    @db.VarChar(100)
+  no_bpkb           String?   @db.VarChar(50)
+  plate             String    @unique @db.VarChar(30)
+  jenis             String    @db.VarChar(30)
+  sub               String?   @db.VarChar(150)
+  status            String    @default("Tersedia") @db.VarChar(30)
+  tanggal_perolehan DateTime? @db.Date
+  masa_berlaku_stnk DateTime? @db.Date
+  waktu_pajak       DateTime? @db.Date
+  photos            String?
+  photo_file_paths  String?
+  created_by        Int?
+  updated_by        Int?
+  created_at        DateTime  @default(now())
+  updated_at        DateTime  @updatedAt
 
   createdBy User? @relation("KendaraanCreatedBy", fields: [created_by], references: [id], onDelete: SetNull)
   updatedBy User? @relation("KendaraanUpdatedBy", fields: [updated_by], references: [id], onDelete: SetNull)

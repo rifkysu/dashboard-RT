@@ -2,9 +2,9 @@ require('dotenv').config();
 const prisma = require('../src/prisma');
 
 const checks = {
-  users: ['id','nama_lengkap','email','password_hash','role','is_active'],
+  users: ['id','nama_lengkap','email','password_hash','role','is_active','last_login_at'],
   pengadaan: ['id','kode','nama_barang_jasa','nilai_hps','request_document_file_path','stage2_invoice_document_file_path','stage2_invoice_file_path','stage2_payment_proof_file_path','stage3_final_document_file_path','created_by','updated_by'],
-  kendaraan: ['id','name','plate','type','photo_name','photo_file_data','photo_file_path','created_by','updated_by'],
+  kendaraan: ['id','nama_barang','merk','tipe','no_bpkb','plate','jenis','tanggal_perolehan','masa_berlaku_stnk','waktu_pajak','photos','photo_file_paths','created_by','updated_by'],
   ruang_rapat: ['id','agenda','room','pic','booking_date','start_time','end_time','surat_status','surat_file_data','surat_file_path','created_by','updated_by']
 };
 (async()=>{

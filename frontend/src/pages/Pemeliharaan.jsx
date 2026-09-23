@@ -4,11 +4,14 @@ import { useAuth } from '../context/AuthContext';
 import DocumentViewer from '../components/DocumentViewer';
 import BrandMark from '../components/BrandMark';
 import PaymentMethodDetail from '../components/PaymentMethodDetail';
+import { verifyFileIsGenuine } from '../utils/fileSignature';
+
+const FILE_SIGNATURE_REJECT_MESSAGE = 'File yang diupload tidak terdeteksi sebagai dokumen/gambar asli (kemungkinan file diubah namanya atau berupa script). Harap upload dokumen PDF/JPG/PNG/WEBP/DOC/XLS asli.';
 
 const statusPill = {
-  pending: 'bg-red-50 text-red-700',
-  on_progress: 'bg-amber-50 text-amber-700',
-  selesai: 'bg-emerald-50 text-emerald-700',
+  pending: 'bg-red-50 text-red-700 border border-red-200',
+  on_progress: 'bg-amber-50 text-amber-700 border border-amber-200',
+  selesai: 'bg-emerald-50 text-emerald-700 border border-emerald-200',
 };
 const statusLabel = { pending: 'Pending', on_progress: 'On Progress', selesai: 'Selesai' };
 
@@ -135,6 +138,16 @@ export default function Pemeliharaan() {
     } catch (err) { setError(err.response?.data?.message || 'Gagal menambahkan permintaan.'); }
   }
 
+  async function handleDelete(row) {
+    if (!window.confirm(`Hapus permintaan "${row.judul}" (#${row.kode})? Tindakan ini tidak dapat dibatalkan.`)) return;
+    try {
+      await api.delete(`/pemeliharaan/${row.id}`);
+      setData((current) => current.filter((item) => item.id !== row.id));
+    } catch (err) {
+      alert(err.response?.data?.message || 'Gagal menghapus data.');
+    }
+  }
+
   const visibleData = data.filter((row) => {
     const value = (v) => String(v || '').trim().toLowerCase();
     const categoryMatch = !filters.kategori || value(row.kategori) === value(filters.kategori);
@@ -171,8 +184,8 @@ export default function Pemeliharaan() {
   const roleLabel = user?.role === 'kabag' ? 'Kabag' : user?.role === 'pic' ? 'PIC' : 'Karyawan';
 
   return (
-    <div className="menu-page menu-pemeliharaan relative">
-      <div className="menu-hero mb-6"><div><span className="menu-kicker">PEMELIHARAAN • FASILITAS</span><h1 className="text-2xl font-bold text-slate-900">Pemeliharaan</h1><p className="text-sm text-slate-600 mt-1">Kelola dan pantau status perbaikan fasilitas kantor.</p></div><div className="menu-hero-icon"><span className="material-symbols-outlined">build</span></div></div>
+    <div className="menu-page menu-pemeliharaan relative" style={{ fontFamily: 'Arial, Helvetica, sans-serif' }}>
+      <div className="menu-hero mb-6"><div><span className="menu-kicker">PEMELIHARAAN • FASILITAS</span><h1 className="text-2xl font-bold">Pemeliharaan</h1><p className="text-sm mt-1">Kelola dan pantau status perbaikan fasilitas kantor.</p></div><div className="menu-hero-icon"><span className="material-symbols-outlined">build</span></div></div>
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-6">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Daftar Permintaan Pemeliharaan</h1>
@@ -200,10 +213,10 @@ export default function Pemeliharaan() {
 
       <div className="bg-white/90 backdrop-blur rounded-2xl border border-white/80 overflow-hidden shadow-lg shadow-slate-200/40">
         <div className="overflow-x-auto"><table className="w-full text-sm">
-          <thead className="bg-slate-50 border-b border-slate-200 sticky top-0 z-10"><tr>
-            {['ID Request','Nama Pekerjaan','Lokasi','Titik Lokasi','Kategori','PIC RT','Nama Perusahaan','Transaksi','Nilai Invoice','Tanggal Input','Status','Tanggal Selesai','Aksi (Tahapan Alur)'].map((h) => <th key={h} className="py-3 px-5 text-left text-xs font-semibold text-slate-500 uppercase whitespace-nowrap">{h}</th>)}
+          <thead className="bg-slate-50 border-b-2 border-slate-200 sticky top-0 z-10"><tr className="divide-x divide-slate-200">
+            {['ID Request','Nama Pekerjaan','Lokasi','Titik Lokasi','Kategori','PIC RT','Nama Perusahaan','Transaksi','Nilai Invoice','Tanggal Input','Status','Tanggal Selesai','Aksi (Tahapan Alur)','Hapus'].map((h) => <th key={h} className="py-3 px-5 text-left text-xs font-semibold text-slate-500 uppercase whitespace-nowrap">{h}</th>)}
           </tr>
-          <tr className="bg-white border-b border-slate-200">
+          <tr className="bg-white border-b-2 border-slate-200 divide-x divide-slate-200">
             <th className="p-2"><input placeholder="Filter ID" value={filters.id} onChange={e=>setFilters(f=>({...f,id:e.target.value}))} className="w-full h-8 px-2 text-xs border rounded"/></th>
             <th className="p-2"><input placeholder="Filter nama" value={filters.nama} onChange={e=>setFilters(f=>({...f,nama:e.target.value}))} className="w-full h-8 px-2 text-xs border rounded"/></th>
             <th className="p-2"><select value={filters.lokasi} onChange={e=>setFilters(f=>({...f,lokasi:e.target.value}))} className="w-full h-8 text-xs border rounded"><option value="">Semua Lokasi</option><option>Graha Kemnaker</option><option>Gatsu 51</option><option>Wisma Ciloto</option><option>Rumah Dinas</option><option>RC Walang</option><option>RC Kranji</option></select></th>
@@ -217,19 +230,20 @@ export default function Pemeliharaan() {
             <th className="p-2"><select value={filters.status} onChange={e=>setFilters(f=>({...f,status:e.target.value}))} className="w-full h-8 text-xs border rounded"><option value="">Semua</option><option value="pending">Pending</option><option value="on_progress">On Progress</option><option value="selesai">Selesai</option></select></th>
             <th className="p-2"><input type="date" title="Filter tanggal selesai" value={filters.tanggal_selesai} onChange={e=>setFilters(f=>({...f,tanggal_selesai:e.target.value}))} className="w-full h-8 px-2 text-xs border rounded"/></th>
             <th></th>
+            <th></th>
           </tr></thead>
           <tbody className="divide-y divide-slate-100">
-            {loading && <tr><td colSpan={13} className="py-8 text-center text-slate-400">Memuat data...</td></tr>}
-            {!loading && visibleData.length === 0 && <tr><td colSpan={13} className="py-8 text-center text-slate-400">Belum ada data.</td></tr>}
-            {visibleData.map((row) => <tr key={row.id} className="hover:bg-slate-50/50">
+            {loading && <tr><td colSpan={14} className="py-8 text-center text-slate-400">Memuat data...</td></tr>}
+            {!loading && visibleData.length === 0 && <tr><td colSpan={14} className="py-8 text-center text-slate-400">Belum ada data.</td></tr>}
+            {visibleData.map((row) => <tr key={row.id} className="divide-x divide-slate-100 hover:bg-slate-50/50">
               <td className="py-3 px-5 font-semibold text-slate-800">#{row.kode}</td>
               <td className="py-3 px-5 max-w-[220px] truncate font-semibold text-slate-800">{row.judul}</td>
               <td className="py-3 px-5 text-slate-500">{row.lokasi}</td>
               <td className="py-3 px-5 text-slate-500">{row.titik_lokasi || '-'}</td>
-              <td className="py-3 px-5"><span className="inline-flex px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 text-xs font-semibold capitalize">{row.kategori}</span></td>
+              <td className="py-3 px-5"><span className="inline-flex px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-200 text-xs font-semibold capitalize">{row.kategori}</span></td>
               <td className="py-3 px-5 text-slate-700 font-medium">{row.pic || '-'}</td>
               <td className="py-3 px-5 text-slate-700 font-medium">{row.stage2_vendor || '-'}</td>
-              <td className="py-3 px-5"><span className="inline-flex px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 text-xs font-semibold whitespace-nowrap">{paymentLabel(row)}</span></td>
+              <td className="py-3 px-5"><span className="inline-flex px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 border border-slate-300 text-xs font-semibold whitespace-nowrap">{paymentLabel(row)}</span></td>
               <td className="py-3 px-5 text-slate-700 font-medium whitespace-nowrap">{row.stage2_invoice_amount !== null && row.stage2_invoice_amount !== undefined && row.stage2_invoice_amount !== '' ? `Rp ${money(row.stage2_invoice_amount)}` : '-'}</td>
               <td className="py-3 px-5 text-slate-500">{row.tanggal?.slice(0,10)}</td>
               <td className="py-3 px-5"><span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-semibold ${statusPill[row.status]}`}>{statusLabel[row.status]}</span></td>
@@ -249,6 +263,17 @@ export default function Pemeliharaan() {
                   return <button key={stage.field} type="button" onClick={() => openStage(row, stage)} title={`${stage.title} — ${rowEditable ? 'lihat/edit' : 'lihat'}`} className={`w-9 h-9 rounded-lg border flex items-center justify-center shadow-sm transition ${done ? 'bg-slate-900 text-white border-slate-900' : active ? 'bg-blue-100 text-blue-700 border-blue-200' : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'}`}><span className="material-symbols-outlined text-[18px]">{stage.icon}</span></button>;
                 })}
               </div></td>
+              <td className="py-3 px-5">
+                {canEditRow(row) ? (
+                  <button type="button" onClick={() => handleDelete(row)} title="Hapus permintaan (hanya pembuat yang bisa menghapus)" className="w-9 h-9 rounded-lg border border-red-200 bg-red-50 text-red-600 flex items-center justify-center shadow-sm hover:bg-red-100 transition">
+                    <span className="material-symbols-outlined text-[18px]">delete</span>
+                  </button>
+                ) : (
+                  <span className="w-9 h-9 rounded-lg border border-slate-100 bg-slate-50 text-slate-300 flex items-center justify-center" title="Hanya pembuat permintaan yang bisa menghapus">
+                    <span className="material-symbols-outlined text-[18px]">lock</span>
+                  </span>
+                )}
+              </td>
             </tr>)}
           </tbody>
         </table></div>
@@ -319,8 +344,27 @@ function StageModal({ row, stage, draft, setDraft, canEdit, roleLabel, saving, o
 }
 
 function StageOne({ draft, update, readOnly, fileName, onView }) {
-  const pick = (fieldName, fieldData, file) => { if (!file) return; const reader = new FileReader(); reader.onload = () => { update(fieldName, file.name); update(fieldData, reader.result); }; reader.readAsDataURL(file); };
+  const pick = async (fieldName, fieldData, file) => {
+    if (!file) return;
+    if (!(await verifyFileIsGenuine(file))) { alert(FILE_SIGNATURE_REJECT_MESSAGE); return; }
+    const reader = new FileReader();
+    reader.onload = () => { update(fieldName, file.name); update(fieldData, reader.result); };
+    reader.readAsDataURL(file);
+  };
   return <section className="bg-white/90 backdrop-blur rounded-2xl shadow-lg shadow-slate-200/40 p-6 md:p-8 border border-white/80"><h2 className="text-xl font-semibold text-slate-900 mb-6">Data Analisa Harga Perkiraan Sendiri (HPS)</h2><div className="space-y-7">
+    {draft.request_document_name && (
+      <div>
+        <label className={labelClass}>Dokumen Permintaan Awal</label>
+        <div className="flex items-center gap-4 p-4 rounded-xl border border-slate-200 bg-slate-50">
+          <span className="w-11 h-11 rounded-lg bg-white flex items-center justify-center shadow-sm"><span className="material-symbols-outlined text-slate-600">description</span></span>
+          <div className="min-w-0 flex-1">
+            <div className="text-sm font-semibold text-slate-800 truncate">{draft.request_document_name}</div>
+            <div className="text-xs text-slate-500 mt-1">Dilampirkan saat permintaan pertama kali dibuat</div>
+          </div>
+          <button type="button" onClick={() => onView(draft.request_document_name, draft.request_document_file_data)} className="px-3 py-2 rounded-lg bg-white border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-100">👁 Lihat</button>
+        </div>
+      </div>
+    )}
     <div><label className={labelClass}>Metode Pengadaan</label><select disabled={readOnly} value={draft.metode_pengadaan || ''} onChange={(e) => update('metode_pengadaan', e.target.value)} className={inputClass}><option value="">Pilih Metode Pengadaan</option><option>Lelang</option><option>E-Purchasing</option><option>Pengadaan Langsung (PL)</option></select></div>
     <FileUpload label="Rincian Kebutuhan" name={draft.stage1_boq} data={draft.stage1_boq_file_data} accept=".pdf,.doc,.docx,.xls,.xlsx" readOnly={readOnly} onPick={(f)=>pick('stage1_boq','stage1_boq_file_data',f)} onView={onView} />
     <div><label className={labelClass}>Input Nilai HPS (Harga Perkiraan Sendiri) <span className="text-red-600">*</span></label><div className="flex"><span className="inline-flex items-center px-3 rounded-l-lg border border-r-0 border-slate-300 bg-slate-100 text-sm font-semibold text-slate-600">Rp</span><input disabled={readOnly} type="number" min="0" value={draft.stage1_hps ?? ''} onChange={(e) => update('stage1_hps', e.target.value)} className="w-full h-11 px-3 rounded-r-lg border border-slate-300 bg-slate-50/70 text-sm outline-none focus:bg-white focus:border-slate-900 disabled:opacity-70" /></div>{draft.stage1_hps && <p className="text-xs text-slate-500 mt-1">Rp {money(draft.stage1_hps)}</p>}</div>
@@ -341,13 +385,24 @@ function StageTwo({ draft, update, readOnly, fileName, onView }) {
     </div>
     <div><label className={labelClass}>2. INFORMASI PEMBAYARAN</label><div className="grid grid-cols-1 md:grid-cols-3 gap-4"><div><label className="block text-xs font-semibold text-slate-600 mb-1.5">Nama Perusahaan *</label><input disabled={readOnly} value={draft.stage2_vendor || ''} onChange={(e) => update('stage2_vendor', e.target.value)} className={inputClass}/></div><div><label className="block text-xs font-semibold text-slate-600 mb-1.5">Nomor Faktur / Kuitansi *</label><input disabled={readOnly} value={draft.stage2_invoice_number || ''} onChange={(e) => update('stage2_invoice_number', e.target.value)} className={inputClass}/></div><div><label className="block text-xs font-semibold text-slate-600 mb-1.5">Tanggal Faktur *</label><input disabled={readOnly} type="date" value={draft.stage2_invoice_date || ''} onChange={(e) => update('stage2_invoice_date', e.target.value)} className={inputClass}/></div></div></div>
     <div><label className={labelClass}>3. NOMINAL TAGIHAN INVOICE</label><div className="flex"><span className="inline-flex items-center px-3 rounded-l-lg border border-r-0 border-slate-300 bg-slate-100 text-sm font-semibold text-slate-600">Rp</span><input disabled={readOnly} type="number" min="0" value={draft.stage2_invoice_amount ?? ''} onChange={(e) => update('stage2_invoice_amount', e.target.value)} className="w-full h-11 px-3 rounded-r-lg border border-slate-300 bg-slate-50/70 text-sm outline-none focus:bg-white focus:border-slate-900 disabled:opacity-70" /></div>{draft.stage2_invoice_amount && <p className="text-xs text-slate-500 mt-1">Rp {money(draft.stage2_invoice_amount)}</p>}</div>
-    <FileUpload label="4. Upload Dokumen Invoice / Kuitansi Sah" name={draft.stage2_invoice_document_name} data={draft.stage2_invoice_document_file_data} accept=".pdf,image/jpeg,image/png" readOnly={readOnly} onPick={(f)=>{ if(f){ const r=new FileReader(); r.onload=()=>{update('stage2_invoice_document_name',f.name);update('stage2_invoice_document_file_data',r.result)};r.readAsDataURL(f); }}} onView={onView} />
+    <FileUpload label="4. Upload Dokumen Invoice / Kuitansi Sah" name={draft.stage2_invoice_document_name} data={draft.stage2_invoice_document_file_data} accept=".pdf,image/jpeg,image/png" readOnly={readOnly} onPick={async (f) => { if (!f) return; if (!(await verifyFileIsGenuine(f))) { alert(FILE_SIGNATURE_REJECT_MESSAGE); return; } const r = new FileReader(); r.onload = () => { update('stage2_invoice_document_name', f.name); update('stage2_invoice_document_file_data', r.result); }; r.readAsDataURL(f); }} onView={onView} />
   </div></section>;
 }
 
 function StageThree({ draft, update, readOnly, onView }) {
   let files=[]; try { files=JSON.parse(draft.stage3_documentation_files || '[]'); } catch { files=[]; }
-  const pick = async (e) => { const selected=Array.from(e.target.files || []); if(!selected.length)return; const items=await Promise.all(selected.map(file=>new Promise(resolve=>{const r=new FileReader();r.onload=()=>resolve({name:file.name,data:r.result});r.readAsDataURL(file)}))); update('stage3_documentation_files', JSON.stringify(items)); update('stage3_documentation_names', items.map(x=>x.name).join(', ')); };
+  const pick = async (e) => {
+    const selected = Array.from(e.target.files || []);
+    if (!selected.length) return;
+    const checked = await Promise.all(selected.map(async (file) => ({ file, genuine: await verifyFileIsGenuine(file) })));
+    const rejected = checked.filter((c) => !c.genuine).map((c) => c.file.name);
+    const accepted = checked.filter((c) => c.genuine).map((c) => c.file);
+    if (rejected.length) alert(`File berikut ditolak karena bukan dokumen/gambar asli: ${rejected.join(', ')}`);
+    if (!accepted.length) return;
+    const items = await Promise.all(accepted.map((file) => new Promise((resolve) => { const r = new FileReader(); r.onload = () => resolve({ name: file.name, data: r.result }); r.readAsDataURL(file); })));
+    update('stage3_documentation_files', JSON.stringify(items));
+    update('stage3_documentation_names', items.map((x) => x.name).join(', '));
+  };
   return <section className="bg-white/90 backdrop-blur rounded-2xl shadow-lg shadow-slate-200/40 p-6 md:p-8 border border-white/80"><div className="space-y-7">
     <div><div className="flex items-center justify-between gap-3 mb-2"><label className={labelClass}>Unggah Foto Bukti Pekerjaan / Hasil Fisik <span className="text-red-600">*</span></label><span className="text-xs text-slate-500">JPG, PNG, PDF (Maks. 8MB/file)</span></div><label className={`relative flex flex-col items-center justify-center text-center gap-3 rounded-xl p-10 bg-slate-50 border border-dashed border-slate-300 ${readOnly ? 'opacity-70' : 'cursor-pointer hover:bg-slate-100'}`}><span className="w-16 h-16 rounded-full bg-white shadow-sm flex items-center justify-center"><span className="material-symbols-outlined text-[32px] text-slate-600">add_a_photo</span></span><span className="text-base font-semibold text-slate-800">Unggah foto dokumentasi atau PDF</span><span className="text-sm text-slate-500 max-w-xl">Pilih satu atau beberapa bukti pekerjaan. PDF dapat langsung dipreview.</span><span className="px-4 py-2 rounded-lg bg-slate-200 text-sm font-semibold text-slate-800">Pilih Berkas dari Komputer</span>{!readOnly && <input type="file" multiple className="absolute inset-0 opacity-0" accept="image/jpeg,image/png,application/pdf" onChange={pick}/>}</label></div>
     <div><div className="flex items-center justify-between mb-3"><h3 className="text-lg font-semibold text-slate-900">Daftar Berkas Terlampir</h3><span className="text-xs bg-slate-100 px-2.5 py-1 rounded-full text-slate-700 font-medium">{files.length} Berkas</span></div>{files.length ? <div className="grid grid-cols-1 md:grid-cols-2 gap-3">{files.map((file,i)=><div key={`${file.name}-${i}`} className="bg-slate-50 rounded-xl p-4 flex items-center gap-3"><div className="w-11 h-11 rounded-lg bg-white flex items-center justify-center"><span className="material-symbols-outlined text-slate-600">description</span></div><span className="text-sm font-semibold text-slate-800 truncate flex-1">{file.name}</span><button type="button" onClick={()=>onView(file.name,file.data)} className="px-3 py-2 rounded-lg bg-white border border-slate-200 text-xs font-semibold text-slate-700">👁 Lihat</button></div>)}</div> : <div className="rounded-xl border border-dashed border-slate-300 p-6 text-center text-sm text-slate-500">Belum ada berkas yang dipilih.</div>}</div>
@@ -356,5 +411,5 @@ function StageThree({ draft, update, readOnly, onView }) {
 }
 
 function AddModal({ form, setForm, error, onClose, onSubmit }) {
-  return <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}><div className="w-full max-w-2xl max-h-[92vh] overflow-y-auto bg-white rounded-xl shadow-2xl"><form onSubmit={onSubmit}><div className="px-6 pt-6 pb-4 border-b border-slate-100 flex items-start justify-between"><div><h2 className="text-xl font-bold text-slate-900">Tambah Permintaan Pemeliharaan</h2><p className="text-sm text-slate-500 mt-1">Isi formulir untuk melaporkan kerusakan atau kebutuhan perbaikan fasilitas.</p></div><button type="button" onClick={onClose} className="w-9 h-9 rounded-lg text-slate-500 hover:bg-slate-100"><span className="material-symbols-outlined">close</span></button></div><div className="px-6 py-5 space-y-4">{error && <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{error}</div>}<div><label className="block text-xs font-semibold text-slate-700 mb-2">Kategori</label><div className="flex gap-6">{[['sarana','Sarana'],['prasarana','Prasarana']].map(([v,l]) => <label key={v} className="flex items-center gap-2 text-sm text-slate-600"><input type="radio" name="kategori" checked={form.kategori === v} onChange={() => setForm({...form,kategori:v})}/>{l}</label>)}</div></div><div><label className="block text-xs font-semibold text-slate-700 mb-1.5">Judul Masalah *</label><input required value={form.judul} onChange={(e)=>setForm({...form,judul:e.target.value})} className={inputClass}/></div><div className="grid grid-cols-1 sm:grid-cols-2 gap-3"><div><label className="block text-xs font-semibold text-slate-700 mb-1.5">Jenis Pekerjaan</label><select value={form.jenis_pekerjaan} onChange={(e)=>setForm({...form,jenis_pekerjaan:e.target.value})} className={inputClass}><option value="">Pilih Jenis Pekerjaan</option><option value="perbaikan">Perbaikan</option><option value="perawatan">Perawatan</option><option value="penggantian">Penggantian</option><option value="instalasi">Instalasi</option></select></div><div><label className="block text-xs font-semibold text-slate-700 mb-1.5">Lokasi *</label><select required value={form.lokasi} onChange={(e)=>setForm({...form,lokasi:e.target.value})} className={inputClass}><option value="">Pilih Lokasi</option><option value="Graha Kemnaker">Graha Kemnaker</option><option value="Gatsu 51">Gatsu 51</option><option value="Wisma Ciloto">Wisma Ciloto</option><option value="Rumah Dinas">Rumah Dinas</option><option value="RC Walang">RC Walang</option><option value="RC Kranji">RC Kranji</option></select></div></div><div><label className="block text-xs font-semibold text-slate-700 mb-1.5">Titik Lokasi</label><input value={form.titik_lokasi} onChange={(e)=>setForm({...form,titik_lokasi:e.target.value})} className={inputClass}/></div><div><label className="block text-xs font-semibold text-slate-700 mb-1.5">Tanggal Input *</label><input required type="date" value={form.tanggal} onChange={(e)=>setForm({...form,tanggal:e.target.value})} className={inputClass}/></div><div><label className="block text-xs font-semibold text-slate-700 mb-2">Tingkat Urgensi</label><div className="flex flex-wrap gap-5">{[['rendah','Rendah'],['sedang','Sedang'],['tinggi','Tinggi']].map(([v,l])=><label key={v} className="flex items-center gap-2 text-sm text-slate-600"><input type="radio" name="urgensi" checked={form.urgensi===v} onChange={()=>setForm({...form,urgensi:v})}/>{l}</label>)}</div></div><div><label className="block text-xs font-semibold text-slate-700 mb-1.5">Deskripsi Detail</label><textarea maxLength={500} value={form.deskripsi} onChange={(e)=>setForm({...form,deskripsi:e.target.value})} rows={4} className="w-full px-3 py-3 rounded-lg border border-slate-300 bg-slate-50/70 text-sm outline-none focus:bg-white focus:border-slate-900"/><div className="text-right text-[11px] text-slate-500 mt-1">{form.deskripsi.length}/500 karakter</div></div><div><div className="flex items-center justify-between gap-3 mb-1.5"><label className="block text-xs font-semibold text-slate-700">Upload Dokumen Pendukung</label><span className="text-[11px] text-slate-500">PDF, JPG, PNG, WebP · Maks. 8MB</span></div><label className="relative flex items-center gap-3 p-4 rounded-lg border border-dashed border-slate-300 bg-slate-50 cursor-pointer hover:bg-slate-100"><span className="w-10 h-10 rounded-lg bg-white flex items-center justify-center shadow-sm"><span className="material-symbols-outlined text-slate-600">upload_file</span></span><div className="min-w-0 flex-1"><div className="text-sm font-semibold text-slate-800 truncate">{form.request_document_name || 'Pilih dokumen pendukung'}</div><div className="text-xs text-slate-500 mt-1">Lampiran permintaan awal (opsional)</div></div><span className="px-3 py-2 rounded-lg bg-white border border-slate-200 text-xs font-semibold text-slate-700">Pilih Berkas</span><input type="file" className="absolute inset-0 opacity-0 cursor-pointer" accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp" onChange={(e)=>{const f=e.target.files?.[0]; if(!f)return; if(f.size>8*1024*1024){alert('Ukuran dokumen maksimal 8MB.'); e.target.value=''; return;} const r=new FileReader(); r.onload=()=>setForm({...form,request_document_name:f.name,request_document_file_data:r.result}); r.readAsDataURL(f);}} /></label></div></div><div className="px-6 py-4 border-t border-slate-200 flex justify-end gap-3"><button type="button" onClick={onClose} className="px-4 py-2.5 text-sm font-semibold text-slate-700">Batal</button><button type="submit" className="px-5 py-2.5 bg-slate-900 text-white text-sm font-semibold rounded-lg">Simpan Permintaan</button></div></form></div></div>;
+  return <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}><div className="w-full max-w-2xl max-h-[92vh] overflow-y-auto bg-white rounded-xl shadow-2xl"><form onSubmit={onSubmit}><div className="px-6 pt-6 pb-4 border-b border-slate-100 flex items-start justify-between"><div><h2 className="text-xl font-bold text-slate-900">Tambah Permintaan Pemeliharaan</h2><p className="text-sm text-slate-500 mt-1">Isi formulir untuk melaporkan kerusakan atau kebutuhan perbaikan fasilitas.</p></div><button type="button" onClick={onClose} className="w-9 h-9 rounded-lg text-slate-500 hover:bg-slate-100"><span className="material-symbols-outlined">close</span></button></div><div className="px-6 py-5 space-y-4">{error && <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{error}</div>}<div><label className="block text-xs font-semibold text-slate-700 mb-2">Kategori</label><div className="flex gap-6">{[['sarana','Sarana'],['prasarana','Prasarana']].map(([v,l]) => <label key={v} className="flex items-center gap-2 text-sm text-slate-600"><input type="radio" name="kategori" checked={form.kategori === v} onChange={() => setForm({...form,kategori:v})}/>{l}</label>)}</div></div><div><label className="block text-xs font-semibold text-slate-700 mb-1.5">Judul Masalah *</label><input required value={form.judul} onChange={(e)=>setForm({...form,judul:e.target.value})} className={inputClass}/></div><div className="grid grid-cols-1 sm:grid-cols-2 gap-3"><div><label className="block text-xs font-semibold text-slate-700 mb-1.5">Jenis Pekerjaan</label><select value={form.jenis_pekerjaan} onChange={(e)=>setForm({...form,jenis_pekerjaan:e.target.value})} className={inputClass}><option value="">Pilih Jenis Pekerjaan</option><option value="perbaikan">Perbaikan</option><option value="perawatan">Perawatan</option><option value="penggantian">Penggantian</option><option value="instalasi">Instalasi</option></select></div><div><label className="block text-xs font-semibold text-slate-700 mb-1.5">Lokasi *</label><select required value={form.lokasi} onChange={(e)=>setForm({...form,lokasi:e.target.value})} className={inputClass}><option value="">Pilih Lokasi</option><option value="Graha Kemnaker">Graha Kemnaker</option><option value="Gatsu 51">Gatsu 51</option><option value="Wisma Ciloto">Wisma Ciloto</option><option value="Rumah Dinas">Rumah Dinas</option><option value="RC Walang">RC Walang</option><option value="RC Kranji">RC Kranji</option></select></div></div><div><label className="block text-xs font-semibold text-slate-700 mb-1.5">Titik Lokasi</label><input value={form.titik_lokasi} onChange={(e)=>setForm({...form,titik_lokasi:e.target.value})} className={inputClass}/></div><div><label className="block text-xs font-semibold text-slate-700 mb-1.5">Tanggal Input *</label><input required type="date" value={form.tanggal} onChange={(e)=>setForm({...form,tanggal:e.target.value})} className={inputClass}/></div><div><label className="block text-xs font-semibold text-slate-700 mb-2">Tingkat Urgensi</label><div className="flex flex-wrap gap-5">{[['rendah','Rendah'],['sedang','Sedang'],['tinggi','Tinggi']].map(([v,l])=><label key={v} className="flex items-center gap-2 text-sm text-slate-600"><input type="radio" name="urgensi" checked={form.urgensi===v} onChange={()=>setForm({...form,urgensi:v})}/>{l}</label>)}</div></div><div><label className="block text-xs font-semibold text-slate-700 mb-1.5">Deskripsi Detail</label><textarea maxLength={500} value={form.deskripsi} onChange={(e)=>setForm({...form,deskripsi:e.target.value})} rows={4} className="w-full px-3 py-3 rounded-lg border border-slate-300 bg-slate-50/70 text-sm outline-none focus:bg-white focus:border-slate-900"/><div className="text-right text-[11px] text-slate-500 mt-1">{form.deskripsi.length}/500 karakter</div></div><div><div className="flex items-center justify-between gap-3 mb-1.5"><label className="block text-xs font-semibold text-slate-700">Upload Dokumen Pendukung</label><span className="text-[11px] text-slate-500">PDF, JPG, PNG, WebP · Maks. 8MB</span></div><label className="relative flex items-center gap-3 p-4 rounded-lg border border-dashed border-slate-300 bg-slate-50 cursor-pointer hover:bg-slate-100"><span className="w-10 h-10 rounded-lg bg-white flex items-center justify-center shadow-sm"><span className="material-symbols-outlined text-slate-600">upload_file</span></span><div className="min-w-0 flex-1"><div className="text-sm font-semibold text-slate-800 truncate">{form.request_document_name || 'Pilih dokumen pendukung'}</div><div className="text-xs text-slate-500 mt-1">Lampiran permintaan awal (opsional)</div></div><span className="px-3 py-2 rounded-lg bg-white border border-slate-200 text-xs font-semibold text-slate-700">Pilih Berkas</span><input type="file" className="absolute inset-0 opacity-0 cursor-pointer" accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp" onChange={async (e) => { const f = e.target.files?.[0]; if (!f) return; if (f.size > 8 * 1024 * 1024) { alert('Ukuran dokumen maksimal 8MB.'); e.target.value = ''; return; } if (!(await verifyFileIsGenuine(f))) { alert(FILE_SIGNATURE_REJECT_MESSAGE); e.target.value = ''; return; } const r = new FileReader(); r.onload = () => setForm({ ...form, request_document_name: f.name, request_document_file_data: r.result }); r.readAsDataURL(f); }} /></label></div></div><div className="px-6 py-4 border-t border-slate-200 flex justify-end gap-3"><button type="button" onClick={onClose} className="px-4 py-2.5 text-sm font-semibold text-slate-700">Batal</button><button type="submit" className="px-5 py-2.5 bg-slate-900 text-white text-sm font-semibold rounded-lg">Simpan Permintaan</button></div></form></div></div>;
 }

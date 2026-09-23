@@ -37,12 +37,12 @@ export default function RuangRapatSchedule() {
       </div>
       {error && <div className="m-4 p-3 rounded-lg bg-red-50 border border-red-200 text-sm text-red-700">{error}</div>}
       <div className="overflow-x-auto">
-        <div className="min-w-[1180px] grid grid-cols-7 divide-x divide-slate-200">
+        <div className="min-w-[1180px] grid grid-cols-7 divide-x-2 divide-slate-200 border-t-2 border-slate-200">
           {ds.map(date=>{
             const d=new Date(`${date}T00:00:00`), idx=(d.getDay()+6)%7, its=items.filter(x=>x.date===date), today=iso()===date, cuti=cutiBersamaLabel(date);
             return (
               <div key={date} className="min-h-[420px]">
-                <div className={`p-4 border-b border-slate-200 ${today?'bg-violet-100':cuti?'bg-amber-100/70':'bg-slate-50'} ${cuti?'text-amber-700':idx>=5?'text-red-600':''}`}>
+                <div className={`p-4 border-b-2 border-slate-200 ${today?'bg-violet-100':cuti?'bg-amber-100/70':'bg-slate-50'} ${cuti?'text-amber-700':idx>=5?'text-red-600':''}`}>
                   <div className="font-bold text-sm">{dayNames[idx]}{today?' • HARI INI':''}</div>
                   <div className="text-xs text-slate-500">{label(date)}</div>
                   {cuti && <div className="mt-1 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-200/70 text-amber-800 text-[9px] font-bold">📅 {cuti}</div>}
