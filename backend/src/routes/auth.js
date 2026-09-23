@@ -16,10 +16,12 @@ const router = express.Router();
 // oleh admin/kabag langsung lewat pgAdmin4 (lihat README.md).
 const SELF_REGISTER_ROLES = ['karyawan'];
 
+// Proteksi spam-klik login: kena timeout tepat 1 menit, tidak berlapis
+// dengan limiter lain supaya lama kuncinya selalu konsisten & bisa ditebak.
 const loginLimiter = createRateLimiter({
-  windowMs: 15 * 60 * 1000,
-  max: 10,
-  message: 'Terlalu banyak percobaan login. Silakan coba lagi nanti.',
+  windowMs: 60 * 1000,
+  max: 5,
+  message: 'Terlalu banyak percobaan login. Silakan tunggu 1 menit sebelum mencoba lagi.',
 });
 
 const registerLimiter = createRateLimiter({

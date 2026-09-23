@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import api from '../api';
 import { useAuth } from '../context/AuthContext';
@@ -10,11 +10,32 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  // Anti-spam: kalau backend balas 429 (terlalu banyak percobaan login),
+  // tombol dikunci sampai waktu tunggunya habis (biasanya 1 menit).
+  const [lockedUntil, setLockedUntil] = useState(0);
+  const [now, setNow] = useState(Date.now());
   const { login } = useAuth();
   const navigate = useNavigate();
 
+  useEffect(() => {
+    if (!lockedUntil) return;
+    const t = setInterval(() => {
+      if (lockedUntil - Date.now() <= 0) {
+        setLockedUntil(0);
+        clearInterval(t);
+      } else {
+        setNow(Date.now());
+      }
+    }, 1000);
+    return () => clearInterval(t);
+  }, [lockedUntil]);
+
+  const secondsLeft = lockedUntil ? Math.max(0, Math.ceil((lockedUntil - now) / 1000)) : 0;
+  const isLocked = secondsLeft > 0;
+
   async function handleSubmit(e) {
     e.preventDefault();
+    if (isLocked) return;
     setError('');
     setLoading(true);
     try {
@@ -22,7 +43,14 @@ export default function Login() {
       login(res.data.token, res.data.user);
       navigate('/dashboard');
     } catch (err) {
-      setError(err.response?.data?.message || 'Gagal login. Periksa email/kata sandi Anda.');
+      if (err.response?.status === 429) {
+        const retrySeconds = Number(err.response.headers?.['retry-after']) || 60;
+        setLockedUntil(Date.now() + retrySeconds * 1000);
+        setNow(Date.now());
+        setError(err.response?.data?.message || `Terlalu banyak percobaan login. Coba lagi dalam ${retrySeconds} detik.`);
+      } else {
+        setError(err.response?.data?.message || 'Gagal login. Periksa email/kata sandi Anda.');
+      }
     } finally {
       setLoading(false);
     }
@@ -130,11 +158,20 @@ export default function Login() {
 
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || isLocked}
               className="w-full py-3.5 px-4 bg-slate-900 hover:bg-slate-800 disabled:opacity-60 text-white font-semibold rounded-xl text-sm flex items-center justify-center gap-2 shadow-lg shadow-slate-900/10 transition"
             >
-              {loading ? 'Memproses...' : 'Masuk ke Dashboard'}
-              <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
+              {isLocked ? (
+                <>
+                  <span className="material-symbols-outlined text-[18px]">lock_clock</span>
+                  Coba lagi dalam {secondsLeft} detik
+                </>
+              ) : (
+                <>
+                  {loading ? 'Memproses...' : 'Masuk ke Dashboard'}
+                  <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
+                </>
+              )}
             </button>
 
             <div className="relative my-6">

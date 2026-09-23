@@ -1,112 +1,177 @@
-HEAD
 # Aplikasi Layanan Biro Umum & Rumah Tangga
 
-Full-stack app (React + Node.js/Express + PostgreSQL) sesuai mockup Stitch yang diberikan.
+Full-stack app (React + Node.js/Express + PostgreSQL + **Prisma**) untuk mengelola pemeliharaan fasilitas, pengadaan barang/jasa, kendaraan dinas, dan booking ruang rapat instansi — lengkap dengan landing page publik, real-time update, dan mode maintenance per menu.
 
 ## Fitur utama
-- Login (email/password) + **Login SSO** (Google OAuth 2.0 — bisa diganti ke SSO instansi lain)
-- Daftar Akun Baru (role yang bisa dipilih sendiri: **Karyawan** & **Kabag** saja)
-- Role **PIC**: role khusus dengan hak edit sama seperti Kabag, **tidak muncul** di form pendaftaran, hanya bisa diberikan lewat pgAdmin4
-- Dashboard ringkasan
-- Modul **Pemeliharaan**: Karyawan hanya bisa melihat & mengajukan permintaan baru; **Kabag & PIC** bisa mengedit dan memproses 3 tahap (HPS/Analisa → Invoice/Pembayaran → BAST/Dokumentasi)
-- Modul **Pengadaan**: sama polanya — Karyawan lihat + ajukan, Kabag & PIC mengedit/memproses 3 tahap
-- Otorisasi role diterapkan **di dua lapis**: disable di UI (frontend) DAN ditolak di API (backend) — jadi tetap aman walau seseorang mencoba akses API langsung.
+
+### 🌐 Landing page & akses publik (tanpa login)
+- **Landing page** (`/`) — menampilkan jadwal ketersediaan ruang rapat secara **real-time**, plus ajakan Masuk/Daftar akun. Ini yang muncul pertama kali dibuka, bukan halaman login.
+- **Halaman kiosk read-only** (`/jadwal-rapat`) — versi tampilan layar besar (mis. dipasang di layar dekat ruang rapat), read-only, data sama dengan landing page.
+
+### 🔐 Autentikasi & Role
+- Login email/password + **Login SSO** (Google OAuth 2.0 — bisa diganti ke SSO instansi lain lewat `backend/src/config/passport.js`).
+- **Lupa Password** — tanpa perlu layanan email: backend membuat link reset (berlaku 1 jam) dan menampilkannya langsung ke pengguna untuk disalin/dikirim manual.
+- **Proteksi anti-spam login** — maksimal 5 percobaan per menit per IP, lewat itu tombol login terkunci otomatis **tepat 1 menit** (ada hitungan mundur di UI).
+- **4 role**: `karyawan`, `kabag`, `pic`, `admin`.
+  - **Karyawan** — cuma bisa melihat & mengajukan permintaan baru (Pemeliharaan/Pengadaan). Satu-satunya role yang bisa daftar mandiri lewat form Register.
+  - **Auto-promote PIC** — begitu seorang karyawan berhasil menambahkan permintaan Pemeliharaan/Pengadaan pertamanya, role-nya **otomatis naik jadi PIC** (tanpa logout/login ulang).
+  - **PIC** — hanya boleh **mengedit data yang dia buat sendiri** (dicek dari `created_by`), tidak bisa mengedit punya orang lain.
+  - **Kabag & Admin** — bebas mengedit/menghapus semua data di semua modul.
+  - **Admin** — role tertinggi, **hanya bisa diberikan manual lewat pgAdmin4** (tidak ada di form Register). Satu-satunya role yang bisa mengatur Mode Maintenance, dan selalu bisa mengakses semua menu walau sedang di-maintenance.
+  - Role & status aktif user **selalu dicek ulang langsung dari database di setiap request** (bukan dipercaya dari isi token JWT) — jadi kalau role diubah manual lewat pgAdmin4, perubahannya langsung berlaku ke request berikutnya, **tanpa perlu logout**.
+
+### 📊 Dashboard
+- Ringkasan status Pemeliharaan & Pengadaan (pending / on progress / selesai) + daftar aktivitas terbaru gabungan dari kedua modul, terurut dari yang paling baru diperbarui.
+
+### 🛠️ Pemeliharaan & 🛒 Pengadaan
+- Alur **3 tahap** per permintaan: Analisa & HPS → Invoice & Pembayaran → Dokumentasi/BAST.
+- Tahap 2 (Invoice & Pembayaran): pilih metode pembayaran **GUP** (nomor 1–20), **TUP** (nomor 1–10), atau **LS** (+ tanggal LS) — dipasangkan dengan **Asal Anggaran** (`RM` / `PNBP`). Ditampilkan gabung di kolom **Transaksi** tabel (mis. `GUP 5 RM`), lengkap dengan kolom filter-nya sendiri.
+- Karyawan hanya bisa melihat & mengajukan; **Kabag, PIC (data sendiri), dan Admin** bisa mengedit & memproses tahapan.
+- Export ke Excel dengan filter rentang tanggal, dan setiap kolom tabel punya filter sendiri-sendiri.
+
+### 🚗 Kendaraan
+- Data kendaraan dinas (nama, plat nomor, jenis, status: Tersedia/Digunakan/Servis) + foto kendaraan.
+
+### 📅 Ruang Rapat
+- **5 ruangan tetap**: SERBAGUNA, SETJEN II, TRI DHARMA, BIRO UMUM, GRAHA KEMNAKER.
+- Kalender **matriks** (baris = ruangan, kolom = tanggal Senin–Minggu), navigasi minggu **bebas tanpa batas** (bisa maju/mundur ke tahun berapa pun) + tombol "Hari Ini".
+- **Real-time lewat Server-Sent Events (SSE)** — begitu ada booking baru/diedit/dibatalkan oleh siapa pun, semua orang yang sedang membuka halaman (admin maupun landing page publik) langsung melihat perubahannya tanpa refresh.
+- **"Terakhir diedit oleh"** beserta waktunya, ditampilkan di detail booking dan otomatis ikut live kalau ada yang mengedit booking yang sama saat modal sedang terbuka.
+- **Highlight tanggal merah otomatis**, berlaku untuk tahun berapa pun (tidak perlu update tahunan):
+  - Akhir pekan (Sabtu/Minggu) — otomatis, murni dari hari kalender.
+  - Hari libur nasional bertanggal tetap (Tahun Baru, Hari Buruh, Harlah Pancasila, HUT RI, Natal).
+  - Wafat & Kenaikan Isa Almasih — dihitung otomatis dari rumus Paskah (akurat 100%).
+  - Idul Fitri & Idul Adha — dihitung dari konversi kalender Hijriah (ditandai "perkiraan", bisa meleset ±1 hari dari sidang isbat resmi).
+  - Tahun Baru Imlek — dihitung dari kalender Tionghoa.
+  - **Cuti bersama** & **Nyepi** — didaftar manual per tahun di `frontend/src/utils/holidays.js` (murni kebijakan pemerintah/kalender Saka Bali, tidak bisa dihitung otomatis).
+
+### ⚙️ Mode Maintenance (Settings, khusus Admin)
+- Admin bisa menonaktifkan menu tertentu (Dashboard/Pemeliharaan/Pengadaan/Kendaraan/Ruang Rapat) untuk semua role selain admin, lengkap dengan pesan custom per menu.
+- Perubahan **real-time lewat SSE** — begitu admin toggle, semua user yang sedang online langsung melihat menu terkunci/terbuka tanpa refresh.
+- Diterapkan **dua lapis**: disable tampilan di sidebar/halaman (frontend) **dan** ditolak di API dengan status 503 (backend) — jadi tetap aman walau ada yang mencoba akses API langsung.
+
+### 🎨 Tampilan
+- Tema terang biru muda dengan logo Kemnaker, warna aksen berbeda per modul.
+- Sidebar bisa **diciutkan** (mode ikon saja) — preferensinya disimpan otomatis di browser.
+
+### 🔒 Keamanan
+- Otorisasi role diterapkan **di dua lapis**: disable di UI (frontend) **dan** ditolak di API (backend) — aman walau seseorang mencoba akses API langsung (mis. lewat Postman).
+- Rate limiting di endpoint sensitif: login (5x/menit), register, dan lupa password.
+- Header keamanan standar (CSP, X-Frame-Options, dll) di setiap response API.
 
 ---
 
 ## STRUKTUR PROJECT
 ```
 biro-umum-app/
-  backend/     -> Node.js + Express + PostgreSQL (pg)
-  frontend/    -> React + Vite + Tailwind (CDN)
+  backend/
+    src/
+      routes/      -> auth, dashboard, kendaraan, maintenance, pemeliharaan, pengadaan, ruangRapat
+      middleware/  -> autentikasi, cek role, cek maintenance mode, rate limiter
+    prisma/
+      schema.prisma
+      migrations/  -> riwayat migration database (SUMBER KEBENARAN skema, urut 0001 s/d terbaru)
+    sql/           -> script SQL manual (role_management.sql masih dipakai; sisanya arsip pra-Prisma)
+    scripts/       -> script bantu (db-verify.js)
+    docs/          -> dokumentasi khusus backend (PRISMA_PRODUCTION.md)
+  frontend/
+    src/
+      pages/       -> Landing, Login, Register, Dashboard, Pemeliharaan, Pengadaan, Kendaraan, RuangRapat, Settings, dll
+      components/  -> Sidebar, ProtectedRoute, BrandMark, RuangRapatSchedule, dll
+      hooks/       -> useRuangRapatLive (SSE)
+      utils/       -> holidays.js (hari libur otomatis)
+      context/     -> AuthContext (role, sesi, maintenance mode)
+  docs/            -> catatan project lainnya (Update.md, UPLOAD_LOCAL_PLAN.md)
 ```
 
 ---
 
-## BAGIAN 1 — SETUP DATABASE DI pgAdmin4
+## BAGIAN 1 — SETUP DATABASE (Prisma, direkomendasikan untuk database baru)
 
-1. Buka **pgAdmin4**, login dengan master password kamu.
-2. Di panel kiri, klik kanan **Servers > PostgreSQL** (server lokal kamu) → pastikan statusnya connected (klik dan masukkan password postgres jika diminta).
-3. Klik kanan pada **Databases** → **Create** → **Database...**
-   - Database: `biro_umum_db`
-   - Owner: `postgres` (atau user lain yang kamu pakai)
-   - Klik **Save**.
-4. Klik database `biro_umum_db` yang baru dibuat di panel kiri agar terpilih (highlight biru).
-5. Buka **Query Tool**: klik kanan pada `biro_umum_db` → **Query Tool** (atau ikon petir di toolbar).
-6. Buka file `backend/schema.sql` (dari project ini) di teks editor, **copy semua isinya**, lalu **paste** ke Query Tool pgAdmin4.
-7. Klik tombol **Execute/Run** (▶ ikon petir, atau tekan `F5`).
-8. Jika berhasil, di panel kiri akan muncul tabel: `users`, `pemeliharaan`, `pengadaan` di bawah `biro_umum_db > Schemas > public > Tables`. Klik kanan `Tables` → `Refresh` kalau belum muncul.
-9. Cek datanya: klik kanan tabel `pemeliharaan` → **View/Edit Data > All Rows**, harus muncul 3 baris contoh.
+1. Buka **pgAdmin4**, buat database kosong bernama `biro_umum_db` (**Databases** → **Create** → **Database...**). Tidak perlu menjalankan SQL manual apa pun — cukup buat database kosongnya saja.
+2. Siapkan `backend/.env` dulu (lihat Bagian 2) supaya `DATABASE_URL` mengarah ke database ini.
+3. Dari folder `backend`, jalankan:
+   ```bash
+   npm install
+   npx prisma migrate deploy
+   ```
+   Perintah ini otomatis membuat semua tabel sesuai riwayat di `backend/prisma/migrations/` (`users`, `pemeliharaan`, `pengadaan`, `kendaraan`, `ruang_rapat`, `maintenance_mode`).
+4. Cek di pgAdmin4: refresh `biro_umum_db > Schemas > public > Tables`, tabel-tabel di atas harus sudah muncul.
 
 Database sudah siap. ✅
 
-### Cara memberikan Role "PIC" ke seorang karyawan (khusus lewat pgAdmin4)
-Role `pic` **sengaja tidak ada** di pilihan saat mendaftar akun baru. Untuk menjadikan seorang karyawan sebagai PIC (hak edit khusus), lakukan ini di **Query Tool** pgAdmin4:
+> **Punya database lama** yang sudah berisi data dari sebelum project ini pakai Prisma? Jangan langsung jalankan `prisma migrate dev`. Ikuti panduan baseline di `backend/docs/PRISMA_PRODUCTION.md` bagian "Database lama yang sudah berisi data".
+> Referensi skema versi lama (pra-Prisma) masih disimpan di `backend/sql/` untuk arsip — bukan untuk dijalankan lagi di database baru.
+
+### Cara memberikan Role "Admin" / "PIC" / "Kabag" (khusus lewat pgAdmin4)
+Ketiga role ini **sengaja tidak ada** di pilihan saat mendaftar akun baru (form Register cuma bisa bikin akun Karyawan). Untuk menaikkan role seorang user, jalankan di **Query Tool** pgAdmin4 (lihat juga `backend/sql/role_management.sql`):
 
 ```sql
--- Ganti email di bawah dengan email karyawan yang ingin dijadikan PIC
-UPDATE users
-SET role = 'pic'
-WHERE email = 'nama.karyawan@kemnaker.go.id';
-```
-Klik Execute (F5). Setelah itu, saat karyawan tersebut login ulang (atau login kembali agar token baru terbit), dia otomatis punya hak edit di modul Pemeliharaan & Pengadaan, sama seperti Kabag.
-
-Untuk mengecek semua user & role-nya kapan saja:
-```sql
+-- Lihat semua user & role-nya
 SELECT id, nama_lengkap, email, role FROM users ORDER BY id;
+
+-- Jadikan PIC
+UPDATE users SET role = 'pic', updated_at = NOW() WHERE email = 'nama.karyawan@kemnaker.go.id';
+
+-- Jadikan Kabag
+UPDATE users SET role = 'kabag', updated_at = NOW() WHERE email = 'nama.karyawan@kemnaker.go.id';
+
+-- Jadikan Admin (hanya untuk akun yang benar-benar dipercaya)
+UPDATE users SET role = 'admin', updated_at = NOW() WHERE email = 'nama.admin@kemnaker.go.id';
+
+-- Kembalikan jadi Karyawan biasa
+UPDATE users SET role = 'karyawan', updated_at = NOW() WHERE email = 'nama.karyawan@kemnaker.go.id';
 ```
 
-Untuk mengembalikan PIC jadi karyawan biasa lagi:
-```sql
-UPDATE users SET role = 'karyawan' WHERE email = 'nama.karyawan@kemnaker.go.id';
-```
+Backend selalu mengambil role terbaru langsung dari database di setiap request, jadi perubahan di atas **langsung berlaku** — user tidak perlu logout/login ulang (walau kalau mau lihat perubahan di tampilan UI langsung tanpa nunggu ~30 detik, cukup refresh browser sekali).
 
 ---
 
 ## BAGIAN 2 — MENJALANKAN BACKEND (API)
 
-**Prasyarat:** Node.js sudah terinstall (cek dengan `node -v`, minimal versi 18).
+**Prasyarat:** Node.js terinstall (cek `node -v`, minimal versi 18) dan PostgreSQL sudah jalan.
 
-1. Buka terminal, masuk ke folder backend:
+1. Masuk ke folder backend:
    ```bash
    cd biro-umum-app/backend
    ```
-2. Install dependency:
-   ```bash
-   npm install
-   ```
-3. Duplikat file `.env.example` menjadi `.env`:
+2. Duplikat `.env.example` menjadi `.env`:
    ```bash
    cp .env.example .env
    ```
-   (Di Windows CMD: `copy .env.example .env`)
-4. Buka file `.env`, sesuaikan dengan koneksi PostgreSQL kamu di pgAdmin4:
+   (Windows CMD: `copy .env.example .env`)
+3. Isi `.env`:
    ```env
-   PGHOST=localhost
-   PGPORT=5432
-   PGDATABASE=biro_umum_db
-   PGUSER=postgres
-   PGPASSWORD=isi_password_postgres_kamu
-   JWT_SECRET=isi_string_acak_panjang
+   DATABASE_URL="postgresql://postgres:isi_password_kamu@localhost:5432/biro_umum_db?schema=public"
+   JWT_SECRET="isi_string_acak_minimal_32_karakter"
+   JWT_EXPIRES_IN="8h"
+   FRONTEND_URL="http://localhost:5173"
    PORT=4000
-   FRONTEND_URL=http://localhost:5173
    ```
-   > Tips generate JWT_SECRET acak: jalankan `openssl rand -hex 32` di terminal (Mac/Linux/Git Bash), atau isi manual string acak panjang apa saja.
-5. Jalankan server:
+   > Tips generate `JWT_SECRET` acak: `openssl rand -hex 32` di terminal (Mac/Linux/Git Bash), atau isi manual string acak panjang.
+4. Install dependency (otomatis menjalankan `prisma generate`):
+   ```bash
+   npm install
+   ```
+5. Terapkan skema database (lihat Bagian 1):
+   ```bash
+   npx prisma migrate deploy
+   ```
+6. Jalankan server:
    ```bash
    npm run dev
    ```
    Kalau berhasil akan muncul:
    ```
-   [DB] Terhubung ke PostgreSQL: biro_umum_db
+   [INFO] Prisma connected
    ✅ Backend Biro Umum berjalan di http://localhost:4000
    ```
-6. Tes cepat: buka browser ke `http://localhost:4000/api/health` → harus muncul `{"status":"ok", ...}`.
+7. Tes cepat: buka browser ke `http://localhost:4000/api/health` → harus muncul `{"status":"ok", ...}`.
 
 ### Kalau muncul error koneksi database
-- Pastikan service PostgreSQL sedang berjalan (buka pgAdmin4, server harus dalam status connected).
-- Cek ulang `PGUSER` / `PGPASSWORD` / `PGPORT` di `.env` sesuai punya kamu (defaultnya biasanya port `5432`, user `postgres`).
-- Kalau pakai password ber-karakter spesial, tetap tulis apa adanya, tidak perlu tanda kutip.
+- Pastikan service PostgreSQL sedang berjalan (buka pgAdmin4, server harus status connected).
+- Cek ulang `DATABASE_URL` di `.env` (user, password, port, nama database).
+- Jalankan `npm run db:test` untuk tes koneksi cepat, atau `npm run db:verify` untuk cek kolom yang mungkin masih kurang.
 
 ---
 
@@ -132,9 +197,9 @@ UPDATE users SET role = 'karyawan' WHERE email = 'nama.karyawan@kemnaker.go.id';
    ```bash
    npm run dev
    ```
-5. Buka browser ke alamat yang ditampilkan, biasanya: `http://localhost:5173`
+5. Buka browser ke alamat yang ditampilkan, biasanya `http://localhost:5173`.
 
-Kamu akan melihat halaman **Login**. Klik **"Daftar Akun Baru"** untuk membuat akun pertama (pilih role **Kabag** supaya langsung bisa mengedit semua data untuk testing).
+Kamu akan melihat **Landing page** (jadwal ruang rapat publik). Klik **"Masuk ke Dashboard"** → **"Daftar Akun Baru"** untuk membuat akun pertama (otomatis role Karyawan). Untuk testing dengan hak edit penuh, naikkan role akun tsb jadi Kabag/Admin lewat pgAdmin4 (lihat Bagian 1), lalu logout–login lagi.
 
 ---
 
@@ -156,24 +221,26 @@ Langkah aktifkan Google SSO untuk uji coba:
    GOOGLE_CALLBACK_URL=http://localhost:4000/api/auth/google/callback
    ```
 6. Restart backend (`npm run dev` ulang).
-7. Klik tombol **"Masuk dengan Akun Kemenaker / Intranet (SSO)"** di halaman login → akan diarahkan ke Google → setelah izin, otomatis kembali ke aplikasi dan langsung login.
+7. Klik tombol **"Masuk dengan Akun Kemenaker / Intranet (SSO)"** di halaman login → diarahkan ke Google → setelah izin, otomatis kembali ke aplikasi dan langsung login.
 
-> Catatan: kalau `.env` belum diisi, tombol SSO akan menampilkan pesan bahwa SSO belum dikonfigurasi (tidak akan error/crash).
-> User yang login pertama kali lewat SSO otomatis dibuatkan akun baru dengan role **karyawan** (read-only). Untuk menjadikannya Kabag/PIC, ubah lewat pgAdmin4 seperti di Bagian 1.
+> Catatan: kalau `.env` belum diisi, tombol SSO akan menampilkan pesan bahwa SSO belum dikonfigurasi (tidak error/crash).
+> User yang login pertama kali lewat SSO otomatis dibuatkan akun baru dengan role **karyawan**. Untuk menaikkan role, ubah lewat pgAdmin4 seperti di Bagian 1.
 
 ---
 
 ## BAGIAN 5 — RINGKASAN ATURAN HAK AKSES (RBAC)
 
-| Role      | Bisa buka data? | Bisa tambah permintaan baru? | Bisa edit / proses tahapan? | Bisa dipilih saat daftar akun? |
-|-----------|:---:|:---:|:---:|:---:|
-| Karyawan  | ✅ | ✅ | ❌ | ✅ |
-| Kabag     | ✅ | ✅ | ✅ | ✅ |
-| PIC       | ✅ | ✅ | ✅ | ❌ (hanya via pgAdmin4) |
+| Role | Bisa buka data? | Bisa tambah permintaan baru? | Bisa edit / proses tahapan? | Bisa dipilih saat daftar akun? |
+|---|:---:|:---:|:---:|:---:|
+| Karyawan | ✅ | ✅ (otomatis jadi PIC setelahnya) | ❌ | ✅ (satu-satunya) |
+| PIC | ✅ | ✅ | ✅ **hanya data buatan sendiri** | ❌ (hanya via pgAdmin4, atau otomatis dari Karyawan) |
+| Kabag | ✅ | ✅ | ✅ semua data | ❌ (hanya via pgAdmin4) |
+| Admin | ✅ | ✅ | ✅ semua data + atur Mode Maintenance + selalu bisa akses semua menu | ❌ (hanya via pgAdmin4) |
 
 Penerapan teknis:
-- **Frontend**: tombol edit/tahapan otomatis disable + terlihat abu-abu untuk role `karyawan` (lihat `useAuth().canEdit` di `frontend/src/context/AuthContext.jsx`).
-- **Backend**: endpoint `PUT` dan `DELETE` di `backend/src/routes/pemeliharaan.js` & `pengadaan.js` dibungkus middleware `requireRole(['kabag','pic','admin'])` — kalau karyawan memaksa memanggil API langsung (misal lewat Postman), tetap akan ditolak dengan HTTP 403.
+- **Frontend**: tombol edit/tahapan otomatis disable untuk role `karyawan`, dan untuk `pic` khusus di baris data milik orang lain (lihat `useAuth().canEditRow()` di `frontend/src/context/AuthContext.jsx`).
+- **Backend**: endpoint `PUT`/`DELETE` di `backend/src/routes/pemeliharaan.js`, `pengadaan.js`, `kendaraan.js`, `ruangRapat.js` dibungkus middleware `requireRole([...])` + pengecekan kepemilikan (`created_by`) untuk role `pic` — kalau dipaksa lewat API langsung (mis. Postman), tetap ditolak HTTP 403.
+- Role user diverifikasi ulang dari database di **setiap** request lewat `requireAuth` — token JWT cuma dipakai untuk identitas (id), bukan sumber kebenaran hak akses.
 
 ---
 
@@ -181,92 +248,18 @@ Penerapan teknis:
 
 | Masalah | Solusi |
 |---|---|
-| `ECONNREFUSED` saat backend start | PostgreSQL belum jalan / port salah. Cek pgAdmin4 & `.env`. |
-| `relation "users" does not exist` | Berarti `schema.sql` belum dijalankan di database yang benar. Ulangi Bagian 1. |
-| Login gagal padahal sudah daftar | Pastikan backend & frontend `.env` sudah benar (`VITE_API_URL` mengarah ke backend yang aktif). |
+| `ECONNREFUSED` saat backend start | PostgreSQL belum jalan / port salah. Cek pgAdmin4 & `DATABASE_URL` di `.env`. |
+| `relation "users" does not exist` | Migration belum diterapkan. Jalankan `npx prisma migrate deploy` di folder `backend` (lihat Bagian 1). |
+| Database lama sudah berisi data, mau update struktur tanpa kehilangan data | Ikuti panduan baseline di `backend/docs/PRISMA_PRODUCTION.md`, atau jalankan `backend/sql/database_repair.sql` sekali via pgAdmin4 (aman: `IF NOT EXISTS`, tidak DROP data), lalu `npm run db:verify`. |
+| Login gagal padahal sudah daftar | Pastikan `VITE_API_URL` (frontend) mengarah ke backend yang aktif. |
 | CORS error di console browser | Pastikan `FRONTEND_URL` di `.env` backend sama persis dengan alamat frontend (`http://localhost:5173`). |
-| Tombol edit tetap disable padahal sudah jadi Kabag/PIC | Logout lalu login ulang supaya token JWT baru (berisi role terbaru) diterbitkan. |
+| Tombol edit tetap disable padahal sudah jadi Kabag/Admin | Role sudah aktif otomatis maksimal ~30 detik; untuk instan, refresh browser (tidak perlu logout). |
+| Login terkunci "Coba lagi dalam X detik" | Proteksi anti-spam (maks. 5x percobaan/menit). Tunggu hitungan mundurnya habis. |
+| Menu tampil "Sedang Dalam Mode Maintenance" | Menu tsb sedang dinonaktifkan admin lewat Settings. Hanya role Admin yang tetap bisa akses. |
 
 ---
 
 ## TEKNOLOGI YANG DIPAKAI
-- **Frontend**: React 18, React Router, Axios, Tailwind CSS (CDN), Vite
-- **Backend**: Node.js, Express, JSON Web Token (jsonwebtoken), bcryptjs, Passport.js (Google OAuth strategy)
-- **Database**: PostgreSQL (dikelola lewat pgAdmin4)
-
-### Pemberian Role PIC / Kabag via PostgreSQL
-Pendaftaran mandiri hanya menyediakan role **Karyawan**. Untuk memberikan akses **PIC** atau **Kabag**, ubah role user langsung melalui pgAdmin4 Query Tool:
-
-```sql
--- Cek user
-SELECT id, nama_lengkap, email, role FROM users ORDER BY id;
-
--- Jadikan PIC
-UPDATE users SET role = 'pic', updated_at = NOW() WHERE email = 'email@contoh.go.id';
-
--- Jadikan Kabag
-UPDATE users SET role = 'kabag', updated_at = NOW() WHERE email = 'email@contoh.go.id';
-```
-
-Setelah perubahan role, user perlu login ulang agar token/JWT mendapatkan role terbaru.
-=======
-# dashboard-RT
-
-
-## Perbaikan Database Lama + Prisma
-
-Jika database PostgreSQL `biro_umum_db` sudah berisi data lama, **jangan menjalankan `prisma migrate dev` secara sembarangan**. Gunakan `backend/database_repair.sql` sekali melalui pgAdmin4 Query Tool pada database `biro_umum_db`. Script ini bersifat kompatibilitas: memakai `IF NOT EXISTS`, tidak DROP tabel, dan tidak menghapus data.
-
-Setelah SQL selesai:
-
-```bash
-cd backend
-npm install
-npx prisma generate
-npm run db:test
-npm run db:verify
-npm start
-```
-
-`npm run db:verify` akan menampilkan jumlah data dan kolom yang masih kurang pada `pengadaan`, `kendaraan`, dan `ruang_rapat`. Jika tertulis `missing=none`, struktur kolom yang dibutuhkan API Prisma sudah tersedia.
-
-### Pengadaan
-Nilai HPS **tidak dimasukkan pada form Tambah Pengadaan**. Kolom `pengadaan.nilai_hps` tetap dipertahankan dan hanya diisi melalui Aksi Tahap 1.
-
-### Jika muncul “Gagal memuat...”
-1. Pastikan backend menggunakan `.env` yang menunjuk ke `biro_umum_db`.
-2. Jalankan `npm run db:test`.
-3. Jalankan `npm run db:verify`.
-4. Jika ada `missing=...`, jalankan `backend/database_repair.sql` di pgAdmin4 lalu ulangi `npm run db:verify`.
-5. Restart backend dengan `npm start`.
-
-### `.env` backend yang dipakai
-Simpan sebagai `backend/.env` (jangan commit file ini):
-
-```env
-PGHOST=localhost
-PGPORT=5432
-PGDATABASE=biro_umum_db
-PGUSER=postgres
-PGPASSWORD=<password PostgreSQL kamu>
-DATABASE_URL="postgresql://postgres:<password PostgreSQL kamu>@localhost:5432/biro_umum_db"
-JWT_SECRET=<minimal 32 karakter>
-JWT_EXPIRES_IN=8h
-PORT=4000
-FRONTEND_URL=http://localhost:5173
-```
-
-Jika password PostgreSQL kamu adalah `123`, maka `DATABASE_URL` menjadi:
-`postgresql://postgres:123@localhost:5432/biro_umum_db`
-
-### Urutan aman setelah mengambil ZIP
-
-```bash
-cd backend
-npm install
-npx prisma generate
-npm run db:test
-npm run db:verify
-```
-
-Lalu jalankan `npm start`. Di terminal harus muncul `Prisma connected` dan server pada port 4000.
+- **Frontend**: React 18, React Router, Axios, Tailwind CSS (CDN), Vite, Server-Sent Events (native `EventSource`)
+- **Backend**: Node.js, Express, Prisma ORM, JSON Web Token (jsonwebtoken), bcryptjs, Passport.js (Google OAuth strategy)
+- **Database**: PostgreSQL, dikelola lewat Prisma Migrate (`backend/prisma/migrations/`) — pgAdmin4 dipakai untuk operasional (lihat isi data, kelola role user).

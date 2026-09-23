@@ -21,10 +21,14 @@ api.interceptors.response.use(
     if (err.response && err.response.status === 401) {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
-      const publicPath = window.location.pathname === '/login' || window.location.pathname === '/jadwal-rapat';
-      const isAuthMe = String(err.config?.url || '').includes('/auth/me');
-      const isPublicSchedule = String(err.config?.url || '').includes('/ruang-rapat/public-schedule');
-      if (!publicPath && !isAuthMe && !isPublicSchedule) {
+      // '/' (landing page) sengaja ditambahkan: halaman ini dirancang tampil
+      // untuk siapa saja (login atau tidak), jadi token basi yang gagal saat
+      // background-check (mis. /auth/me, /maintenance) tidak boleh memaksa
+      // redirect ke /login dan membajak pengalaman landing page.
+      const publicPath = ['/login', '/jadwal-rapat', '/'].includes(window.location.pathname);
+      const url = String(err.config?.url || '');
+      const isBackgroundCheck = url.includes('/auth/me') || url.includes('/ruang-rapat/public-schedule') || url.includes('/maintenance');
+      if (!publicPath && !isBackgroundCheck) {
         window.location.href = '/login';
       }
     }

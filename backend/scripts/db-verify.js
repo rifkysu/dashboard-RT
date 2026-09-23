@@ -1,5 +1,5 @@
 require('dotenv').config();
-const prisma = require('./src/prisma');
+const prisma = require('../src/prisma');
 
 const checks = {
   users: ['id','nama_lengkap','email','password_hash','role','is_active'],

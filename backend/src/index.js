@@ -35,7 +35,7 @@ app.use((req, res, next) => {
   res.setHeader('X-Request-ID', req.requestId);
   next();
 });
-app.use(cors({ origin: frontendUrl, credentials: false, methods: ['GET','POST','PUT','DELETE','OPTIONS'], allowedHeaders: ['Content-Type','Authorization','X-Request-ID'] }));
+app.use(cors({ origin: frontendUrl, credentials: false, methods: ['GET','POST','PUT','DELETE','OPTIONS'], allowedHeaders: ['Content-Type','Authorization','X-Request-ID'], exposedHeaders: ['Retry-After','X-RateLimit-Limit','X-RateLimit-Remaining'] }));
 app.use(createRateLimiter({ windowMs: 60 * 1000, max: 180, message: 'Terlalu banyak permintaan. Coba lagi sebentar.' }));
 // File upload disimpan sebagai Base64 di payload JSON; naikkan limit agar dokumen tidak ditolak 413.
 app.use(express.json({ limit: '25mb', strict: true }));

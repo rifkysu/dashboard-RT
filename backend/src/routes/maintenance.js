@@ -5,7 +5,7 @@ const { requireAuth, requireRole } = require('../middleware/auth');
 const logger = require('../logger');
 
 const router = express.Router();
-const MENU_KEYS = ['dashboard', 'pemeliharaan', 'pengadaan', 'kendaraan', 'ruang-rapat'];
+const MENU_KEYS = ['dashboard', 'pemeliharaan', 'pengadaan', 'kendaraan', 'ruang-rapat', 'landing'];
 
 // Bus internal untuk broadcast SSE tiap admin toggle maintenance, supaya
 // semua user yang sedang buka web langsung ke-update real-time tanpa perlu
@@ -24,6 +24,19 @@ router.get('/stream', (req, res) => {
   bus.on('change', send);
   const heartbeat = setInterval(() => { try { res.write(': heartbeat\n\n'); } catch {} }, 25000);
   req.on('close', () => { clearInterval(heartbeat); bus.off('change', send); });
+});
+
+// Status maintenance landing page ('/') harus bisa dibaca pengunjung yang
+// belum login, jadi endpoint ini sengaja publik (tanpa requireAuth) dan cuma
+// mengembalikan baris 'landing' saja -- bukan status menu lain yang sensitif.
+router.get('/landing-status', async (req, res) => {
+  try {
+    const row = await prisma.maintenanceMode.findUnique({ where: { menu_key: 'landing' } });
+    res.json({ data: { is_active: !!row?.is_active, message: row?.message || null } });
+  } catch (err) {
+    logger.error('GET landing maintenance status gagal', { error: err });
+    res.json({ data: { is_active: false, message: null } });
+  }
 });
 
 router.use(requireAuth);
