@@ -5,8 +5,9 @@ Full-stack app (React + Node.js/Express + PostgreSQL + **Prisma**) untuk mengelo
 ## Fitur utama
 
 ### 🌐 Landing page & akses publik (tanpa login)
-- **Landing page** (`/`) — menampilkan jadwal ketersediaan ruang rapat secara **real-time**, plus ajakan Masuk/Daftar akun. Ini yang muncul pertama kali dibuka, bukan halaman login.
+- **Landing page** (`/`) — hero + ringkasan modul + jadwal ketersediaan ruang rapat secara **real-time**, plus ajakan Masuk/Daftar akun. Ini yang muncul pertama kali dibuka, bukan halaman login.
 - **Halaman kiosk read-only** (`/jadwal-rapat`) — versi tampilan layar besar (mis. dipasang di layar dekat ruang rapat), read-only, data sama dengan landing page.
+- **Landing page ikut Mode Maintenance** — admin bisa menonaktifkan landing page juga (menu `landing` di panel Mode Maintenance), dicek lewat endpoint publik `GET /api/maintenance/landing-status` (tanpa perlu login) supaya pengunjung yang belum punya akun tetap melihat notifikasi maintenance yang benar.
 
 ### 🔐 Autentikasi & Role
 - Login email/password + **Login SSO** (Google OAuth 2.0 — bisa diganti ke SSO instansi lain lewat `backend/src/config/passport.js`).
@@ -21,16 +22,26 @@ Full-stack app (React + Node.js/Express + PostgreSQL + **Prisma**) untuk mengelo
   - Role & status aktif user **selalu dicek ulang langsung dari database di setiap request** (bukan dipercaya dari isi token JWT) — jadi kalau role diubah manual lewat pgAdmin4, perubahannya langsung berlaku ke request berikutnya, **tanpa perlu logout**.
 
 ### 📊 Dashboard
-- Ringkasan status Pemeliharaan & Pengadaan (pending / on progress / selesai) + daftar aktivitas terbaru gabungan dari kedua modul, terurut dari yang paling baru diperbarui.
+- **Kartu KPI**: Total Permintaan, Pending, On Progress, Selesai — gabungan Pemeliharaan + Pengadaan.
+- **Kartu modul** (Pemeliharaan/Pengadaan/Kendaraan/Ruang Rapat) dengan progress bar persentase selesai, badge dinamis per modul.
+- **Kartu Kendaraan** menampilkan jumlah kendaraan yang **belum bayar pajak** (dihitung dari `waktu_pajak` yang kosong atau sudah lewat tanggal hari ini) — langsung dari `GET /api/dashboard/summary`, tidak perlu buka menu Kendaraan dulu untuk tahu.
+- Daftar **Aktivitas Terbaru** gabungan Pemeliharaan & Pengadaan, terurut dari yang paling baru diperbarui, dengan badge status berwarna.
 
 ### 🛠️ Pemeliharaan & 🛒 Pengadaan
-- Alur **3 tahap** per permintaan: Analisa & HPS → Invoice & Pembayaran → Dokumentasi/BAST.
+- Alur **3 tahap** per permintaan: Analisa & HPS → Invoice & Pembayaran → Dokumentasi/BAST. Dokumen permintaan awal (diupload saat "Tambah Permintaan") bisa dilihat lagi di Tahap 1, tidak hilang begitu masuk alur tahapan.
 - Tahap 2 (Invoice & Pembayaran): pilih metode pembayaran **GUP** (nomor 1–20), **TUP** (nomor 1–10), atau **LS** (+ tanggal LS) — dipasangkan dengan **Asal Anggaran** (`RM` / `PNBP`). Ditampilkan gabung di kolom **Transaksi** tabel (mis. `GUP 5 RM`), lengkap dengan kolom filter-nya sendiri.
 - Karyawan hanya bisa melihat & mengajukan; **Kabag, PIC (data sendiri), dan Admin** bisa mengedit & memproses tahapan.
+- **Kolom Hapus terpisah** dari kolom Aksi (tahapan) — tombol hapus cuma aktif untuk kabag/admin, atau PIC yang memang menambahkan data itu sendiri (dicek `created_by`, sama seperti aturan edit).
 - Export ke Excel dengan filter rentang tanggal, dan setiap kolom tabel punya filter sendiri-sendiri.
 
 ### 🚗 Kendaraan
-- Data kendaraan dinas (nama, plat nomor, jenis, status: Tersedia/Digunakan/Servis) + foto kendaraan.
+- Data mengikuti nomenklatur aset **BMN**: Nama Barang (dropdown kategori tetap: Sedan/Jeep/Station Wagon/Micro Bus/Mini Bus/Pick Up/Mobil Ambulance/Kendaraan Bermotor Khusus Lainnya/Sepeda Motor), Merk, Tipe, No BPKB, No Polisi, Tanggal Perolehan, Masa Berlaku STNK, Waktu Pajak.
+- **No Polisi & Plat Khusus independen** — satu kendaraan boleh punya **keduanya sekaligus** (bukan pilih salah satu); ditampilkan gabung di kolom "No Polisi / Khusus" dengan badge "KHUSUS" kalau plat khusus terisi.
+- **Galeri foto** — upload hingga **6 foto** sekaligus per kendaraan, otomatis **dikompres di browser** (resize maks. 1600px + re-encode JPEG, pakai Canvas API bawaan, tanpa dependency tambahan) sebelum diupload.
+- **Dokumen PDF BPKB & STNK** — bisa diupload saat Tambah Kendaraan, dan **diganti/update lagi kapan pun** dari modal Detail Kendaraan (tombol Lihat/Ganti Dokumen per dokumen), tersimpan di `backend/uploads/kendaraan_bpkb/` & `kendaraan_stnk/`.
+- **Update cepat Masa Berlaku STNK & Waktu Pajak** langsung dari modal Detail — praktis dipakai begitu upload STNK baru (nilainya diisi manual, bukan dibaca otomatis dari isi PDF — pembacaan otomatis/OCR sengaja tidak dipakai karena tidak reliable untuk dokumen hasil scan).
+- **Search + filter pill** ala marketplace mobil (Merek, Status, Tahun Perolehan) — tiap pill buka dropdown berisi daftar pilihan lengkap dengan jumlah datanya, di atas tab kategori Roda 2/Roda 4/Roda 6.
+- Kartu di Dashboard menampilkan jumlah kendaraan yang **belum bayar pajak** (lihat bagian Dashboard).
 
 ### 📅 Ruang Rapat
 - **5 ruangan tetap**: SERBAGUNA, SETJEN II, TRI DHARMA, BIRO UMUM, GRAHA KEMNAKER.
@@ -46,18 +57,28 @@ Full-stack app (React + Node.js/Express + PostgreSQL + **Prisma**) untuk mengelo
   - **Cuti bersama** & **Nyepi** — didaftar manual per tahun di `frontend/src/utils/holidays.js` (murni kebijakan pemerintah/kalender Saka Bali, tidak bisa dihitung otomatis).
 
 ### ⚙️ Mode Maintenance (Settings, khusus Admin)
-- Admin bisa menonaktifkan menu tertentu (Dashboard/Pemeliharaan/Pengadaan/Kendaraan/Ruang Rapat) untuk semua role selain admin, lengkap dengan pesan custom per menu.
+- Admin bisa menonaktifkan menu tertentu (Landing Page/Dashboard/Pemeliharaan/Pengadaan/Kendaraan/Ruang Rapat) untuk semua role selain admin, lengkap dengan pesan custom per menu.
 - Perubahan **real-time lewat SSE** — begitu admin toggle, semua user yang sedang online langsung melihat menu terkunci/terbuka tanpa refresh.
 - Diterapkan **dua lapis**: disable tampilan di sidebar/halaman (frontend) **dan** ditolak di API dengan status 503 (backend) — jadi tetap aman walau ada yang mencoba akses API langsung.
+- Halaman **Settings sendiri sekarang khusus admin** — link-nya otomatis hilang dari sidebar untuk role lain, dan redirect ke Dashboard kalau non-admin coba akses `/settings` langsung lewat URL. Info profil pengguna (nama, email, role) dipindah ke halaman terpisah **`/profile`** yang bisa diakses semua role lewat blok profil di sidebar (di atas Settings).
+
+### 👤 Akun & Akses (`/akun`, khusus Admin)
+- Tabel semua akun terdaftar: nama, email, role, no HP, unit kerja, status, metode login (SSO/password), tanggal daftar, dan **terakhir login** (`last_login_at`, dicatat otomatis tiap kali ada login sukses lewat email/password maupun SSO).
+- **Ban / Aktifkan akun** — admin bisa menonaktifkan (`is_active = false`) akun siapa pun kecuali akun sendiri. Efeknya **langsung berlaku**: akun yang di-ban langsung ditolak di request berikutnya (`requireAuth` selalu cek `is_active` segar dari database) dan tidak bisa login lagi sampai diaktifkan ulang — tanpa logic tambahan, murni memanfaatkan mekanisme cek role/status yang sudah ada.
+- Link menu ini **cuma muncul di sidebar untuk role admin**, dan endpoint `GET/PUT /api/users*` dijaga `requireRole(['admin'])` di backend.
 
 ### 🎨 Tampilan
 - Tema terang biru muda dengan logo Kemnaker, warna aksen berbeda per modul.
-- Sidebar bisa **diciutkan** (mode ikon saja) — preferensinya disimpan otomatis di browser.
+- Sidebar bisa **diciutkan** (mode ikon saja) di layar desktop — preferensinya disimpan otomatis di browser.
+- **Responsive mobile/tablet** — di layar sempit (< md), sidebar berubah jadi **drawer overlay** yang dibuka lewat tombol hamburger di top bar, bukan lagi selalu tampil menutupi konten. Tabel-tabel lebar (Pemeliharaan, Pengadaan, Kendaraan, kalender Ruang Rapat) scroll horizontal di dalam kartunya sendiri, tidak mendorong lebar seluruh halaman.
+- Landing page & beberapa menu (Dashboard, Pemeliharaan, Pengadaan, Kendaraan, Ruang Rapat) pakai font Arial/sans-serif, beda dari font default (Inter) di halaman lain.
 
 ### 🔒 Keamanan
 - Otorisasi role diterapkan **di dua lapis**: disable di UI (frontend) **dan** ditolak di API (backend) — aman walau seseorang mencoba akses API langsung (mis. lewat Postman).
 - Rate limiting di endpoint sensitif: login (5x/menit), register, dan lupa password.
 - Header keamanan standar (CSP, X-Frame-Options, dll) di setiap response API.
+- **Validasi isi file, bukan cuma klaim tipe file** — semua upload dokumen (Pemeliharaan, Pengadaan, Kendaraan) dicek **magic number**-nya di server (`backend/src/fileSignature.js`) supaya file yang diklaim PDF/JPG/PNG/DOC/XLS beneran punya isi sesuai tipe itu, bukan script/file lain yang cuma diganti nama/ekstensi/Content-Type. Frontend juga punya pengecekan yang sama (`frontend/src/utils/fileSignature.js`) untuk kasih peringatan instan sebelum upload — tapi validasi di server yang jadi penentu akhir, karena cek di client bisa dilewati kalau API dipanggil langsung.
+- **Preview dokumen pakai Blob URL, bukan `data:` URI mentah** (`frontend/src/components/DocumentViewer.jsx`, dipakai di semua menu yang punya tombol "Lihat" dokumen). Blob URL cuma valid di memori tab/browser yang membuatnya — kalau di-copy dan dibuka di device/browser lain (termasuk oleh orang yang tidak login), otomatis gagal dimuat, beda dengan `data:` URI yang sifatnya *self-contained* dan bisa dibuka di mana saja tanpa hit ke server.
 
 ---
 
@@ -66,8 +87,9 @@ Full-stack app (React + Node.js/Express + PostgreSQL + **Prisma**) untuk mengelo
 biro-umum-app/
   backend/
     src/
-      routes/      -> auth, dashboard, kendaraan, maintenance, pemeliharaan, pengadaan, ruangRapat
+      routes/      -> auth, dashboard, kendaraan, maintenance, pemeliharaan, pengadaan, ruangRapat, users
       middleware/  -> autentikasi, cek role, cek maintenance mode, rate limiter
+      fileSignature.js -> validasi magic number file upload (dipakai pemeliharaan/pengadaan/kendaraan)
     prisma/
       schema.prisma
       migrations/  -> riwayat migration database (SUMBER KEBENARAN skema, urut 0001 s/d terbaru)
@@ -76,10 +98,10 @@ biro-umum-app/
     docs/          -> dokumentasi khusus backend (PRISMA_PRODUCTION.md)
   frontend/
     src/
-      pages/       -> Landing, Login, Register, Dashboard, Pemeliharaan, Pengadaan, Kendaraan, RuangRapat, Settings, dll
-      components/  -> Sidebar, ProtectedRoute, BrandMark, RuangRapatSchedule, dll
+      pages/       -> Landing, Login, Register, Dashboard, Pemeliharaan, Pengadaan, Kendaraan, RuangRapat, Settings, Profile, Akun, dll
+      components/  -> Sidebar, ProtectedRoute, BrandMark, RuangRapatSchedule, DocumentViewer, dll
       hooks/       -> useRuangRapatLive (SSE)
-      utils/       -> holidays.js (hari libur otomatis)
+      utils/       -> holidays.js (hari libur otomatis), fileSignature.js (validasi magic number di client), imageCompress.js (kompresi foto kendaraan)
       context/     -> AuthContext (role, sesi, maintenance mode)
   docs/            -> catatan project lainnya (Update.md, UPLOAD_LOCAL_PLAN.md)
 ```
@@ -248,9 +270,10 @@ Ringkasnya: **Register/SSO → Karyawan → (nambah permintaan) → PIC → (man
 | Admin | ✅ | ✅ | ✅ semua data + atur Mode Maintenance + selalu bisa akses semua menu | ❌ (hanya via pgAdmin4) |
 
 Penerapan teknis:
-- **Frontend**: tombol edit/tahapan otomatis disable untuk role `karyawan`, dan untuk `pic` khusus di baris data milik orang lain (lihat `useAuth().canEditRow()` di `frontend/src/context/AuthContext.jsx`).
+- **Frontend**: tombol edit/tahapan/hapus otomatis disable untuk role `karyawan`, dan untuk `pic` khusus di baris data milik orang lain (lihat `useAuth().canEditRow()` di `frontend/src/context/AuthContext.jsx`).
 - **Backend**: endpoint `PUT`/`DELETE` di `backend/src/routes/pemeliharaan.js`, `pengadaan.js`, `kendaraan.js`, `ruangRapat.js` dibungkus middleware `requireRole([...])` + pengecekan kepemilikan (`created_by`) untuk role `pic` — kalau dipaksa lewat API langsung (mis. Postman), tetap ditolak HTTP 403.
 - Role user diverifikasi ulang dari database di **setiap** request lewat `requireAuth` — token JWT cuma dipakai untuk identitas (id), bukan sumber kebenaran hak akses.
+- **Admin juga bisa mem-ban akun** (`PUT /api/users/:id/status`, lihat bagian Fitur "Akun & Akses") — memanfaatkan mekanisme cek `is_active` yang sama di `requireAuth`, jadi akun yang di-ban langsung kehilangan akses tanpa perlu logic tambahan. Admin tidak bisa mem-ban akun sendiri (dicegah di backend).
 
 ---
 
@@ -266,6 +289,7 @@ Penerapan teknis:
 | Tombol edit tetap disable padahal sudah jadi Kabag/Admin | Role sudah aktif otomatis maksimal ~30 detik; untuk instan, refresh browser (tidak perlu logout). |
 | Login terkunci "Coba lagi dalam X detik" | Proteksi anti-spam (maks. 5x percobaan/menit). Tunggu hitungan mundurnya habis. |
 | Menu tampil "Sedang Dalam Mode Maintenance" | Menu tsb sedang dinonaktifkan admin lewat Settings. Hanya role Admin yang tetap bisa akses. |
+| `npx prisma generate` gagal dengan `EPERM: operation not permitted, rename ... query_engine-windows.dll.node` (Windows) | Query engine binary lagi dikunci proses lain yang masih jalan (mis. `npm run dev` via nodemon). Ini **aman diabaikan** — file JS hasil generate tetap ter-update, cuma binary engine-nya (yang schema-agnostic) gagal di-rename ulang. Restart backend sekali untuk memastikan Prisma Client yang baru benar-benar dipakai. |
 
 ---
 

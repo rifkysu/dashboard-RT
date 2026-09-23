@@ -3,6 +3,7 @@ import api from '../api';
 import { useAuth } from '../context/AuthContext';
 import BrandMark from '../components/BrandMark';
 import PaymentMethodDetail from '../components/PaymentMethodDetail';
+import DocumentViewer from '../components/DocumentViewer';
 import { verifyFileIsGenuine } from '../utils/fileSignature';
 
 const FILE_SIGNATURE_REJECT_MESSAGE = 'File yang diupload tidak terdeteksi sebagai dokumen/gambar asli (kemungkinan file diubah namanya atau berupa script). Harap upload dokumen PDF/JPG/PNG asli.';
@@ -449,25 +450,6 @@ function PengadaanStageThree({ draft, update, readOnly, onView }) {
   </div></section>;
 }
 
-
-function DocumentViewer({ open, name, data, onClose }) {
-  if (!open || !data) return null;
-  const isPdf = String(data).startsWith('data:application/pdf');
-  return <div className="fixed inset-0 z-[80] bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-    <div className="w-full max-w-5xl h-[90vh] bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col">
-      <div className="px-5 py-4 border-b border-slate-200 flex items-center justify-between gap-3">
-        <div className="min-w-0"><h3 className="font-bold text-slate-900">Preview Dokumen</h3><p className="text-xs text-slate-500 truncate mt-1">{name || 'Dokumen'}</p></div>
-        <div className="flex items-center gap-2">
-          <a href={data} target="_blank" rel="noreferrer" className="px-3 py-2 rounded-lg bg-slate-100 text-slate-700 text-xs font-semibold hover:bg-slate-200">Buka di Tab Baru</a>
-          <button type="button" onClick={onClose} className="w-9 h-9 rounded-lg text-slate-500 hover:bg-slate-100"><span className="material-symbols-outlined">close</span></button>
-        </div>
-      </div>
-      <div className="flex-1 bg-slate-100 p-3 overflow-auto flex items-center justify-center">
-        {isPdf ? <iframe title={name || 'Preview PDF'} src={data} className="w-full h-full rounded-lg bg-white border border-slate-200" /> : <img src={data} alt={name || 'Preview dokumen'} className="max-w-full max-h-full object-contain rounded-lg shadow-sm bg-white" />}
-      </div>
-    </div>
-  </div>;
-}
 
 function AddModal({ form, setForm, error, onClose, onSubmit }) {
   return <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
