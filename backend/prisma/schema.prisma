@@ -184,7 +184,8 @@ model Kendaraan {
   merk              String    @db.VarChar(100)
   tipe              String    @db.VarChar(100)
   no_bpkb           String?   @db.VarChar(50)
-  plate             String    @unique @db.VarChar(30)
+  plate             String    @unique @db.VarChar(30) // Nomor Polisi -- wajib, identitas utama kendaraan
+  plat_khusus       String?   @db.VarChar(30) // opsional -- kendaraan bisa punya plat khusus SEKALIGUS nomor polisi biasa
   jenis             String    @db.VarChar(30)
   sub               String?   @db.VarChar(150)
   status            String    @default("Tersedia") @db.VarChar(30)

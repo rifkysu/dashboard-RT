@@ -20,6 +20,7 @@ export default function Akun() {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [busyId, setBusyId] = useState(null);
 
   function load() {
     setLoading(true);
@@ -28,6 +29,25 @@ export default function Akun() {
       .finally(() => setLoading(false));
   }
   useEffect(load, []);
+
+  async function toggleBan(target) {
+    const nextActive = !target.is_active;
+    if (nextActive) {
+      if (!window.confirm(`Aktifkan kembali akun "${target.nama_lengkap}"?`)) return;
+    } else {
+      if (!window.confirm(`Ban akun "${target.nama_lengkap}"? Akun ini tidak akan bisa login/akses sistem sampai diaktifkan kembali.`)) return;
+    }
+    setBusyId(target.id);
+    setError('');
+    try {
+      await api.put(`/users/${target.id}/status`, { is_active: nextActive });
+      setData((current) => current.map((u) => (u.id === target.id ? { ...u, is_active: nextActive } : u)));
+    } catch (err) {
+      setError(err.response?.data?.message || 'Gagal memperbarui status akun.');
+    } finally {
+      setBusyId(null);
+    }
+  }
 
   if (user && user.role !== 'admin') return <Navigate to="/dashboard" replace />;
 
@@ -56,17 +76,19 @@ export default function Akun() {
           <table className="w-full text-sm">
             <thead className="bg-slate-50 border-b-2 border-slate-200">
               <tr className="divide-x divide-slate-200">
-                {['Nama Lengkap', 'Email', 'Role', 'No. HP', 'Unit Kerja', 'Login Via', 'Status', 'Tanggal Daftar', 'Terakhir Login'].map((h) => (
+                {['Nama Lengkap', 'Email', 'Role', 'No. HP', 'Unit Kerja', 'Login Via', 'Status', 'Tanggal Daftar', 'Terakhir Login', 'Aksi'].map((h) => (
                   <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase whitespace-nowrap">{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {loading && <tr><td colSpan={9} className="py-8 text-center text-slate-400">Memuat data...</td></tr>}
-              {!loading && data.length === 0 && <tr><td colSpan={9} className="py-8 text-center text-slate-400">Belum ada akun.</td></tr>}
-              {data.map((u) => (
+              {loading && <tr><td colSpan={10} className="py-8 text-center text-slate-400">Memuat data...</td></tr>}
+              {!loading && data.length === 0 && <tr><td colSpan={10} className="py-8 text-center text-slate-400">Belum ada akun.</td></tr>}
+              {data.map((u) => {
+                const isSelf = u.id === user?.id;
+                return (
                 <tr key={u.id} className="divide-x divide-slate-100 hover:bg-slate-50/50">
-                  <td className="px-4 py-3 font-semibold text-slate-800">{u.nama_lengkap}</td>
+                  <td className="px-4 py-3 font-semibold text-slate-800">{u.nama_lengkap}{isSelf && <span className="ml-1.5 text-[10px] font-bold text-indigo-600">(Kamu)</span>}</td>
                   <td className="px-4 py-3 text-slate-600">{u.email}</td>
                   <td className="px-4 py-3"><span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-semibold ${roleBadge[u.role] || roleBadge.karyawan}`}>{roleLabel[u.role] || u.role}</span></td>
                   <td className="px-4 py-3 text-slate-600 whitespace-nowrap">{u.no_hp || '-'}</td>
@@ -74,13 +96,28 @@ export default function Akun() {
                   <td className="px-4 py-3 text-slate-600 capitalize whitespace-nowrap">{u.sso_provider ? `SSO (${u.sso_provider})` : 'Email/Password'}</td>
                   <td className="px-4 py-3">
                     <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-semibold ${u.is_active ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>
-                      {u.is_active ? 'Aktif' : 'Nonaktif'}
+                      {u.is_active ? 'Aktif' : 'Di-ban'}
                     </span>
                   </td>
                   <td className="px-4 py-3 text-slate-500 whitespace-nowrap">{fmt(u.created_at)}</td>
                   <td className="px-4 py-3 text-slate-500 whitespace-nowrap">{u.last_login_at ? fmt(u.last_login_at) : <span className="text-slate-400 italic">Belum pernah login</span>}</td>
+                  <td className="px-4 py-3">
+                    {isSelf ? (
+                      <span className="text-[11px] text-slate-400 italic">Akun sendiri</span>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => toggleBan(u)}
+                        disabled={busyId === u.id}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold border disabled:opacity-60 transition ${u.is_active ? 'border-red-200 bg-red-50 text-red-700 hover:bg-red-100' : 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100'}`}
+                      >
+                        {busyId === u.id ? 'Memproses...' : u.is_active ? 'Ban Akun' : 'Aktifkan'}
+                      </button>
+                    )}
+                  </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         </div>

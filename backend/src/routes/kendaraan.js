@@ -61,13 +61,14 @@ router.get('/', async (req, res) => {
 
 router.post('/', requireRole(EDITOR_ROLES), async (req, res) => {
   try {
-    const { nama_barang, merk, tipe, no_bpkb, plate, jenis, sub, status, tanggal_perolehan, masa_berlaku_stnk, waktu_pajak, photos } = req.body;
+    const { nama_barang, merk, tipe, no_bpkb, plate, plat_khusus, jenis, sub, status, tanggal_perolehan, masa_berlaku_stnk, waktu_pajak, photos } = req.body;
 
     if (!text(nama_barang, 150, true) || !text(merk, 100, true) || !text(tipe, 100, true) || !text(plate, 30, true) || !text(jenis, 30, true)) {
       return res.status(400).json({ message: 'Nama barang, merk, tipe, nomor polisi, dan jenis wajib diisi.' });
     }
     if (!STATUS.includes(status || 'Tersedia')) return res.status(400).json({ message: 'Status kendaraan tidak valid.' });
     if (no_bpkb != null && !text(no_bpkb, 50)) return res.status(400).json({ message: 'Nomor BPKB tidak valid.' });
+    if (plat_khusus != null && !text(plat_khusus, 30)) return res.status(400).json({ message: 'Plat khusus tidak valid.' });
     if (!validDate(tanggal_perolehan) || !validDate(masa_berlaku_stnk) || !validDate(waktu_pajak)) {
       return res.status(400).json({ message: 'Format tanggal tidak valid.' });
     }
@@ -85,6 +86,7 @@ router.post('/', requireRole(EDITOR_ROLES), async (req, res) => {
         tipe: tipe.trim(),
         no_bpkb: no_bpkb ? no_bpkb.trim() : null,
         plate: plate.trim(),
+        plat_khusus: plat_khusus ? plat_khusus.trim() : null,
         jenis: jenis.trim(),
         sub: sub || null,
         status: status || 'Tersedia',
@@ -112,6 +114,7 @@ router.put('/:id', requireRole(EDITOR_ROLES), async (req, res) => {
 
     if (body.status !== undefined && !STATUS.includes(body.status)) return res.status(400).json({ message: 'Status kendaraan tidak valid.' });
     if (body.no_bpkb !== undefined && body.no_bpkb != null && !text(body.no_bpkb, 50)) return res.status(400).json({ message: 'Nomor BPKB tidak valid.' });
+    if (body.plat_khusus !== undefined && body.plat_khusus != null && !text(body.plat_khusus, 30)) return res.status(400).json({ message: 'Plat khusus tidak valid.' });
     for (const f of ['tanggal_perolehan', 'masa_berlaku_stnk', 'waktu_pajak']) {
       if (body[f] !== undefined && !validDate(body[f])) return res.status(400).json({ message: 'Format tanggal tidak valid.' });
     }
@@ -119,7 +122,7 @@ router.put('/:id', requireRole(EDITOR_ROLES), async (req, res) => {
     if (!photoCheck.ok) return res.status(400).json({ message: 'Foto kendaraan tidak valid (maksimal 6 foto, harus gambar asli).' });
 
     const data = {};
-    for (const f of ['nama_barang', 'merk', 'tipe', 'no_bpkb', 'plate', 'jenis', 'sub', 'status']) {
+    for (const f of ['nama_barang', 'merk', 'tipe', 'no_bpkb', 'plate', 'plat_khusus', 'jenis', 'sub', 'status']) {
       if (body[f] !== undefined) data[f] = typeof body[f] === 'string' ? body[f].trim() || null : body[f];
     }
     for (const f of ['tanggal_perolehan', 'masa_berlaku_stnk', 'waktu_pajak']) {

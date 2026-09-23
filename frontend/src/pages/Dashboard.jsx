@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api';
 
-const fallback = { pemeliharaan: { pending: 0, on_progress: 0, selesai: 0 }, pengadaan: { pending: 0, on_progress: 0, selesai: 0 } };
+const fallback = { pemeliharaan: { pending: 0, on_progress: 0, selesai: 0 }, pengadaan: { pending: 0, on_progress: 0, selesai: 0 }, kendaraan: { total: 0, belum_bayar_pajak: 0 } };
 
 const TONES = {
   indigo: 'from-indigo-600 to-blue-600',
@@ -111,7 +111,7 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5">
         <ModuleCard tone="emerald" icon="build" title="Pemeliharaan" desc="Permintaan perbaikan gedung dan fasilitas." badge={`${summary.pemeliharaan.pending} Pending`} to="/pemeliharaan" progress={pct(summary.pemeliharaan)} />
         <ModuleCard tone="amber" icon="shopping_cart" title="Pengadaan" desc="Status barang dan jasa dalam proses pengadaan." badge={`Proses: ${summary.pengadaan.on_progress}`} to="/pengadaan" progress={pct(summary.pengadaan)} />
-        <ModuleCard tone="indigo" icon="directions_car" title="Kendaraan" desc="Monitoring penggunaan kendaraan dinas." badge="Tersedia" to="/kendaraan" />
+        <ModuleCard tone="indigo" icon="directions_car" title="Kendaraan" desc="Monitoring penggunaan kendaraan dinas." badge={summary.kendaraan.belum_bayar_pajak > 0 ? `${summary.kendaraan.belum_bayar_pajak} Belum Bayar Pajak` : 'Pajak Lunas Semua'} to="/kendaraan" />
         <ModuleCard tone="violet" icon="calendar_month" title="Ruang Rapat" desc="Jadwal penggunaan ruang rapat." badge="Agenda" to="/ruang-rapat" />
       </div>
 

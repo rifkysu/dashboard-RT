@@ -8,7 +8,7 @@ const STATUS_OPTIONS = ['Tersedia', 'Digunakan', 'Servis'];
 const pill = { Tersedia: 'bg-blue-100 text-slate-700', Digunakan: 'bg-slate-200 text-slate-700', Servis: 'bg-red-100 text-red-700' };
 const MAX_PHOTOS = 6;
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
-const emptyForm = { nama_barang: '', merk: '', tipe: '', no_bpkb: '', plate: '', jenis: 'Roda 4', sub: '', status: 'Tersedia', tanggal_perolehan: '', masa_berlaku_stnk: '', waktu_pajak: '', photos: [] };
+const emptyForm = { nama_barang: '', merk: '', tipe: '', no_bpkb: '', plate: '', plat_khusus: '', jenis: 'Roda 4', sub: '', status: 'Tersedia', tanggal_perolehan: '', masa_berlaku_stnk: '', waktu_pajak: '', photos: [] };
 const fmtDate = (v) => v ? new Date(`${v}T00:00:00`).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : '-';
 
 export default function Kendaraan() {
@@ -110,7 +110,7 @@ export default function Kendaraan() {
 
   const filtered = useMemo(() => byJenis.filter((x) => {
     const q = search.trim().toLowerCase();
-    const searchMatch = !q || [x.nama_barang, x.merk, x.tipe, x.plate, x.no_bpkb].some((v) => String(v || '').toLowerCase().includes(q));
+    const searchMatch = !q || [x.nama_barang, x.merk, x.tipe, x.plate, x.plat_khusus, x.no_bpkb].some((v) => String(v || '').toLowerCase().includes(q));
     const merekMatch = !filterMerek || (x.merk || 'Lainnya') === filterMerek;
     const statusMatch = !filterStatus || x.status === filterStatus;
     const tahunMatch = !filterTahun || (x.tanggal_perolehan || '').slice(0, 4) === filterTahun;
@@ -165,7 +165,7 @@ export default function Kendaraan() {
           <table className="w-full text-xs">
             <thead className="bg-slate-50 border-b-2 border-slate-200">
               <tr className="divide-x divide-slate-200">
-                {['Foto', 'Nama Barang', 'Merk', 'Tipe', 'No BPKB', 'No Polisi', 'Status', 'Tanggal Perolehan', 'Masa Berlaku STNK', 'Waktu Pajak', 'Aksi'].map((h) => <th key={h} className="text-left px-4 py-3 font-medium uppercase text-slate-600 whitespace-nowrap">{h}</th>)}
+                {['Foto', 'Nama Barang', 'Merk', 'Tipe', 'No BPKB', 'No Polisi / Khusus', 'Status', 'Tanggal Perolehan', 'Masa Berlaku STNK', 'Waktu Pajak', 'Aksi'].map((h) => <th key={h} className="text-left px-4 py-3 font-medium uppercase text-slate-600 whitespace-nowrap">{h}</th>)}
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -182,7 +182,15 @@ export default function Kendaraan() {
                     <td className="px-4">{x.merk}</td>
                     <td className="px-4">{x.tipe}</td>
                     <td className="px-4">{x.no_bpkb || '-'}</td>
-                    <td className="px-4 font-semibold">{x.plate}</td>
+                    <td className="px-4 font-semibold">
+                      <div>{x.plate}</div>
+                      {x.plat_khusus && (
+                        <div className="font-normal mt-0.5">
+                          {x.plat_khusus}
+                          <span className="ml-1.5 inline-flex px-1.5 py-0.5 rounded-full bg-fuchsia-100 text-fuchsia-700 text-[9px] font-bold align-middle">KHUSUS</span>
+                        </div>
+                      )}
+                    </td>
                     <td className="px-4"><span className={`px-3 py-1 rounded-full ${pill[x.status] || 'bg-slate-100'}`}>{x.status}</span></td>
                     <td className="px-4 whitespace-nowrap">{fmtDate(x.tanggal_perolehan)}</td>
                     <td className="px-4 whitespace-nowrap">{fmtDate(x.masa_berlaku_stnk)}</td>
@@ -250,6 +258,7 @@ function VehicleModal({ form, setForm, onClose, onSubmit, onAddPhotos, onRemoveP
             <Field label="Tipe" required><input required value={form.tipe} onChange={(e) => setForm({ ...form, tipe: e.target.value })} className="w-full h-11 px-3 rounded-lg border border-slate-300 bg-white text-sm outline-none focus:border-slate-900" placeholder="Innova / Avanza / Pick Up" /></Field>
             <Field label="No BPKB"><input value={form.no_bpkb} onChange={(e) => setForm({ ...form, no_bpkb: e.target.value })} className="w-full h-11 px-3 rounded-lg border border-slate-300 bg-white text-sm outline-none focus:border-slate-900" placeholder="Nomor BPKB (opsional)" /></Field>
             <Field label="No Polisi" required><input required value={form.plate} onChange={(e) => setForm({ ...form, plate: e.target.value })} className="w-full h-11 px-3 rounded-lg border border-slate-300 bg-white text-sm outline-none focus:border-slate-900" placeholder="B 1234 XYZ" /></Field>
+            <Field label="Plat Khusus"><input value={form.plat_khusus} onChange={(e) => setForm({ ...form, plat_khusus: e.target.value })} className="w-full h-11 px-3 rounded-lg border border-slate-300 bg-white text-sm outline-none focus:border-slate-900" placeholder="Opsional -- kalau kendaraan juga punya plat khusus" /></Field>
             <Field label="Jenis Kendaraan" required><select value={form.jenis} onChange={(e) => setForm({ ...form, jenis: e.target.value })} className="w-full h-11 px-3 rounded-lg border border-slate-300 bg-white text-sm outline-none focus:border-slate-900">{JENIS_OPTIONS.map((x) => <option key={x}>{x}</option>)}</select></Field>
             <Field label="Status"><select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })} className="w-full h-11 px-3 rounded-lg border border-slate-300 bg-white text-sm outline-none focus:border-slate-900">{STATUS_OPTIONS.map((x) => <option key={x}>{x}</option>)}</select></Field>
             <Field label="Keterangan"><input value={form.sub} onChange={(e) => setForm({ ...form, sub: e.target.value })} className="w-full h-11 px-3 rounded-lg border border-slate-300 bg-white text-sm outline-none focus:border-slate-900" placeholder="VIP / Operasional / Lapangan" /></Field>
@@ -300,6 +309,7 @@ function VehicleDetail({ vehicle, onClose }) {
     ['Tipe', vehicle.tipe || '-'],
     ['No BPKB', vehicle.no_bpkb || '-'],
     ['No Polisi', vehicle.plate || '-'],
+    ['Plat Khusus', vehicle.plat_khusus || '-'],
     ['Jenis', vehicle.jenis || '-'],
     ['Keterangan', vehicle.sub || '-'],
     ['Status', vehicle.status || '-'],
@@ -319,7 +329,7 @@ function VehicleDetail({ vehicle, onClose }) {
             <div>
               <div className="text-xs font-bold uppercase tracking-[.16em] opacity-80">Detail Asset Kendaraan</div>
               <h2 className="text-2xl font-bold mt-1">{vehicle.nama_barang || 'Kendaraan'}</h2>
-              <p className="text-sm opacity-80 mt-1">{vehicle.plate || '-'} · {vehicle.merk} {vehicle.tipe}</p>
+              <p className="text-sm opacity-80 mt-1">{vehicle.plate || '-'}{vehicle.plat_khusus && ` / ${vehicle.plat_khusus}`} · {vehicle.merk} {vehicle.tipe}</p>
             </div>
           </div>
           <button onClick={onClose} className="vehicle-close"><span className="material-symbols-outlined">close</span></button>
