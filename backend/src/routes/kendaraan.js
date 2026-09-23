@@ -12,7 +12,10 @@ router.use(requireNotInMaintenance('kendaraan'));
 
 const MAX_PHOTO_BYTES = 4 * 1024 * 1024; // foto sudah dikompres di client, 4MB base64 cukup longgar
 const MAX_PHOTOS = 6;
+const MAX_DOCUMENT_BYTES = 12 * 1024 * 1024; // dokumen BPKB/STNK (PDF hasil scan)
 const STATUS = ['Tersedia', 'Digunakan', 'Servis'];
+// Kategori "Nama Barang" mengikuti nomenklatur BMN untuk alat angkutan darat bermotor.
+const NAMA_BARANG = ['Sedan', 'Jeep', 'Station Wagon', 'Micro Bus', 'Mini Bus', 'Pick Up', 'Mobil Ambulance', 'Kendaraan Bermotor Khusus Lainnya', 'Sepeda Motor'];
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 const text = (v, m, req = false) => (v == null || v === '') ? !req : typeof v === 'string' && v.trim().length > 0 && v.length <= m;
@@ -49,6 +52,15 @@ function validatePhotos(photos) {
   return { ok: true, items: photos };
 }
 
+// Dokumen BPKB/STNK: kalau `data` dikirim, harus PDF asli (magic number
+// dicek lewat isGenuineDocumentDataUrl) dan `name`-nya wajib ada.
+function validDocument(name, data) {
+  if (data === undefined) return true;
+  if (data == null) return true; // sengaja dikosongkan/dihapus
+  if (typeof name !== 'string' || !name.trim() || name.length > 255) return false;
+  return isGenuineDocumentDataUrl(data, MAX_DOCUMENT_BYTES);
+}
+
 router.get('/', async (req, res) => {
   try {
     const rows = await prisma.kendaraan.findMany({ orderBy: [{ created_at: 'desc' }, { id: 'desc' }] });
@@ -61,11 +73,12 @@ router.get('/', async (req, res) => {
 
 router.post('/', requireRole(EDITOR_ROLES), async (req, res) => {
   try {
-    const { nama_barang, merk, tipe, no_bpkb, plate, plat_khusus, jenis, sub, status, tanggal_perolehan, masa_berlaku_stnk, waktu_pajak, photos } = req.body;
+    const { nama_barang, merk, tipe, no_bpkb, plate, plat_khusus, jenis, sub, status, tanggal_perolehan, masa_berlaku_stnk, waktu_pajak, photos, bpkb_document_name, bpkb_document_file_data, stnk_document_name, stnk_document_file_data } = req.body;
 
     if (!text(nama_barang, 150, true) || !text(merk, 100, true) || !text(tipe, 100, true) || !text(plate, 30, true) || !text(jenis, 30, true)) {
       return res.status(400).json({ message: 'Nama barang, merk, tipe, nomor polisi, dan jenis wajib diisi.' });
     }
+    if (!NAMA_BARANG.includes(nama_barang)) return res.status(400).json({ message: 'Nama barang tidak valid.' });
     if (!STATUS.includes(status || 'Tersedia')) return res.status(400).json({ message: 'Status kendaraan tidak valid.' });
     if (no_bpkb != null && !text(no_bpkb, 50)) return res.status(400).json({ message: 'Nomor BPKB tidak valid.' });
     if (plat_khusus != null && !text(plat_khusus, 30)) return res.status(400).json({ message: 'Plat khusus tidak valid.' });
@@ -75,9 +88,13 @@ router.post('/', requireRole(EDITOR_ROLES), async (req, res) => {
     const photoCheck = validatePhotos(photos);
     if (!photoCheck.ok) return res.status(400).json({ message: 'Foto kendaraan tidak valid (maksimal 6 foto, harus gambar asli).' });
     const photoItems = photoCheck.items || [];
+    if (!validDocument(bpkb_document_name, bpkb_document_file_data)) return res.status(400).json({ message: 'Dokumen BPKB tidak valid (harus PDF asli).' });
+    if (!validDocument(stnk_document_name, stnk_document_file_data)) return res.status(400).json({ message: 'Dokumen STNK tidak valid (harus PDF asli).' });
 
     const savedPaths = [];
     for (const p of photoItems) savedPaths.push({ name: p.name, path: await saveDataUrl(p.data, p.name, 'kendaraan') });
+    const bpkbPath = bpkb_document_file_data ? await saveDataUrl(bpkb_document_file_data, bpkb_document_name, 'kendaraan/bpkb') : null;
+    const stnkPath = stnk_document_file_data ? await saveDataUrl(stnk_document_file_data, stnk_document_name, 'kendaraan/stnk') : null;
 
     const row = await prisma.kendaraan.create({
       data: {
@@ -95,6 +112,12 @@ router.post('/', requireRole(EDITOR_ROLES), async (req, res) => {
         waktu_pajak: toDate(waktu_pajak),
         photos: photoItems.length ? JSON.stringify(photoItems) : null,
         photo_file_paths: savedPaths.length ? JSON.stringify(savedPaths) : null,
+        bpkb_document_name: bpkb_document_file_data ? bpkb_document_name : null,
+        bpkb_document_file_data: bpkb_document_file_data || null,
+        bpkb_document_file_path: bpkbPath,
+        stnk_document_name: stnk_document_file_data ? stnk_document_name : null,
+        stnk_document_file_data: stnk_document_file_data || null,
+        stnk_document_file_path: stnkPath,
         created_by: req.user.id,
         updated_by: req.user.id,
       },
@@ -120,6 +143,8 @@ router.put('/:id', requireRole(EDITOR_ROLES), async (req, res) => {
     }
     const photoCheck = validatePhotos(body.photos);
     if (!photoCheck.ok) return res.status(400).json({ message: 'Foto kendaraan tidak valid (maksimal 6 foto, harus gambar asli).' });
+    if (!validDocument(body.bpkb_document_name, body.bpkb_document_file_data)) return res.status(400).json({ message: 'Dokumen BPKB tidak valid (harus PDF asli).' });
+    if (!validDocument(body.stnk_document_name, body.stnk_document_file_data)) return res.status(400).json({ message: 'Dokumen STNK tidak valid (harus PDF asli).' });
 
     const data = {};
     for (const f of ['nama_barang', 'merk', 'tipe', 'no_bpkb', 'plate', 'plat_khusus', 'jenis', 'sub', 'status']) {
@@ -128,7 +153,7 @@ router.put('/:id', requireRole(EDITOR_ROLES), async (req, res) => {
     for (const f of ['tanggal_perolehan', 'masa_berlaku_stnk', 'waktu_pajak']) {
       if (body[f] !== undefined) data[f] = toDate(body[f]);
     }
-    if (data.nama_barang !== undefined && !text(data.nama_barang, 150, true)) return res.status(400).json({ message: 'Nama barang tidak valid.' });
+    if (data.nama_barang !== undefined && (!text(data.nama_barang, 150, true) || !NAMA_BARANG.includes(data.nama_barang))) return res.status(400).json({ message: 'Nama barang tidak valid.' });
     if (data.merk !== undefined && !text(data.merk, 100, true)) return res.status(400).json({ message: 'Merk tidak valid.' });
     if (data.tipe !== undefined && !text(data.tipe, 100, true)) return res.status(400).json({ message: 'Tipe tidak valid.' });
     if (data.plate !== undefined && !text(data.plate, 30, true)) return res.status(400).json({ message: 'Nomor polisi tidak valid.' });
@@ -139,6 +164,16 @@ router.put('/:id', requireRole(EDITOR_ROLES), async (req, res) => {
       for (const p of photoCheck.items) savedPaths.push({ name: p.name, path: await saveDataUrl(p.data, p.name, 'kendaraan') });
       data.photos = photoCheck.items.length ? JSON.stringify(photoCheck.items) : null;
       data.photo_file_paths = savedPaths.length ? JSON.stringify(savedPaths) : null;
+    }
+    if (body.bpkb_document_file_data !== undefined) {
+      data.bpkb_document_name = body.bpkb_document_file_data ? body.bpkb_document_name : null;
+      data.bpkb_document_file_data = body.bpkb_document_file_data || null;
+      data.bpkb_document_file_path = body.bpkb_document_file_data ? await saveDataUrl(body.bpkb_document_file_data, body.bpkb_document_name, 'kendaraan/bpkb') : null;
+    }
+    if (body.stnk_document_file_data !== undefined) {
+      data.stnk_document_name = body.stnk_document_file_data ? body.stnk_document_name : null;
+      data.stnk_document_file_data = body.stnk_document_file_data || null;
+      data.stnk_document_file_path = body.stnk_document_file_data ? await saveDataUrl(body.stnk_document_file_data, body.stnk_document_name, 'kendaraan/stnk') : null;
     }
 
     if (!Object.keys(data).length) return res.status(400).json({ message: 'Tidak ada field yang diubah.' });

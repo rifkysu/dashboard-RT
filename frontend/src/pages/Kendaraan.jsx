@@ -1,14 +1,31 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import api from '../api';
+import DocumentViewer from '../components/DocumentViewer';
 import { verifyFileIsGenuine } from '../utils/fileSignature';
 import { compressImage } from '../utils/imageCompress';
 
 const JENIS_OPTIONS = ['Roda 2', 'Roda 4', 'Roda 6'];
+const NAMA_BARANG_OPTIONS = ['Sedan', 'Jeep', 'Station Wagon', 'Micro Bus', 'Mini Bus', 'Pick Up', 'Mobil Ambulance', 'Kendaraan Bermotor Khusus Lainnya', 'Sepeda Motor'];
 const STATUS_OPTIONS = ['Tersedia', 'Digunakan', 'Servis'];
 const pill = { Tersedia: 'bg-blue-100 text-slate-700', Digunakan: 'bg-slate-200 text-slate-700', Servis: 'bg-red-100 text-red-700' };
 const MAX_PHOTOS = 6;
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
-const emptyForm = { nama_barang: '', merk: '', tipe: '', no_bpkb: '', plate: '', plat_khusus: '', jenis: 'Roda 4', sub: '', status: 'Tersedia', tanggal_perolehan: '', masa_berlaku_stnk: '', waktu_pajak: '', photos: [] };
+const MAX_DOCUMENT_BYTES = 12 * 1024 * 1024;
+const emptyForm = { nama_barang: '', merk: '', tipe: '', no_bpkb: '', plate: '', plat_khusus: '', jenis: 'Roda 4', sub: '', status: 'Tersedia', tanggal_perolehan: '', masa_berlaku_stnk: '', waktu_pajak: '', photos: [], bpkb_document_name: '', bpkb_document_file_data: '', stnk_document_name: '', stnk_document_file_data: '' };
+
+// Baca file PDF jadi data URL, sekalian cek magic number-nya beneran PDF asli
+// (bukan script/file lain yang cuma diganti nama/ekstensi).
+async function readPdf(file) {
+  if (file.type !== 'application/pdf') throw new Error('Dokumen harus berformat PDF.');
+  if (file.size > MAX_DOCUMENT_BYTES) throw new Error('Ukuran dokumen maksimal 12MB.');
+  if (!(await verifyFileIsGenuine(file))) throw new Error('File yang diupload tidak terdeteksi sebagai PDF asli.');
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(new Error('Gagal membaca file.'));
+    reader.readAsDataURL(file);
+  });
+}
 const fmtDate = (v) => v ? new Date(`${v}T00:00:00`).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : '-';
 
 export default function Kendaraan() {
@@ -24,6 +41,7 @@ export default function Kendaraan() {
   const [filterStatus, setFilterStatus] = useState('');
   const [filterTahun, setFilterTahun] = useState('');
   const [openFilter, setOpenFilter] = useState(null);
+  const [viewer, setViewer] = useState({ open: false, name: '', data: '' });
 
   async function load() {
     try {
@@ -72,6 +90,47 @@ export default function Kendaraan() {
   }
   function removePhoto(idx) {
     setForm((f) => ({ ...f, photos: f.photos.filter((_, i) => i !== idx) }));
+  }
+
+  async function pickFormDocument(field, file) {
+    if (!file) return;
+    try {
+      const dataUrl = await readPdf(file);
+      setForm((f) => ({ ...f, [`${field}_document_name`]: file.name, [`${field}_document_file_data`]: dataUrl }));
+      setError('');
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  // Update dokumen BPKB/STNK langsung dari modal Detail (tanpa perlu buka form edit penuh).
+  async function updateDocument(vehicleId, field, file) {
+    if (!file) return;
+    try {
+      const dataUrl = await readPdf(file);
+      const payload = { [`${field}_document_name`]: file.name, [`${field}_document_file_data`]: dataUrl };
+      const res = await api.put(`/kendaraan/${vehicleId}`, payload);
+      const updated = res.data.data;
+      setData((current) => current.map((x) => (x.id === vehicleId ? updated : x)));
+      setDetail(updated);
+      setError('');
+    } catch (err) {
+      setError(err.response?.data?.message || err.message || 'Gagal memperbarui dokumen.');
+    }
+  }
+
+  // Update manual Masa Berlaku STNK & Waktu Pajak dari modal Detail, biar bisa
+  // langsung disamakan dengan data di STNK yang baru diupload.
+  async function updateDates(vehicleId, payload) {
+    try {
+      const res = await api.put(`/kendaraan/${vehicleId}`, payload);
+      const updated = res.data.data;
+      setData((current) => current.map((x) => (x.id === vehicleId ? updated : x)));
+      setDetail(updated);
+      setError('');
+    } catch (err) {
+      setError(err.response?.data?.message || 'Gagal memperbarui tanggal.');
+    }
   }
 
   function selectTab(x) {
@@ -203,8 +262,17 @@ export default function Kendaraan() {
         </div>
       </section>
 
-      {show && <VehicleModal form={form} setForm={setForm} onClose={() => setShow(false)} onSubmit={save} onAddPhotos={addPhotos} onRemovePhoto={removePhoto} />}
-      {detail && <VehicleDetail vehicle={detail} onClose={() => setDetail(null)} />}
+      {show && <VehicleModal form={form} setForm={setForm} onClose={() => setShow(false)} onSubmit={save} onAddPhotos={addPhotos} onRemovePhoto={removePhoto} onPickDocument={pickFormDocument} />}
+      {detail && (
+        <VehicleDetail
+          vehicle={detail}
+          onClose={() => setDetail(null)}
+          onView={(name, data) => setViewer({ open: true, name, data })}
+          onUpdateDocument={(field, file) => updateDocument(detail.id, field, file)}
+          onUpdateDates={(payload) => updateDates(detail.id, payload)}
+        />
+      )}
+      <DocumentViewer open={viewer.open} name={viewer.name} data={viewer.data} onClose={() => setViewer({ open: false, name: '', data: '' })} />
     </div>
   );
 }
@@ -240,7 +308,23 @@ function FilterOption({ label, count, selected, onClick }) {
   );
 }
 
-function VehicleModal({ form, setForm, onClose, onSubmit, onAddPhotos, onRemovePhoto }) {
+function DocumentPicker({ label, name, onPick }) {
+  return (
+    <div>
+      <div className="flex items-center justify-between gap-3 mb-2">
+        <label className="block text-xs font-bold text-slate-700">{label}</label>
+        <span className="text-[11px] text-slate-500">PDF · Maks. 12MB</span>
+      </div>
+      <label className="relative flex items-center gap-3 p-4 rounded-xl border border-dashed border-slate-300 bg-white cursor-pointer hover:bg-slate-50">
+        <span className="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center shrink-0"><span className="material-symbols-outlined text-slate-600">picture_as_pdf</span></span>
+        <div className="min-w-0 flex-1"><div className="text-sm font-semibold text-slate-800 truncate">{name || `Pilih dokumen ${label.toLowerCase()}`}</div><div className="text-xs text-slate-500 mt-1">Klik untuk memilih berkas PDF</div></div>
+        <input type="file" className="absolute inset-0 opacity-0 cursor-pointer" accept="application/pdf,.pdf" onChange={(e) => { onPick(e.target.files?.[0]); e.target.value = ''; }} />
+      </label>
+    </div>
+  );
+}
+
+function VehicleModal({ form, setForm, onClose, onSubmit, onAddPhotos, onRemovePhoto, onPickDocument }) {
   return (
     <div className="fixed inset-0 z-50 bg-slate-900/55 backdrop-blur-sm flex items-center justify-center p-4" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="w-full max-w-3xl max-h-[92vh] overflow-y-auto bg-[#f7f9fb] rounded-2xl shadow-2xl">
@@ -253,7 +337,7 @@ function VehicleModal({ form, setForm, onClose, onSubmit, onAddPhotos, onRemoveP
         </div>
         <form onSubmit={onSubmit} className="p-6 space-y-5">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Field label="Nama Barang" required><input required value={form.nama_barang} onChange={(e) => setForm({ ...form, nama_barang: e.target.value })} className="w-full h-11 px-3 rounded-lg border border-slate-300 bg-white text-sm outline-none focus:border-slate-900" placeholder="Contoh: Kendaraan Roda Empat" /></Field>
+            <Field label="Nama Barang" required><select required value={form.nama_barang} onChange={(e) => setForm({ ...form, nama_barang: e.target.value })} className="w-full h-11 px-3 rounded-lg border border-slate-300 bg-white text-sm outline-none focus:border-slate-900"><option value="" disabled>Pilih Kategori</option>{NAMA_BARANG_OPTIONS.map((x) => <option key={x}>{x}</option>)}</select></Field>
             <Field label="Merk" required><input required value={form.merk} onChange={(e) => setForm({ ...form, merk: e.target.value })} className="w-full h-11 px-3 rounded-lg border border-slate-300 bg-white text-sm outline-none focus:border-slate-900" placeholder="Toyota" /></Field>
             <Field label="Tipe" required><input required value={form.tipe} onChange={(e) => setForm({ ...form, tipe: e.target.value })} className="w-full h-11 px-3 rounded-lg border border-slate-300 bg-white text-sm outline-none focus:border-slate-900" placeholder="Innova / Avanza / Pick Up" /></Field>
             <Field label="No BPKB"><input value={form.no_bpkb} onChange={(e) => setForm({ ...form, no_bpkb: e.target.value })} className="w-full h-11 px-3 rounded-lg border border-slate-300 bg-white text-sm outline-none focus:border-slate-900" placeholder="Nomor BPKB (opsional)" /></Field>
@@ -291,6 +375,11 @@ function VehicleModal({ form, setForm, onClose, onSubmit, onAddPhotos, onRemoveP
             )}
           </div>
 
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <DocumentPicker label="Dokumen BPKB" name={form.bpkb_document_name} onPick={(f) => onPickDocument('bpkb', f)} />
+            <DocumentPicker label="Dokumen STNK" name={form.stnk_document_name} onPick={(f) => onPickDocument('stnk', f)} />
+          </div>
+
           <div className="flex justify-end gap-2 border-t pt-4">
             <button type="button" onClick={onClose} className="px-4 py-2.5 rounded-lg border bg-white text-sm font-semibold">Batal</button>
             <button className="px-5 py-2.5 rounded-lg bg-slate-900 text-white text-sm font-semibold">Simpan Kendaraan</button>
@@ -301,7 +390,28 @@ function VehicleModal({ form, setForm, onClose, onSubmit, onAddPhotos, onRemoveP
   );
 }
 
-function VehicleDetail({ vehicle, onClose }) {
+function DocumentCard({ label, name, data, onView, onReplace }) {
+  return (
+    <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+      <div className="flex items-center gap-3">
+        <span className="w-11 h-11 rounded-lg bg-white flex items-center justify-center shadow-sm shrink-0"><span className="material-symbols-outlined text-slate-600">picture_as_pdf</span></span>
+        <div className="min-w-0 flex-1">
+          <div className="text-xs font-bold text-slate-500 uppercase tracking-wider">{label}</div>
+          <div className="text-sm font-semibold text-slate-800 truncate mt-0.5">{name || 'Belum ada dokumen'}</div>
+        </div>
+      </div>
+      <div className="mt-3 flex gap-2">
+        {data && <button type="button" onClick={onView} className="flex-1 px-3 py-2 rounded-lg bg-white border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-100">👁 Lihat</button>}
+        <label className="flex-1 relative px-3 py-2 rounded-lg bg-slate-900 text-white text-xs font-semibold text-center cursor-pointer hover:bg-slate-800">
+          {name ? 'Ganti Dokumen' : 'Upload Dokumen'}
+          <input type="file" className="absolute inset-0 opacity-0 cursor-pointer" accept="application/pdf,.pdf" onChange={(e) => { onReplace(e.target.files?.[0]); e.target.value = ''; }} />
+        </label>
+      </div>
+    </div>
+  );
+}
+
+function VehicleDetail({ vehicle, onClose, onView, onUpdateDocument, onUpdateDates }) {
   const rows = [
     ['ID Kendaraan', vehicle.id ? `#${vehicle.id}` : '-'],
     ['Nama Barang', vehicle.nama_barang || '-'],
@@ -314,12 +424,25 @@ function VehicleDetail({ vehicle, onClose }) {
     ['Keterangan', vehicle.sub || '-'],
     ['Status', vehicle.status || '-'],
     ['Tanggal Perolehan', fmtDate(vehicle.tanggal_perolehan)],
-    ['Masa Berlaku STNK', fmtDate(vehicle.masa_berlaku_stnk)],
-    ['Waktu Pajak', fmtDate(vehicle.waktu_pajak)],
     ['Dibuat Pada', vehicle.created_at ? new Date(vehicle.created_at).toLocaleString('id-ID') : '-'],
     ['Diperbarui Pada', vehicle.updated_at ? new Date(vehicle.updated_at).toLocaleString('id-ID') : '-'],
   ];
   const photos = vehicle.photos || [];
+
+  const [stnkDate, setStnkDate] = useState(vehicle.masa_berlaku_stnk || '');
+  const [taxDate, setTaxDate] = useState(vehicle.waktu_pajak || '');
+  const [savingDates, setSavingDates] = useState(false);
+  useEffect(() => {
+    setStnkDate(vehicle.masa_berlaku_stnk || '');
+    setTaxDate(vehicle.waktu_pajak || '');
+  }, [vehicle.id, vehicle.masa_berlaku_stnk, vehicle.waktu_pajak]);
+  const datesChanged = stnkDate !== (vehicle.masa_berlaku_stnk || '') || taxDate !== (vehicle.waktu_pajak || '');
+
+  async function saveDates() {
+    setSavingDates(true);
+    await onUpdateDates({ masa_berlaku_stnk: stnkDate || null, waktu_pajak: taxDate || null });
+    setSavingDates(false);
+  }
   return (
     <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-slate-950/75 backdrop-blur-md" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="vehicle-detail-modal w-full max-w-3xl max-h-[92vh] overflow-y-auto rounded-3xl shadow-2xl">
@@ -348,6 +471,47 @@ function VehicleDetail({ vehicle, onClose }) {
               </div>
             )}
           </div>
+
+          <div>
+            <div className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Dokumen Kendaraan</div>
+            <div className="grid sm:grid-cols-2 gap-3">
+              <DocumentCard
+                label="BPKB"
+                name={vehicle.bpkb_document_name}
+                data={vehicle.bpkb_document_file_data}
+                onView={() => onView(vehicle.bpkb_document_name, vehicle.bpkb_document_file_data)}
+                onReplace={(file) => onUpdateDocument('bpkb', file)}
+              />
+              <DocumentCard
+                label="STNK"
+                name={vehicle.stnk_document_name}
+                data={vehicle.stnk_document_file_data}
+                onView={() => onView(vehicle.stnk_document_name, vehicle.stnk_document_file_data)}
+                onReplace={(file) => onUpdateDocument('stnk', file)}
+              />
+            </div>
+
+            <div className="mt-3 rounded-xl border border-slate-200 bg-white p-4">
+              <div className="text-xs font-bold text-slate-700 mb-1">Masa Berlaku STNK &amp; Waktu Pajak</div>
+              <p className="text-[11px] text-slate-500 mb-3">Habis upload STNK baru? Sesuaikan tanggalnya manual di sini (bacaan otomatis dari isi PDF belum bisa diandalkan untuk dokumen hasil scan).</p>
+              <div className="grid sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-500 mb-1">Masa Berlaku STNK</label>
+                  <input type="date" value={stnkDate} onChange={(e) => setStnkDate(e.target.value)} className="w-full h-10 px-3 rounded-lg border border-slate-300 bg-white text-sm outline-none focus:border-slate-900" />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-500 mb-1">Waktu Pajak</label>
+                  <input type="date" value={taxDate} onChange={(e) => setTaxDate(e.target.value)} className="w-full h-10 px-3 rounded-lg border border-slate-300 bg-white text-sm outline-none focus:border-slate-900" />
+                </div>
+              </div>
+              {datesChanged && (
+                <button type="button" onClick={saveDates} disabled={savingDates} className="mt-3 px-4 py-2 rounded-lg bg-slate-900 text-white text-xs font-semibold disabled:opacity-60">
+                  {savingDates ? 'Menyimpan...' : 'Simpan Tanggal'}
+                </button>
+              )}
+            </div>
+          </div>
+
           <div className="grid sm:grid-cols-2 gap-3">
             {rows.map(([label, value]) => <div key={label} className="detail-field"><div className="detail-label">{label}</div><div className="detail-value">{value}</div></div>)}
           </div>

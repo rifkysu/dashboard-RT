@@ -194,6 +194,12 @@ model Kendaraan {
   waktu_pajak       DateTime? @db.Date
   photos            String?
   photo_file_paths  String?
+  bpkb_document_name      String?
+  bpkb_document_file_data String?
+  bpkb_document_file_path String?
+  stnk_document_name      String?
+  stnk_document_file_data String?
+  stnk_document_file_path String?
   created_by        Int?
   updated_by        Int?
   created_at        DateTime  @default(now())
