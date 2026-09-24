@@ -27,6 +27,7 @@ Full-stack app (React + Node.js/Express + PostgreSQL + **Prisma**) untuk mengelo
 - **Kartu KPI**: Total Permintaan, Pending, On Progress, Selesai — gabungan Pemeliharaan + Pengadaan.
 - **Kartu modul** (Pemeliharaan/Pengadaan/Kendaraan/Ruang Rapat) dengan progress bar persentase selesai, badge dinamis per modul.
 - **Kartu Kendaraan** menampilkan jumlah kendaraan yang **belum bayar pajak** (dihitung dari `waktu_pajak` yang kosong atau sudah lewat tanggal hari ini) — langsung dari `GET /api/dashboard/summary`, tidak perlu buka menu Kendaraan dulu untuk tahu.
+- **Peringatan pajak H-14** di kartu Kendaraan: kendaraan yang `waktu_pajak`-nya jatuh hari ini s/d 14 hari ke depan ditampilkan dengan nomor polisi & sisa hari (maks. 3 teratas, merah kalau ≤ 3 hari).
 - Daftar **Aktivitas Terbaru** gabungan Pemeliharaan & Pengadaan, terurut dari yang paling baru diperbarui, dengan badge status berwarna.
 
 ### 🛠️ Pemeliharaan & 🛒 Pengadaan
@@ -41,14 +42,17 @@ Full-stack app (React + Node.js/Express + PostgreSQL + **Prisma**) untuk mengelo
 - **No Polisi & Plat Khusus independen** — satu kendaraan boleh punya **keduanya sekaligus** (bukan pilih salah satu); ditampilkan gabung di kolom "No Polisi / Khusus" dengan badge "KHUSUS" kalau plat khusus terisi.
 - **Galeri foto** — upload hingga **6 foto** sekaligus per kendaraan, otomatis **dikompres di browser** (resize maks. 1600px + re-encode JPEG, pakai Canvas API bawaan, tanpa dependency tambahan) sebelum diupload.
 - **Dokumen PDF BPKB & STNK** — bisa diupload saat Tambah Kendaraan, dan **diganti/update lagi kapan pun** dari modal Detail Kendaraan (tombol Lihat/Ganti Dokumen per dokumen), tersimpan di `backend/uploads/kendaraan_bpkb/` & `kendaraan_stnk/`.
+- **Status Servis & Invoice Service** — service kendaraan diatur **hanya dari modal Detail** (form Tambah Kendaraan tidak punya pilihan Servis). Di Detail, status bisa diubah (Tersedia/Digunakan/Servis — tombol **Tandai Waktunya Service**); selama status Servis, PDF **invoice service** bisa diupload, dilihat, dan diganti. Tersimpan di kolom `service_invoice_document_*` tabel `kendaraan`, file-nya di `backend/uploads/kendaraan_service/`. Tabel punya kolom **Service** (Waktunya Service / Tidak Service; klik nama invoice untuk membuka PDF-nya). Invoice hanya ditampilkan selama status Servis — datanya tetap tersimpan di database.
 - **Update cepat Masa Berlaku STNK & Waktu Pajak** langsung dari modal Detail — praktis dipakai begitu upload STNK baru (nilainya diisi manual, bukan dibaca otomatis dari isi PDF — pembacaan otomatis/OCR sengaja tidak dipakai karena tidak reliable untuk dokumen hasil scan).
 - **Search + filter pill** ala marketplace mobil (Merek, Status, Tahun Perolehan) — tiap pill buka dropdown berisi daftar pilihan lengkap dengan jumlah datanya, di atas tab kategori Roda 2/Roda 4/Roda 6.
-- Kartu di Dashboard menampilkan jumlah kendaraan yang **belum bayar pajak** (lihat bagian Dashboard).
+- Kartu di Dashboard menampilkan jumlah kendaraan yang **belum bayar pajak** dan peringatan **pajak jatuh tempo ≤ 2 minggu (H-14)** (lihat bagian Dashboard).
 
 ### 📅 Ruang Rapat
 - **5 ruangan tetap**: SERBAGUNA, SETJEN II, TRI DHARMA, BIRO UMUM, GRAHA KEMNAKER.
 - Kalender **matriks** (baris = ruangan, kolom = tanggal Senin–Minggu), navigasi minggu **bebas tanpa batas** (bisa maju/mundur ke tahun berapa pun) + tombol "Hari Ini".
 - **Real-time lewat Server-Sent Events (SSE)** — begitu ada booking baru/diedit/dibatalkan oleh siapa pun, semua orang yang sedang membuka halaman (admin maupun landing page publik) langsung melihat perubahannya tanpa refresh.
+- **Nomor Surat** — bisa diisi saat booking (opsional) atau lewat Edit Booking, tampil di detail saat booking diklik (kolom `nomor_surat` tabel `ruang_rapat`). Tidak ikut ditampilkan di jadwal publik/landing page.
+- **Export Excel** — kolom Tanggal, Nomor Surat, Nama Rapat, PIC; rentang tanggal default = minggu yang sedang dilihat (maks. 400 hari), data diambil langsung dari server.
 - **"Terakhir diedit oleh"** beserta waktunya, ditampilkan di detail booking dan otomatis ikut live kalau ada yang mengedit booking yang sama saat modal sedang terbuka.
 - **Highlight tanggal merah otomatis**, berlaku untuk tahun berapa pun (tidak perlu update tahunan):
   - Akhir pekan (Sabtu/Minggu) — otomatis, murni dari hari kalender.

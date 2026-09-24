@@ -17,16 +17,25 @@ const emptyForm = { nama_barang: '', merk: '', tipe: '', no_bpkb: '', plate: '',
 // Baca file PDF jadi data URL, sekalian cek magic number-nya beneran PDF asli
 // (bukan script/file lain yang cuma diganti nama/ekstensi).
 async function readPdf(file) {
-  if (file.type !== 'application/pdf') throw new Error('Dokumen harus berformat PDF.');
+  // Sebagian browser di Windows tidak memberi MIME type untuk PDF (file.type kosong),
+  // jadi terima juga file berekstensi .pdf -- isi aslinya tetap dicek lewat magic number.
+  const looksPdf = file.type === 'application/pdf' || (!file.type && /\.pdf$/i.test(file.name));
+  if (!looksPdf) throw new Error('Dokumen harus berformat PDF.');
   if (file.size > MAX_DOCUMENT_BYTES) throw new Error('Ukuran dokumen maksimal 12MB.');
   if (!(await verifyFileIsGenuine(file))) throw new Error('File yang diupload tidak terdeteksi sebagai PDF asli.');
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
-    reader.onload = () => resolve(reader.result);
+    reader.onload = () => resolve(String(reader.result).replace(/^data:[^;,]*;base64,/, 'data:application/pdf;base64,'));
     reader.onerror = () => reject(new Error('Gagal membaca file.'));
     reader.readAsDataURL(file);
   });
 }
+
+// Batas ukuran JSON di backend 25MB (lihat backend/src/index.js). Cek total
+// dokumen + foto sebelum dikirim supaya pengguna dapat pesan yang jelas.
+const MAX_PAYLOAD_CHARS = 24 * 1024 * 1024;
+const payloadSize = (form) => ['bpkb', 'stnk'].reduce((sum, f) => sum + (form[`${f}_document_file_data`] || '').length, 0)
+  + form.photos.reduce((sum, p) => sum + (p.data || '').length, 0);
 const fmtDate = (v) => v ? new Date(`${v}T00:00:00`).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : '-';
 
 export default function Kendaraan() {
@@ -46,6 +55,8 @@ export default function Kendaraan() {
   const [filterTahun, setFilterTahun] = useState('');
   const [openFilter, setOpenFilter] = useState(null);
   const [viewer, setViewer] = useState({ open: false, name: '', data: '' });
+  const [saving, setSaving] = useState(false);
+  const [busyDoc, setBusyDoc] = useState(null);
 
   async function load() {
     try {
@@ -63,7 +74,13 @@ export default function Kendaraan() {
 
   async function save(e) {
     e.preventDefault();
+    if (saving) return;
     setError('');
+    if (payloadSize(form) > MAX_PAYLOAD_CHARS) {
+      setError('Total ukuran dokumen & foto terlalu besar untuk sekali simpan. Simpan dulu tanpa sebagian dokumen, lalu upload sisanya dari tombol Detail.');
+      return;
+    }
+    setSaving(true);
     try {
       await api.post('/kendaraan', form);
       setShow(false);
@@ -71,6 +88,8 @@ export default function Kendaraan() {
       await load();
     } catch (e) {
       setError(e.response?.data?.message || 'Gagal menyimpan kendaraan.');
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -109,7 +128,8 @@ export default function Kendaraan() {
 
   // Update dokumen BPKB/STNK langsung dari modal Detail (tanpa perlu buka form edit penuh).
   async function updateDocument(vehicleId, field, file) {
-    if (!file) return;
+    if (!file || busyDoc) return;
+    setBusyDoc(field);
     try {
       const dataUrl = await readPdf(file);
       const payload = { [`${field}_document_name`]: file.name, [`${field}_document_file_data`]: dataUrl };
@@ -120,12 +140,14 @@ export default function Kendaraan() {
       setError('');
     } catch (err) {
       setError(err.response?.data?.message || err.message || 'Gagal memperbarui dokumen.');
+    } finally {
+      setBusyDoc(null);
     }
   }
 
-  // Update manual Masa Berlaku STNK & Waktu Pajak dari modal Detail, biar bisa
-  // langsung disamakan dengan data di STNK yang baru diupload.
-  async function updateDates(vehicleId, payload) {
+  // Update sebagian data dari modal Detail: Masa Berlaku STNK & Waktu Pajak
+  // (disamakan dengan STNK yang baru diupload) atau status kendaraan (Servis dll).
+  async function updateFields(vehicleId, payload) {
     try {
       const res = await api.put(`/kendaraan/${vehicleId}`, payload);
       const updated = res.data.data;
@@ -133,7 +155,7 @@ export default function Kendaraan() {
       setDetail(updated);
       setError('');
     } catch (err) {
-      setError(err.response?.data?.message || 'Gagal memperbarui tanggal.');
+      setError(err.response?.data?.message || 'Gagal memperbarui data kendaraan.');
     }
   }
 
@@ -145,6 +167,16 @@ export default function Kendaraan() {
       setDetail(res.data.data);
     } catch (err) {
       setError(err.response?.data?.message || 'Gagal memuat detail kendaraan.');
+    }
+  }
+
+  async function viewServiceInvoice(vehicle) {
+    try {
+      const res = await api.get(`/kendaraan/${vehicle.id}`);
+      const v = res.data.data;
+      setViewer({ open: true, name: v.service_invoice_document_name, data: v.service_invoice_document_file_data });
+    } catch (err) {
+      setError(err.response?.data?.message || 'Gagal membuka invoice service.');
     }
   }
 
@@ -239,12 +271,12 @@ export default function Kendaraan() {
           <table className="w-full text-xs">
             <thead className="bg-slate-50 border-b-2 border-slate-200">
               <tr className="divide-x divide-slate-200">
-                {['Foto', 'Nama Barang', 'Merk', 'Tipe', 'No BPKB', 'No Polisi / Khusus', 'Status', 'Tanggal Perolehan', 'Masa Berlaku STNK', 'Waktu Pajak', 'Aksi'].map((h) => <th key={h} className="text-left px-4 py-3 font-medium uppercase text-slate-600 whitespace-nowrap">{h}</th>)}
+                {['Foto', 'Nama Barang', 'Merk', 'Tipe', 'No BPKB', 'No Polisi / Khusus', 'Status', 'Service', 'Tanggal Perolehan', 'Masa Berlaku STNK', 'Waktu Pajak', 'Aksi'].map((h) => <th key={h} className="text-left px-4 py-3 font-medium uppercase text-slate-600 whitespace-nowrap">{h}</th>)}
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {loading ? <tr><td colSpan={11} className="px-4 py-8 text-center text-slate-500">Memuat kendaraan...</td></tr>
-                : filtered.length === 0 ? <tr><td colSpan={11} className="px-4 py-8 text-center text-slate-500">Belum ada kendaraan pada kategori ini.</td></tr>
+              {loading ? <tr><td colSpan={12} className="px-4 py-8 text-center text-slate-500">Memuat kendaraan...</td></tr>
+                : filtered.length === 0 ? <tr><td colSpan={12} className="px-4 py-8 text-center text-slate-500">Belum ada kendaraan pada kategori ini.</td></tr>
                 : filtered.map((x) => (
                   <tr key={x.id} className="divide-x divide-slate-100 hover:bg-slate-50/50">
                     <td className="px-4 py-3">
@@ -265,7 +297,15 @@ export default function Kendaraan() {
                         </div>
                       )}
                     </td>
-                    <td className="px-4"><span className={`px-3 py-1 rounded-full ${pill[x.status] || 'bg-slate-100'}`}>{x.status}</span></td>
+                    <td className="px-4 whitespace-nowrap"><span className={`px-3 py-1 rounded-full ${pill[x.status] || 'bg-slate-100'}`}>{x.status}</span></td>
+                    <td className="px-4 py-2 whitespace-nowrap">
+                      {x.status === 'Servis'
+                        ? <span className="inline-flex px-2.5 py-1 rounded-full bg-red-100 text-red-700 text-[11px] font-bold">Waktunya Service</span>
+                        : <span className="inline-flex px-2.5 py-1 rounded-full bg-slate-100 text-slate-500 text-[11px] font-semibold">Tidak Service</span>}
+                      {x.status === 'Servis' && (x.service_invoice_document_name
+                        ? <button type="button" onClick={() => viewServiceInvoice(x)} title={x.service_invoice_document_name} className="mt-1.5 flex items-center gap-1 max-w-[170px] text-[11px] font-semibold text-emerald-700 hover:underline"><span className="material-symbols-outlined text-[15px]">receipt_long</span><span className="truncate">{x.service_invoice_document_name}</span></button>
+                        : <div className="mt-1.5 text-[11px] text-slate-400">Belum ada invoice</div>)}
+                    </td>
                     <td className="px-4 whitespace-nowrap">{fmtDate(x.tanggal_perolehan)}</td>
                     <td className="px-4 whitespace-nowrap">{fmtDate(x.masa_berlaku_stnk)}</td>
                     <td className="px-4 whitespace-nowrap">{fmtDate(x.waktu_pajak)}</td>
@@ -277,16 +317,17 @@ export default function Kendaraan() {
         </div>
       </section>
 
-      {show && <VehicleModal form={form} setForm={setForm} error={error} onClose={() => setShow(false)} onSubmit={save} onAddPhotos={addPhotos} onRemovePhoto={removePhoto} onPickDocument={pickFormDocument} />}
+      {show && <VehicleModal form={form} setForm={setForm} error={error} saving={saving} onClose={() => setShow(false)} onSubmit={save} onAddPhotos={addPhotos} onRemovePhoto={removePhoto} onPickDocument={pickFormDocument} onView={(name, data) => setViewer({ open: true, name, data })} />}
       {detail && (
         <VehicleDetail
           vehicle={detail}
           error={error}
           canManage={canManage}
+          busyDoc={busyDoc}
           onClose={() => { setDetail(null); setError(''); }}
           onView={(name, data) => setViewer({ open: true, name, data })}
           onUpdateDocument={(field, file) => updateDocument(detail.id, field, file)}
-          onUpdateDates={(payload) => updateDates(detail.id, payload)}
+          onUpdateFields={(payload) => updateFields(detail.id, payload)}
         />
       )}
       <DocumentViewer open={viewer.open} name={viewer.name} data={viewer.data} onClose={() => setViewer({ open: false, name: '', data: '' })} />
@@ -325,7 +366,9 @@ function FilterOption({ label, count, selected, onClick }) {
   );
 }
 
-function DocumentPicker({ label, name, onPick }) {
+// Sama seperti upload di menu Pemeliharaan/Pengadaan: file yang sudah dipilih
+// bisa langsung dibuka lewat tombol "Lihat" sebelum disimpan.
+function DocumentPicker({ label, name, data, onPick, onView }) {
   return (
     <div>
       <div className="flex items-center justify-between gap-3 mb-2">
@@ -336,12 +379,13 @@ function DocumentPicker({ label, name, onPick }) {
         <span className="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center shrink-0"><span className="material-symbols-outlined text-slate-600">picture_as_pdf</span></span>
         <div className="min-w-0 flex-1"><div className="text-sm font-semibold text-slate-800 truncate">{name || `Pilih dokumen ${label.toLowerCase()}`}</div><div className="text-xs text-slate-500 mt-1">Klik untuk memilih berkas PDF</div></div>
         <input type="file" className="absolute inset-0 opacity-0 cursor-pointer" accept="application/pdf,.pdf" onChange={(e) => { onPick(e.target.files?.[0]); e.target.value = ''; }} />
+        {data && <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); onView(name, data); }} className="relative z-10 px-3 py-2 rounded-lg bg-white border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-100">👁 Lihat</button>}
       </label>
     </div>
   );
 }
 
-function VehicleModal({ form, setForm, error, onClose, onSubmit, onAddPhotos, onRemovePhoto, onPickDocument }) {
+function VehicleModal({ form, setForm, error, saving, onClose, onSubmit, onAddPhotos, onRemovePhoto, onPickDocument, onView }) {
   return (
     <div className="fixed inset-0 z-50 bg-slate-900/55 backdrop-blur-sm flex items-center justify-center p-4" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="w-full max-w-3xl max-h-[92vh] overflow-y-auto bg-[#f7f9fb] rounded-2xl shadow-2xl">
@@ -362,7 +406,7 @@ function VehicleModal({ form, setForm, error, onClose, onSubmit, onAddPhotos, on
             <Field label="No Polisi" required><input required value={form.plate} onChange={(e) => setForm({ ...form, plate: e.target.value })} className="w-full h-11 px-3 rounded-lg border border-slate-300 bg-white text-sm outline-none focus:border-slate-900" placeholder="B 1234 XYZ" /></Field>
             <Field label="Plat Khusus"><input value={form.plat_khusus} onChange={(e) => setForm({ ...form, plat_khusus: e.target.value })} className="w-full h-11 px-3 rounded-lg border border-slate-300 bg-white text-sm outline-none focus:border-slate-900" placeholder="Opsional -- kalau kendaraan juga punya plat khusus" /></Field>
             <Field label="Jenis Kendaraan" required><select value={form.jenis} onChange={(e) => setForm({ ...form, jenis: e.target.value })} className="w-full h-11 px-3 rounded-lg border border-slate-300 bg-white text-sm outline-none focus:border-slate-900">{JENIS_OPTIONS.map((x) => <option key={x}>{x}</option>)}</select></Field>
-            <Field label="Status"><select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })} className="w-full h-11 px-3 rounded-lg border border-slate-300 bg-white text-sm outline-none focus:border-slate-900">{STATUS_OPTIONS.map((x) => <option key={x}>{x}</option>)}</select></Field>
+            <Field label="Status"><select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })} className="w-full h-11 px-3 rounded-lg border border-slate-300 bg-white text-sm outline-none focus:border-slate-900">{STATUS_OPTIONS.filter((x) => x !== 'Servis').map((x) => <option key={x}>{x}</option>)}</select></Field>
             <Field label="Keterangan"><input value={form.sub} onChange={(e) => setForm({ ...form, sub: e.target.value })} className="w-full h-11 px-3 rounded-lg border border-slate-300 bg-white text-sm outline-none focus:border-slate-900" placeholder="VIP / Operasional / Lapangan" /></Field>
             <Field label="Tanggal Perolehan"><input type="date" value={form.tanggal_perolehan} onChange={(e) => setForm({ ...form, tanggal_perolehan: e.target.value })} className="w-full h-11 px-3 rounded-lg border border-slate-300 bg-white text-sm outline-none focus:border-slate-900" /></Field>
             <Field label="Masa Berlaku STNK"><input type="date" value={form.masa_berlaku_stnk} onChange={(e) => setForm({ ...form, masa_berlaku_stnk: e.target.value })} className="w-full h-11 px-3 rounded-lg border border-slate-300 bg-white text-sm outline-none focus:border-slate-900" /></Field>
@@ -394,13 +438,13 @@ function VehicleModal({ form, setForm, error, onClose, onSubmit, onAddPhotos, on
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <DocumentPicker label="Dokumen BPKB" name={form.bpkb_document_name} onPick={(f) => onPickDocument('bpkb', f)} />
-            <DocumentPicker label="Dokumen STNK" name={form.stnk_document_name} onPick={(f) => onPickDocument('stnk', f)} />
+            <DocumentPicker label="Dokumen BPKB" name={form.bpkb_document_name} data={form.bpkb_document_file_data} onView={onView} onPick={(f) => onPickDocument('bpkb', f)} />
+            <DocumentPicker label="Dokumen STNK" name={form.stnk_document_name} data={form.stnk_document_file_data} onView={onView} onPick={(f) => onPickDocument('stnk', f)} />
           </div>
 
           <div className="flex justify-end gap-2 border-t pt-4">
             <button type="button" onClick={onClose} className="px-4 py-2.5 rounded-lg border bg-white text-sm font-semibold">Batal</button>
-            <button className="px-5 py-2.5 rounded-lg bg-slate-900 text-white text-sm font-semibold">Simpan Kendaraan</button>
+            <button disabled={saving} className="px-5 py-2.5 rounded-lg bg-slate-900 text-white text-sm font-semibold disabled:opacity-60">{saving ? 'Menyimpan...' : 'Simpan Kendaraan'}</button>
           </div>
         </form>
       </div>
@@ -408,7 +452,7 @@ function VehicleModal({ form, setForm, error, onClose, onSubmit, onAddPhotos, on
   );
 }
 
-function DocumentCard({ label, name, data, onView, onReplace, canManage }) {
+function DocumentCard({ label, name, data, onView, onReplace, canManage, busy }) {
   return (
     <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
       <div className="flex items-center gap-3">
@@ -420,16 +464,16 @@ function DocumentCard({ label, name, data, onView, onReplace, canManage }) {
       </div>
       <div className="mt-3 flex gap-2">
         {data && <button type="button" onClick={onView} className="flex-1 px-3 py-2 rounded-lg bg-white border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-100">👁 Lihat</button>}
-        {canManage && <label className="flex-1 relative px-3 py-2 rounded-lg bg-slate-900 text-white text-xs font-semibold text-center cursor-pointer hover:bg-slate-800">
-          {name ? 'Ganti Dokumen' : 'Upload Dokumen'}
-          <input type="file" className="absolute inset-0 opacity-0 cursor-pointer" accept="application/pdf,.pdf" onChange={(e) => { onReplace(e.target.files?.[0]); e.target.value = ''; }} />
+        {canManage && <label className={`flex-1 relative px-3 py-2 rounded-lg bg-slate-900 text-white text-xs font-semibold text-center ${busy ? 'opacity-60 cursor-wait' : 'cursor-pointer hover:bg-slate-800'}`}>
+          {busy ? 'Mengupload...' : name ? 'Ganti Dokumen' : 'Upload Dokumen'}
+          {!busy && <input type="file" className="absolute inset-0 opacity-0 cursor-pointer" accept="application/pdf,.pdf" onChange={(e) => { onReplace(e.target.files?.[0]); e.target.value = ''; }} />}
         </label>}
       </div>
     </div>
   );
 }
 
-function VehicleDetail({ vehicle, error, canManage, onClose, onView, onUpdateDocument, onUpdateDates }) {
+function VehicleDetail({ vehicle, error, canManage, busyDoc, onClose, onView, onUpdateDocument, onUpdateFields }) {
   const rows = [
     ['ID Kendaraan', vehicle.id ? `#${vehicle.id}` : '-'],
     ['Nama Barang', vehicle.nama_barang || '-'],
@@ -458,9 +502,19 @@ function VehicleDetail({ vehicle, error, canManage, onClose, onView, onUpdateDoc
 
   async function saveDates() {
     setSavingDates(true);
-    await onUpdateDates({ masa_berlaku_stnk: stnkDate || null, waktu_pajak: taxDate || null });
+    await onUpdateFields({ masa_berlaku_stnk: stnkDate || null, waktu_pajak: taxDate || null });
     setSavingDates(false);
   }
+
+  const [statusDraft, setStatusDraft] = useState(vehicle.status || 'Tersedia');
+  const [savingStatus, setSavingStatus] = useState(false);
+  useEffect(() => { setStatusDraft(vehicle.status || 'Tersedia'); }, [vehicle.id, vehicle.status]);
+  async function saveStatus() {
+    setSavingStatus(true);
+    await onUpdateFields({ status: statusDraft });
+    setSavingStatus(false);
+  }
+  const inService = vehicle.status === 'Servis';
   return (
     <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-slate-950/75 backdrop-blur-md" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="vehicle-detail-modal w-full max-w-3xl max-h-[92vh] overflow-y-auto rounded-3xl shadow-2xl">
@@ -492,6 +546,39 @@ function VehicleDetail({ vehicle, error, canManage, onClose, onView, onUpdateDoc
           </div>
 
           <div>
+            <div className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Status &amp; Service</div>
+            <div className={`rounded-xl border p-4 ${inService ? 'border-red-200 bg-red-50/60' : 'border-slate-200 bg-white'}`}>
+              <div className="flex flex-wrap items-end gap-3">
+                <div className="min-w-[180px] flex-1">
+                  <label className="block text-[11px] font-semibold text-slate-500 mb-1">Status Kendaraan</label>
+                  <select disabled={!canManage} value={statusDraft} onChange={(e) => setStatusDraft(e.target.value)} className="w-full h-10 px-3 rounded-lg border border-slate-300 bg-white text-sm outline-none focus:border-slate-900">
+                    {STATUS_OPTIONS.map((x) => <option key={x}>{x}</option>)}
+                  </select>
+                </div>
+                {canManage && statusDraft !== (vehicle.status || 'Tersedia') && (
+                  <button type="button" onClick={saveStatus} disabled={savingStatus} className="h-10 px-4 rounded-lg bg-slate-900 text-white text-xs font-semibold disabled:opacity-60">
+                    {savingStatus ? 'Menyimpan...' : statusDraft === 'Servis' ? 'Tandai Waktunya Service' : 'Simpan Status'}
+                  </button>
+                )}
+              </div>
+              {inService && (
+                <div className="mt-3">
+                  {inService && !vehicle.service_invoice_document_name && <p className="text-[11px] text-red-700 mb-2">Kendaraan waktunya service dan belum ada invoice service. Upload PDF invoice-nya di bawah.</p>}
+                  <DocumentCard
+                    label="Invoice Service"
+                    name={vehicle.service_invoice_document_name}
+                    data={vehicle.service_invoice_document_file_data}
+                    canManage={canManage}
+                    onView={() => onView(vehicle.service_invoice_document_name, vehicle.service_invoice_document_file_data)}
+                    busy={busyDoc === 'service_invoice'}
+                    onReplace={(file) => onUpdateDocument('service_invoice', file)}
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div>
             <div className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Dokumen Kendaraan</div>
             <div className="grid sm:grid-cols-2 gap-3">
               <DocumentCard
@@ -499,14 +586,14 @@ function VehicleDetail({ vehicle, error, canManage, onClose, onView, onUpdateDoc
                 name={vehicle.bpkb_document_name}
                 data={vehicle.bpkb_document_file_data}
                 onView={() => onView(vehicle.bpkb_document_name, vehicle.bpkb_document_file_data)}
-                canManage={canManage} onReplace={(file) => onUpdateDocument('bpkb', file)}
+                canManage={canManage} busy={busyDoc === 'bpkb'} onReplace={(file) => onUpdateDocument('bpkb', file)}
               />
               <DocumentCard
                 label="STNK"
                 name={vehicle.stnk_document_name}
                 data={vehicle.stnk_document_file_data}
                 onView={() => onView(vehicle.stnk_document_name, vehicle.stnk_document_file_data)}
-                canManage={canManage} onReplace={(file) => onUpdateDocument('stnk', file)}
+                canManage={canManage} busy={busyDoc === 'stnk'} onReplace={(file) => onUpdateDocument('stnk', file)}
               />
             </div>
 

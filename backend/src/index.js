@@ -70,6 +70,19 @@ app.use('/api/ruang-rapat', ruangRapatRoutes);
 app.use('/api/maintenance', maintenanceRoutes);
 app.use('/api/users', usersRoutes);
 
+// Error dari body parser (mis. upload melebihi batas 25MB) dikembalikan sebagai
+// JSON berpesan jelas, bukan halaman HTML default Express yang tidak terbaca frontend.
+app.use((err, req, res, next) => {
+  if (err.type === 'entity.too.large') {
+    return res.status(413).json({ message: 'Ukuran data/dokumen terlalu besar (maks. total 25MB per simpan). Upload sebagian dokumen lewat menu Detail.' });
+  }
+  if (err.type === 'entity.parse.failed') {
+    return res.status(400).json({ message: 'Format data tidak valid.' });
+  }
+  logger.error('Unhandled error', { error: err, path: req.path, request_id: req.requestId });
+  return res.status(500).json({ message: 'Terjadi kesalahan server.' });
+});
+
 
 const PORT = Number(process.env.PORT) || 4000;
 app.listen(PORT, () => console.log(`✅ Backend Biro Umum berjalan di http://localhost:${PORT}`));

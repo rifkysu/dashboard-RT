@@ -201,6 +201,9 @@ model Kendaraan {
   stnk_document_name      String?
   stnk_document_file_data String?
   stnk_document_file_path String?
+  service_invoice_document_name      String? // invoice service (PDF) -- diisi saat/ setelah kendaraan diservis
+  service_invoice_document_file_data String?
+  service_invoice_document_file_path String?
   created_by        Int?
   updated_by        Int?
   created_at        DateTime  @default(now())
@@ -223,6 +226,7 @@ model RuangRapat {
   start_time      DateTime  @db.Time(0)
   end_time        DateTime  @db.Time(0)
   surat_status    String    @default("belum") @db.VarChar(20)
+  nomor_surat     String?   @db.VarChar(100)
   surat_name      String?   @db.VarChar(255)
   surat_file_data String?
   surat_file_path String?

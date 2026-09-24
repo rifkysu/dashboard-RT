@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api';
 
-const fallback = { pemeliharaan: { pending: 0, on_progress: 0, selesai: 0 }, pengadaan: { pending: 0, on_progress: 0, selesai: 0 }, kendaraan: { total: 0, belum_bayar_pajak: 0 } };
+const fallback = { pemeliharaan: { pending: 0, on_progress: 0, selesai: 0 }, pengadaan: { pending: 0, on_progress: 0, selesai: 0 }, kendaraan: { total: 0, belum_bayar_pajak: 0, pajak_segera: 0, pajak_segera_list: [] } };
 
 const TONES = {
   indigo: 'from-indigo-600 to-blue-600',
@@ -37,7 +37,7 @@ function StatCard({ icon, value, label, hint, tone }) {
   );
 }
 
-function ModuleCard({ icon, title, desc, badge, to, tone, progress }) {
+function ModuleCard({ icon, title, desc, badge, to, tone, progress, extra }) {
   const navigate = useNavigate();
   return (
     <button onClick={() => navigate(to)} className="text-left group relative overflow-hidden bg-white border-2 border-slate-200 rounded-3xl p-5 min-h-[190px] flex flex-col shadow-sm hover:shadow-xl hover:-translate-y-1 hover:border-indigo-300 transition-all duration-300">
@@ -50,6 +50,7 @@ function ModuleCard({ icon, title, desc, badge, to, tone, progress }) {
       </div>
       <h2 className="text-lg font-bold mt-5 text-slate-900">{title}</h2>
       <p className="text-xs text-slate-500 mt-1 leading-5">{desc}</p>
+      {extra}
       {progress != null && (
         <div className="mt-3">
           <div className="h-1.5 rounded-full bg-slate-100 overflow-hidden">
@@ -65,12 +66,37 @@ function ModuleCard({ icon, title, desc, badge, to, tone, progress }) {
   );
 }
 
+const fmtShort = (v) => new Date(`${v}T00:00:00`).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
+
+// Peringatan pajak kendaraan jatuh tempo <= 2 minggu (H-14) di kotak Kendaraan.
+function PajakSegera({ list }) {
+  if (!list.length) {
+    return <div className="mt-3 text-[11px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-lg px-2.5 py-1.5">✓ Tidak ada pajak jatuh tempo 2 minggu ke depan</div>;
+  }
+  return (
+    <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-2">
+      <div className="text-[11px] font-bold text-amber-800 flex items-center gap-1">
+        <span className="material-symbols-outlined text-[14px]">schedule</span>{list.length} pajak jatuh tempo ≤ 2 minggu
+      </div>
+      <ul className="mt-1.5 space-y-1">
+        {list.slice(0, 3).map((k) => (
+          <li key={k.id} className="flex items-center justify-between gap-2 text-[11px]">
+            <span className="font-semibold text-slate-700 truncate">{k.plate}</span>
+            <span className={`shrink-0 font-bold ${k.sisa_hari <= 3 ? 'text-red-600' : 'text-amber-700'}`}>{k.sisa_hari === 0 ? 'Hari ini' : `H-${k.sisa_hari}`} · {fmtShort(k.waktu_pajak)}</span>
+          </li>
+        ))}
+      </ul>
+      {list.length > 3 && <div className="mt-1 text-[10px] text-amber-700">+{list.length - 3} kendaraan lainnya</div>}
+    </div>
+  );
+}
+
 export default function Dashboard() {
   const [summary, setSummary] = useState(fallback);
   const [activities, setActivities] = useState([]);
 
   function load() {
-    api.get('/dashboard/summary').then((r) => setSummary(r.data)).catch(() => {});
+    api.get('/dashboard/summary').then((r) => setSummary({ ...fallback, ...r.data, kendaraan: { ...fallback.kendaraan, ...(r.data?.kendaraan || {}) } })).catch(() => {});
     api.get('/dashboard/activities').then((r) => setActivities(r.data.data || [])).catch(() => {});
   }
   useEffect(load, []);
@@ -111,7 +137,7 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5">
         <ModuleCard tone="emerald" icon="build" title="Pemeliharaan" desc="Permintaan perbaikan gedung dan fasilitas." badge={`${summary.pemeliharaan.pending} Pending`} to="/pemeliharaan" progress={pct(summary.pemeliharaan)} />
         <ModuleCard tone="amber" icon="shopping_cart" title="Pengadaan" desc="Status barang dan jasa dalam proses pengadaan." badge={`Proses: ${summary.pengadaan.on_progress}`} to="/pengadaan" progress={pct(summary.pengadaan)} />
-        <ModuleCard tone="indigo" icon="directions_car" title="Kendaraan" desc="Monitoring penggunaan kendaraan dinas." badge={summary.kendaraan.belum_bayar_pajak > 0 ? `${summary.kendaraan.belum_bayar_pajak} Belum Bayar Pajak` : 'Pajak Lunas Semua'} to="/kendaraan" />
+        <ModuleCard tone="indigo" icon="directions_car" title="Kendaraan" desc="Monitoring penggunaan kendaraan dinas." badge={summary.kendaraan.belum_bayar_pajak > 0 ? `${summary.kendaraan.belum_bayar_pajak} Belum Bayar Pajak` : 'Pajak Lunas Semua'} to="/kendaraan" extra={<PajakSegera list={summary.kendaraan.pajak_segera_list || []} />} />
         <ModuleCard tone="violet" icon="calendar_month" title="Ruang Rapat" desc="Jadwal penggunaan ruang rapat." badge="Agenda" to="/ruang-rapat" />
       </div>
 
