@@ -27,6 +27,7 @@ Full-stack app (React + Node.js/Express + PostgreSQL + **Prisma**) untuk mengelo
 - **Kartu KPI**: Total Permintaan, Pending, On Progress, Selesai — gabungan Pemeliharaan + Pengadaan.
 - **Kartu modul** (Pemeliharaan/Pengadaan/Kendaraan/Ruang Rapat) dengan progress bar persentase selesai, badge dinamis per modul.
 - **Kartu Kendaraan** menampilkan jumlah kendaraan yang **belum bayar pajak** (dihitung dari `waktu_pajak` yang kosong atau sudah lewat tanggal hari ini) — langsung dari `GET /api/dashboard/summary`, tidak perlu buka menu Kendaraan dulu untuk tahu.
+- **Status ruang rapat saat ini** di kartu Ruang Rapat: tiap ruangan tampil **Kosong** (plus jam booking berikutnya) atau **Dipakai s/d jam X**, badge berisi jumlah ruang kosong. Diperbarui otomatis tiap menit dan langsung saat ada booking berubah (SSE).
 - **Peringatan pajak H-14** di kartu Kendaraan: kendaraan yang `waktu_pajak`-nya jatuh hari ini s/d 14 hari ke depan ditampilkan dengan nomor polisi & sisa hari (maks. 3 teratas, merah kalau ≤ 3 hari).
 - Daftar **Aktivitas Terbaru** gabungan Pemeliharaan & Pengadaan, terurut dari yang paling baru diperbarui, dengan badge status berwarna.
 
@@ -78,6 +79,9 @@ Full-stack app (React + Node.js/Express + PostgreSQL + **Prisma**) untuk mengelo
 - Sidebar bisa **diciutkan** (mode ikon saja) di layar desktop — preferensinya disimpan otomatis di browser.
 - **Responsive mobile/tablet** — di layar sempit (< md), sidebar berubah jadi **drawer overlay** yang dibuka lewat tombol hamburger di top bar, bukan lagi selalu tampil menutupi konten. Tabel-tabel lebar (Pemeliharaan, Pengadaan, Kendaraan, kalender Ruang Rapat) scroll horizontal di dalam kartunya sendiri, tidak mendorong lebar seluruh halaman.
 - Landing page & beberapa menu (Dashboard, Pemeliharaan, Pengadaan, Kendaraan, Ruang Rapat) pakai font Arial/sans-serif, beda dari font default (Inter) di halaman lain.
+
+- **Popup & notifikasi seragam** (`frontend/src/components/Feedback.jsx`) — semua konfirmasi (hapus, batalkan booking, ban akun, selesaikan tahap, aktifkan maintenance), peringatan validasi, dan pesan error tampil sebagai popup; aksi yang berhasil memunculkan notifikasi kecil di pojok kanan atas. Tidak ada lagi `alert()`/`confirm()` bawaan browser.
+- **Validasi form sebelum dikirim** (`frontend/src/utils/validation.js`) — kolom wajib yang kosong/salah ditampilkan sekaligus dalam satu popup. Kolom bertanda * di tiap tahap Pemeliharaan/Pengadaan dicek saat **Lanjut ke Tahap** / **Selesaikan** (tidak saat Simpan Draf).
 
 ### 🔒 Keamanan
 - Otorisasi role diterapkan **di dua lapis**: disable di UI (frontend) **dan** ditolak di API (backend) — aman walau seseorang mencoba akses API langsung (mis. lewat Postman).

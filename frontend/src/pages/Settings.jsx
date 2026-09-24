@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import api from '../api';
+import { useFeedback } from '../components/Feedback';
 
 const MENU_LABELS = {
   landing: 'Landing Page',
@@ -32,12 +33,15 @@ function MaintenancePanel({ maintenance, refreshMaintenance }) {
   const [saving, setSaving] = useState(null);
   const [drafts, setDrafts] = useState({});
   const [error, setError] = useState('');
+  const { confirm, toast } = useFeedback();
 
   async function toggle(menuKey, nextActive) {
+    if (nextActive && !(await confirm({ title: `Aktifkan maintenance ${MENU_LABELS[menuKey]}?`, message: `Menu ${MENU_LABELS[menuKey]} langsung tidak bisa diakses semua pengguna selain Admin${menuKey === 'landing' ? ', termasuk pengunjung publik' : ''}.`, confirmText: 'Ya, Aktifkan Maintenance', tone: 'warning', icon: 'build' }))) return;
     setSaving(menuKey); setError('');
     try {
       await api.put(`/maintenance/${menuKey}`, { is_active: nextActive });
       refreshMaintenance();
+      toast(nextActive ? `Maintenance ${MENU_LABELS[menuKey]} diaktifkan.` : `${MENU_LABELS[menuKey]} kembali aktif untuk semua pengguna.`);
     } catch (err) {
       setError(err.response?.data?.message || 'Gagal memperbarui status maintenance.');
     } finally {
@@ -50,6 +54,7 @@ function MaintenancePanel({ maintenance, refreshMaintenance }) {
     try {
       await api.put(`/maintenance/${menuKey}`, { message: drafts[menuKey] ?? '' });
       refreshMaintenance();
+      toast(`Pesan maintenance ${MENU_LABELS[menuKey]} disimpan.`);
     } catch (err) {
       setError(err.response?.data?.message || 'Gagal menyimpan pesan.');
     } finally {

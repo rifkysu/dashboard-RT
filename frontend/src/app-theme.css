@@ -147,3 +147,12 @@ main.app-main {
 }
 .settings-profile-name { color:#0f172a; font-size:14px; font-weight:800; line-height:1.2; }
 .settings-profile-role { color:#64748b; font-size:11px; font-weight:600; margin-top:3px; }
+
+/* Popup & notifikasi (components/Feedback.jsx) */
+@keyframes feedback-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes feedback-pop { from { opacity: 0; transform: translateY(8px) scale(.97); } to { opacity: 1; transform: none; } }
+@keyframes feedback-slide { from { opacity: 0; transform: translateX(16px); } to { opacity: 1; transform: none; } }
+.feedback-fade { animation: feedback-fade .15s ease-out; }
+.feedback-pop { animation: feedback-pop .18s ease-out; }
+.feedback-toast { animation: feedback-slide .2s ease-out; }
+@media (prefers-reduced-motion: reduce) { .feedback-fade, .feedback-pop, .feedback-toast { animation: none; } }

@@ -5,6 +5,8 @@ import BrandMark from '../components/BrandMark';
 import PaymentMethodDetail from '../components/PaymentMethodDetail';
 import DocumentViewer from '../components/DocumentViewer';
 import { verifyFileIsGenuine } from '../utils/fileSignature';
+import { useFeedback } from '../components/Feedback';
+import { requireFields, positiveAmount, validatePayment } from '../utils/validation';
 
 const FILE_SIGNATURE_REJECT_MESSAGE = 'File yang diupload tidak terdeteksi sebagai dokumen/gambar asli (kemungkinan file diubah namanya atau berupa script). Harap upload dokumen PDF/JPG/PNG asli.';
 
@@ -50,8 +52,20 @@ function money(value) {
   return new Intl.NumberFormat('id-ID').format(Number(value));
 }
 
+// Kolom wajib (bertanda *) per tahap -- dicek saat "Lanjut ke Tahap" / "Selesaikan",
+// tidak saat "Simpan Draf" supaya draf setengah jadi tetap bisa disimpan.
+function validateStage(no, d) {
+  if (no === 1) return [
+    ...requireFields([['Metode pengadaan', d.metode_pengadaan], ['Nama barang / jasa', d.nama_barang_jasa]]),
+    ...positiveAmount('Nilai HPS', d.nilai_hps),
+  ];
+  if (no === 2) return [...validatePayment(d), ...requireFields([['Nama perusahaan', d.stage2_vendor]])];
+  return requireFields([['Dokumen final pengadaan (BAST / berita acara)', d.stage3_final_document_file_data]]);
+}
+
 export default function Pengadaan() {
   const { user, canEditRow, refreshAuth } = useAuth();
+  const { confirm, alert, toast } = useFeedback();
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
@@ -77,7 +91,7 @@ export default function Pengadaan() {
       const res = await api.get(`/pengadaan/${row.id}`);
       openStage(res.data.data, stage);
     } catch (err) {
-      alert(err.response?.data?.message || 'Gagal memuat detail pengadaan.');
+      alert({ title: 'Gagal memuat detail', message: err.response?.data?.message || 'Gagal memuat detail pengadaan.', tone: 'error' });
     }
   }
 
@@ -92,7 +106,15 @@ export default function Pengadaan() {
   }
 
   async function saveStage(nextStageNo = null, finish = false) {
-    if (!selectedRow || !selectedStage || !canEditRow(selectedRow)) return;
+    if (!selectedRow || !selectedStage || !canEditRow(selectedRow) || saving) return;
+    if (nextStageNo || finish) {
+      const errors = validateStage(selectedStage.no, draft);
+      if (errors.length) {
+        await alert({ title: `Tahap ${selectedStage.no} belum lengkap`, intro: 'Lengkapi data berikut sebelum melanjutkan:', message: errors, tone: 'warning' });
+        return;
+      }
+    }
+    if (finish && !(await confirm({ title: 'Selesaikan pengadaan?', message: `Pengadaan "${selectedRow.nama_barang_jasa}" akan ditandai Selesai dengan tanggal selesai hari ini.`, confirmText: 'Ya, Selesaikan', tone: 'success', icon: 'task_alt' }))) return;
     setSaving(true);
     try {
       const payload = {};
@@ -128,19 +150,29 @@ export default function Pengadaan() {
       if (nextStageNo) {
         const next = stages.find((s) => s.no === nextStageNo);
         openStage(updated, next);
+        toast(`Tahap ${selectedStage.no} selesai. Lanjut ke Tahap ${nextStageNo}.`);
       } else if (finish) {
-        closeStage();
+        setSelectedRow(null); setSelectedStage(null); setDraft({});
+        toast(`Pengadaan "${updated.nama_barang_jasa}" selesai.`);
       } else {
         setSelectedRow(updated);
-        setDraft(updated);
+        setDraft({ ...updated, nilai_hps: updated.nilai_hps ?? '', stage2_invoice_amount: updated.stage2_invoice_amount ?? '' });
+        toast('Draf berhasil disimpan.');
       }
     } catch (err) {
-      alert(err.response?.data?.message || 'Gagal menyimpan data tahap.');
+      alert({ title: 'Gagal menyimpan', message: err.response?.data?.message || 'Gagal menyimpan data tahap.', tone: 'error' });
     } finally { setSaving(false); }
   }
 
   async function handleAdd(e) {
     e.preventDefault(); setError('');
+    if (saving) return;
+    const errors = requireFields([['Nama barang / jasa', form.nama_barang_jasa], ['Lokasi', form.lokasi]]);
+    if (errors.length) {
+      await alert({ title: 'Data belum lengkap', intro: 'Lengkapi data berikut:', message: errors, tone: 'warning' });
+      return;
+    }
+    setSaving(true);
     try {
       const res = await api.post('/pengadaan', {
         nama_barang_jasa: form.nama_barang_jasa,
@@ -156,16 +188,20 @@ export default function Pengadaan() {
       // Kalau backend mempromosikan role karyawan -> PIC, sinkronkan token & user di sesi ini.
       if (res.data.token) refreshAuth(res.data.token, res.data.user);
       setShowAddForm(false); setForm(emptyForm); load();
-    } catch (err) { setError(err.response?.data?.message || 'Gagal menambahkan pengadaan.'); }
+      toast(res.data.token ? 'Pengadaan berhasil ditambahkan. Role Anda kini PIC untuk pengadaan ini.' : 'Pengadaan berhasil ditambahkan.');
+    } catch (err) {
+      alert({ title: 'Gagal menambahkan', message: err.response?.data?.message || 'Gagal menambahkan pengadaan.', tone: 'error' });
+    } finally { setSaving(false); }
   }
 
   async function handleDelete(row) {
-    if (!window.confirm(`Hapus pengadaan "${row.nama_barang_jasa}" (#${row.kode})? Tindakan ini tidak dapat dibatalkan.`)) return;
+    if (!(await confirm({ title: 'Hapus pengadaan?', message: `Pengadaan "${row.nama_barang_jasa}" (#${row.kode}) akan dihapus permanen. Tindakan ini tidak dapat dibatalkan.`, confirmText: 'Ya, Hapus', tone: 'danger' }))) return;
     try {
       await api.delete(`/pengadaan/${row.id}`);
       setData((current) => current.filter((item) => item.id !== row.id));
+      toast('Pengadaan berhasil dihapus.');
     } catch (err) {
-      alert(err.response?.data?.message || 'Gagal menghapus data.');
+      alert({ title: 'Gagal menghapus', message: err.response?.data?.message || 'Gagal menghapus data.', tone: 'error' });
     }
   }
 
@@ -193,12 +229,14 @@ export default function Pengadaan() {
       const sampaiMatch = !exportDateRange.sampai || tanggal <= exportDateRange.sampai;
       return mulaiMatch && sampaiMatch;
     });
-    if (!exportData.length) return alert('Tidak ada data yang sesuai dengan filter dan rentang tanggal untuk diekspor.');
+    if (exportDateRange.mulai && exportDateRange.sampai && exportDateRange.sampai < exportDateRange.mulai) return alert({ title: 'Rentang tanggal salah', message: 'Tanggal sampai harus sama atau setelah tanggal mulai.', tone: 'warning' });
+    if (!exportData.length) return alert({ title: 'Tidak ada data', message: 'Tidak ada data yang sesuai dengan filter dan rentang tanggal untuk diekspor.', tone: 'info' });
     const headers = ['ID Request','Nama Barang/Jasa','Lokasi','Titik Lokasi','Kategori','PIC RT','Nama Perusahaan','Transaksi','Nilai Invoice','Tanggal Input','Status','Tanggal Selesai'];
     const body = exportData.map(row => [row.kode,row.nama_barang_jasa,row.lokasi || '-',row.titik_lokasi || '-',row.kategori || '-',row.pic || '-',row.stage2_vendor || '-',paymentLabel(row),row.stage2_invoice_amount ? `Rp ${money(row.stage2_invoice_amount)}` : '-',String(row.tanggal || '').slice(0,10),statusLabel[row.status] || row.status,row.status === 'selesai' ? (String(row.tanggal_selesai || '').slice(0,10) || '-') : '-']);
     const html = `<table><thead><tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr></thead><tbody>${body.map(r => `<tr>${r.map(v => `<td>${String(v).replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]))}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
     const blob = new Blob([`\ufeff${html}`], { type: 'application/vnd.ms-excel' });
-    const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `pengadaan_filtered_${new Date().toISOString().slice(0,10)}.xls`; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
+    const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `pengadaan_filtered_${localToday()}.xls`; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
+    toast(`${exportData.length} data berhasil diexport ke Excel.`);
   }
 
   const roleLabel = user?.role === 'kabag' ? 'Kabag' : user?.role === 'pic' ? 'PIC' : 'Karyawan';
@@ -305,7 +343,7 @@ export default function Pengadaan() {
       />}
 
       <DocumentViewer open={viewer.open} name={viewer.name} data={viewer.data} onClose={()=>setViewer({open:false,name:'',data:''})} />
-      {showAddForm && <AddModal form={form} setForm={setForm} error={error} onClose={() => { setShowAddForm(false); setForm(emptyForm); }} onSubmit={handleAdd} />}
+      {showAddForm && <AddModal form={form} setForm={setForm} error={error} saving={saving} onClose={() => { setShowAddForm(false); setForm(emptyForm); }} onSubmit={handleAdd} />}
     </div>
   );
 }
@@ -380,19 +418,20 @@ function PengadaanStageOne({ draft, update, readOnly, onView }) {
 }
 
 function PengadaanStageTwo({ draft, update, readOnly, onView }) {
+  const { alert } = useFeedback();
   const handleFile = async (nameField, dataField, file) => {
     if (!file) return;
     if (file.size > 8 * 1024 * 1024) {
-      alert('Ukuran file maksimal 8MB.');
+      alert({ title: 'File terlalu besar', message: 'Ukuran file maksimal 8MB.', tone: 'warning' });
       return;
     }
     const allowed = ['application/pdf', 'image/jpeg', 'image/png'];
     if (!allowed.includes(file.type)) {
-      alert('Format file hanya PDF, JPG, atau PNG.');
+      alert({ title: 'Format tidak didukung', message: 'Format file hanya PDF, JPG, atau PNG.', tone: 'warning' });
       return;
     }
     if (!(await verifyFileIsGenuine(file))) {
-      alert(FILE_SIGNATURE_REJECT_MESSAGE);
+      alert({ title: 'File ditolak', message: FILE_SIGNATURE_REJECT_MESSAGE, tone: 'error' });
       return;
     }
     update(nameField, file.name);
@@ -436,19 +475,20 @@ function PengadaanStageTwo({ draft, update, readOnly, onView }) {
 }
 
 function PengadaanStageThree({ draft, update, readOnly, onView }) {
+  const { alert } = useFeedback();
   const handleFile = async (file) => {
     if (!file) return;
     if (file.size > 8 * 1024 * 1024) {
-      alert('Ukuran file maksimal 8MB.');
+      alert({ title: 'File terlalu besar', message: 'Ukuran file maksimal 8MB.', tone: 'warning' });
       return;
     }
     const allowed = ['application/pdf', 'image/jpeg', 'image/png'];
     if (!allowed.includes(file.type)) {
-      alert('Format file hanya PDF, JPG, atau PNG.');
+      alert({ title: 'Format tidak didukung', message: 'Format file hanya PDF, JPG, atau PNG.', tone: 'warning' });
       return;
     }
     if (!(await verifyFileIsGenuine(file))) {
-      alert(FILE_SIGNATURE_REJECT_MESSAGE);
+      alert({ title: 'File ditolak', message: FILE_SIGNATURE_REJECT_MESSAGE, tone: 'error' });
       return;
     }
     update('stage3_final_document_name', file.name);
@@ -474,9 +514,10 @@ function PengadaanStageThree({ draft, update, readOnly, onView }) {
 }
 
 
-function AddModal({ form, setForm, error, onClose, onSubmit }) {
+function AddModal({ form, setForm, error, saving, onClose, onSubmit }) {
+  const { alert } = useFeedback();
   return <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-    <div className="w-full max-w-2xl max-h-[92vh] overflow-y-auto bg-white rounded-xl shadow-2xl"><form onSubmit={onSubmit}>
+    <div className="w-full max-w-2xl max-h-[92vh] overflow-y-auto bg-white rounded-xl shadow-2xl"><form noValidate onSubmit={onSubmit}>
       <div className="px-6 pt-6 pb-4 border-b border-slate-100 flex items-start justify-between"><div><h2 className="text-xl font-bold text-slate-900">Tambah Pengadaan</h2><p className="text-sm text-slate-500 mt-1">Isi formulir untuk membuat permintaan pengadaan barang atau jasa.</p></div><button type="button" onClick={onClose} className="w-9 h-9 rounded-lg text-slate-500 hover:bg-slate-100"><span className="material-symbols-outlined">close</span></button></div>
       <div className="px-6 py-5 space-y-4">
         {error && <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{error}</div>}
@@ -487,8 +528,8 @@ function AddModal({ form, setForm, error, onClose, onSubmit }) {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3"><div><label className="block text-xs font-semibold text-slate-700 mb-1.5">Tanggal</label><input type="date" value={form.tanggal} onChange={e=>setForm({...form,tanggal:e.target.value})} className={inputClass}/></div></div>
         <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-800"><b>Nilai HPS</b> tidak diinput saat membuat pengadaan. Nilai HPS diisi pada <b>Aksi Tahap 1 (Analisa & HPS)</b>.</div>
         <div><label className="block text-xs font-semibold text-slate-700 mb-1.5">Deskripsi Detail</label><textarea maxLength={500} value={form.deskripsi} onChange={e=>setForm({...form,deskripsi:e.target.value})} rows={4} className="w-full px-3 py-3 rounded-lg border border-slate-300 bg-slate-50/70 text-sm outline-none focus:bg-white focus:border-slate-900"/><div className="text-right text-[11px] text-slate-500 mt-1">{form.deskripsi.length}/500 karakter</div></div>
-        <div><div className="flex items-center justify-between gap-3 mb-1.5"><label className="block text-xs font-semibold text-slate-700">Upload Dokumen Pendukung</label><span className="text-[11px] text-slate-500">PDF, JPG, PNG, WebP · Maks. 8MB</span></div><label className="relative flex items-center gap-3 p-4 rounded-lg border border-dashed border-slate-300 bg-slate-50 cursor-pointer hover:bg-slate-100"><span className="w-10 h-10 rounded-lg bg-white flex items-center justify-center shadow-sm"><span className="material-symbols-outlined text-slate-600">upload_file</span></span><div className="min-w-0 flex-1"><div className="text-sm font-semibold text-slate-800 truncate">{form.request_document_name || 'Pilih dokumen pendukung'}</div><div className="text-xs text-slate-500 mt-1">Lampiran permintaan awal (opsional)</div></div><span className="px-3 py-2 rounded-lg bg-white border border-slate-200 text-xs font-semibold text-slate-700">Pilih Berkas</span><input type="file" className="absolute inset-0 opacity-0 cursor-pointer" accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp" onChange={async e=>{const f=e.target.files?.[0];if(!f)return;if(f.size>8*1024*1024){alert('Ukuran dokumen maksimal 8MB.');e.target.value='';return;}if(!(await verifyFileIsGenuine(f))){alert(FILE_SIGNATURE_REJECT_MESSAGE);e.target.value='';return;}const r=new FileReader();r.onload=()=>setForm(cur=>({...cur,request_document_name:f.name,request_document_file_data:r.result}));r.readAsDataURL(f);}}/></label></div>
+        <div><div className="flex items-center justify-between gap-3 mb-1.5"><label className="block text-xs font-semibold text-slate-700">Upload Dokumen Pendukung</label><span className="text-[11px] text-slate-500">PDF, JPG, PNG, WebP · Maks. 8MB</span></div><label className="relative flex items-center gap-3 p-4 rounded-lg border border-dashed border-slate-300 bg-slate-50 cursor-pointer hover:bg-slate-100"><span className="w-10 h-10 rounded-lg bg-white flex items-center justify-center shadow-sm"><span className="material-symbols-outlined text-slate-600">upload_file</span></span><div className="min-w-0 flex-1"><div className="text-sm font-semibold text-slate-800 truncate">{form.request_document_name || 'Pilih dokumen pendukung'}</div><div className="text-xs text-slate-500 mt-1">Lampiran permintaan awal (opsional)</div></div><span className="px-3 py-2 rounded-lg bg-white border border-slate-200 text-xs font-semibold text-slate-700">Pilih Berkas</span><input type="file" className="absolute inset-0 opacity-0 cursor-pointer" accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp" onChange={async e=>{const f=e.target.files?.[0];if(!f)return;if(f.size>8*1024*1024){alert({ title: 'File terlalu besar', message: 'Ukuran dokumen maksimal 8MB.', tone: 'warning' });e.target.value='';return;}if(!(await verifyFileIsGenuine(f))){alert({ title: 'File ditolak', message: FILE_SIGNATURE_REJECT_MESSAGE, tone: 'error' });e.target.value='';return;}const r=new FileReader();r.onload=()=>setForm(cur=>({...cur,request_document_name:f.name,request_document_file_data:r.result}));r.readAsDataURL(f);}}/></label></div>
       </div>
-      <div className="px-6 py-4 border-t border-slate-200 flex justify-end gap-3"><button type="button" onClick={onClose} className="px-4 py-2.5 text-sm font-semibold text-slate-700">Batal</button><button type="submit" className="px-5 py-2.5 bg-slate-900 text-white text-sm font-semibold rounded-lg">Simpan Pengadaan</button></div>
+      <div className="px-6 py-4 border-t border-slate-200 flex justify-end gap-3"><button type="button" onClick={onClose} className="px-4 py-2.5 text-sm font-semibold text-slate-700">Batal</button><button type="submit" disabled={saving} className="px-5 py-2.5 bg-slate-900 text-white text-sm font-semibold rounded-lg disabled:opacity-60">{saving ? 'Menyimpan...' : 'Simpan Pengadaan'}</button></div>
     </form></div></div>;
 }

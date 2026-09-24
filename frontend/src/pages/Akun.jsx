@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import api from '../api';
 import { useAuth } from '../context/AuthContext';
+import { useFeedback } from '../components/Feedback';
 
 const roleLabel = { karyawan: 'Karyawan', kabag: 'Kepala Bagian', pic: 'PIC', admin: 'Admin' };
 const roleBadge = {
@@ -25,6 +26,7 @@ function waNumber(noHp) {
 
 export default function Akun() {
   const { user, refreshResetRequests } = useAuth();
+  const { confirm, toast } = useFeedback();
   const [resetLink, setResetLink] = useState(null);
   const [copied, setCopied] = useState(false);
   const [data, setData] = useState([]);
@@ -42,16 +44,17 @@ export default function Akun() {
 
   async function toggleBan(target) {
     const nextActive = !target.is_active;
-    if (nextActive) {
-      if (!window.confirm(`Aktifkan kembali akun "${target.nama_lengkap}"?`)) return;
-    } else {
-      if (!window.confirm(`Ban akun "${target.nama_lengkap}"? Akun ini tidak akan bisa login/akses sistem sampai diaktifkan kembali.`)) return;
-    }
+    const ok = nextActive
+      ? await confirm({ title: 'Aktifkan kembali akun?', message: `Akun "${target.nama_lengkap}" (${target.email}) akan bisa login dan mengakses sistem lagi.`, confirmText: 'Ya, Aktifkan', tone: 'success', icon: 'how_to_reg' })
+      : await confirm({ title: 'Ban akun ini?', message: `Akun "${target.nama_lengkap}" (${target.email}) langsung keluar dari sistem dan tidak bisa login sampai diaktifkan kembali.`, confirmText: 'Ya, Ban Akun', tone: 'danger', icon: 'block' });
+    if (!ok) return;
     setBusyId(target.id);
     setError('');
     try {
       await api.put(`/users/${target.id}/status`, { is_active: nextActive });
       setData((current) => current.map((u) => (u.id === target.id ? { ...u, is_active: nextActive } : u)));
+      toast(nextActive ? `Akun ${target.nama_lengkap} diaktifkan kembali.` : `Akun ${target.nama_lengkap} berhasil di-ban.`);
+      refreshResetRequests();
     } catch (err) {
       setError(err.response?.data?.message || 'Gagal memperbarui status akun.');
     } finally {
@@ -60,7 +63,7 @@ export default function Akun() {
   }
 
   async function makeResetLink(target) {
-    if (!window.confirm(`Buat link reset kata sandi untuk "${target.nama_lengkap}"? Pastikan permintaan ini benar dari pemilik akun.`)) return;
+    if (!(await confirm({ title: 'Kirim link reset kata sandi?', message: `Link reset untuk "${target.nama_lengkap}" (${target.email}) berlaku 1 jam. Pastikan permintaan ini benar dari pemilik akun.`, confirmText: 'Ya, Kirim Link', tone: 'info', icon: 'lock_reset' }))) return;
     setBusyId(target.id);
     setError('');
     try {

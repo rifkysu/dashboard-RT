@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api';
+import useRuangRapatLive from '../hooks/useRuangRapatLive';
 
-const fallback = { pemeliharaan: { pending: 0, on_progress: 0, selesai: 0 }, pengadaan: { pending: 0, on_progress: 0, selesai: 0 }, kendaraan: { total: 0, belum_bayar_pajak: 0, pajak_segera: 0, pajak_segera_list: [] } };
+const fallback = { pemeliharaan: { pending: 0, on_progress: 0, selesai: 0 }, pengadaan: { pending: 0, on_progress: 0, selesai: 0 }, kendaraan: { total: 0, belum_bayar_pajak: 0, pajak_segera: 0, pajak_segera_list: [] }, ruang_rapat: { jam: '', kosong_sekarang: 0, total_ruang: 0, rooms: [] } };
 
 const TONES = {
   indigo: 'from-indigo-600 to-blue-600',
@@ -91,15 +92,43 @@ function PajakSegera({ list }) {
   );
 }
 
+// Status tiap ruang rapat saat ini di kotak Ruang Rapat: Kosong / Dipakai s/d jam X.
+function RuangStatus({ info }) {
+  if (!info.rooms.length) return null;
+  return (
+    <div className={`mt-3 rounded-lg border px-2.5 py-2 ${info.kosong_sekarang > 0 ? 'border-emerald-200 bg-emerald-50' : 'border-red-200 bg-red-50'}`}>
+      <div className={`text-[11px] font-bold flex items-center gap-1 ${info.kosong_sekarang > 0 ? 'text-emerald-800' : 'text-red-700'}`}>
+        <span className="material-symbols-outlined text-[14px]">{info.kosong_sekarang > 0 ? 'meeting_room' : 'event_busy'}</span>
+        {info.kosong_sekarang > 0 ? `${info.kosong_sekarang} ruang kosong sekarang` : 'Semua ruang sedang dipakai'}{info.jam && ` · ${info.jam}`}
+      </div>
+      <ul className="mt-1.5 space-y-1">
+        {info.rooms.map((r) => (
+          <li key={r.room} className="flex items-center justify-between gap-2 text-[11px]" title={r.dipakai ? `Dipakai: ${r.agenda}` : r.berikutnya ? `Booking berikutnya jam ${r.berikutnya}` : 'Tidak ada booking lagi hari ini'}>
+            <span className="font-semibold text-slate-700 truncate">{r.room}</span>
+            {r.dipakai
+              ? <span className="shrink-0 font-bold text-red-600">Dipakai s/d {r.sampai}</span>
+              : <span className="shrink-0 font-bold text-emerald-700">Kosong{r.berikutnya ? ` · s/d ${r.berikutnya}` : ''}</span>}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 export default function Dashboard() {
   const [summary, setSummary] = useState(fallback);
   const [activities, setActivities] = useState([]);
 
   function load() {
-    api.get('/dashboard/summary').then((r) => setSummary({ ...fallback, ...r.data, kendaraan: { ...fallback.kendaraan, ...(r.data?.kendaraan || {}) } })).catch(() => {});
+    api.get('/dashboard/summary').then((r) => setSummary({ ...fallback, ...r.data, kendaraan: { ...fallback.kendaraan, ...(r.data?.kendaraan || {}) }, ruang_rapat: { ...fallback.ruang_rapat, ...(r.data?.ruang_rapat || {}) } })).catch(() => {});
     api.get('/dashboard/activities').then((r) => setActivities(r.data.data || [])).catch(() => {});
   }
-  useEffect(load, []);
+  useEffect(() => {
+    load();
+    const timer = setInterval(load, 60000);
+    return () => clearInterval(timer);
+  }, []);
+  useRuangRapatLive(load);
 
   const totalPending = summary.pemeliharaan.pending + summary.pengadaan.pending;
   const totalProgress = summary.pemeliharaan.on_progress + summary.pengadaan.on_progress;
@@ -138,7 +167,7 @@ export default function Dashboard() {
         <ModuleCard tone="emerald" icon="build" title="Pemeliharaan" desc="Permintaan perbaikan gedung dan fasilitas." badge={`${summary.pemeliharaan.pending} Pending`} to="/pemeliharaan" progress={pct(summary.pemeliharaan)} />
         <ModuleCard tone="amber" icon="shopping_cart" title="Pengadaan" desc="Status barang dan jasa dalam proses pengadaan." badge={`Proses: ${summary.pengadaan.on_progress}`} to="/pengadaan" progress={pct(summary.pengadaan)} />
         <ModuleCard tone="indigo" icon="directions_car" title="Kendaraan" desc="Monitoring penggunaan kendaraan dinas." badge={summary.kendaraan.belum_bayar_pajak > 0 ? `${summary.kendaraan.belum_bayar_pajak} Belum Bayar Pajak` : 'Pajak Lunas Semua'} to="/kendaraan" extra={<PajakSegera list={summary.kendaraan.pajak_segera_list || []} />} />
-        <ModuleCard tone="violet" icon="calendar_month" title="Ruang Rapat" desc="Jadwal penggunaan ruang rapat." badge="Agenda" to="/ruang-rapat" />
+        <ModuleCard tone="violet" icon="calendar_month" title="Ruang Rapat" desc="Jadwal penggunaan ruang rapat." badge={summary.ruang_rapat.total_ruang ? (summary.ruang_rapat.kosong_sekarang > 0 ? `${summary.ruang_rapat.kosong_sekarang} Ruang Kosong` : 'Semua Terpakai') : 'Agenda'} to="/ruang-rapat" extra={<RuangStatus info={summary.ruang_rapat} />} />
       </div>
 
       {/* Recent activity */}

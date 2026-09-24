@@ -1,6 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import api from '../api';
 import { useAuth } from '../context/AuthContext';
+import { useFeedback } from '../components/Feedback';
+import { requireFields } from '../utils/validation';
 import DocumentViewer from '../components/DocumentViewer';
 import { verifyFileIsGenuine } from '../utils/fileSignature';
 import { compressImage } from '../utils/imageCompress';
@@ -40,6 +42,7 @@ const fmtDate = (v) => v ? new Date(`${v}T00:00:00`).toLocaleDateString('id-ID',
 
 export default function Kendaraan() {
   const { user } = useAuth();
+  const { alert, toast } = useFeedback();
   // Backend hanya mengizinkan kabag/PIC/admin menambah & mengubah kendaraan.
   const canManage = ['kabag', 'pic', 'admin'].includes(user?.role);
   const [tab, setTab] = useState('Roda 4');
@@ -76,8 +79,13 @@ export default function Kendaraan() {
     e.preventDefault();
     if (saving) return;
     setError('');
+    const errors = requireFields([['Nama barang', form.nama_barang], ['Merk', form.merk], ['Tipe', form.tipe], ['No polisi', form.plate], ['Jenis kendaraan', form.jenis]]);
+    if (errors.length) {
+      await alert({ title: 'Data kendaraan belum lengkap', intro: 'Lengkapi data berikut:', message: errors, tone: 'warning' });
+      return;
+    }
     if (payloadSize(form) > MAX_PAYLOAD_CHARS) {
-      setError('Total ukuran dokumen & foto terlalu besar untuk sekali simpan. Simpan dulu tanpa sebagian dokumen, lalu upload sisanya dari tombol Detail.');
+      await alert({ title: 'Ukuran file terlalu besar', message: 'Total ukuran dokumen & foto terlalu besar untuk sekali simpan. Simpan dulu tanpa sebagian dokumen, lalu upload sisanya dari tombol Detail.', tone: 'warning' });
       return;
     }
     setSaving(true);
@@ -86,8 +94,9 @@ export default function Kendaraan() {
       setShow(false);
       setForm(emptyForm);
       await load();
+      toast(`Kendaraan ${form.plate.trim()} berhasil ditambahkan.`);
     } catch (e) {
-      setError(e.response?.data?.message || 'Gagal menyimpan kendaraan.');
+      alert({ title: e.response?.status === 409 ? 'Nomor polisi sudah terdaftar' : 'Gagal menyimpan kendaraan', message: e.response?.data?.message || 'Gagal menyimpan kendaraan.', tone: e.response?.status === 409 ? 'warning' : 'error' });
     } finally {
       setSaving(false);
     }
@@ -97,17 +106,17 @@ export default function Kendaraan() {
     const files = Array.from(fileList || []);
     if (!files.length) return;
     const room = MAX_PHOTOS - form.photos.length;
-    if (room <= 0) { setError(`Maksimal ${MAX_PHOTOS} foto per kendaraan.`); return; }
+    if (room <= 0) { alert({ title: 'Foto sudah maksimal', message: `Maksimal ${MAX_PHOTOS} foto per kendaraan.`, tone: 'warning' }); return; }
     const toProcess = files.slice(0, room);
-    if (files.length > room) setError(`Hanya ${room} foto pertama yang ditambahkan (maksimal ${MAX_PHOTOS} foto).`);
+    if (files.length > room) toast(`Hanya ${room} foto pertama yang ditambahkan (maksimal ${MAX_PHOTOS} foto).`, 'info');
     for (const file of toProcess) {
-      if (!ALLOWED_TYPES.includes(file.type)) { setError('Foto harus JPG, PNG, atau WebP.'); continue; }
-      if (!(await verifyFileIsGenuine(file))) { setError(`File "${file.name}" bukan gambar asli, ditolak.`); continue; }
+      if (!ALLOWED_TYPES.includes(file.type)) { toast(`"${file.name}" ditolak: foto harus JPG, PNG, atau WebP.`, 'error'); continue; }
+      if (!(await verifyFileIsGenuine(file))) { toast(`"${file.name}" ditolak: bukan gambar asli.`, 'error'); continue; }
       try {
         const compressed = await compressImage(file);
         setForm((f) => (f.photos.length >= MAX_PHOTOS ? f : { ...f, photos: [...f.photos, { name: file.name, data: compressed }] }));
       } catch {
-        setError(`Gagal memproses foto "${file.name}".`);
+        toast(`Gagal memproses foto "${file.name}".`, 'error');
       }
     }
   }
@@ -120,9 +129,8 @@ export default function Kendaraan() {
     try {
       const dataUrl = await readPdf(file);
       setForm((f) => ({ ...f, [`${field}_document_name`]: file.name, [`${field}_document_file_data`]: dataUrl }));
-      setError('');
     } catch (err) {
-      setError(err.message);
+      alert({ title: 'Dokumen ditolak', message: err.message, tone: 'warning' });
     }
   }
 
@@ -138,8 +146,9 @@ export default function Kendaraan() {
       setData((current) => current.map((x) => (x.id === vehicleId ? updated : x)));
       setDetail(updated);
       setError('');
+      toast(`Dokumen ${field === 'service_invoice' ? 'invoice service' : field.toUpperCase()} berhasil disimpan.`);
     } catch (err) {
-      setError(err.response?.data?.message || err.message || 'Gagal memperbarui dokumen.');
+      alert({ title: 'Gagal menyimpan dokumen', message: err.response?.data?.message || err.message || 'Gagal memperbarui dokumen.', tone: 'error' });
     } finally {
       setBusyDoc(null);
     }
@@ -147,15 +156,16 @@ export default function Kendaraan() {
 
   // Update sebagian data dari modal Detail: Masa Berlaku STNK & Waktu Pajak
   // (disamakan dengan STNK yang baru diupload) atau status kendaraan (Servis dll).
-  async function updateFields(vehicleId, payload) {
+  async function updateFields(vehicleId, payload, successMessage = 'Data kendaraan berhasil diperbarui.') {
     try {
       const res = await api.put(`/kendaraan/${vehicleId}`, payload);
       const updated = res.data.data;
       setData((current) => current.map((x) => (x.id === vehicleId ? updated : x)));
       setDetail(updated);
       setError('');
+      toast(successMessage);
     } catch (err) {
-      setError(err.response?.data?.message || 'Gagal memperbarui data kendaraan.');
+      alert({ title: 'Gagal memperbarui', message: err.response?.data?.message || 'Gagal memperbarui data kendaraan.', tone: 'error' });
     }
   }
 
@@ -166,7 +176,7 @@ export default function Kendaraan() {
       const res = await api.get(`/kendaraan/${vehicle.id}`);
       setDetail(res.data.data);
     } catch (err) {
-      setError(err.response?.data?.message || 'Gagal memuat detail kendaraan.');
+      alert({ title: 'Gagal memuat detail', message: err.response?.data?.message || 'Gagal memuat detail kendaraan.', tone: 'error' });
     }
   }
 
@@ -176,7 +186,7 @@ export default function Kendaraan() {
       const v = res.data.data;
       setViewer({ open: true, name: v.service_invoice_document_name, data: v.service_invoice_document_file_data });
     } catch (err) {
-      setError(err.response?.data?.message || 'Gagal membuka invoice service.');
+      alert({ title: 'Gagal membuka invoice', message: err.response?.data?.message || 'Gagal membuka invoice service.', tone: 'error' });
     }
   }
 
@@ -327,7 +337,7 @@ export default function Kendaraan() {
           onClose={() => { setDetail(null); setError(''); }}
           onView={(name, data) => setViewer({ open: true, name, data })}
           onUpdateDocument={(field, file) => updateDocument(detail.id, field, file)}
-          onUpdateFields={(payload) => updateFields(detail.id, payload)}
+          onUpdateFields={(payload, msg) => updateFields(detail.id, payload, msg)}
         />
       )}
       <DocumentViewer open={viewer.open} name={viewer.name} data={viewer.data} onClose={() => setViewer({ open: false, name: '', data: '' })} />
@@ -396,7 +406,7 @@ function VehicleModal({ form, setForm, error, saving, onClose, onSubmit, onAddPh
           </div>
           <button onClick={onClose} className="w-9 h-9 rounded-lg hover:bg-slate-100 text-slate-500"><span className="material-symbols-outlined">close</span></button>
         </div>
-        <form onSubmit={onSubmit} className="p-6 space-y-5">
+        <form noValidate onSubmit={onSubmit} className="p-6 space-y-5">
           {error && <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-xs text-red-700">{error}</div>}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Field label="Nama Barang" required><select required value={form.nama_barang} onChange={(e) => setForm({ ...form, nama_barang: e.target.value })} className="w-full h-11 px-3 rounded-lg border border-slate-300 bg-white text-sm outline-none focus:border-slate-900"><option value="" disabled>Pilih Kategori</option>{NAMA_BARANG_OPTIONS.map((x) => <option key={x}>{x}</option>)}</select></Field>
@@ -502,7 +512,7 @@ function VehicleDetail({ vehicle, error, canManage, busyDoc, onClose, onView, on
 
   async function saveDates() {
     setSavingDates(true);
-    await onUpdateFields({ masa_berlaku_stnk: stnkDate || null, waktu_pajak: taxDate || null });
+    await onUpdateFields({ masa_berlaku_stnk: stnkDate || null, waktu_pajak: taxDate || null }, 'Masa berlaku STNK & waktu pajak berhasil disimpan.');
     setSavingDates(false);
   }
 
@@ -511,7 +521,7 @@ function VehicleDetail({ vehicle, error, canManage, busyDoc, onClose, onView, on
   useEffect(() => { setStatusDraft(vehicle.status || 'Tersedia'); }, [vehicle.id, vehicle.status]);
   async function saveStatus() {
     setSavingStatus(true);
-    await onUpdateFields({ status: statusDraft });
+    await onUpdateFields({ status: statusDraft }, statusDraft === 'Servis' ? 'Kendaraan ditandai waktunya service. Silakan upload invoice service.' : `Status kendaraan diubah menjadi ${statusDraft}.`);
     setSavingStatus(false);
   }
   const inService = vehicle.status === 'Servis';
