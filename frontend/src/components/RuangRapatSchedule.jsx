@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import api from '../api';
 import { holidayLabel } from '../utils/holidays';
 import useRuangRapatLive from '../hooks/useRuangRapatLive';
@@ -15,8 +15,10 @@ const cutiBersamaLabel = holidayLabel;
 // oleh halaman kiosk /jadwal-rapat dan landing page di /.
 export default function RuangRapatSchedule() {
   const [items,setItems]=useState([]),[week,setWeek]=useState(monday()),[loading,setLoading]=useState(true),[error,setError]=useState('');
-  const load=async()=>{try{const r=await api.get('/ruang-rapat/public-schedule');setItems(r.data.data||[]);setError('')}catch(e){setError(e.response?.data?.message||'Jadwal belum dapat dimuat.')}finally{setLoading(false)}};
-  useEffect(()=>{load();const t=setInterval(load,60000);return()=>clearInterval(t)},[]);
+  // Hanya ambil jadwal minggu yang sedang dilihat (lihat catatan di pages/RuangRapat.jsx).
+  const weekRef=useRef(week); weekRef.current=week;
+  const load=async()=>{const requested=week;const d=dates(week);try{const r=await api.get('/ruang-rapat/public-schedule',{params:{from:d[0],to:d[6]}});if(weekRef.current!==requested)return;setItems(r.data.data||[]);setError('')}catch(e){if(weekRef.current===requested)setError(e.response?.data?.message||'Jadwal belum dapat dimuat.')}finally{if(weekRef.current===requested)setLoading(false)}};
+  useEffect(()=>{setLoading(true);load();const t=setInterval(load,60000);return()=>clearInterval(t)},[week]);
   useRuangRapatLive(load);
   const ds=useMemo(()=>dates(week),[week]);
   const isCurrentWeek = week === monday();

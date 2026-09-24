@@ -8,3 +8,8 @@ node_modules/
 backend/logs/
 *.log
 frontend/dist/
+# File yang diupload pengguna (BPKB, STNK, invoice, dll) jangan sampai ikut ter-commit
+backend/uploads/**
+!backend/uploads/**/
+!backend/uploads/**/.gitkeep
+!backend/uploads/README.md

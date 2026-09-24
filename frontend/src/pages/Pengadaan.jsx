@@ -25,6 +25,15 @@ const stages = [
   { no: 3, field: 'tahap3_status', icon: 'verified', title: 'Dokumentasi Finalisasi', short: 'BAST & Dokumentasi', desc: 'Dokumentasi pengadaan, catatan penyelesaian, dan finalisasi.' },
 ];
 
+const FILE_FIELDS = ['request_document_file_data', 'stage2_invoice_file_data', 'stage2_payment_proof_file_data', 'stage3_final_document_file_data'];
+
+// Tanggal hari ini menurut jam lokal (WIB). toISOString() memakai UTC sehingga
+// sebelum jam 07.00 WIB tanggalnya mundur sehari.
+function localToday() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
 const inputClass = 'w-full h-11 px-3 rounded-lg border border-slate-300 bg-slate-50/70 text-sm text-slate-800 outline-none focus:bg-white focus:border-slate-900 focus:ring-2 focus:ring-slate-900/10';
 const labelClass = 'block text-sm font-semibold text-slate-800 mb-2';
 
@@ -62,6 +71,16 @@ export default function Pengadaan() {
   }
   useEffect(load, []);
 
+  // Daftar tidak membawa isi dokumen, jadi ambil detail lengkap dulu sebelum modal tahapan dibuka.
+  async function openStageWithDetail(row, stage) {
+    try {
+      const res = await api.get(`/pengadaan/${row.id}`);
+      openStage(res.data.data, stage);
+    } catch (err) {
+      alert(err.response?.data?.message || 'Gagal memuat detail pengadaan.');
+    }
+  }
+
   function openStage(row, stage) {
     setSelectedRow(row);
     setSelectedStage(stage);
@@ -82,7 +101,11 @@ export default function Pengadaan() {
         'stage2_payment_method', 'stage2_payment_number', 'stage2_ls_date', 'stage2_budget_source', 'stage2_vendor', 'stage2_invoice_number', 'stage2_invoice_amount', 'tanggal', 'status', 'stage2_invoice_document_name', 'stage2_invoice_file_data', 'stage2_payment_proof_name', 'stage2_payment_proof_file_data', 'stage3_final_document_name', 'stage3_final_document_file_data', 'tahap1_status', 'tahap2_status', 'tahap3_status', 'catatan',
       ];
       fields.forEach((field) => {
-        if (draft[field] !== undefined) payload[field] = draft[field] === '' ? null : draft[field];
+        if (draft[field] === undefined) return;
+        // Berkas yang tidak diganti jangan dikirim ulang -- kalau dikirim, backend
+        // menyimpan salinan file baru ke disk di setiap "Simpan Draf"/"Lanjut".
+        if (FILE_FIELDS.includes(field) && draft[field] === selectedRow[field]) return;
+        payload[field] = draft[field] === '' ? null : draft[field];
       });
 
       // Sama seperti Pemeliharaan: tombol lanjut menyelesaikan tahap aktif
@@ -91,7 +114,7 @@ export default function Pengadaan() {
         payload.tahap3_status = 'selesai';
         payload.status = 'selesai';
         // Jangan ambil tanggal_selesai dari draft lama. Finish Tahap 3 selalu meminta DB mengisinya.
-        payload.tanggal_selesai = new Date().toISOString().slice(0, 10);
+        payload.tanggal_selesai = localToday();
       } else if (nextStageNo) {
         payload[selectedStage.field] = 'selesai';
         payload.status = 'on_progress';
@@ -175,7 +198,7 @@ export default function Pengadaan() {
     const body = exportData.map(row => [row.kode,row.nama_barang_jasa,row.lokasi || '-',row.titik_lokasi || '-',row.kategori || '-',row.pic || '-',row.stage2_vendor || '-',paymentLabel(row),row.stage2_invoice_amount ? `Rp ${money(row.stage2_invoice_amount)}` : '-',String(row.tanggal || '').slice(0,10),statusLabel[row.status] || row.status,row.status === 'selesai' ? (String(row.tanggal_selesai || '').slice(0,10) || '-') : '-']);
     const html = `<table><thead><tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr></thead><tbody>${body.map(r => `<tr>${r.map(v => `<td>${String(v).replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]))}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
     const blob = new Blob([`\ufeff${html}`], { type: 'application/vnd.ms-excel' });
-    const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `pengadaan_filtered_${new Date().toISOString().slice(0,10)}.xls`; a.click(); URL.revokeObjectURL(url);
+    const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `pengadaan_filtered_${new Date().toISOString().slice(0,10)}.xls`; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 
   const roleLabel = user?.role === 'kabag' ? 'Kabag' : user?.role === 'pic' ? 'PIC' : 'Karyawan';
@@ -252,7 +275,7 @@ export default function Pengadaan() {
                   const previousStageDone = stage.no === 1 || row[stages[stage.no - 2].field] === 'selesai';
                   const visibleForRole = !rowEditable || previousStageDone;
                   if (!visibleForRole) return null;
-                  return <button key={stage.field} type="button" onClick={() => openStage(row, stage)} title={`${stage.title} — ${rowEditable ? 'lihat/edit' : 'lihat'}`} className={`w-9 h-9 rounded-lg border flex items-center justify-center shadow-sm transition ${done ? 'bg-slate-900 text-white border-slate-900' : active ? 'bg-blue-100 text-blue-700 border-blue-200' : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'}`}><span className="material-symbols-outlined text-[18px]">{stage.icon}</span></button>;
+                  return <button key={stage.field} type="button" onClick={() => openStageWithDetail(row, stage)} title={`${stage.title} — ${rowEditable ? 'lihat/edit' : 'lihat'}`} className={`w-9 h-9 rounded-lg border flex items-center justify-center shadow-sm transition ${done ? 'bg-slate-900 text-white border-slate-900' : active ? 'bg-blue-100 text-blue-700 border-blue-200' : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'}`}><span className="material-symbols-outlined text-[18px]">{stage.icon}</span></button>;
                 })}
               </div></td>
               <td className="py-3 px-5">
@@ -464,7 +487,7 @@ function AddModal({ form, setForm, error, onClose, onSubmit }) {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3"><div><label className="block text-xs font-semibold text-slate-700 mb-1.5">Tanggal</label><input type="date" value={form.tanggal} onChange={e=>setForm({...form,tanggal:e.target.value})} className={inputClass}/></div></div>
         <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-800"><b>Nilai HPS</b> tidak diinput saat membuat pengadaan. Nilai HPS diisi pada <b>Aksi Tahap 1 (Analisa & HPS)</b>.</div>
         <div><label className="block text-xs font-semibold text-slate-700 mb-1.5">Deskripsi Detail</label><textarea maxLength={500} value={form.deskripsi} onChange={e=>setForm({...form,deskripsi:e.target.value})} rows={4} className="w-full px-3 py-3 rounded-lg border border-slate-300 bg-slate-50/70 text-sm outline-none focus:bg-white focus:border-slate-900"/><div className="text-right text-[11px] text-slate-500 mt-1">{form.deskripsi.length}/500 karakter</div></div>
-        <div><div className="flex items-center justify-between gap-3 mb-1.5"><label className="block text-xs font-semibold text-slate-700">Upload Dokumen Pendukung</label><span className="text-[11px] text-slate-500">PDF, JPG, PNG, WebP · Maks. 8MB</span></div><label className="relative flex items-center gap-3 p-4 rounded-lg border border-dashed border-slate-300 bg-slate-50 cursor-pointer hover:bg-slate-100"><span className="w-10 h-10 rounded-lg bg-white flex items-center justify-center shadow-sm"><span className="material-symbols-outlined text-slate-600">upload_file</span></span><div className="min-w-0 flex-1"><div className="text-sm font-semibold text-slate-800 truncate">{form.request_document_name || 'Pilih dokumen pendukung'}</div><div className="text-xs text-slate-500 mt-1">Lampiran permintaan awal (opsional)</div></div><span className="px-3 py-2 rounded-lg bg-white border border-slate-200 text-xs font-semibold text-slate-700">Pilih Berkas</span><input type="file" className="absolute inset-0 opacity-0 cursor-pointer" accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp" onChange={async e=>{const f=e.target.files?.[0];if(!f)return;if(f.size>8*1024*1024){alert('Ukuran dokumen maksimal 8MB.');e.target.value='';return;}if(!(await verifyFileIsGenuine(f))){alert(FILE_SIGNATURE_REJECT_MESSAGE);e.target.value='';return;}const r=new FileReader();r.onload=()=>setForm({...form,request_document_name:f.name,request_document_file_data:r.result});r.readAsDataURL(f);}}/></label></div>
+        <div><div className="flex items-center justify-between gap-3 mb-1.5"><label className="block text-xs font-semibold text-slate-700">Upload Dokumen Pendukung</label><span className="text-[11px] text-slate-500">PDF, JPG, PNG, WebP · Maks. 8MB</span></div><label className="relative flex items-center gap-3 p-4 rounded-lg border border-dashed border-slate-300 bg-slate-50 cursor-pointer hover:bg-slate-100"><span className="w-10 h-10 rounded-lg bg-white flex items-center justify-center shadow-sm"><span className="material-symbols-outlined text-slate-600">upload_file</span></span><div className="min-w-0 flex-1"><div className="text-sm font-semibold text-slate-800 truncate">{form.request_document_name || 'Pilih dokumen pendukung'}</div><div className="text-xs text-slate-500 mt-1">Lampiran permintaan awal (opsional)</div></div><span className="px-3 py-2 rounded-lg bg-white border border-slate-200 text-xs font-semibold text-slate-700">Pilih Berkas</span><input type="file" className="absolute inset-0 opacity-0 cursor-pointer" accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp" onChange={async e=>{const f=e.target.files?.[0];if(!f)return;if(f.size>8*1024*1024){alert('Ukuran dokumen maksimal 8MB.');e.target.value='';return;}if(!(await verifyFileIsGenuine(f))){alert(FILE_SIGNATURE_REJECT_MESSAGE);e.target.value='';return;}const r=new FileReader();r.onload=()=>setForm(cur=>({...cur,request_document_name:f.name,request_document_file_data:r.result}));r.readAsDataURL(f);}}/></label></div>
       </div>
       <div className="px-6 py-4 border-t border-slate-200 flex justify-end gap-3"><button type="button" onClick={onClose} className="px-4 py-2.5 text-sm font-semibold text-slate-700">Batal</button><button type="submit" className="px-5 py-2.5 bg-slate-900 text-white text-sm font-semibold rounded-lg">Simpan Pengadaan</button></div>
     </form></div></div>;

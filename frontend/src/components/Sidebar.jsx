@@ -18,7 +18,7 @@ const menu = [
 // menyempit jadi mode ikon-saja walau `collapsed` true, supaya tetap gampang
 // dibaca di layar kecil.
 export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }) {
-  const { user, logout, isMenuDown } = useAuth();
+  const { user, logout, isMenuDown, resetRequestCount } = useAuth();
   const navigate = useNavigate();
   const roleLabel = { karyawan: 'Karyawan', kabag: 'Kepala Bagian', pic: 'PIC', admin: 'Admin' };
   const hideWhenCollapsed = collapsed ? 'md:hidden' : '';
@@ -60,6 +60,8 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
           <p className={`px-3 mb-3 text-[10px] uppercase tracking-[0.18em] font-bold text-slate-400 ${hideWhenCollapsed}`}>Menu Utama</p>
           {menu.filter((item) => !item.adminOnly || user?.role === 'admin').map((item) => {
             const down = item.menuKey ? isMenuDown(item.menuKey) : false;
+            // Badge permintaan reset kata sandi di menu Akun & Akses (admin).
+            const notif = item.to === '/akun' ? resetRequestCount : 0;
             return (
             <NavLink key={item.to} to={item.to} onClick={onMobileClose} title={collapsed ? item.label : undefined}
               className={({isActive}) => `group flex items-center gap-3 px-3 py-3 mb-2 rounded-2xl text-sm transition-all duration-200 ${collapsed ? 'md:justify-center' : ''} ${
@@ -76,6 +78,7 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
                 } ${isActive ? 'ring-1 ring-white/20' : ''}`}>
                   <span className="material-symbols-outlined text-[20px]">{item.icon}</span>
                   {down && <span className={`absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-amber-500 border-2 border-white ${collapsed ? 'hidden md:block' : 'hidden'}`}></span>}
+                  {notif > 0 && <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-red-600 text-white text-[10px] font-bold flex items-center justify-center border-2 border-white">{notif}</span>}
                 </span>
                 <span className={`${isActive ? 'font-bold' : 'font-medium'} ${hideWhenCollapsed}`}>{item.label}</span>
                 {down && <span className={`ml-auto text-[9px] font-bold px-1.5 py-0.5 rounded-full ${isActive ? 'bg-amber-400 text-amber-950' : 'bg-amber-100 text-amber-700'} ${hideWhenCollapsed}`}>MAINTENANCE</span>}

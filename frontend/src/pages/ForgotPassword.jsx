@@ -59,7 +59,7 @@ export default function ForgotPassword() {
             </div>
             <h2 className="text-2xl font-bold text-slate-900">Reset Kata Sandi</h2>
             <p className="text-sm text-slate-500 mt-1.5">
-              Masukkan email akun kamu. Sistem akan membuat link reset kata sandi yang berlaku 1 jam.
+              Masukkan email akun kamu. Link reset kata sandi akan dibuatkan oleh Admin Biro Umum dan dikirim ke kamu secara langsung.
             </p>
           </div>
 
@@ -74,7 +74,7 @@ export default function ForgotPassword() {
               <div className="px-4 py-3 bg-emerald-50 border border-emerald-200 text-emerald-800 text-sm rounded-xl">
                 {result.message}
               </div>
-              <div>
+              {result.resetUrl && <div>
                 <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">Link Reset</label>
                 <div className="flex items-stretch gap-2">
                   <input readOnly value={result.resetUrl} onFocus={(e) => e.target.select()} className="w-full px-3 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-700 outline-none" />
@@ -83,7 +83,7 @@ export default function ForgotPassword() {
                   </button>
                 </div>
                 <p className="text-[11px] text-slate-500 mt-2">Belum ada layanan email terpasang, jadi kirimkan link ini secara manual (WhatsApp/Slack/dsb) ke pengguna yang lupa kata sandi. Link berlaku 1 jam.</p>
-              </div>
+              </div>}
             </div>
           ) : (
             <form className="space-y-5" onSubmit={handleSubmit}>
@@ -107,7 +107,7 @@ export default function ForgotPassword() {
                 disabled={loading}
                 className="w-full py-3.5 px-4 bg-slate-900 hover:bg-slate-800 disabled:opacity-60 text-white font-semibold rounded-xl text-sm flex items-center justify-center gap-2 shadow-lg shadow-slate-900/10 transition"
               >
-                {loading ? 'Memproses...' : 'Buat Link Reset'}
+                {loading ? 'Memproses...' : 'Kirim Permintaan Reset'}
                 <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
               </button>
             </form>

@@ -5,11 +5,24 @@ const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(() => {
-    const raw = localStorage.getItem('user');
-    return raw ? JSON.parse(raw) : null;
+    // Data localStorage yang rusak jangan sampai membuat seluruh app blank.
+    try {
+      const raw = localStorage.getItem('user');
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
   });
   const [loading, setLoading] = useState(true);
   const [maintenance, setMaintenance] = useState({});
+  // Jumlah akun yang minta reset kata sandi (khusus admin) -> badge menu Akun & Akses.
+  const [resetRequestCount, setResetRequestCount] = useState(0);
+
+  function refreshResetRequests() {
+    const current = (() => { try { return JSON.parse(localStorage.getItem('user') || 'null'); } catch { return null; } })();
+    if (!localStorage.getItem('token') || current?.role !== 'admin') { setResetRequestCount(0); return; }
+    api.get('/users/reset-requests/count').then((res) => setResetRequestCount(res.data.count || 0)).catch(() => {});
+  }
 
   function refreshMaintenance() {
     if (!localStorage.getItem('token')) return;
@@ -45,9 +58,11 @@ export function AuthProvider({ children }) {
       },
     }).finally(() => setLoading(false));
     refreshMaintenance();
-    const timer = setInterval(() => { refreshUser(); refreshMaintenance(); }, 30000);
+    const timer = setInterval(() => { refreshUser(); refreshMaintenance(); refreshResetRequests(); }, 30000);
     return () => clearInterval(timer);
   }, []);
+
+  useEffect(() => { refreshResetRequests(); }, [user?.id, user?.role]);
 
   // Live-reload lewat SSE: begitu admin toggle maintenance di menu mana pun,
   // semua user yang sedang buka web langsung ke-blokir/ke-buka real-time,
@@ -72,6 +87,7 @@ export function AuthProvider({ children }) {
     localStorage.removeItem('user');
     setUser(null);
     setMaintenance({});
+    setResetRequestCount(0);
   }
 
   // Dipanggil setelah backend mempromosikan karyawan -> PIC (mis. saat menambah
@@ -108,7 +124,7 @@ export function AuthProvider({ children }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, refreshAuth, refreshUser, canEdit, canEditRow, maintenance, refreshMaintenance, isMenuDown }}>
+    <AuthContext.Provider value={{ user, loading, login, logout, refreshAuth, refreshUser, canEdit, canEditRow, maintenance, refreshMaintenance, isMenuDown, resetRequestCount, refreshResetRequests }}>
       {children}
     </AuthContext.Provider>
   );

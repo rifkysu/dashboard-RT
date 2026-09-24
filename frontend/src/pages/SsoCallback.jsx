@@ -4,16 +4,19 @@ import api from '../api';
 import { useAuth } from '../context/AuthContext';
 
 // Halaman ini dituju oleh backend setelah login Google SSO berhasil:
-// backend redirect ke  {FRONTEND_URL}/sso-callback?token=xxxx
+// backend redirect ke  {FRONTEND_URL}/sso-callback#token=xxxx
 export default function SsoCallback() {
   const [params] = useSearchParams();
   const { login } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
-    const token = params.get('token');
+    const hash = new URLSearchParams(window.location.hash.slice(1));
+    const token = hash.get('token') || params.get('token');
+    // Hapus token dari address bar/riwayat browser secepatnya.
+    window.history.replaceState(null, '', '/sso-callback');
     if (!token) {
-      navigate('/login?sso=gagal');
+      navigate('/login?sso=gagal', { replace: true });
       return;
     }
     localStorage.setItem('token', token);
@@ -21,9 +24,9 @@ export default function SsoCallback() {
       .get('/auth/me')
       .then((res) => {
         login(token, res.data.user);
-        navigate('/dashboard');
+        navigate('/dashboard', { replace: true });
       })
-      .catch(() => navigate('/login?sso=gagal'));
+      .catch(() => { localStorage.removeItem('token'); navigate('/login?sso=gagal', { replace: true }); });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

@@ -24,7 +24,9 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
       },
       async (accessToken, refreshToken, profile, done) => {
         try {
-          const email = profile.emails && profile.emails[0] && profile.emails[0].value;
+          const rawEmail = profile.emails && profile.emails[0] && profile.emails[0].value;
+          // Samakan dengan register/login (lowercase) supaya tidak terbentuk akun ganda beda huruf besar/kecil.
+          const email = typeof rawEmail === 'string' ? rawEmail.trim().toLowerCase() : null;
           const nama_lengkap = profile.displayName || 'Pengguna SSO';
 
           if (!email) {
@@ -42,6 +44,9 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
             // User sudah ada (daftar manual sebelumnya) -> tandai juga bisa SSO
             user = await prisma.user.update({ where: { id: user.id }, data: { sso_provider: 'google', sso_subject: profile.id } });
           }
+
+          // Akun yang di-ban admin tidak boleh masuk lewat SSO juga.
+          if (!user.is_active) return done(null, false);
 
           return done(null, user);
         } catch (err) {

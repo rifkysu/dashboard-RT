@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import api from '../api';
 import { useAuth } from '../context/AuthContext';
 import BrandMark from '../components/BrandMark';
@@ -8,7 +8,8 @@ export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState('');
+  const [searchParams] = useSearchParams();
+  const [error, setError] = useState(() => (searchParams.get('sso') === 'gagal' ? 'Login SSO gagal atau akun Anda sedang dinonaktifkan. Silakan coba lagi atau hubungi admin.' : ''));
   const [loading, setLoading] = useState(false);
   // Anti-spam: kalau backend balas 429 (terlalu banyak percobaan login),
   // tombol dikunci sampai waktu tunggunya habis (biasanya 1 menit).

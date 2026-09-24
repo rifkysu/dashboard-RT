@@ -1,12 +1,13 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const crypto = require('crypto');
 const passport = require('passport');
 const prisma = require('../prisma');
 const { requireAuth } = require('../middleware/auth');
 const { createRateLimiter, normalizeEmail, isSafeText } = require('../middleware/security');
-const { signToken } = require('../token');
+const { signToken, hashResetToken, createResetToken } = require('../token');
+const { isMailConfigured, sendResetPasswordEmail } = require('../mailer');
+const logger = require('../logger');
 
 const router = express.Router();
 
@@ -42,11 +43,9 @@ const resetPasswordLimiter = createRateLimiter({
   message: 'Terlalu banyak percobaan reset password. Silakan coba lagi nanti.',
 });
 
-const RESET_TOKEN_TTL_MS = 60 * 60 * 1000; // 1 jam
-const hashResetToken = (token) => crypto.createHash('sha256').update(token).digest('hex');
 
 function sanitizeUser(user) {
-  const { password_hash, ...rest } = user;
+  const { password_hash, reset_token, reset_token_expires, reset_requested_at, ...rest } = user;
   return rest;
 }
 
@@ -92,7 +91,7 @@ router.post('/register', registerLimiter, async (req, res) => {
     const user = await prisma.user.create({ data: { nama_lengkap, email, password_hash, no_hp: no_hp || null, unit_kerja: unit_kerja || null, role } });
     const token = signToken(user);
 
-    res.status(201).json({ token, user });
+    res.status(201).json({ token, user: sanitizeUser(user) });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Terjadi kesalahan server saat mendaftar.' });
@@ -135,10 +134,15 @@ router.post('/login', loginLimiter, async (req, res) => {
 
 // ---------------------------------------------------------
 // POST /api/auth/forgot-password
-// Sistem belum terhubung ke layanan email, jadi endpoint ini
-// mengembalikan link reset langsung di response. Admin/HR bisa
-// meneruskan link tsb secara manual (WA/Slack/dsb) ke user yang
-// lupa password. Link berlaku 1 jam.
+// Link reset TIDAK PERNAH dikembalikan di response -- kalau dikembalikan,
+// siapa pun bisa mengambil alih akun orang lain cukup dengan mengetik emailnya.
+// - SMTP terkonfigurasi (lihat src/mailer.js): link langsung dikirim ke email
+//   pemilik akun.
+// - SMTP belum diisi / pengiriman gagal: permintaan dicatat (reset_requested_at)
+//   jadi notifikasi di menu Akun & Akses, lalu admin mengirim link manual
+//   (POST /api/users/:id/reset-link).
+// Respons sengaja sama untuk email terdaftar maupun tidak, dan email dikirim
+// di latar belakang supaya lama respons juga tidak membocorkan hal itu.
 // ---------------------------------------------------------
 router.post('/forgot-password', forgotPasswordLimiter, async (req, res) => {
   try {
@@ -147,22 +151,29 @@ router.post('/forgot-password', forgotPasswordLimiter, async (req, res) => {
       return res.status(400).json({ message: 'Format email tidak valid.' });
     }
 
-    const user = await prisma.user.findFirst({ where: { email, is_active: true } });
-    if (!user) {
-      return res.status(404).json({ message: 'Email tidak ditemukan atau akun tidak aktif.' });
+    const user = await prisma.user.findFirst({ where: { email, is_active: true }, select: { id: true, email: true, nama_lengkap: true } });
+
+    if (!isMailConfigured()) {
+      if (user) await prisma.user.update({ where: { id: user.id }, data: { reset_requested_at: new Date() } });
+      return res.json({
+        message: 'Permintaan reset kata sandi diterima. Silakan hubungi Admin Biro Umum untuk mendapatkan link reset kata sandi akun Anda (link berlaku 1 jam).',
+      });
     }
 
-    const rawToken = crypto.randomBytes(32).toString('hex');
-    await prisma.user.update({
-      where: { id: user.id },
-      data: { reset_token: hashResetToken(rawToken), reset_token_expires: new Date(Date.now() + RESET_TOKEN_TTL_MS) },
+    res.json({
+      message: 'Jika email tersebut terdaftar, link reset kata sandi sudah dikirim ke email itu (berlaku 1 jam). Cek juga folder Spam. Kalau tidak menerima email dalam beberapa menit, hubungi Admin Biro Umum.',
     });
 
-    const resetUrl = `${process.env.FRONTEND_URL}/reset-password?token=${rawToken}`;
-    res.json({
-      message: 'Link reset password berhasil dibuat. Sistem belum terhubung ke email, jadi salin/kirim link ini secara manual ke pengguna. Link berlaku 1 jam.',
-      resetUrl,
-    });
+    if (user) {
+      const { rawToken, hash, expires } = createResetToken();
+      prisma.user.update({ where: { id: user.id }, data: { reset_token: hash, reset_token_expires: expires } })
+        .then(() => sendResetPasswordEmail({ to: user.email, nama: user.nama_lengkap, resetUrl: `${process.env.FRONTEND_URL}/reset-password?token=${rawToken}` }))
+        .catch(async (err) => {
+          // Email gagal terkirim -> jangan sampai pengguna terlantar: masuk ke notifikasi admin.
+          logger.error('Kirim email reset password gagal', { error: err, user_id: user.id });
+          await prisma.user.update({ where: { id: user.id }, data: { reset_requested_at: new Date() } }).catch(() => {});
+        });
+    }
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Terjadi kesalahan server saat membuat link reset.' });
@@ -192,7 +203,7 @@ router.post('/reset-password', resetPasswordLimiter, async (req, res) => {
     const password_hash = await bcrypt.hash(password, 12);
     await prisma.user.update({
       where: { id: user.id },
-      data: { password_hash, reset_token: null, reset_token_expires: null },
+      data: { password_hash, reset_token: null, reset_token_expires: null, reset_requested_at: null },
     });
 
     res.json({ message: 'Kata sandi berhasil diubah. Silakan login dengan kata sandi baru.' });
@@ -234,11 +245,17 @@ if (ssoEnabled) {
     '/google/callback',
     passport.authenticate('google', { session: false, failureRedirect: `${process.env.FRONTEND_URL}/login?sso=gagal` }),
     async (req, res) => {
-      // req.user diisi oleh strategy passport-google-oauth20 (lihat config/passport.js)
-      const updated = await prisma.user.update({ where: { id: req.user.id }, data: { last_login_at: new Date() } });
-      const token = signToken(updated);
-      // Redirect kembali ke frontend membawa token di query string.
-      res.redirect(`${process.env.FRONTEND_URL}/sso-callback?token=${token}`);
+      try {
+        // req.user diisi oleh strategy passport-google-oauth20 (lihat config/passport.js)
+        const updated = await prisma.user.update({ where: { id: req.user.id }, data: { last_login_at: new Date() } });
+        const token = signToken(updated);
+        // Token dikirim lewat fragment (#), bukan query string: fragment tidak
+        // pernah dikirim browser ke server, jadi tidak tercatat di log/referrer.
+        res.redirect(`${process.env.FRONTEND_URL}/sso-callback#token=${encodeURIComponent(token)}`);
+      } catch (err) {
+        console.error(err);
+        res.redirect(`${process.env.FRONTEND_URL}/login?sso=gagal`);
+      }
     }
   );
 } else {

@@ -56,17 +56,31 @@ function validatePhotos(photos) {
 // dicek lewat isGenuineDocumentDataUrl) dan `name`-nya wajib ada.
 function validDocument(name, data) {
   if (data === undefined) return true;
-  if (data == null) return true; // sengaja dikosongkan/dihapus
+  if (data == null || data === '') return true; // sengaja dikosongkan/dihapus (form kirim '' kalau tidak ada file)
   if (typeof name !== 'string' || !name.trim() || name.length > 255) return false;
   return isGenuineDocumentDataUrl(data, MAX_DOCUMENT_BYTES);
 }
 
 router.get('/', async (req, res) => {
   try {
-    const rows = await prisma.kendaraan.findMany({ orderBy: [{ created_at: 'desc' }, { id: 'desc' }] });
+    // PDF BPKB/STNK tidak ikut di daftar (bisa belasan MB per kendaraan); diambil lewat GET /:id saat detail dibuka.
+    const rows = await prisma.kendaraan.findMany({ omit: { bpkb_document_file_data: true, stnk_document_file_data: true }, orderBy: [{ created_at: 'desc' }, { id: 'desc' }] });
     res.json({ data: rows.map(serialize) });
   } catch (err) {
     logger.error('GET kendaraan gagal', { error: err });
+    res.status(500).json({ message: 'Gagal mengambil data kendaraan.' });
+  }
+});
+
+router.get('/:id', async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id)) return res.status(400).json({ message: 'ID kendaraan tidak valid.' });
+    const row = await prisma.kendaraan.findUnique({ where: { id } });
+    if (!row) return res.status(404).json({ message: 'Kendaraan tidak ditemukan.' });
+    res.json({ data: serialize(row) });
+  } catch (err) {
+    logger.error('GET kendaraan detail gagal', { error: err });
     res.status(500).json({ message: 'Gagal mengambil data kendaraan.' });
   }
 });
@@ -133,6 +147,7 @@ router.post('/', requireRole(EDITOR_ROLES), async (req, res) => {
 router.put('/:id', requireRole(EDITOR_ROLES), async (req, res) => {
   try {
     const id = Number(req.params.id);
+    if (!Number.isInteger(id)) return res.status(400).json({ message: 'ID kendaraan tidak valid.' });
     const body = { ...req.body };
 
     if (body.status !== undefined && !STATUS.includes(body.status)) return res.status(400).json({ message: 'Status kendaraan tidak valid.' });
@@ -190,7 +205,9 @@ router.put('/:id', requireRole(EDITOR_ROLES), async (req, res) => {
 
 router.delete('/:id', requireRole(EDITOR_ROLES), async (req, res) => {
   try {
-    await prisma.kendaraan.delete({ where: { id: Number(req.params.id) } });
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id)) return res.status(400).json({ message: 'ID kendaraan tidak valid.' });
+    await prisma.kendaraan.delete({ where: { id } });
     res.json({ message: 'Kendaraan berhasil dihapus.' });
   } catch (err) {
     if (err.code === 'P2025') return res.status(404).json({ message: 'Kendaraan tidak ditemukan.' });

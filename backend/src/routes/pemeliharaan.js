@@ -15,6 +15,8 @@ const MAX_DOCUMENT_DATA_LENGTH = 12 * 1024 * 1024;
 const validDocumentData = (v) => v == null || isGenuineDocumentDataUrl(v, MAX_DOCUMENT_DATA_LENGTH);
 const dateOnly = (v) => v == null ? null : (v instanceof Date ? v.toISOString().slice(0,10) : String(v).slice(0,10));
 const serialize = (row) => row ? ({ ...row, tanggal: dateOnly(row.tanggal), tanggal_selesai: dateOnly(row.tanggal_selesai), stage2_invoice_date: dateOnly(row.stage2_invoice_date), stage2_ls_date: dateOnly(row.stage2_ls_date), stage1_hps: row.stage1_hps == null ? row.stage1_hps : Number(row.stage1_hps), stage2_invoice_amount: row.stage2_invoice_amount == null ? row.stage2_invoice_amount : Number(row.stage2_invoice_amount), pic: row.createdBy?.nama_lengkap || null, createdBy: undefined, updatedBy: undefined }) : row;
+// Tanggal hari ini menurut zona waktu server (WIB), bukan UTC -- toISOString() akan mundur sehari sebelum jam 07.00 WIB.
+const localToday=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;};
 function generateKode(){ return `REQ-${new Date().getFullYear()}-${crypto.randomInt(1000,10000)}`; }
 
 router.get('/', async (req,res)=>{ try {
@@ -25,11 +27,12 @@ router.get('/', async (req,res)=>{ try {
   if(kategori) where.kategori={equals:kategori,mode:'insensitive'};
   if(lokasi) where.lokasi={equals:lokasi,mode:'insensitive'};
   if(search) where.OR=[{judul:{contains:search,mode:'insensitive'}},{kode:{contains:search,mode:'insensitive'}}];
-  const rows=await prisma.pemeliharaan.findMany({where,include:{createdBy:{select:{nama_lengkap:true}}},orderBy:{created_at:'desc'}});
+  // Isi dokumen (Base64) tidak ikut di daftar supaya respons tetap ringan; diambil lewat GET /:id saat tahapan dibuka.
+  const rows=await prisma.pemeliharaan.findMany({where,omit:{request_document_file_data:true,stage1_boq_file_data:true,stage1_document_file_data:true,stage2_invoice_document_file_data:true,stage3_documentation_files:true},include:{createdBy:{select:{nama_lengkap:true}}},orderBy:{created_at:'desc'}});
   res.json({data:rows.map(serialize)});
 } catch(err){ logger.error('GET pemeliharaan gagal',{error:err,query:req.query,user_id:req.user?.id}); res.status(500).json({message:'Gagal mengambil data pemeliharaan.',error_code:err.code||'DB_ERROR'}); }});
 
-router.get('/:id',async(req,res)=>{ try { const row=await prisma.pemeliharaan.findUnique({where:{id:Number(req.params.id)},include:{createdBy:{select:{nama_lengkap:true}}}}); if(!row)return res.status(404).json({message:'Data tidak ditemukan.'}); res.json({data:serialize(row)}); } catch(err){logger.error('GET pemeliharaan detail gagal',{error:err});res.status(500).json({message:'Gagal mengambil data.'});}});
+router.get('/:id',async(req,res)=>{ try { const id=Number(req.params.id); if(!Number.isInteger(id))return res.status(400).json({message:'ID tidak valid.'}); const row=await prisma.pemeliharaan.findUnique({where:{id},include:{createdBy:{select:{nama_lengkap:true}}}}); if(!row)return res.status(404).json({message:'Data tidak ditemukan.'}); res.json({data:serialize(row)}); } catch(err){logger.error('GET pemeliharaan detail gagal',{error:err});res.status(500).json({message:'Gagal mengambil data.'});}});
 
 router.post('/',async(req,res)=>{try{
  const {judul,lokasi,titik_lokasi,kategori,deskripsi,tanggal,jenis_pekerjaan,urgensi,metode_pengadaan,request_document_name,request_document_file_data}=req.body;
@@ -55,13 +58,14 @@ router.put('/:id',requireRole(EDITOR_ROLES),async(req,res)=>{try{
    if(existing.created_by!==req.user.id)return res.status(403).json({message:'Anda hanya dapat mengedit data pemeliharaan yang Anda tambahkan sendiri.'});
  }
  const body={...req.body};
- if(body.status==='selesai' && !body.tanggal_selesai) body.tanggal_selesai=new Date().toISOString().slice(0,10);
+ for(const f of ['status','tahap1_status','tahap2_status','tahap3_status'])if(body[f]!==undefined&&!['pending','on_progress','selesai'].includes(body[f]))return res.status(400).json({message:'Status tidak valid.'});
+ if(body.status==='selesai' && !body.tanggal_selesai) body.tanggal_selesai=localToday();
  if(body.status && body.status!=='selesai' && body.tanggal_selesai===undefined) body.tanggal_selesai=null;
  for(const f of ['request_document_file_data','stage1_boq_file_data','stage1_document_file_data','stage2_invoice_document_file_data']) if(body[f]!==undefined&&!validDocumentData(body[f])) return res.status(400).json({message:'Dokumen tidak valid.'});
  if(body.stage3_documentation_files!==undefined){let files;try{files=typeof body.stage3_documentation_files==='string'?JSON.parse(body.stage3_documentation_files):body.stage3_documentation_files;}catch{return res.status(400).json({message:'Format dokumentasi final tidak valid.'});} if(!Array.isArray(files)||files.length>20||files.some(f=>!f||typeof f.name!=='string'||!validDocumentData(f.data)))return res.status(400).json({message:'Dokumentasi final tidak valid.'}); const paths=[];for(const f of files)paths.push({name:f.name,path:await saveDataUrl(f.data,f.name,'pemeliharaan/stage3')});body.stage3_documentation_file_paths=JSON.stringify(paths);}
  const pathFields={request_document_file_data:['request_document_file_path','request_document_name'],stage1_boq_file_data:['stage1_boq_file_path','stage1_boq'],stage1_document_file_data:['stage1_document_file_path','stage1_document_name'],stage2_invoice_document_file_data:['stage2_invoice_document_file_path','stage2_invoice_document_name']};
  for(const [df,[pf,nf]] of Object.entries(pathFields)) if(body[df]) body[pf]=await saveDataUrl(body[df],body[nf],'pemeliharaan');
- if(body.stage2_payment_number!==undefined&&body.stage2_payment_number!==null&&body.stage2_payment_number!==''){const n=Number(body.stage2_payment_number);if(!Number.isInteger(n)||n<1||n>20)return res.status(400).json({message:'Nomor GUP/TUP tidak valid (1-20).'});}
+ if(body.stage2_payment_number!==undefined&&body.stage2_payment_number!==null&&body.stage2_payment_number!==''){const n=Number(body.stage2_payment_number);const max=body.stage2_payment_method==='TUP'?10:20;if(!Number.isInteger(n)||n<1||n>max)return res.status(400).json({message:body.stage2_payment_method==='TUP'?'Nomor TUP tidak valid (1-10).':'Nomor GUP tidak valid (1-20).'});}
  if(body.stage2_budget_source!==undefined&&body.stage2_budget_source!==null&&body.stage2_budget_source!==''&&!['RM','PNBP'].includes(body.stage2_budget_source))return res.status(400).json({message:'Asal anggaran tidak valid (RM atau PNBP).'});
  const allowed=['judul','lokasi','titik_lokasi','kategori','deskripsi','tanggal','status','tahap1_status','tahap2_status','tahap3_status','tanggal_selesai','catatan','jenis_pekerjaan','urgensi','metode_pengadaan','request_document_name','request_document_file_data','request_document_file_path','stage1_boq','stage1_boq_file_data','stage1_boq_file_path','stage1_hps','stage1_document_name','stage1_document_file_data','stage1_document_file_path','stage2_payment_method','stage2_payment_number','stage2_ls_date','stage2_budget_source','stage2_vendor','stage2_invoice_number','stage2_invoice_date','stage2_invoice_amount','stage2_invoice_document_name','stage2_invoice_document_file_data','stage2_invoice_document_file_path','stage3_documentation_names','stage3_documentation_files','stage3_documentation_file_paths','stage3_bast_notes'];
  const DATE_FIELDS=['tanggal','tanggal_selesai','stage2_invoice_date','stage2_ls_date'];
@@ -71,7 +75,7 @@ router.put('/:id',requireRole(EDITOR_ROLES),async(req,res)=>{try{
 }catch(err){logger.error('PUT pemeliharaan gagal',{error:err,user_id:req.user?.id});if(err.code==='P2025')return res.status(404).json({message:'Data tidak ditemukan.'});res.status(500).json({message:'Gagal memperbarui data pemeliharaan.'});}});
 
 router.delete('/:id',requireRole(EDITOR_ROLES),async(req,res)=>{try{
- const id=Number(req.params.id);
+ const id=Number(req.params.id); if(!Number.isInteger(id))return res.status(400).json({message:'ID tidak valid.'});
  if(req.user.role==='pic'){
    const existing=await prisma.pemeliharaan.findUnique({where:{id},select:{created_by:true}});
    if(!existing)return res.status(404).json({message:'Data tidak ditemukan.'});

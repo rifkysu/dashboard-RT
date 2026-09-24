@@ -35,6 +35,7 @@ model User {
   is_active       Boolean   @default(true)
   reset_token         String?   @unique @db.VarChar(128)
   reset_token_expires DateTime?
+  reset_requested_at  DateTime? // diisi saat user minta reset lewat Lupa Password, jadi notifikasi di menu Akun
   last_login_at   DateTime?
   created_at      DateTime  @default(now())
   updated_at      DateTime  @updatedAt

@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import api from '../api';
+import { useAuth } from '../context/AuthContext';
 import DocumentViewer from '../components/DocumentViewer';
 import { verifyFileIsGenuine } from '../utils/fileSignature';
 import { compressImage } from '../utils/imageCompress';
@@ -29,6 +30,9 @@ async function readPdf(file) {
 const fmtDate = (v) => v ? new Date(`${v}T00:00:00`).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : '-';
 
 export default function Kendaraan() {
+  const { user } = useAuth();
+  // Backend hanya mengizinkan kabag/PIC/admin menambah & mengubah kendaraan.
+  const canManage = ['kabag', 'pic', 'admin'].includes(user?.role);
   const [tab, setTab] = useState('Roda 4');
   const [show, setShow] = useState(false);
   const [detail, setDetail] = useState(null);
@@ -133,6 +137,17 @@ export default function Kendaraan() {
     }
   }
 
+  // Daftar tidak membawa PDF BPKB/STNK, jadi ambil detail lengkap saat modal Detail dibuka.
+  async function openDetail(vehicle) {
+    setError('');
+    try {
+      const res = await api.get(`/kendaraan/${vehicle.id}`);
+      setDetail(res.data.data);
+    } catch (err) {
+      setError(err.response?.data?.message || 'Gagal memuat detail kendaraan.');
+    }
+  }
+
   function selectTab(x) {
     setTab(x);
     setFilterMerek('');
@@ -182,7 +197,7 @@ export default function Kendaraan() {
     <div className="menu-page menu-kendaraan relative" style={{ fontFamily: 'Arial, Helvetica, sans-serif' }}>
       <div className="menu-hero mb-6"><div><span className="menu-kicker">ARMADA • ASSET</span><h1 className="text-3xl font-bold">Kendaraan Dinas</h1><p className="text-sm mt-1">Kelola asset kendaraan, status operasional, dan dokumentasi foto kendaraan.</p></div><div className="menu-hero-icon"><span className="material-symbols-outlined">directions_car</span></div></div>
       <div className="flex items-end justify-between gap-4 mb-5"><div></div>
-        <button onClick={() => { setError(''); setForm(emptyForm); setShow(true); }} className="bg-slate-900 text-white rounded-lg px-4 py-2.5 text-xs font-semibold shadow-sm">＋ Tambah Kendaraan</button>
+        {canManage && <button onClick={() => { setError(''); setForm(emptyForm); setShow(true); }} className="bg-slate-900 text-white rounded-lg px-4 py-2.5 text-xs font-semibold shadow-sm">＋ Tambah Kendaraan</button>}
       </div>
       {error && <div className="mb-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-xs text-red-700">{error}</div>}
 
@@ -254,7 +269,7 @@ export default function Kendaraan() {
                     <td className="px-4 whitespace-nowrap">{fmtDate(x.tanggal_perolehan)}</td>
                     <td className="px-4 whitespace-nowrap">{fmtDate(x.masa_berlaku_stnk)}</td>
                     <td className="px-4 whitespace-nowrap">{fmtDate(x.waktu_pajak)}</td>
-                    <td className="px-4"><button type="button" onClick={() => setDetail(x)} className="detail-btn"><span className="material-symbols-outlined text-[16px]">visibility</span>Detail</button></td>
+                    <td className="px-4"><button type="button" onClick={() => openDetail(x)} className="detail-btn"><span className="material-symbols-outlined text-[16px]">visibility</span>Detail</button></td>
                   </tr>
                 ))}
             </tbody>
@@ -262,11 +277,13 @@ export default function Kendaraan() {
         </div>
       </section>
 
-      {show && <VehicleModal form={form} setForm={setForm} onClose={() => setShow(false)} onSubmit={save} onAddPhotos={addPhotos} onRemovePhoto={removePhoto} onPickDocument={pickFormDocument} />}
+      {show && <VehicleModal form={form} setForm={setForm} error={error} onClose={() => setShow(false)} onSubmit={save} onAddPhotos={addPhotos} onRemovePhoto={removePhoto} onPickDocument={pickFormDocument} />}
       {detail && (
         <VehicleDetail
           vehicle={detail}
-          onClose={() => setDetail(null)}
+          error={error}
+          canManage={canManage}
+          onClose={() => { setDetail(null); setError(''); }}
           onView={(name, data) => setViewer({ open: true, name, data })}
           onUpdateDocument={(field, file) => updateDocument(detail.id, field, file)}
           onUpdateDates={(payload) => updateDates(detail.id, payload)}
@@ -324,7 +341,7 @@ function DocumentPicker({ label, name, onPick }) {
   );
 }
 
-function VehicleModal({ form, setForm, onClose, onSubmit, onAddPhotos, onRemovePhoto, onPickDocument }) {
+function VehicleModal({ form, setForm, error, onClose, onSubmit, onAddPhotos, onRemovePhoto, onPickDocument }) {
   return (
     <div className="fixed inset-0 z-50 bg-slate-900/55 backdrop-blur-sm flex items-center justify-center p-4" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="w-full max-w-3xl max-h-[92vh] overflow-y-auto bg-[#f7f9fb] rounded-2xl shadow-2xl">
@@ -336,6 +353,7 @@ function VehicleModal({ form, setForm, onClose, onSubmit, onAddPhotos, onRemoveP
           <button onClick={onClose} className="w-9 h-9 rounded-lg hover:bg-slate-100 text-slate-500"><span className="material-symbols-outlined">close</span></button>
         </div>
         <form onSubmit={onSubmit} className="p-6 space-y-5">
+          {error && <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-xs text-red-700">{error}</div>}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Field label="Nama Barang" required><select required value={form.nama_barang} onChange={(e) => setForm({ ...form, nama_barang: e.target.value })} className="w-full h-11 px-3 rounded-lg border border-slate-300 bg-white text-sm outline-none focus:border-slate-900"><option value="" disabled>Pilih Kategori</option>{NAMA_BARANG_OPTIONS.map((x) => <option key={x}>{x}</option>)}</select></Field>
             <Field label="Merk" required><input required value={form.merk} onChange={(e) => setForm({ ...form, merk: e.target.value })} className="w-full h-11 px-3 rounded-lg border border-slate-300 bg-white text-sm outline-none focus:border-slate-900" placeholder="Toyota" /></Field>
@@ -390,7 +408,7 @@ function VehicleModal({ form, setForm, onClose, onSubmit, onAddPhotos, onRemoveP
   );
 }
 
-function DocumentCard({ label, name, data, onView, onReplace }) {
+function DocumentCard({ label, name, data, onView, onReplace, canManage }) {
   return (
     <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
       <div className="flex items-center gap-3">
@@ -402,16 +420,16 @@ function DocumentCard({ label, name, data, onView, onReplace }) {
       </div>
       <div className="mt-3 flex gap-2">
         {data && <button type="button" onClick={onView} className="flex-1 px-3 py-2 rounded-lg bg-white border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-100">👁 Lihat</button>}
-        <label className="flex-1 relative px-3 py-2 rounded-lg bg-slate-900 text-white text-xs font-semibold text-center cursor-pointer hover:bg-slate-800">
+        {canManage && <label className="flex-1 relative px-3 py-2 rounded-lg bg-slate-900 text-white text-xs font-semibold text-center cursor-pointer hover:bg-slate-800">
           {name ? 'Ganti Dokumen' : 'Upload Dokumen'}
           <input type="file" className="absolute inset-0 opacity-0 cursor-pointer" accept="application/pdf,.pdf" onChange={(e) => { onReplace(e.target.files?.[0]); e.target.value = ''; }} />
-        </label>
+        </label>}
       </div>
     </div>
   );
 }
 
-function VehicleDetail({ vehicle, onClose, onView, onUpdateDocument, onUpdateDates }) {
+function VehicleDetail({ vehicle, error, canManage, onClose, onView, onUpdateDocument, onUpdateDates }) {
   const rows = [
     ['ID Kendaraan', vehicle.id ? `#${vehicle.id}` : '-'],
     ['Nama Barang', vehicle.nama_barang || '-'],
@@ -458,6 +476,7 @@ function VehicleDetail({ vehicle, onClose, onView, onUpdateDocument, onUpdateDat
           <button onClick={onClose} className="vehicle-close"><span className="material-symbols-outlined">close</span></button>
         </div>
         <div className="p-6 space-y-5">
+          {error && <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-xs text-red-700">{error}</div>}
           <div>
             <div className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Foto Kendaraan ({photos.length})</div>
             {photos.length ? (
@@ -480,14 +499,14 @@ function VehicleDetail({ vehicle, onClose, onView, onUpdateDocument, onUpdateDat
                 name={vehicle.bpkb_document_name}
                 data={vehicle.bpkb_document_file_data}
                 onView={() => onView(vehicle.bpkb_document_name, vehicle.bpkb_document_file_data)}
-                onReplace={(file) => onUpdateDocument('bpkb', file)}
+                canManage={canManage} onReplace={(file) => onUpdateDocument('bpkb', file)}
               />
               <DocumentCard
                 label="STNK"
                 name={vehicle.stnk_document_name}
                 data={vehicle.stnk_document_file_data}
                 onView={() => onView(vehicle.stnk_document_name, vehicle.stnk_document_file_data)}
-                onReplace={(file) => onUpdateDocument('stnk', file)}
+                canManage={canManage} onReplace={(file) => onUpdateDocument('stnk', file)}
               />
             </div>
 
@@ -497,14 +516,14 @@ function VehicleDetail({ vehicle, onClose, onView, onUpdateDocument, onUpdateDat
               <div className="grid sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-[11px] font-semibold text-slate-500 mb-1">Masa Berlaku STNK</label>
-                  <input type="date" value={stnkDate} onChange={(e) => setStnkDate(e.target.value)} className="w-full h-10 px-3 rounded-lg border border-slate-300 bg-white text-sm outline-none focus:border-slate-900" />
+                  <input type="date" disabled={!canManage} value={stnkDate} onChange={(e) => setStnkDate(e.target.value)} className="w-full h-10 px-3 rounded-lg border border-slate-300 bg-white text-sm outline-none focus:border-slate-900" />
                 </div>
                 <div>
                   <label className="block text-[11px] font-semibold text-slate-500 mb-1">Waktu Pajak</label>
-                  <input type="date" value={taxDate} onChange={(e) => setTaxDate(e.target.value)} className="w-full h-10 px-3 rounded-lg border border-slate-300 bg-white text-sm outline-none focus:border-slate-900" />
+                  <input type="date" disabled={!canManage} value={taxDate} onChange={(e) => setTaxDate(e.target.value)} className="w-full h-10 px-3 rounded-lg border border-slate-300 bg-white text-sm outline-none focus:border-slate-900" />
                 </div>
               </div>
-              {datesChanged && (
+              {canManage && datesChanged && (
                 <button type="button" onClick={saveDates} disabled={savingDates} className="mt-3 px-4 py-2 rounded-lg bg-slate-900 text-white text-xs font-semibold disabled:opacity-60">
                   {savingDates ? 'Menyimpan...' : 'Simpan Tanggal'}
                 </button>

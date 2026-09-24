@@ -11,7 +11,9 @@ Full-stack app (React + Node.js/Express + PostgreSQL + **Prisma**) untuk mengelo
 
 ### 🔐 Autentikasi & Role
 - Login email/password + **Login SSO** (Google OAuth 2.0 — bisa diganti ke SSO instansi lain lewat `backend/src/config/passport.js`).
-- **Lupa Password** — tanpa perlu layanan email: backend membuat link reset (berlaku 1 jam) dan menampilkannya langsung ke pengguna untuk disalin/dikirim manual.
+- **Lupa Password** — link reset (berlaku 1 jam) **tidak pernah** ditampilkan ke peminta publik (kalau ditampilkan, siapa pun bisa mengambil alih akun orang lain hanya dengan mengetik emailnya).
+  - **SMTP diisi** (lihat Bagian 2): link langsung dikirim ke email pemilik akun.
+  - **SMTP kosong / email gagal terkirim**: permintaan masuk sebagai notifikasi admin (badge merah di menu Akun & Akses + penanda di baris akunnya). Admin klik **Kirim Link** → link dikirim ke email (kalau SMTP aktif) dan bisa juga disalin atau dikirim via WhatsApp.
 - **Proteksi anti-spam login** — maksimal 5 percobaan per menit per IP, lewat itu tombol login terkunci otomatis **tepat 1 menit** (ada hitungan mundur di UI).
 - **4 role**: `karyawan`, `kabag`, `pic`, `admin`.
   - **Karyawan** — cuma bisa melihat & mengajukan permintaan baru (Pemeliharaan/Pengadaan). Satu-satunya role yang bisa daftar mandiri lewat form Register.
@@ -169,7 +171,14 @@ Backend selalu mengambil role terbaru langsung dari database di setiap request, 
    JWT_EXPIRES_IN="8h"
    FRONTEND_URL="http://localhost:5173"
    PORT=4000
+
+   # Opsional: kirim link Lupa Password ke email. Contoh pakai Gmail:
+   SMTP_HOST="smtp.gmail.com"
+   SMTP_PORT="465"
+   SMTP_USER="alamat@gmail.com"
+   SMTP_PASS="app password 16 karakter"
    ```
+   > App Password Gmail dibuat di https://myaccount.google.com/apppasswords (Verifikasi 2 Langkah harus aktif). Nama pengirim otomatis "Biro Umum". Kalau baris SMTP dikosongkan, permintaan reset kata sandi otomatis masuk ke notifikasi admin.
    > Tips generate `JWT_SECRET` acak: `openssl rand -hex 32` di terminal (Mac/Linux/Git Bash), atau isi manual string acak panjang.
 4. Install dependency (otomatis menjalankan `prisma generate`):
    ```bash
@@ -194,6 +203,9 @@ Backend selalu mengambil role terbaru langsung dari database di setiap request, 
 - Pastikan service PostgreSQL sedang berjalan (buka pgAdmin4, server harus status connected).
 - Cek ulang `DATABASE_URL` di `.env` (user, password, port, nama database).
 - Jalankan `npm run db:test` untuk tes koneksi cepat, atau `npm run db:verify` untuk cek kolom yang mungkin masih kurang.
+
+### Membersihkan file upload yang tidak terpakai
+File di `backend/uploads/` yang tidak lagi direferensikan database (mis. dokumen dari data yang sudah dihapus atau yang sudah diganti) bisa dicek dengan `npm run uploads:cleanup` (laporan saja). Tambahkan `-- --apply` untuk memindahkannya ke `backend/uploads/_orphaned/<tanggal>/` — file tidak dihapus, jadi masih bisa dikembalikan. Hapus folder `_orphaned` secara manual kalau sudah yakin.
 
 ---
 
@@ -257,7 +269,7 @@ Semua akun **selalu mulai dari role `karyawan`** — tidak ada jalur pendaftaran
 
 1. **Daftar mandiri** (form Register) → role `karyawan`.
 2. **Login SSO pertama kali** (email belum terdaftar) → backend otomatis buat akun baru role `karyawan` juga (`backend/src/config/passport.js`). Kalau email itu ternyata **sudah ada** duluan (misalnya sudah di-upgrade manual lewat pgAdmin4), SSO **tidak** menimpa/reset role yang sudah ada.
-3. **Auto-promote ke PIC** — begitu seorang `karyawan` berhasil menambahkan permintaan baru **di Pemeliharaan ATAU Pengadaan** (endpoint `POST /pemeliharaan` atau `POST /pengadaan`), backend otomatis update role user itu jadi `pic` **saat itu juga**, lalu kirim token JWT baru di response supaya sesi langsung ter-update tanpa logout/login ulang (`refreshAuth` di frontend). Promosi ini **berlaku global** (bukan per-modul) — cukup sekali nambah di modul mana pun, role langsung `pic` di semua tempat.
+3. **Auto-promote ke PIC** — begitu seorang `karyawan` berhasil menambahkan permintaan baru **di Pemeliharaan ATAU Pengadaan** (endpoint `POST /pemeliharaan` atau `POST /pengadaan`), backend otomatis update role user itu jadi `pic` **saat itu juga**, lalu kirim token JWT baru di response supaya sesi langsung ter-update tanpa logout/login ulang (`refreshAuth` di frontend). Promosi ini **berlaku global** (bukan per-modul) — cukup sekali nambah di modul mana pun, role langsung `pic` di semua tempat. **Catatan**: Kendaraan dan Ruang Rapat sengaja **tidak** memakai alur auto-promote ini — kedua modul itu tetap memakai aturan lama (hanya kabag/PIC/admin yang bisa menambah & mengelola, tanpa pembatasan kepemilikan antar sesama PIC/kabag/admin).
 4. **PIC (lewat pgAdmin4), Kabag, dan Admin** — role-role ini **tidak bisa** didapat otomatis lewat aksi apa pun di aplikasi (selain auto-promote PIC di poin 3); satu-satunya cara adalah admin/DBA mengubahnya manual lewat pgAdmin4 (lihat query di Bagian 1).
 
 Ringkasnya: **Register/SSO → Karyawan → (nambah permintaan) → PIC → (manual pgAdmin4) → Kabag/Admin**.
@@ -271,7 +283,7 @@ Ringkasnya: **Register/SSO → Karyawan → (nambah permintaan) → PIC → (man
 
 Penerapan teknis:
 - **Frontend**: tombol edit/tahapan/hapus otomatis disable untuk role `karyawan`, dan untuk `pic` khusus di baris data milik orang lain (lihat `useAuth().canEditRow()` di `frontend/src/context/AuthContext.jsx`).
-- **Backend**: endpoint `PUT`/`DELETE` di `backend/src/routes/pemeliharaan.js`, `pengadaan.js`, `kendaraan.js`, `ruangRapat.js` dibungkus middleware `requireRole([...])` + pengecekan kepemilikan (`created_by`) untuk role `pic` — kalau dipaksa lewat API langsung (mis. Postman), tetap ditolak HTTP 403.
+- **Backend**: endpoint `PUT`/`DELETE` di `backend/src/routes/pemeliharaan.js` & `pengadaan.js` dibungkus middleware `requireRole([...])` + pengecekan kepemilikan (`created_by`) untuk role `pic` — kalau dipaksa lewat API langsung (mis. Postman), tetap ditolak HTTP 403. (`kendaraan.js`/`ruangRapat.js` memakai `requireRole([...])` saja tanpa pengecekan kepemilikan — lihat catatan di atas.)
 - Role user diverifikasi ulang dari database di **setiap** request lewat `requireAuth` — token JWT cuma dipakai untuk identitas (id), bukan sumber kebenaran hak akses.
 - **Admin juga bisa mem-ban akun** (`PUT /api/users/:id/status`, lihat bagian Fitur "Akun & Akses") — memanfaatkan mekanisme cek `is_active` yang sama di `requireAuth`, jadi akun yang di-ban langsung kehilangan akses tanpa perlu logic tambahan. Admin tidak bisa mem-ban akun sendiri (dicegah di backend).
 
