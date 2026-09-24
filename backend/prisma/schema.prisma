@@ -46,6 +46,8 @@ model User {
   pengadaanUpdated    Pengadaan[]    @relation("PengadaanUpdatedBy")
   kendaraanCreated    Kendaraan[]    @relation("KendaraanCreatedBy")
   kendaraanUpdated    Kendaraan[]    @relation("KendaraanUpdatedBy")
+  kendaraanServiceCreated KendaraanService[] @relation("KendaraanServiceCreatedBy")
+  kendaraanServiceUpdated KendaraanService[] @relation("KendaraanServiceUpdatedBy")
   ruangRapatCreated   RuangRapat[]   @relation("RuangRapatCreatedBy")
   ruangRapatUpdated   RuangRapat[]   @relation("RuangRapatUpdatedBy")
   maintenanceModeUpdated MaintenanceMode[] @relation("MaintenanceModeUpdatedBy")
@@ -201,9 +203,6 @@ model Kendaraan {
   stnk_document_name      String?
   stnk_document_file_data String?
   stnk_document_file_path String?
-  service_invoice_document_name      String? // invoice service (PDF) -- diisi saat/ setelah kendaraan diservis
-  service_invoice_document_file_data String?
-  service_invoice_document_file_path String?
   created_by        Int?
   updated_by        Int?
   created_at        DateTime  @default(now())
@@ -211,9 +210,32 @@ model Kendaraan {
 
   createdBy User? @relation("KendaraanCreatedBy", fields: [created_by], references: [id], onDelete: SetNull)
   updatedBy User? @relation("KendaraanUpdatedBy", fields: [updated_by], references: [id], onDelete: SetNull)
+  services  KendaraanService[]
 
   @@index([plate])
   @@map("kendaraan")
+}
+
+// Riwayat service per kendaraan -- tanggal service + invoice PDF (opsional).
+// Ikut terhapus kalau kendaraannya dihapus.
+model KendaraanService {
+  id              Int      @id @default(autoincrement())
+  kendaraan_id    Int
+  tanggal_service DateTime @db.Date
+  invoice_document_name      String?
+  invoice_document_file_data String?
+  invoice_document_file_path String?
+  created_by      Int?
+  updated_by      Int?
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+
+  kendaraan Kendaraan @relation(fields: [kendaraan_id], references: [id], onDelete: Cascade)
+  createdBy User?     @relation("KendaraanServiceCreatedBy", fields: [created_by], references: [id], onDelete: SetNull)
+  updatedBy User?     @relation("KendaraanServiceUpdatedBy", fields: [updated_by], references: [id], onDelete: SetNull)
+
+  @@index([kendaraan_id, tanggal_service])
+  @@map("kendaraan_service")
 }
 
 model RuangRapat {

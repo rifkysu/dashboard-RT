@@ -39,6 +39,8 @@ const MAX_PAYLOAD_CHARS = 24 * 1024 * 1024;
 const payloadSize = (form) => ['bpkb', 'stnk'].reduce((sum, f) => sum + (form[`${f}_document_file_data`] || '').length, 0)
   + form.photos.reduce((sum, p) => sum + (p.data || '').length, 0);
 const fmtDate = (v) => v ? new Date(`${v}T00:00:00`).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : '-';
+// Tanggal hari ini versi lokal (bukan UTC) untuk batas maksimal input tanggal service.
+const todayLocal = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
 
 export default function Kendaraan() {
   const { user } = useAuth();
@@ -146,7 +148,7 @@ export default function Kendaraan() {
       setData((current) => current.map((x) => (x.id === vehicleId ? updated : x)));
       setDetail(updated);
       setError('');
-      toast(`Dokumen ${field === 'service_invoice' ? 'invoice service' : field.toUpperCase()} berhasil disimpan.`);
+      toast(`Dokumen ${field.toUpperCase()} berhasil disimpan.`);
     } catch (err) {
       alert({ title: 'Gagal menyimpan dokumen', message: err.response?.data?.message || err.message || 'Gagal memperbarui dokumen.', tone: 'error' });
     } finally {
@@ -180,14 +182,12 @@ export default function Kendaraan() {
     }
   }
 
-  async function viewServiceInvoice(vehicle) {
-    try {
-      const res = await api.get(`/kendaraan/${vehicle.id}`);
-      const v = res.data.data;
-      setViewer({ open: true, name: v.service_invoice_document_name, data: v.service_invoice_document_file_data });
-    } catch (err) {
-      alert({ title: 'Gagal membuka invoice', message: err.response?.data?.message || 'Gagal membuka invoice service.', tone: 'error' });
-    }
+  // Riwayat service berubah -> perbarui ringkasan (jumlah & service terakhir) di tabel dan modal detail.
+  function applyServiceSummary(vehicleId, services) {
+    const last = services[0];
+    const summary = { service_count: services.length, last_service: last ? { id: last.id, tanggal_service: last.tanggal_service } : null };
+    setData((current) => current.map((x) => (x.id === vehicleId ? { ...x, ...summary } : x)));
+    setDetail((d) => (d && d.id === vehicleId ? { ...d, ...summary } : d));
   }
 
   function selectTab(x) {
@@ -312,9 +312,9 @@ export default function Kendaraan() {
                       {x.status === 'Servis'
                         ? <span className="inline-flex px-2.5 py-1 rounded-full bg-red-100 text-red-700 text-[11px] font-bold">Waktunya Service</span>
                         : <span className="inline-flex px-2.5 py-1 rounded-full bg-slate-100 text-slate-500 text-[11px] font-semibold">Tidak Service</span>}
-                      {x.status === 'Servis' && (x.service_invoice_document_name
-                        ? <button type="button" onClick={() => viewServiceInvoice(x)} title={x.service_invoice_document_name} className="mt-1.5 flex items-center gap-1 max-w-[170px] text-[11px] font-semibold text-emerald-700 hover:underline"><span className="material-symbols-outlined text-[15px]">receipt_long</span><span className="truncate">{x.service_invoice_document_name}</span></button>
-                        : <div className="mt-1.5 text-[11px] text-slate-400">Belum ada invoice</div>)}
+                      {x.last_service
+                        ? <div className="mt-1.5 text-[11px] text-slate-600">Terakhir: <span className="font-semibold">{fmtDate(x.last_service.tanggal_service)}</span><div className="text-slate-400">{x.service_count}x service tercatat</div></div>
+                        : <div className="mt-1.5 text-[11px] text-slate-400">Belum ada riwayat service</div>}
                     </td>
                     <td className="px-4 whitespace-nowrap">{fmtDate(x.tanggal_perolehan)}</td>
                     <td className="px-4 whitespace-nowrap">{fmtDate(x.masa_berlaku_stnk)}</td>
@@ -338,6 +338,7 @@ export default function Kendaraan() {
           onView={(name, data) => setViewer({ open: true, name, data })}
           onUpdateDocument={(field, file) => updateDocument(detail.id, field, file)}
           onUpdateFields={(payload, msg) => updateFields(detail.id, payload, msg)}
+          onServicesChanged={(services) => applyServiceSummary(detail.id, services)}
         />
       )}
       <DocumentViewer open={viewer.open} name={viewer.name} data={viewer.data} onClose={() => setViewer({ open: false, name: '', data: '' })} />
@@ -483,7 +484,7 @@ function DocumentCard({ label, name, data, onView, onReplace, canManage, busy })
   );
 }
 
-function VehicleDetail({ vehicle, error, canManage, busyDoc, onClose, onView, onUpdateDocument, onUpdateFields }) {
+function VehicleDetail({ vehicle, error, canManage, busyDoc, onClose, onView, onUpdateDocument, onUpdateFields, onServicesChanged }) {
   const rows = [
     ['ID Kendaraan', vehicle.id ? `#${vehicle.id}` : '-'],
     ['Nama Barang', vehicle.nama_barang || '-'],
@@ -521,7 +522,7 @@ function VehicleDetail({ vehicle, error, canManage, busyDoc, onClose, onView, on
   useEffect(() => { setStatusDraft(vehicle.status || 'Tersedia'); }, [vehicle.id, vehicle.status]);
   async function saveStatus() {
     setSavingStatus(true);
-    await onUpdateFields({ status: statusDraft }, statusDraft === 'Servis' ? 'Kendaraan ditandai waktunya service. Silakan upload invoice service.' : `Status kendaraan diubah menjadi ${statusDraft}.`);
+    await onUpdateFields({ status: statusDraft }, statusDraft === 'Servis' ? 'Kendaraan ditandai waktunya service. Catat service-nya di Riwayat Service.' : `Status kendaraan diubah menjadi ${statusDraft}.`);
     setSavingStatus(false);
   }
   const inService = vehicle.status === 'Servis';
@@ -571,22 +572,11 @@ function VehicleDetail({ vehicle, error, canManage, busyDoc, onClose, onView, on
                   </button>
                 )}
               </div>
-              {inService && (
-                <div className="mt-3">
-                  {inService && !vehicle.service_invoice_document_name && <p className="text-[11px] text-red-700 mb-2">Kendaraan waktunya service dan belum ada invoice service. Upload PDF invoice-nya di bawah.</p>}
-                  <DocumentCard
-                    label="Invoice Service"
-                    name={vehicle.service_invoice_document_name}
-                    data={vehicle.service_invoice_document_file_data}
-                    canManage={canManage}
-                    onView={() => onView(vehicle.service_invoice_document_name, vehicle.service_invoice_document_file_data)}
-                    busy={busyDoc === 'service_invoice'}
-                    onReplace={(file) => onUpdateDocument('service_invoice', file)}
-                  />
-                </div>
-              )}
+              {inService && <p className="mt-3 text-[11px] text-red-700">Kendaraan waktunya service. Setelah diservis, tambahkan tanggal &amp; invoice PDF-nya di Riwayat Service di bawah.</p>}
             </div>
           </div>
+
+          <ServiceHistory vehicleId={vehicle.id} canManage={canManage} onView={onView} onChanged={onServicesChanged} />
 
           <div>
             <div className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Dokumen Kendaraan</div>
@@ -633,6 +623,184 @@ function VehicleDetail({ vehicle, error, canManage, busyDoc, onClose, onView, on
           </div>
         </div>
         <div className="px-6 py-4 border-t border-slate-200 flex justify-end"><button onClick={onClose} className="px-5 py-2.5 rounded-xl bg-slate-900 text-white text-sm font-semibold">Tutup</button></div>
+      </div>
+    </div>
+  );
+}
+
+// Riwayat service kendaraan: daftar tanggal kapan kendaraan diservis (terbaru
+// di atas) + invoice PDF opsional. PDF hanya diambil lewat API yang butuh login
+// dan dibuka lewat DocumentViewer (blob URL -- tidak bisa dibuka di luar tab ini).
+function ServiceHistory({ vehicleId, canManage, onView, onChanged }) {
+  const { alert, confirm, toast } = useFeedback();
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
+  const [tanggal, setTanggal] = useState(todayLocal());
+  const [invoice, setInvoice] = useState({ name: '', data: '' });
+  const [saving, setSaving] = useState(false);
+  const [busyId, setBusyId] = useState(null);
+
+  async function reload() {
+    const res = await api.get(`/kendaraan/${vehicleId}/services`);
+    const list = res.data.data || [];
+    setItems(list);
+    onChanged?.(list);
+  }
+
+  useEffect(() => {
+    let alive = true;
+    setLoading(true);
+    setLoadError('');
+    setTanggal(todayLocal());
+    setInvoice({ name: '', data: '' });
+    api.get(`/kendaraan/${vehicleId}/services`)
+      .then((res) => { if (alive) setItems(res.data.data || []); })
+      .catch((err) => { if (alive) setLoadError(err.response?.data?.message || 'Gagal memuat riwayat service.'); })
+      .finally(() => { if (alive) setLoading(false); });
+    return () => { alive = false; };
+  }, [vehicleId]);
+
+  async function pickInvoice(file) {
+    if (!file) return;
+    try {
+      setInvoice({ name: file.name, data: await readPdf(file) });
+    } catch (err) {
+      alert({ title: 'PDF ditolak', message: err.message, tone: 'warning' });
+    }
+  }
+
+  async function add(e) {
+    e.preventDefault();
+    if (saving) return;
+    let problem = '';
+    if (!tanggal) problem = 'Tanggal service wajib diisi.';
+    else if (tanggal > todayLocal()) problem = 'Tanggal service tidak boleh melebihi hari ini.';
+    else if (items.some((x) => x.tanggal_service === tanggal)) problem = `Service tanggal ${fmtDate(tanggal)} sudah tercatat.`;
+    if (problem) {
+      await alert({ title: 'Tanggal service belum valid', message: problem, tone: 'warning' });
+      return;
+    }
+    const payload = { tanggal_service: tanggal };
+    if (invoice.data) Object.assign(payload, { invoice_document_name: invoice.name, invoice_document_file_data: invoice.data });
+    setSaving(true);
+    try {
+      await api.post(`/kendaraan/${vehicleId}/services`, payload);
+      await reload();
+      setTanggal(todayLocal());
+      setInvoice({ name: '', data: '' });
+      toast(`Service tanggal ${fmtDate(tanggal)} berhasil dicatat.`);
+    } catch (err) {
+      alert({ title: 'Gagal menambah service', message: err.response?.data?.message || 'Gagal menambahkan riwayat service.', tone: err.response?.status === 409 ? 'warning' : 'error' });
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  // Upload PDF untuk riwayat yang belum punya invoice (atau ganti yang lama).
+  async function uploadInvoice(item, file) {
+    if (!file || busyId) return;
+    setBusyId(item.id);
+    try {
+      const data = await readPdf(file);
+      await api.put(`/kendaraan/${vehicleId}/services/${item.id}/invoice`, { invoice_document_name: file.name, invoice_document_file_data: data });
+      await reload();
+      toast(`PDF service tanggal ${fmtDate(item.tanggal_service)} berhasil disimpan.`);
+    } catch (err) {
+      alert({ title: 'Gagal menyimpan PDF', message: err.response?.data?.message || err.message || 'Gagal menyimpan PDF.', tone: 'error' });
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function viewInvoice(item) {
+    if (busyId) return;
+    setBusyId(item.id);
+    try {
+      const res = await api.get(`/kendaraan/${vehicleId}/services/${item.id}/invoice`);
+      onView(res.data.data.invoice_document_name, res.data.data.invoice_document_file_data);
+    } catch (err) {
+      alert({ title: 'Gagal membuka PDF', message: err.response?.data?.message || 'Gagal membuka PDF service.', tone: 'error' });
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function remove(item) {
+    if (busyId) return;
+    const ok = await confirm({ title: 'Hapus riwayat service?', message: `Service tanggal ${fmtDate(item.tanggal_service)}${item.invoice_document_name ? ' beserta PDF-nya' : ''} akan dihapus dari riwayat.`, confirmText: 'Ya, Hapus', tone: 'danger' });
+    if (!ok) return;
+    setBusyId(item.id);
+    try {
+      await api.delete(`/kendaraan/${vehicleId}/services/${item.id}`);
+      await reload();
+      toast('Riwayat service berhasil dihapus.');
+    } catch (err) {
+      alert({ title: 'Gagal menghapus', message: err.response?.data?.message || 'Gagal menghapus riwayat service.', tone: 'error' });
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  const smallBtn = 'px-2.5 py-1 rounded-lg border text-[11px] font-semibold disabled:opacity-60';
+  return (
+    <div>
+      <div className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Riwayat Service ({items.length})</div>
+      <div className="rounded-xl border border-slate-200 bg-white p-4">
+        {canManage && !loading && !loadError && (
+          <form noValidate onSubmit={add} className="mb-3 pb-3 border-b border-slate-100">
+            <div className="flex flex-wrap items-end gap-2">
+              <div className="min-w-[160px] flex-1">
+                <label className="block text-[11px] font-semibold text-slate-500 mb-1">Tanggal Service</label>
+                <input type="date" max={todayLocal()} value={tanggal} onChange={(e) => setTanggal(e.target.value)} className="w-full h-10 px-3 rounded-lg border border-slate-300 bg-white text-sm outline-none focus:border-slate-900" />
+              </div>
+              <div className="min-w-[200px] flex-[2]">
+                <label className="block text-[11px] font-semibold text-slate-500 mb-1">PDF Service <span className="font-normal">(opsional · maks. 12MB)</span></label>
+                <div className="flex items-center gap-2">
+                  <label className="relative flex-1 min-w-0 h-10 px-3 rounded-lg border border-dashed border-slate-300 bg-white flex items-center gap-2 cursor-pointer hover:bg-slate-50">
+                    <span className="material-symbols-outlined text-[18px] text-slate-500">picture_as_pdf</span>
+                    <span className={`text-xs truncate ${invoice.name ? 'font-semibold text-slate-800' : 'text-slate-400'}`}>{invoice.name || 'Pilih file PDF'}</span>
+                    <input type="file" accept="application/pdf,.pdf" className="absolute inset-0 opacity-0 cursor-pointer" onChange={(e) => { pickInvoice(e.target.files?.[0]); e.target.value = ''; }} />
+                  </label>
+                  {invoice.data && <button type="button" onClick={() => onView(invoice.name, invoice.data)} className={`${smallBtn} h-10 border-slate-200 text-slate-700`}>Lihat</button>}
+                  {invoice.data && <button type="button" onClick={() => setInvoice({ name: '', data: '' })} className={`${smallBtn} h-10 border-red-200 text-red-600`}>✕</button>}
+                </div>
+              </div>
+              <button disabled={saving} className="h-10 px-4 rounded-lg bg-slate-900 text-white text-xs font-semibold disabled:opacity-60">{saving ? 'Menyimpan...' : '＋ Tambah Service'}</button>
+            </div>
+          </form>
+        )}
+        {loading ? <div className="text-xs text-slate-500">Memuat riwayat service...</div>
+          : loadError ? <div className="text-xs text-red-700">{loadError}</div>
+          : items.length === 0 ? <div className="text-xs text-slate-500">Belum ada riwayat service untuk kendaraan ini.</div>
+          : (
+            <ol className="divide-y divide-slate-100">
+              {items.map((item, i) => (
+                <li key={item.id} className="flex flex-wrap items-center justify-between gap-3 py-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="material-symbols-outlined text-[18px] text-slate-400">build</span>
+                    <div className="min-w-0">
+                      <div className="text-sm font-semibold text-slate-800">{fmtDate(item.tanggal_service)}{i === 0 && <span className="ml-2 px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 text-[9px] font-bold align-middle">TERAKHIR</span>}</div>
+                      <div className="text-[10px] text-slate-400 truncate">
+                        {item.invoice_document_name ? item.invoice_document_name : 'Belum ada PDF'}
+                        {item.createdBy?.nama_lengkap && ` · Dicatat oleh ${item.createdBy.nama_lengkap}`}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex gap-1.5">
+                    {item.invoice_document_name && <button type="button" disabled={busyId === item.id} onClick={() => viewInvoice(item)} className={`${smallBtn} border-emerald-200 bg-emerald-50 text-emerald-700`}>Lihat PDF</button>}
+                    {canManage && (
+                      <label className={`relative ${smallBtn} border-slate-200 text-slate-700 ${busyId === item.id ? 'opacity-60 cursor-wait' : 'cursor-pointer hover:bg-slate-50'}`}>
+                        {busyId === item.id ? 'Memproses...' : item.invoice_document_name ? 'Ganti PDF' : 'Upload PDF'}
+                        {busyId !== item.id && <input type="file" accept="application/pdf,.pdf" className="absolute inset-0 opacity-0 cursor-pointer" onChange={(e) => { uploadInvoice(item, e.target.files?.[0]); e.target.value = ''; }} />}
+                      </label>
+                    )}
+                    {canManage && <button type="button" disabled={busyId === item.id} onClick={() => remove(item)} className={`${smallBtn} border-red-200 text-red-600`}>Hapus</button>}
+                  </div>
+                </li>
+              ))}
+            </ol>
+          )}
       </div>
     </div>
   );

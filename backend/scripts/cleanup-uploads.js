@@ -18,7 +18,8 @@ const ORPHAN_DIR = '_orphaned';
 const PATH_COLUMNS = {
   pemeliharaan: ['request_document_file_path', 'stage1_boq_file_path', 'stage1_document_file_path', 'stage2_invoice_document_file_path'],
   pengadaan: ['request_document_file_path', 'stage2_invoice_document_file_path', 'stage2_invoice_file_path', 'stage2_payment_proof_file_path', 'stage3_final_document_file_path'],
-  kendaraan: ['bpkb_document_file_path', 'stnk_document_file_path', 'service_invoice_document_file_path'],
+  kendaraan: ['bpkb_document_file_path', 'stnk_document_file_path'],
+  kendaraanService: ['invoice_document_file_path'],
   ruangRapat: ['surat_file_path'],
 };
 // Kolom berisi JSON array [{ name, path }]
