@@ -1,4 +1,4 @@
-const express=require('express');const {EventEmitter}=require('events');const prisma=require('../prisma');const {saveDataUrl}=require('../fileStorage');const {isGenuineDocumentDataUrl}=require('../fileSignature');const {requireAuth,requireRole,EDITOR_ROLES}=require('../middleware/auth');const {requireNotInMaintenance}=require('../middleware/maintenance');const logger=require('../logger');
+const express=require('express');const {EventEmitter}=require('events');const prisma=require('../prisma');const {saveDataUrl,hideFilePaths}=require('../fileStorage');const {isGenuineDocumentDataUrl,maxDataUrlLength}=require('../fileSignature');const {requireAuth,requireRole,EDITOR_ROLES}=require('../middleware/auth');const {requireNotInMaintenance}=require('../middleware/maintenance');const logger=require('../logger');const {createSseLimiter}=require('../middleware/security');
 const router=express.Router();
 // Bus internal untuk broadcast SSE (Server-Sent Events) tiap ada booking berubah,
 // supaya kalender publik & admin refresh real-time tanpa polling.
@@ -8,14 +8,14 @@ const STATUS=['belum','ditinjau','diterima'];
 const ROOMS=['SERBAGUNA','SETJEN II','TRI DHARMA','BIRO UMUM','GRAHA KEMNAKER'];
 const PREFIX=['data:application/pdf;base64,','data:image/jpeg;base64,','data:image/png;base64,'];
 // Selain prefix MIME, cek juga magic number isi file (sama seperti modul lain) supaya file palsu yang cuma diganti nama/tipe ditolak.
-const validFile=v=>v==null||v===''||(typeof v==='string'&&PREFIX.some(p=>v.startsWith(p))&&isGenuineDocumentDataUrl(v,8*1024*1024));
+const validFile=v=>v==null||v===''||(typeof v==='string'&&PREFIX.some(p=>v.startsWith(p))&&isGenuineDocumentDataUrl(v,maxDataUrlLength(8*1024*1024)));
 const DATE_RE=/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/;const TIME_RE=/^([01]\d|2[0-3]):[0-5]\d$/;
 const validText=(v,m)=>typeof v==='string'&&v.trim().length>0&&v.length<=m;
 // Nomor surat opsional (boleh kosong), maks. 100 karakter.
 const validNomorSurat=v=>v==null||(typeof v==='string'&&v.trim().length<=100);
 const validPhone=v=>typeof v==='string'&&/^[0-9+()\- .]{6,30}$/.test(v.trim());
 const date=v=>new Date(`${v}T00:00:00Z`); const time=v=>new Date(`1970-01-01T${v}:00Z`);
-const out=r=>({...r,date:r.booking_date.toISOString().slice(0,10),start:r.start_time.toISOString().slice(11,16),end:r.end_time.toISOString().slice(11,16),title:r.agenda,status:r.surat_status,updated_by_name:r.updatedBy?.nama_lengkap||null,updatedBy:undefined});
+const out=r=>hideFilePaths({...r,date:r.booking_date.toISOString().slice(0,10),start:r.start_time.toISOString().slice(11,16),end:r.end_time.toISOString().slice(11,16),title:r.agenda,status:r.surat_status,updated_by_name:r.updatedBy?.nama_lengkap||null,updatedBy:undefined});
 // Rentang tanggal jadwal (?from=YYYY-MM-DD&to=YYYY-MM-DD). Tanpa parameter:
 // 1 bulan ke belakang s/d 1 tahun ke depan, supaya respons tidak terus
 // membesar seiring bertambahnya riwayat booking. Maksimal 400 hari per request.
@@ -29,7 +29,7 @@ router.get('/public-schedule',async(req,res)=>{try{const range=dateRange(req.que
 // jadi aman dibuat publik -- browser EventSource native tidak bisa kirim
 // header Authorization, dan data asli tetap lewat endpoint ber-otentikasi
 // (GET '/') atau publik terbatas (GET '/public-schedule') seperti biasa.
-router.get('/stream',(req,res)=>{
+router.get('/stream',createSseLimiter(),(req,res)=>{
   res.writeHead(200,{'Content-Type':'text/event-stream; charset=utf-8','Cache-Control':'no-cache, no-transform','Connection':'keep-alive'});
   res.write('retry: 3000\n\n');
   const send=()=>{try{res.write(`data: ${Date.now()}\n\n`);}catch{}};

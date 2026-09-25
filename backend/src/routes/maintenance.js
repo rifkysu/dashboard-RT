@@ -3,6 +3,7 @@ const { EventEmitter } = require('events');
 const prisma = require('../prisma');
 const { requireAuth, requireRole } = require('../middleware/auth');
 const logger = require('../logger');
+const { createSseLimiter } = require('../middleware/security');
 
 const router = express.Router();
 const MENU_KEYS = ['dashboard', 'pemeliharaan', 'pengadaan', 'kendaraan', 'ruang-rapat', 'landing'];
@@ -17,7 +18,7 @@ const broadcastChange = () => bus.emit('change');
 // SSE stream: cuma sinyal "ada perubahan" (bukan data itu sendiri), jadi aman
 // dibuat publik -- EventSource browser native tidak bisa kirim header
 // Authorization. Data asli tetap lewat GET '/' yang ber-otentikasi.
-router.get('/stream', (req, res) => {
+router.get('/stream', createSseLimiter(), (req, res) => {
   res.writeHead(200, { 'Content-Type': 'text/event-stream; charset=utf-8', 'Cache-Control': 'no-cache, no-transform', 'Connection': 'keep-alive' });
   res.write('retry: 3000\n\n');
   const send = () => { try { res.write(`data: ${Date.now()}\n\n`); } catch {} };

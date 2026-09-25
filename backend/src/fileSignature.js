@@ -31,4 +31,11 @@ function isGenuineDocumentDataUrl(dataUrl, maxLength) {
   return checker(buffer);
 }
 
-module.exports = { isGenuineDocumentDataUrl };
+// Batas ukuran file dihitung dari ukuran file asli (byte), bukan panjang teks
+// Base64-nya (Base64 ~33% lebih besar). Tanpa ini file 7MB lolos cek "maks.
+// 8MB" di frontend tapi ditolak backend karena teks Base64-nya > 8MB.
+function maxDataUrlLength(maxFileBytes) {
+  return Math.ceil(maxFileBytes / 3) * 4 + 256; // + ruang untuk prefix "data:<mime>;base64,"
+}
+
+module.exports = { isGenuineDocumentDataUrl, maxDataUrlLength };

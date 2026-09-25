@@ -37,7 +37,9 @@ async function saveDataUrl(dataUrl, originalName, menu) {
   const dir = path.join(UPLOAD_ROOT, safeName(menu), String(now.getFullYear()), String(now.getMonth() + 1).padStart(2, '0'));
   await fs.promises.mkdir(dir, { recursive: true });
 
-  const ext = path.extname(originalName || '').toLowerCase() || MIME_EXT[mime] || '.bin';
+  // Ekstensi selalu dari MIME yang sudah diverifikasi magic number-nya, bukan dari nama
+  // file kiriman user -- supaya tidak ada file .html/.js/.exe yang tersimpan di server.
+  const ext = MIME_EXT[mime] || '.bin';
   const base = path.basename(originalName || 'file', path.extname(originalName || 'file'));
   const filename = `${Date.now()}-${crypto.randomUUID()}-${safeName(base)}${ext}`;
   const absolutePath = path.join(dir, filename);
@@ -46,4 +48,12 @@ async function saveDataUrl(dataUrl, originalName, menu) {
   return path.relative(path.resolve(__dirname, '..'), absolutePath).replace(/\\/g, '/');
 }
 
-module.exports = { UPLOAD_ROOT, ensureUploadRoot, saveDataUrl };
+// Lokasi file di disk server tidak perlu (dan tidak boleh) diketahui client.
+function hideFilePaths(row) {
+  if (!row || typeof row !== 'object') return row;
+  const out = { ...row };
+  for (const key of Object.keys(out)) if (/_file_paths?$/.test(key)) delete out[key];
+  return out;
+}
+
+module.exports = { UPLOAD_ROOT, ensureUploadRoot, saveDataUrl, hideFilePaths };

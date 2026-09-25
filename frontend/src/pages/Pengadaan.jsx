@@ -145,7 +145,8 @@ export default function Pengadaan() {
         payload.tanggal_selesai = localToday();
       } else if (nextStageNo) {
         payload[selectedStage.field] = 'selesai';
-        payload.status = 'on_progress';
+        // Data yang sudah Selesai jangan diturunkan lagi jadi On Progress (tanggal selesainya ikut terhapus).
+        if (selectedRow.status !== 'selesai') payload.status = 'on_progress';
       } else if (payload[selectedStage.field] && payload[selectedStage.field] !== 'pending' && selectedRow.status === 'pending') {
         payload.status = 'on_progress';
       }
@@ -343,6 +344,7 @@ export default function Pengadaan() {
         row={selectedRow} stage={selectedStage} draft={draft} setDraft={setDraft} canEdit={canEditRow(selectedRow)} roleLabel={roleLabel}
         saving={saving} onClose={closeStage} onSave={saveStage}
         onBack={() => selectedStage.no > 1 && openStage(selectedRow, stages[selectedStage.no - 2])}
+        onJump={(s) => openStage(selectedRow, s)}
         onNext={() => saveStage(selectedStage.no + 1)}
         onFinish={() => saveStage(null, true)}
         onView={(name,data)=>setViewer({open:true,name,data})}
@@ -354,7 +356,7 @@ export default function Pengadaan() {
   );
 }
 
-function StageModal({ row, stage, draft, setDraft, canEdit, roleLabel, saving, onClose, onSave, onBack, onNext, onFinish, onView }) {
+function StageModal({ row, stage, draft, setDraft, canEdit, roleLabel, saving, onClose, onSave, onBack, onNext, onFinish, onView, onJump }) {
   const update = (field, value) => setDraft((d) => ({ ...d, [field]: value }));
   const readOnly = !canEdit;
   const stageStatus = draft[stage.field] || 'pending';
@@ -377,7 +379,7 @@ function StageModal({ row, stage, draft, setDraft, canEdit, roleLabel, saving, o
           </div>
 
           <div className="bg-white rounded-xl p-4 md:p-6 shadow-sm mb-8"><div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {stages.map((s) => { const active = s.no === stage.no; const done = (draft[s.field] || 'pending') === 'selesai'; const locked = s.no > 1 && (draft[stages[s.no - 2].field] || 'pending') !== 'selesai'; return <button type="button" key={s.no} disabled={locked && canEdit} onClick={() => { if (locked) return; if (s.no !== stage.no) s.no < stage.no ? onBack() : onNext(); }} className={`relative flex items-center gap-4 p-3 rounded-lg text-left ${locked ? 'opacity-50 cursor-not-allowed' : 'hover:bg-slate-50'}`}>
+            {stages.map((s) => { const active = s.no === stage.no; const done = (draft[s.field] || 'pending') === 'selesai'; const locked = s.no > 1 && (draft[stages[s.no - 2].field] || 'pending') !== 'selesai'; return <button type="button" key={s.no} disabled={locked && canEdit} onClick={() => { if (locked || s.no === stage.no) return; if (!canEdit || s.no < stage.no) onJump(s); else onNext(); }} className={`relative flex items-center gap-4 p-3 rounded-lg text-left ${locked ? 'opacity-50 cursor-not-allowed' : 'hover:bg-slate-50'}`}>
               <div className={`w-12 h-12 rounded-lg flex items-center justify-center shrink-0 shadow-sm ${active ? 'bg-slate-200 text-slate-900' : done ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-500'}`}><span className="material-symbols-outlined text-[24px]">{s.icon}</span></div>
               <div className="flex flex-col min-w-0"><div className="flex items-center gap-2"><span className="text-[10px] uppercase tracking-widest text-slate-500 font-bold">Langkah 0{s.no}</span>{active && <span className="px-2 py-0.5 rounded-full bg-slate-900 text-white text-[10px] font-bold">AKTIF</span>}</div><span className="text-sm font-semibold text-slate-900 truncate">{s.short}</span><span className="text-xs text-slate-500">{locked ? 'Menunggu tahap sebelumnya' : statusLabel[draft[s.field] || 'pending']}</span></div>
             </button>; })}

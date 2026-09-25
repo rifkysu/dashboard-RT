@@ -1,7 +1,7 @@
 const express = require('express');
 const prisma = require('../prisma');
-const { saveDataUrl } = require('../fileStorage');
-const { isGenuineDocumentDataUrl } = require('../fileSignature');
+const { saveDataUrl, hideFilePaths } = require('../fileStorage');
+const { isGenuineDocumentDataUrl, maxDataUrlLength } = require('../fileSignature');
 const { requireAuth, requireRole, EDITOR_ROLES } = require('../middleware/auth');
 const { requireNotInMaintenance } = require('../middleware/maintenance');
 const logger = require('../logger');
@@ -52,7 +52,7 @@ const serialize = (row) => {
   if (!row) return row;
   const { services, _count, ...rest } = row;
   const last = services?.[0];
-  return {
+  return hideFilePaths({
     ...rest,
     tanggal_perolehan: dateOnly(row.tanggal_perolehan),
     masa_berlaku_stnk: dateOnly(row.masa_berlaku_stnk),
@@ -61,7 +61,7 @@ const serialize = (row) => {
     photo_file_paths: undefined,
     service_count: _count?.services ?? 0,
     last_service: last ? { id: last.id, tanggal_service: dateOnly(last.tanggal_service) } : null,
-  };
+  });
 };
 
 // Validasi array foto: maks 6, tiap item {name, data} dan `data`-nya benar-benar
@@ -83,7 +83,7 @@ function validDocument(name, data) {
   if (data === undefined) return true;
   if (data == null || data === '') return true; // sengaja dikosongkan/dihapus (form kirim '' kalau tidak ada file)
   if (typeof name !== 'string' || !name.trim() || name.length > 255) return false;
-  return isGenuineDocumentDataUrl(data, MAX_DOCUMENT_BYTES);
+  return isGenuineDocumentDataUrl(data, maxDataUrlLength(MAX_DOCUMENT_BYTES));
 }
 
 router.get('/', async (req, res) => {

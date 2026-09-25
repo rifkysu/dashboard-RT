@@ -58,9 +58,15 @@ export function AuthProvider({ children }) {
       },
     }).finally(() => setLoading(false));
     refreshMaintenance();
+  }, []);
+
+  // Sinkron berkala selama ada user login -- termasuk yang baru login tanpa
+  // reload halaman (sebelumnya timer hanya dibuat kalau token sudah ada saat app dibuka).
+  useEffect(() => {
+    if (!user?.id) return undefined;
     const timer = setInterval(() => { refreshUser(); refreshMaintenance(); refreshResetRequests(); }, 30000);
     return () => clearInterval(timer);
-  }, []);
+  }, [user?.id]);
 
   useEffect(() => { refreshResetRequests(); }, [user?.id, user?.role]);
 

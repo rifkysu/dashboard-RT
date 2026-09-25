@@ -35,6 +35,31 @@ function createRateLimiter({ windowMs, max, message }) {
   };
 }
 
+// Endpoint SSE (/stream) publik dan koneksinya terbuka lama -> batasi jumlah
+// koneksi bersamaan per IP & total, supaya tidak bisa dipakai menghabiskan resource server.
+function createSseLimiter({ maxPerIp = 20, maxTotal = 1000 } = {}) {
+  const perIp = new Map();
+  let total = 0;
+  return (req, res, next) => {
+    const ip = req.ip || req.socket.remoteAddress || 'unknown';
+    const count = perIp.get(ip) || 0;
+    if (count >= maxPerIp || total >= maxTotal) {
+      return res.status(429).json({ message: 'Terlalu banyak koneksi live. Tutup beberapa tab lalu coba lagi.' });
+    }
+    perIp.set(ip, count + 1);
+    total += 1;
+    let released = false;
+    req.on('close', () => {
+      if (released) return;
+      released = true;
+      total -= 1;
+      const left = (perIp.get(ip) || 1) - 1;
+      if (left > 0) perIp.set(ip, left); else perIp.delete(ip);
+    });
+    next();
+  };
+}
+
 function requestHardening(req, res, next) {
   // Security headers without an additional dependency.
   res.setHeader('X-Content-Type-Options', 'nosniff');
@@ -68,6 +93,7 @@ function randomRequestId() {
 
 module.exports = {
   createRateLimiter,
+  createSseLimiter,
   requestHardening,
   validateCommonInput,
   normalizeEmail,

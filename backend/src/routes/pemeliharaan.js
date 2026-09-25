@@ -1,7 +1,7 @@
 const express = require('express');
 const crypto = require('crypto');
 const prisma = require('../prisma');
-const { saveDataUrl } = require('../fileStorage');
+const { saveDataUrl, hideFilePaths } = require('../fileStorage');
 const { isGenuineDocumentDataUrl } = require('../fileSignature');
 const { requireAuth, requireRole, EDITOR_ROLES } = require('../middleware/auth');
 const { requireNotInMaintenance } = require('../middleware/maintenance');
@@ -14,10 +14,12 @@ router.use(requireNotInMaintenance('pemeliharaan'));
 const MAX_DOCUMENT_DATA_LENGTH = 12 * 1024 * 1024;
 const validDocumentData = (v) => v == null || isGenuineDocumentDataUrl(v, MAX_DOCUMENT_DATA_LENGTH);
 const dateOnly = (v) => v == null ? null : (v instanceof Date ? v.toISOString().slice(0,10) : String(v).slice(0,10));
-const serialize = (row) => row ? ({ ...row, tanggal: dateOnly(row.tanggal), tanggal_selesai: dateOnly(row.tanggal_selesai), stage2_invoice_date: dateOnly(row.stage2_invoice_date), stage2_ls_date: dateOnly(row.stage2_ls_date), stage1_hps: row.stage1_hps == null ? row.stage1_hps : Number(row.stage1_hps), stage2_invoice_amount: row.stage2_invoice_amount == null ? row.stage2_invoice_amount : Number(row.stage2_invoice_amount), pic: row.createdBy?.nama_lengkap || null, createdBy: undefined, updatedBy: undefined }) : row;
+const serialize = (row) => row ? hideFilePaths({ ...row, tanggal: dateOnly(row.tanggal), tanggal_selesai: dateOnly(row.tanggal_selesai), stage2_invoice_date: dateOnly(row.stage2_invoice_date), stage2_ls_date: dateOnly(row.stage2_ls_date), stage1_hps: row.stage1_hps == null ? row.stage1_hps : Number(row.stage1_hps), stage2_invoice_amount: row.stage2_invoice_amount == null ? row.stage2_invoice_amount : Number(row.stage2_invoice_amount), pic: row.createdBy?.nama_lengkap || null, createdBy: undefined, updatedBy: undefined }) : row;
 // Tanggal hari ini menurut zona waktu server (WIB), bukan UTC -- toISOString() akan mundur sehari sebelum jam 07.00 WIB.
 const localToday=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;};
 function generateKode(){ return `REQ-${new Date().getFullYear()}-${crypto.randomInt(1000,10000)}`; }
+// Kode acak 4 digit bisa bentrok dengan kode yang sudah ada (kolom kode UNIQUE) -> coba ulang dengan kode baru.
+async function createWithUniqueKode(create,makeKode){ for(let attempt=1;;attempt++){ try { return await create(makeKode()); } catch(err){ if(err.code!=='P2002'||attempt>=10) throw err; } } }
 
 router.get('/', async (req,res)=>{ try {
   const {status,kategori,lokasi,search}=req.query;
@@ -39,7 +41,7 @@ router.post('/',async(req,res)=>{try{
  if(!judul||!lokasi||!kategori)return res.status(400).json({message:'judul, lokasi, dan kategori wajib diisi.'});
  if(request_document_file_data!==undefined&&!validDocumentData(request_document_file_data))return res.status(400).json({message:'Dokumen permintaan tidak valid.'});
  const path=request_document_file_data?await saveDataUrl(request_document_file_data,request_document_name,'pemeliharaan'):null;
- const row=await prisma.pemeliharaan.create({data:{kode:generateKode(),judul,lokasi,titik_lokasi:titik_lokasi||null,kategori,deskripsi:deskripsi||null,tanggal: tanggal?new Date(`${tanggal}T00:00:00Z`):new Date(),jenis_pekerjaan:jenis_pekerjaan||null,urgensi:urgensi||'sedang',metode_pengadaan:metode_pengadaan||null,request_document_name:request_document_name||null,request_document_file_data:request_document_file_data||null,request_document_file_path:path,created_by:req.user.id},include:{createdBy:{select:{nama_lengkap:true}}}});
+ const row=await createWithUniqueKode(kode=>prisma.pemeliharaan.create({data:{kode,judul,lokasi,titik_lokasi:titik_lokasi||null,kategori,deskripsi:deskripsi||null,tanggal: tanggal?new Date(`${tanggal}T00:00:00Z`):new Date(),jenis_pekerjaan:jenis_pekerjaan||null,urgensi:urgensi||'sedang',metode_pengadaan:metode_pengadaan||null,request_document_name:request_document_name||null,request_document_file_data:request_document_file_data||null,request_document_file_path:path,created_by:req.user.id},include:{createdBy:{select:{nama_lengkap:true}}}}),generateKode);
  // Karyawan yang membuat permintaan otomatis dipromosikan jadi PIC atas permintaan itu sendiri.
  let promotion=null;
  if(req.user.role==='karyawan'){
@@ -58,6 +60,8 @@ router.put('/:id',requireRole(EDITOR_ROLES),async(req,res)=>{try{
    if(existing.created_by!==req.user.id)return res.status(403).json({message:'Anda hanya dapat mengedit data pemeliharaan yang Anda tambahkan sendiri.'});
  }
  const body={...req.body};
+ // Path file di disk hanya boleh diisi server (hasil saveDataUrl), jangan terima dari client.
+ for(const f of Object.keys(body)) if(/_file_paths?$/.test(f)) delete body[f];
  for(const f of ['status','tahap1_status','tahap2_status','tahap3_status'])if(body[f]!==undefined&&!['pending','on_progress','selesai'].includes(body[f]))return res.status(400).json({message:'Status tidak valid.'});
  if(body.status==='selesai' && !body.tanggal_selesai) body.tanggal_selesai=localToday();
  if(body.status && body.status!=='selesai' && body.tanggal_selesai===undefined) body.tanggal_selesai=null;
