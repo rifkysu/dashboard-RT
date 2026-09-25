@@ -156,3 +156,46 @@ main.app-main {
 .feedback-pop { animation: feedback-pop .18s ease-out; }
 .feedback-toast { animation: feedback-slide .2s ease-out; }
 @media (prefers-reduced-motion: reduce) { .feedback-fade, .feedback-pop, .feedback-toast { animation: none; } }
+
+/* Landing page */
+@keyframes landing-float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+@keyframes landing-rise { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }
+@keyframes landing-aurora { 0%,100% { transform: translate(0,0) scale(1); } 50% { transform: translate(30px,-20px) scale(1.08); } }
+.landing-float { animation: landing-float 6s ease-in-out infinite; }
+.landing-float-slow { animation: landing-float 8s ease-in-out infinite; animation-delay: -2s; }
+.landing-rise { animation: landing-rise .7s cubic-bezier(.2,.7,.2,1) both; }
+.landing-aurora { animation: landing-aurora 14s ease-in-out infinite; }
+.landing-grid {
+  background-image: linear-gradient(rgba(255,255,255,.06) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.06) 1px, transparent 1px);
+  background-size: 44px 44px;
+  -webkit-mask-image: radial-gradient(ellipse 70% 60% at 50% 40%, #000 30%, transparent 75%);
+  mask-image: radial-gradient(ellipse 70% 60% at 50% 40%, #000 30%, transparent 75%);
+}
+@media (prefers-reduced-motion: reduce) { .landing-float, .landing-float-slow, .landing-rise, .landing-aurora { animation: none; } }
+
+/* Jadwal ruang rapat versi gelap, hanya di landing page (kiosk tetap terang) */
+.landing-dark-schedule .bg-white { background: rgba(13,19,44,.85) !important; border-color: rgba(255,255,255,.1) !important; box-shadow: 0 20px 50px rgba(0,0,0,.3) !important; }
+.landing-dark-schedule .border-slate-200,
+.landing-dark-schedule .divide-slate-200 > * { border-color: rgba(255,255,255,.08) !important; }
+.landing-dark-schedule .bg-slate-50 { background: rgba(255,255,255,.03) !important; }
+.landing-dark-schedule .bg-violet-100 { background: rgba(139,92,246,.22) !important; color: #ddd6fe; }
+.landing-dark-schedule .bg-amber-100\/70 { background: rgba(245,158,11,.14) !important; }
+.landing-dark-schedule .bg-amber-200\/70 { background: rgba(245,158,11,.22) !important; color: #fcd34d !important; }
+.landing-dark-schedule .text-amber-700 { color: #fcd34d !important; }
+.landing-dark-schedule .text-red-600 { color: #fca5a5 !important; }
+.landing-dark-schedule > div { color: #e2e8f0; }
+.landing-dark-schedule .text-slate-800 { color: #f1f5f9 !important; }
+.landing-dark-schedule .text-slate-600 { color: #cbd5e1 !important; }
+.landing-dark-schedule .text-slate-500,
+.landing-dark-schedule .text-slate-400 { color: #94a3b8 !important; }
+.landing-dark-schedule button { color: #e2e8f0; }
+.landing-dark-schedule .hover\:bg-slate-50:hover { background: rgba(255,255,255,.08) !important; }
+/* Kartu rapat per status */
+.landing-dark-schedule .bg-red-50 { background: rgba(239,68,68,.12) !important; border-color: rgba(248,113,113,.35) !important; }
+.landing-dark-schedule .text-red-900 { color: #fecaca !important; }
+.landing-dark-schedule .bg-blue-50 { background: rgba(59,130,246,.12) !important; border-color: rgba(96,165,250,.35) !important; }
+.landing-dark-schedule .text-blue-900 { color: #bfdbfe !important; }
+.landing-dark-schedule .bg-green-50 { background: rgba(34,197,94,.12) !important; border-color: rgba(74,222,128,.35) !important; }
+.landing-dark-schedule .text-green-900 { color: #bbf7d0 !important; }
+.landing-dark-schedule .text-red-700 { color: #fca5a5 !important; }
+.landing-dark-schedule .border-red-200 { border-color: rgba(248,113,113,.35) !important; }
