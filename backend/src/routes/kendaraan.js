@@ -25,7 +25,7 @@ const DOCUMENTS = [
 ];
 
 const text = (v, m, req = false) => (v == null || v === '') ? !req : typeof v === 'string' && v.trim().length > 0 && v.length <= m;
-const validDate = (v) => v == null || v === '' || DATE_RE.test(v);
+const validDate = (v) => v == null || v === '' || realDate(v); // realDate: tolak tanggal yang tidak ada (2026-02-31, 2026-13-01)
 const toDate = (v) => (v == null || v === '') ? null : new Date(`${v}T00:00:00Z`);
 const dateOnly = (v) => v == null ? null : v.toISOString().slice(0, 10);
 const todayJakarta = () => new Date(Date.now() + 7 * 3600 * 1000).toISOString().slice(0, 10);
@@ -252,7 +252,7 @@ router.delete('/:id', requireRole(EDITOR_ROLES), async (req, res) => {
 });
 
 // ---------- Riwayat service ----------
-// Catat tanggal kapan kendaraan diservis + invoice PDF (opsional).
+// Catat tanggal kapan kendaraan diservis, bagian apa yang diservis + invoice PDF (opsional).
 // PDF tidak ikut di daftar; hanya bisa diambil user yang login lewat
 // GET /:id/services/:serviceId (folder uploads tidak di-expose publik).
 
@@ -295,6 +295,7 @@ router.post('/:id/services', requireRole(EDITOR_ROLES), async (req, res) => {
     const tanggal = body.tanggal_service;
     if (!realDate(tanggal)) return res.status(400).json({ message: 'Tanggal service wajib diisi dengan tanggal yang valid.' });
     if (tanggal > todayJakarta()) return res.status(400).json({ message: 'Tanggal service tidak boleh melebihi hari ini.' });
+    if (!text(body.bagian_service, 255, true)) return res.status(400).json({ message: 'Bagian yang diservis wajib diisi (maksimal 255 karakter).' });
     // Invoice opsional saat tambah service; kalau dikirim harus PDF asli.
     const withInvoice = body.invoice_document_file_data != null && body.invoice_document_file_data !== '';
     if (withInvoice) {
@@ -312,13 +313,15 @@ router.post('/:id/services', requireRole(EDITOR_ROLES), async (req, res) => {
       invoice_document_file_path: await saveDataUrl(body.invoice_document_file_data, body.invoice_document_name, SERVICE_FOLDER),
     } : {};
     const row = await prisma.kendaraanService.create({
-      data: { kendaraan_id: id, tanggal_service: toDate(tanggal), ...invoice, created_by: req.user.id, updated_by: req.user.id },
+      data: { kendaraan_id: id, tanggal_service: toDate(tanggal), bagian_service: body.bagian_service.trim(), ...invoice, created_by: req.user.id, updated_by: req.user.id },
       ...SERVICE_RESPONSE,
     });
     res.status(201).json({ data: serializeService(row) });
   } catch (err) {
     // Kendaraan dihapus di antara pengecekan & insert -> FK gagal.
     if (err.code === 'P2003') return res.status(404).json({ message: 'Kendaraan tidak ditemukan.' });
+    // Dua request bersamaan untuk tanggal yang sama -> ditahan unique constraint DB.
+    if (err.code === 'P2002') return res.status(409).json({ message: 'Service pada tanggal tersebut sudah tercatat.' });
     logger.error('POST riwayat service gagal', { error: err });
     res.status(500).json({ message: 'Gagal menambahkan riwayat service.' });
   }

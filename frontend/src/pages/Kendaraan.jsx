@@ -637,6 +637,7 @@ function ServiceHistory({ vehicleId, canManage, onView, onChanged }) {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
   const [tanggal, setTanggal] = useState(todayLocal());
+  const [bagian, setBagian] = useState('');
   const [invoice, setInvoice] = useState({ name: '', data: '' });
   const [saving, setSaving] = useState(false);
   const [busyId, setBusyId] = useState(null);
@@ -648,18 +649,22 @@ function ServiceHistory({ vehicleId, canManage, onView, onChanged }) {
     onChanged?.(list);
   }
 
+  const [loadKey, setLoadKey] = useState(0);
+  useEffect(() => {
+    setTanggal(todayLocal());
+    setBagian('');
+    setInvoice({ name: '', data: '' });
+  }, [vehicleId]);
   useEffect(() => {
     let alive = true;
     setLoading(true);
     setLoadError('');
-    setTanggal(todayLocal());
-    setInvoice({ name: '', data: '' });
     api.get(`/kendaraan/${vehicleId}/services`)
       .then((res) => { if (alive) setItems(res.data.data || []); })
       .catch((err) => { if (alive) setLoadError(err.response?.data?.message || 'Gagal memuat riwayat service.'); })
       .finally(() => { if (alive) setLoading(false); });
     return () => { alive = false; };
-  }, [vehicleId]);
+  }, [vehicleId, loadKey]);
 
   async function pickInvoice(file) {
     if (!file) return;
@@ -677,17 +682,20 @@ function ServiceHistory({ vehicleId, canManage, onView, onChanged }) {
     if (!tanggal) problem = 'Tanggal service wajib diisi.';
     else if (tanggal > todayLocal()) problem = 'Tanggal service tidak boleh melebihi hari ini.';
     else if (items.some((x) => x.tanggal_service === tanggal)) problem = `Service tanggal ${fmtDate(tanggal)} sudah tercatat.`;
+    else if (!bagian.trim()) problem = 'Bagian yang diservis wajib diisi.';
+    else if (bagian.trim().length > 255) problem = 'Bagian yang diservis maksimal 255 karakter.';
     if (problem) {
-      await alert({ title: 'Tanggal service belum valid', message: problem, tone: 'warning' });
+      await alert({ title: 'Data service belum valid', message: problem, tone: 'warning' });
       return;
     }
-    const payload = { tanggal_service: tanggal };
+    const payload = { tanggal_service: tanggal, bagian_service: bagian.trim() };
     if (invoice.data) Object.assign(payload, { invoice_document_name: invoice.name, invoice_document_file_data: invoice.data });
     setSaving(true);
     try {
       await api.post(`/kendaraan/${vehicleId}/services`, payload);
       await reload();
       setTanggal(todayLocal());
+      setBagian('');
       setInvoice({ name: '', data: '' });
       toast(`Service tanggal ${fmtDate(tanggal)} berhasil dicatat.`);
     } catch (err) {
@@ -728,7 +736,7 @@ function ServiceHistory({ vehicleId, canManage, onView, onChanged }) {
 
   async function remove(item) {
     if (busyId) return;
-    const ok = await confirm({ title: 'Hapus riwayat service?', message: `Service tanggal ${fmtDate(item.tanggal_service)}${item.invoice_document_name ? ' beserta PDF-nya' : ''} akan dihapus dari riwayat.`, confirmText: 'Ya, Hapus', tone: 'danger' });
+    const ok = await confirm({ title: 'Hapus riwayat service?', message: `Service tanggal ${fmtDate(item.tanggal_service)}${item.bagian_service ? ` (${item.bagian_service})` : ''}${item.invoice_document_name ? ' beserta PDF-nya' : ''} akan dihapus dari riwayat.`, confirmText: 'Ya, Hapus', tone: 'danger' });
     if (!ok) return;
     setBusyId(item.id);
     try {
@@ -743,6 +751,7 @@ function ServiceHistory({ vehicleId, canManage, onView, onChanged }) {
   }
 
   const smallBtn = 'px-2.5 py-1 rounded-lg border text-[11px] font-semibold disabled:opacity-60';
+  const anyBusy = busyId !== null;
   return (
     <div>
       <div className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Riwayat Service ({items.length})</div>
@@ -750,11 +759,15 @@ function ServiceHistory({ vehicleId, canManage, onView, onChanged }) {
         {canManage && !loading && !loadError && (
           <form noValidate onSubmit={add} className="mb-3 pb-3 border-b border-slate-100">
             <div className="flex flex-wrap items-end gap-2">
-              <div className="min-w-[160px] flex-1">
+              <div className="min-w-[160px] flex-1 order-1">
                 <label className="block text-[11px] font-semibold text-slate-500 mb-1">Tanggal Service</label>
                 <input type="date" max={todayLocal()} value={tanggal} onChange={(e) => setTanggal(e.target.value)} className="w-full h-10 px-3 rounded-lg border border-slate-300 bg-white text-sm outline-none focus:border-slate-900" />
               </div>
-              <div className="min-w-[200px] flex-[2]">
+              <div className="w-full order-first">
+                <label className="block text-[11px] font-semibold text-slate-500 mb-1">Bagian yang Diservis <span className="text-red-600">*</span></label>
+                <input value={bagian} maxLength={255} onChange={(e) => setBagian(e.target.value)} placeholder="Contoh: Ganti oli mesin, kampas rem depan, filter AC" className="w-full h-10 px-3 rounded-lg border border-slate-300 bg-white text-sm outline-none focus:border-slate-900" />
+              </div>
+              <div className="min-w-[200px] flex-[2] order-2">
                 <label className="block text-[11px] font-semibold text-slate-500 mb-1">PDF Service <span className="font-normal">(opsional · maks. 12MB)</span></label>
                 <div className="flex items-center gap-2">
                   <label className="relative flex-1 min-w-0 h-10 px-3 rounded-lg border border-dashed border-slate-300 bg-white flex items-center gap-2 cursor-pointer hover:bg-slate-50">
@@ -766,21 +779,22 @@ function ServiceHistory({ vehicleId, canManage, onView, onChanged }) {
                   {invoice.data && <button type="button" onClick={() => setInvoice({ name: '', data: '' })} className={`${smallBtn} h-10 border-red-200 text-red-600`}>✕</button>}
                 </div>
               </div>
-              <button disabled={saving} className="h-10 px-4 rounded-lg bg-slate-900 text-white text-xs font-semibold disabled:opacity-60">{saving ? 'Menyimpan...' : '＋ Tambah Service'}</button>
+              <button disabled={saving} className="order-3 h-10 px-4 rounded-lg bg-slate-900 text-white text-xs font-semibold disabled:opacity-60">{saving ? 'Menyimpan...' : '＋ Tambah Service'}</button>
             </div>
           </form>
         )}
         {loading ? <div className="text-xs text-slate-500">Memuat riwayat service...</div>
-          : loadError ? <div className="text-xs text-red-700">{loadError}</div>
+          : loadError ? <div className="text-xs text-red-700">{loadError} <button type="button" onClick={() => setLoadKey((k) => k + 1)} className="ml-1 font-semibold underline">Coba lagi</button></div>
           : items.length === 0 ? <div className="text-xs text-slate-500">Belum ada riwayat service untuk kendaraan ini.</div>
           : (
             <ol className="divide-y divide-slate-100">
               {items.map((item, i) => (
                 <li key={item.id} className="flex flex-wrap items-center justify-between gap-3 py-2">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <span className="material-symbols-outlined text-[18px] text-slate-400">build</span>
+                  <div className="flex items-start gap-2 min-w-0 flex-1">
+                    <span className="material-symbols-outlined text-[18px] text-slate-400 mt-0.5">build</span>
                     <div className="min-w-0">
                       <div className="text-sm font-semibold text-slate-800">{fmtDate(item.tanggal_service)}{i === 0 && <span className="ml-2 px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 text-[9px] font-bold align-middle">TERAKHIR</span>}</div>
+                      {item.bagian_service && <div className="text-xs text-slate-700 mt-0.5 break-words">{item.bagian_service}</div>}
                       <div className="text-[10px] text-slate-400 truncate">
                         {item.invoice_document_name ? item.invoice_document_name : 'Belum ada PDF'}
                         {item.createdBy?.nama_lengkap && ` · Dicatat oleh ${item.createdBy.nama_lengkap}`}
@@ -788,14 +802,14 @@ function ServiceHistory({ vehicleId, canManage, onView, onChanged }) {
                     </div>
                   </div>
                   <div className="flex gap-1.5">
-                    {item.invoice_document_name && <button type="button" disabled={busyId === item.id} onClick={() => viewInvoice(item)} className={`${smallBtn} border-emerald-200 bg-emerald-50 text-emerald-700`}>Lihat PDF</button>}
+                    {item.invoice_document_name && <button type="button" disabled={anyBusy} onClick={() => viewInvoice(item)} className={`${smallBtn} border-emerald-200 bg-emerald-50 text-emerald-700`}>Lihat PDF</button>}
                     {canManage && (
-                      <label className={`relative ${smallBtn} border-slate-200 text-slate-700 ${busyId === item.id ? 'opacity-60 cursor-wait' : 'cursor-pointer hover:bg-slate-50'}`}>
+                      <label className={`relative ${smallBtn} border-slate-200 text-slate-700 ${anyBusy ? 'opacity-60 cursor-wait' : 'cursor-pointer hover:bg-slate-50'}`}>
                         {busyId === item.id ? 'Memproses...' : item.invoice_document_name ? 'Ganti PDF' : 'Upload PDF'}
-                        {busyId !== item.id && <input type="file" accept="application/pdf,.pdf" className="absolute inset-0 opacity-0 cursor-pointer" onChange={(e) => { uploadInvoice(item, e.target.files?.[0]); e.target.value = ''; }} />}
+                        {!anyBusy && <input type="file" accept="application/pdf,.pdf" className="absolute inset-0 opacity-0 cursor-pointer" onChange={(e) => { uploadInvoice(item, e.target.files?.[0]); e.target.value = ''; }} />}
                       </label>
                     )}
-                    {canManage && <button type="button" disabled={busyId === item.id} onClick={() => remove(item)} className={`${smallBtn} border-red-200 text-red-600`}>Hapus</button>}
+                    {canManage && <button type="button" disabled={anyBusy} onClick={() => remove(item)} className={`${smallBtn} border-red-200 text-red-600`}>Hapus</button>}
                   </div>
                 </li>
               ))}

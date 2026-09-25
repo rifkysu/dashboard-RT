@@ -36,6 +36,12 @@ function localToday() {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
+// Tampilkan tanggal YYYY-MM-DD (dari DB) sebagai DD-MM-YYYY di tabel.
+function fmtTanggal(v) {
+  const m = String(v || '').match(/^(\d{4})-(\d{2})-(\d{2})/);
+  return m ? `${m[3]}-${m[2]}-${m[1]}` : '-';
+}
+
 const inputClass = 'w-full h-11 px-3 rounded-lg border border-slate-300 bg-slate-50/70 text-sm text-slate-800 outline-none focus:bg-white focus:border-slate-900 focus:ring-2 focus:ring-slate-900/10';
 const labelClass = 'block text-sm font-semibold text-slate-800 mb-2';
 
@@ -303,9 +309,9 @@ export default function Pengadaan() {
               <td className="py-3 px-5 text-slate-500">{row.stage2_vendor || '-'}</td>
               <td className="py-3 px-5"><span className="inline-flex px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 border border-slate-300 text-xs font-semibold whitespace-nowrap">{paymentLabel(row)}</span></td>
               <td className="py-3 px-5 text-slate-500">{row.stage2_invoice_amount ? `Rp ${money(row.stage2_invoice_amount)}` : '-'}</td>
-              <td className="py-3 px-5 text-slate-500">{row.tanggal?.slice(0,10)}</td>
+              <td className="py-3 px-5 text-slate-500 whitespace-nowrap">{fmtTanggal(row.tanggal)}</td>
               <td className="py-3 px-5"><span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-semibold ${statusPill[row.status]}`}>{statusLabel[row.status]}</span></td>
-              <td className="py-3 px-5 text-slate-500 whitespace-nowrap">{row.status === 'selesai' && row.tanggal_selesai ? row.tanggal_selesai.slice(0,10) : '-'}</td>
+              <td className="py-3 px-5 text-slate-500 whitespace-nowrap">{row.status === 'selesai' ? fmtTanggal(row.tanggal_selesai) : '-'}</td>
               <td className="py-3 px-5"><div className="flex items-center justify-center gap-2">
                 {stages.map((stage) => {
                   const value = row[stage.field]; const done = value === 'selesai'; const active = value === 'on_progress';

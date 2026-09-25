@@ -216,12 +216,13 @@ model Kendaraan {
   @@map("kendaraan")
 }
 
-// Riwayat service per kendaraan -- tanggal service + invoice PDF (opsional).
+// Riwayat service per kendaraan -- tanggal, bagian yang diservis + invoice PDF (opsional).
 // Ikut terhapus kalau kendaraannya dihapus.
 model KendaraanService {
   id              Int      @id @default(autoincrement())
   kendaraan_id    Int
   tanggal_service DateTime @db.Date
+  bagian_service  String?  @db.VarChar(255) // bagian yang diservis, mis. "Ganti oli, kampas rem"
   invoice_document_name      String?
   invoice_document_file_data String?
   invoice_document_file_path String?
@@ -234,7 +235,7 @@ model KendaraanService {
   createdBy User?     @relation("KendaraanServiceCreatedBy", fields: [created_by], references: [id], onDelete: SetNull)
   updatedBy User?     @relation("KendaraanServiceUpdatedBy", fields: [updated_by], references: [id], onDelete: SetNull)
 
-  @@index([kendaraan_id, tanggal_service])
+  @@unique([kendaraan_id, tanggal_service]) // satu kendaraan tidak bisa dicatat service 2x di tanggal yang sama
   @@map("kendaraan_service")
 }
 
