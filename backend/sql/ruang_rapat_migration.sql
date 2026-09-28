@@ -44,3 +44,18 @@ ALTER TABLE ruang_rapat ADD COLUMN IF NOT EXISTS pic_phone VARCHAR(30);
 UPDATE ruang_rapat SET pic_phone='-' WHERE pic_phone IS NULL;
 ALTER TABLE ruang_rapat ALTER COLUMN pic_phone SET NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_ruang_rapat_pic_phone ON ruang_rapat (pic_phone);
+
+
+-- Booking multi-hari (sama dengan Prisma migration 0022_ruang_rapat_multi_hari).
+-- Booking berlaku tiap hari dari booking_date s/d end_date pada jam yang sama.
+-- Jika database dikelola dengan Prisma, cukup jalankan `npx prisma migrate deploy`
+-- (jangan jalankan bagian ini manual, supaya riwayat migration Prisma tetap sinkron).
+ALTER TABLE ruang_rapat ADD COLUMN IF NOT EXISTS end_date DATE;
+UPDATE ruang_rapat SET end_date = booking_date WHERE end_date IS NULL;
+ALTER TABLE ruang_rapat ALTER COLUMN end_date SET NOT NULL;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'ruang_rapat_end_date_check') THEN
+    ALTER TABLE ruang_rapat ADD CONSTRAINT ruang_rapat_end_date_check CHECK (end_date >= booking_date);
+  END IF;
+END $$;
+CREATE INDEX IF NOT EXISTS ruang_rapat_room_booking_date_end_date_idx ON ruang_rapat (room, booking_date, end_date);

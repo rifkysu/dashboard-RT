@@ -10,6 +10,9 @@ function monday(d=new Date()){const x=new Date(d),n=x.getDay();x.setDate(x.getDa
 function dates(start){const x=new Date(`${start}T00:00:00`);return Array.from({length:7},(_,i)=>{const d=new Date(x);d.setDate(x.getDate()+i);return iso(d)})}
 function label(v){const d=new Date(`${v}T00:00:00`);return `${d.getDate()} ${d.toLocaleString('id-ID',{month:'short'})}`}
 const cutiBersamaLabel = holidayLabel;
+// Booking multi-hari: tampil di setiap hari dari `date` s/d `end_date`.
+const endOf=x=>x.end_date||x.date;
+const dayCount=(a,b)=>Math.round((new Date(`${b}T00:00:00`)-new Date(`${a}T00:00:00`))/86400000)+1;
 
 // Jadwal ruang rapat read-only (data publik, tanpa login). Dipakai bersama
 // oleh halaman kiosk /jadwal-rapat dan landing page di /.
@@ -41,7 +44,7 @@ export default function RuangRapatSchedule() {
       <div className="overflow-x-auto">
         <div className="min-w-[1180px] grid grid-cols-7 divide-x-2 divide-slate-200 border-t-2 border-slate-200">
           {ds.map(date=>{
-            const d=new Date(`${date}T00:00:00`), idx=(d.getDay()+6)%7, its=items.filter(x=>x.date===date), today=iso()===date, cuti=cutiBersamaLabel(date);
+            const d=new Date(`${date}T00:00:00`), idx=(d.getDay()+6)%7, its=items.filter(x=>x.date<=date&&endOf(x)>=date), today=iso()===date, cuti=cutiBersamaLabel(date);
             return (
               <div key={date} className="min-h-[420px]">
                 <div className={`p-4 border-b-2 border-slate-200 ${today?'bg-violet-100':cuti?'bg-amber-100/70':'bg-slate-50'} ${cuti?'text-amber-700':idx>=5?'text-red-600':''}`}>
@@ -55,6 +58,7 @@ export default function RuangRapatSchedule() {
                     : its.map(x => (
                       <div key={x.id} className={`border rounded-xl p-3 select-none ${STATUS[x.status]||STATUS.belum}`}>
                         <div className="text-xs font-bold">{x.start} – {x.end}</div>
+                        {endOf(x)!==x.date && <div className="text-[10px] font-semibold opacity-75 mt-0.5">Hari {dayCount(x.date,date)}/{dayCount(x.date,endOf(x))} · {label(x.date)} – {label(endOf(x))}</div>}
                         <div className="font-bold text-sm mt-2">{x.title}</div>
                         <div className="text-xs mt-1">▣ {x.room}</div>
                         <div className="text-xs font-semibold mt-1">♙ PIC: {x.pic}</div>

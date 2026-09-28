@@ -6,7 +6,7 @@ const required = {
   pemeliharaan: ['id','kode','judul','status','tahap1_status','tahap2_status','tahap3_status','tanggal_selesai'],
   pengadaan: ['id','kode','nama_barang_jasa','nilai_hps','status','tahap1_status','tahap2_status','tahap3_status','tanggal_selesai'],
   kendaraan: ['id','name','plate','type','status','photo_file_path'],
-  ruang_rapat: ['id','agenda','room','pic','booking_date','start_time','end_time','surat_status','surat_file_path'],
+  ruang_rapat: ['id','agenda','room','pic','booking_date','end_date','start_time','end_time','surat_status','surat_file_path'],
 };
 
 (async () => {

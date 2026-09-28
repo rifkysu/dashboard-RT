@@ -76,3 +76,16 @@ backend/uploads/
 ```
 
 Untuk production serverless seperti Vercel, penyimpanan lokal filesystem tidak persisten. Untuk deployment tersebut, file upload sebaiknya nanti dipindahkan ke object storage (misalnya S3-compatible/Supabase Storage/R2). PostgreSQL + Prisma tetap dapat dipakai tanpa mengubah API bisnis.
+
+## 6. Catatan migration Ruang Rapat & sinkronisasi pgAdmin4
+
+- `0022_ruang_rapat_multi_hari` menambah kolom `ruang_rapat.end_date` (booking multi-hari, maks. 90 hari, jam yang sama setiap hari). Booking lama otomatis `end_date = booking_date`.
+- `0023_sinkron_kolom_pgadmin` menambahkan kolom yang dulu hanya dibuat lewat script SQL pgAdmin (`ruang_rapat.pic_phone`, `pengadaan.titik_lokasi`) supaya database yang dibuat murni lewat Prisma tidak error. Aman untuk database lama (memakai `IF NOT EXISTS`).
+- Cek sinkron (read-only, tidak mengubah data):
+
+```bash
+npx prisma migrate status
+npx prisma migrate diff --from-schema-datasource prisma/schema.prisma --to-schema-datamodel prisma/schema.prisma
+```
+
+> **Jangan** memakai `DATABASE_URL` asli sebagai `--shadow-database-url`: Prisma mengosongkan shadow database sebelum dipakai.
