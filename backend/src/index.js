@@ -2,6 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const passport = require('passport');
+const jwt = require('jsonwebtoken');
 const { requestHardening, createRateLimiter, validateCommonInput, randomRequestId } = require('./middleware/security');
 
 require('./config/passport'); // daftarkan strategy Google SSO (jika dikonfigurasi)
@@ -37,7 +38,15 @@ app.use((req, res, next) => {
   next();
 });
 app.use(cors({ origin: frontendUrl, credentials: false, methods: ['GET','POST','PUT','DELETE','OPTIONS'], allowedHeaders: ['Content-Type','Authorization','X-Request-ID'], exposedHeaders: ['Retry-After','X-RateLimit-Limit','X-RateLimit-Remaining'] }));
-app.use(createRateLimiter({ windowMs: 60 * 1000, max: 180, message: 'Terlalu banyak permintaan. Coba lagi sebentar.' }));
+// Request dengan token valid dihitung per akun (bukan per IP saja): satu kantor biasanya keluar
+// lewat satu IP (NAT/proxy), dan tiap tab yang terbuka polling beberapa kali per menit -- tanpa
+// ini puluhan pegawai sekaligus bisa kena 429. Tanpa token / token tidak valid tetap per IP.
+const rateKeyByUser = (req) => {
+  const header = req.headers.authorization || '';
+  if (!header.startsWith('Bearer ') || header.length > 4200) return '';
+  try { return `u:${jwt.verify(header.slice(7).trim(), process.env.JWT_SECRET, { algorithms: ['HS256'] }).id}`; } catch { return ''; }
+};
+app.use(createRateLimiter({ windowMs: 60 * 1000, max: 180, message: 'Terlalu banyak permintaan. Coba lagi sebentar.', keyFn: rateKeyByUser }));
 // File upload disimpan sebagai Base64 di payload JSON; naikkan limit agar dokumen tidak ditolak 413.
 app.use(express.json({ limit: '25mb', strict: true }));
 app.use(express.urlencoded({ extended: false, limit: '2mb', parameterLimit: 100 }));

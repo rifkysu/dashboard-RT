@@ -77,6 +77,9 @@ export default function Pengadaan() {
   const [showAddForm, setShowAddForm] = useState(false);
   const [form, setForm] = useState(emptyForm);
   const [error, setError] = useState('');
+  // Error saat memuat daftar ditampilkan di tabel (bukan di form Tambah), supaya tabel kosong
+  // karena gagal muat tidak terlihat seperti "belum ada data".
+  const [loadError, setLoadError] = useState('');
   const [selectedRow, setSelectedRow] = useState(null);
   const [selectedStage, setSelectedStage] = useState(null);
   const [draft, setDraft] = useState({});
@@ -87,7 +90,7 @@ export default function Pengadaan() {
 
   function load() {
     setLoading(true);
-    api.get('/pengadaan').then((res) => setData(res.data.data || [])).catch((err) => { console.error('[LOAD PENGADAAN]', err); setError(err.response?.data?.message || 'Gagal memuat pengadaan.'); }).finally(() => setLoading(false));
+    api.get('/pengadaan').then((res) => { setData(res.data.data || []); setLoadError(''); }).catch((err) => { console.error('[LOAD PENGADAAN]', err); setLoadError(err.response?.data?.message || 'Gagal memuat data pengadaan.'); }).finally(() => setLoading(false));
   }
   useEffect(load, []);
 
@@ -299,7 +302,8 @@ export default function Pengadaan() {
           </tr></thead>
           <tbody className="divide-y divide-slate-100">
             {loading && <tr><td colSpan={14} className="py-8 text-center text-slate-400">Memuat data...</td></tr>}
-            {!loading && visibleData.length === 0 && <tr><td colSpan={14} className="py-8 text-center text-slate-400">Belum ada data.</td></tr>}
+            {!loading && loadError && <tr><td colSpan={14} className="py-8 text-center text-red-600">{loadError} <button type="button" onClick={load} className="ml-2 px-3 py-1 rounded-lg border border-red-200 bg-red-50 text-xs font-semibold hover:bg-red-100">Coba lagi</button></td></tr>}
+            {!loading && !loadError && visibleData.length === 0 && <tr><td colSpan={14} className="py-8 text-center text-slate-400">Belum ada data.</td></tr>}
             {visibleData.map((row) => <tr key={row.id} className="divide-x divide-slate-100 hover:bg-slate-50/50">
               <td className="py-3 px-5 font-semibold text-slate-800">#{row.kode}</td>
               <td className="py-3 px-5 max-w-[220px] truncate font-semibold text-slate-800">{row.nama_barang_jasa}</td>

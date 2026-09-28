@@ -68,10 +68,15 @@ export default function RuangRapat() {
   // Modal detail yang lagi kebuka ikut disegarkan tiap `items` ter-update (SSE/polling),
   // supaya kalau orang lain edit booking yang sama, "Terakhir diedit oleh" & data lain
   // di modal langsung berubah tanpa perlu tutup-buka modal.
+  const selectedIdRef=useRef(null); selectedIdRef.current=selected?.id??null;
   useEffect(()=>{
     if(!selected) return;
     const fresh=items.find(x=>x.id===selected.id);
-    if(fresh && fresh.updated_at!==selected.updated_at) api.get(`/ruang-rapat/${selected.id}`).then(r=>setSelected(cur=>cur&&cur.id===r.data.data.id?r.data.data:cur)).catch(()=>{});
+    if(fresh && fresh.updated_at===selected.updated_at) return;
+    // Tidak ada di minggu ini (mungkin dipindah ke minggu lain atau dibatalkan orang lain) atau
+    // sudah berubah -> ambil ulang. Kalau ternyata sudah dihapus, tutup modal supaya tidak diedit.
+    const id=selected.id;
+    api.get(`/ruang-rapat/${id}`).then(r=>setSelected(cur=>cur&&cur.id===id?r.data.data:cur)).catch(e=>{if(e.response?.status!==404||selectedIdRef.current!==id)return;setSelected(null);setCancelDatesOpen(false);toast('Booking ini sudah dibatalkan oleh pengguna lain.','info');});
   },[items]);
   const weekDates=useMemo(()=>{const start=new Date(`${weekStart}T00:00:00`);return Array.from({length:7},(_,i)=>{const d=new Date(start);d.setDate(start.getDate()+i);return localDateISO(d);});},[weekStart]);
 

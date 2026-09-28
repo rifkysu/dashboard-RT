@@ -1,11 +1,17 @@
 import React, { useEffect, useState } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import api from '../api';
 import { useAuth } from '../context/AuthContext';
 import BrandMark from '../components/BrandMark';
+import { validateLogin } from '../utils/validation';
 
 export default function Login() {
-  const [email, setEmail] = useState('');
+  const location = useLocation();
+  // Datang dari halaman Daftar Akun -> tampilkan pesan sukses & isi email otomatis.
+  const registered = location.state?.registered === true;
+  const [email, setEmail] = useState(() => (registered && typeof location.state?.email === 'string' ? location.state.email : ''));
+  const [fieldErrors, setFieldErrors] = useState({});
+  const [success, setSuccess] = useState(registered ? 'Akun berhasil dibuat. Silakan masuk menggunakan email dan kata sandi Anda.' : '');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [searchParams] = useSearchParams();
@@ -17,6 +23,8 @@ export default function Login() {
   const [now, setNow] = useState(Date.now());
   const { login } = useAuth();
   const navigate = useNavigate();
+  // Bersihkan state navigasi supaya pesan sukses tidak muncul lagi saat halaman di-refresh.
+  useEffect(() => { if (registered) navigate(location.pathname + location.search, { replace: true, state: null }); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!lockedUntil) return;
@@ -36,11 +44,15 @@ export default function Login() {
 
   async function handleSubmit(e) {
     e.preventDefault();
-    if (isLocked) return;
+    if (isLocked || loading) return;
     setError('');
+    const errors = validateLogin({ email, password });
+    setFieldErrors(errors);
+    if (Object.keys(errors).length) return;
+    setSuccess('');
     setLoading(true);
     try {
-      const res = await api.post('/auth/login', { email, password });
+      const res = await api.post('/auth/login', { email: email.trim().toLowerCase(), password });
       login(res.data.token, res.data.user);
       navigate('/dashboard');
     } catch (err) {
@@ -86,13 +98,21 @@ export default function Login() {
               Akses layanan pemeliharaan, pengadaan, kendaraan, dan jadwal ruang rapat.
             </p>
 
+            {success && !error && (
+              <div className="mb-4 px-4 py-3 bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm rounded-xl flex items-start gap-2">
+                <span className="material-symbols-outlined text-[18px]">check_circle</span>
+                <span>{success}</span>
+              </div>
+            )}
+
             {error && (
               <div className="mb-4 px-4 py-3 bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl">
                 {error}
               </div>
             )}
 
-            <form className="space-y-4" onSubmit={handleSubmit}>
+            <form noValidate className="space-y-4" onSubmit={handleSubmit}>
+              <div>
               <div className="relative">
                 <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-[20px]">
                   mail
@@ -100,13 +120,17 @@ export default function Login() {
                 <input
                   type="email"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(e) => { setEmail(e.target.value); setFieldErrors((f) => ({ ...f, email: undefined })); }}
                   placeholder="Email"
-                  className="w-full pl-12 pr-4 py-3.5 bg-slate-100 border border-transparent rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 focus:bg-white transition"
-                  required
+                  autoComplete="email"
+                  aria-invalid={!!fieldErrors.email}
+                  className={`w-full pl-12 pr-4 py-3.5 bg-slate-100 border rounded-2xl ${fieldErrors.email ? 'border-red-400' : 'border-transparent'} text-sm focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 focus:bg-white transition`}
                 />
               </div>
+                {fieldErrors.email && <p className="text-[11px] text-red-600 mt-1 ml-1">{fieldErrors.email}</p>}
+              </div>
 
+              <div>
               <div className="relative">
                 <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-[20px]">
                   key
@@ -114,10 +138,11 @@ export default function Login() {
                 <input
                   type={showPassword ? 'text' : 'password'}
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={(e) => { setPassword(e.target.value); setFieldErrors((f) => ({ ...f, password: undefined })); }}
                   placeholder="Kata Sandi"
-                  className="w-full pl-12 pr-11 py-3.5 bg-slate-100 border border-transparent rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 focus:bg-white transition"
-                  required
+                  autoComplete="current-password"
+                  aria-invalid={!!fieldErrors.password}
+                  className={`w-full pl-12 pr-11 py-3.5 bg-slate-100 border rounded-2xl ${fieldErrors.password ? 'border-red-400' : 'border-transparent'} text-sm focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 focus:bg-white transition`}
                 />
                 <button
                   type="button"
@@ -128,6 +153,8 @@ export default function Login() {
                     {showPassword ? 'visibility_off' : 'visibility'}
                   </span>
                 </button>
+              </div>
+                {fieldErrors.password && <p className="text-[11px] text-red-600 mt-1 ml-1">{fieldErrors.password}</p>}
               </div>
 
               <div className="text-right">

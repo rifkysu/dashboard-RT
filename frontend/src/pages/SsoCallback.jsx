@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import api from '../api';
 import { useAuth } from '../context/AuthContext';
@@ -9,8 +9,13 @@ export default function SsoCallback() {
   const [params] = useSearchParams();
   const { login } = useAuth();
   const navigate = useNavigate();
+  // StrictMode (npm run dev) menjalankan efek dua kali: run kedua sudah tidak menemukan token
+  // (URL sudah dibersihkan run pertama) dan salah mengarahkan ke "SSO gagal". Jalankan sekali saja.
+  const started = useRef(false);
 
   useEffect(() => {
+    if (started.current) return;
+    started.current = true;
     const hash = new URLSearchParams(window.location.hash.slice(1));
     const token = hash.get('token') || params.get('token');
     // Hapus token dari address bar/riwayat browser secepatnya.

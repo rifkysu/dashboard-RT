@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import api from '../api';
-import { useAuth } from '../context/AuthContext';
+import { validateRegister, normalizePhone } from '../utils/validation';
 import BrandMark from '../components/BrandMark';
 
 export default function Register() {
@@ -13,47 +13,54 @@ export default function Register() {
     role: '',
     password: '',
     confirm: '',
+    agree: false,
   });
   const [error, setError] = useState('');
+  // Pesan error per kolom ({ field: pesan }) -> ditampilkan di bawah kolom yang salah.
+  const [fieldErrors, setFieldErrors] = useState({});
   const [loading, setLoading] = useState(false);
-  const { login } = useAuth();
   const navigate = useNavigate();
 
   function update(field, value) {
     setForm((f) => ({ ...f, [field]: value }));
+    setFieldErrors((fe) => (fe[field] ? { ...fe, [field]: undefined } : fe));
   }
 
   async function handleSubmit(e) {
     e.preventDefault();
+    if (loading) return;
     setError('');
-
-    if (form.password !== form.confirm) {
-      setError('Konfirmasi kata sandi tidak cocok.');
-      return;
-    }
-    if (form.password.length < 8) {
-      setError('Kata sandi minimal 8 karakter.');
+    const errors = validateRegister(form);
+    setFieldErrors(errors);
+    if (Object.keys(errors).length) {
+      setError('Periksa kembali data yang ditandai merah.');
       return;
     }
 
     setLoading(true);
     try {
-      const res = await api.post('/auth/register', {
-        nama_lengkap: form.nama_lengkap,
-        email: form.email,
-        no_hp: form.no_hp,
+      const email = form.email.trim().toLowerCase();
+      await api.post('/auth/register', {
+        nama_lengkap: form.nama_lengkap.trim(),
+        email,
+        no_hp: normalizePhone(form.no_hp),
         unit_kerja: form.unit_kerja,
         role: form.role,
         password: form.password,
       });
-      login(res.data.token, res.data.user);
-      navigate('/dashboard');
+      // Tidak login otomatis: pengguna diarahkan ke halaman Login dan masuk dengan akun barunya.
+      navigate('/login', { replace: true, state: { registered: true, email } });
     } catch (err) {
-      setError(err.response?.data?.message || 'Gagal mendaftar. Silakan coba lagi.');
+      const status = err.response?.status;
+      const message = err.response?.data?.message || 'Gagal mendaftar. Silakan coba lagi.';
+      if (status === 409) setFieldErrors({ email: message });
+      setError(message);
     } finally {
       setLoading(false);
     }
   }
+
+  const inputCls = (field, base) => `${base}${fieldErrors[field] ? ' !border-red-400 !bg-red-50/40' : ''}`;
 
   return (
     <div className="min-h-screen flex flex-col justify-between">
@@ -99,7 +106,7 @@ export default function Register() {
             </div>
           )}
 
-          <form className="space-y-4" onSubmit={handleSubmit}>
+          <form noValidate className="space-y-4" onSubmit={handleSubmit}>
             <div>
               <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
                 Nama Lengkap &amp; Gelar *
@@ -110,8 +117,9 @@ export default function Register() {
                 value={form.nama_lengkap}
                 onChange={(e) => update('nama_lengkap', e.target.value)}
                 placeholder="Misal: Ahmad Fauzi, S.E."
-                className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 focus:bg-white transition"
+                className={inputCls('nama_lengkap', "w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 focus:bg-white transition")}
               />
+              {fieldErrors.nama_lengkap && <p className="text-[11px] text-red-600 mt-1">{fieldErrors.nama_lengkap}</p>}
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -125,8 +133,9 @@ export default function Register() {
                   value={form.email}
                   onChange={(e) => update('email', e.target.value)}
                   placeholder="nama@kemnaker.go.id"
-                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 focus:bg-white transition"
+                  className={inputCls('email', "w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 focus:bg-white transition")}
                 />
+                {fieldErrors.email && <p className="text-[11px] text-red-600 mt-1">{fieldErrors.email}</p>}
               </div>
               <div>
                 <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
@@ -138,8 +147,9 @@ export default function Register() {
                   value={form.no_hp}
                   onChange={(e) => update('no_hp', e.target.value)}
                   placeholder="08123456789"
-                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 focus:bg-white transition"
+                  className={inputCls('no_hp', "w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 focus:bg-white transition")}
                 />
+                {fieldErrors.no_hp && <p className="text-[11px] text-red-600 mt-1">{fieldErrors.no_hp}</p>}
               </div>
             </div>
 
@@ -152,7 +162,7 @@ export default function Register() {
                   required
                   value={form.unit_kerja}
                   onChange={(e) => update('unit_kerja', e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 focus:bg-white transition cursor-pointer"
+                  className={inputCls('unit_kerja', "w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 focus:bg-white transition cursor-pointer")}
                 >
                   <option value="">Pilih Bagian...</option>
                   <option value="rt">Bagian Rumah Tangga</option>
@@ -161,6 +171,7 @@ export default function Register() {
                   <option value="protokol">Subbag Persuratan &amp; Protokoler</option>
                   <option value="lainnya">Unit Kerja Lainnya</option>
                 </select>
+                {fieldErrors.unit_kerja && <p className="text-[11px] text-red-600 mt-1">{fieldErrors.unit_kerja}</p>}
               </div>
 
               <div>
@@ -171,13 +182,14 @@ export default function Register() {
                   required
                   value={form.role}
                   onChange={(e) => update('role', e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 focus:bg-white transition cursor-pointer"
+                  className={inputCls('role', "w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 focus:bg-white transition cursor-pointer")}
                 >
                   <option value="" disabled>Pilih Peran</option>
                   <option value="karyawan">Karyawan</option>
                   {/* Role "PIC" SENGAJA tidak ditampilkan di sini.
                       PIC hanya bisa diberikan oleh admin lewat pgAdmin4. */}
                 </select>
+                {fieldErrors.role && <p className="text-[11px] text-red-600 mt-1">{fieldErrors.role}</p>}
               </div>
             </div>
 
@@ -196,9 +208,10 @@ export default function Register() {
                   minLength={8}
                   value={form.password}
                   onChange={(e) => update('password', e.target.value)}
-                  placeholder="Minimal 8 karakter"
-                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 focus:bg-white transition"
+                  placeholder="Min. 8 karakter, huruf & angka"
+                  className={inputCls('password', "w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 focus:bg-white transition")}
                 />
+                {fieldErrors.password && <p className="text-[11px] text-red-600 mt-1">{fieldErrors.password}</p>}
               </div>
               <div>
                 <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
@@ -210,18 +223,20 @@ export default function Register() {
                   value={form.confirm}
                   onChange={(e) => update('confirm', e.target.value)}
                   placeholder="Konfirmasi kata sandi"
-                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 focus:bg-white transition"
+                  className={inputCls('confirm', "w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 focus:bg-white transition")}
                 />
+                {fieldErrors.confirm && <p className="text-[11px] text-red-600 mt-1">{fieldErrors.confirm}</p>}
               </div>
             </div>
 
             <div className="pt-2">
               <label className="flex items-start gap-2.5 cursor-pointer select-none">
-                <input type="checkbox" required className="w-4 h-4 mt-0.5 rounded border-slate-300 text-blue-600 focus:ring-blue-500" />
+                <input type="checkbox" checked={form.agree} onChange={(e) => update('agree', e.target.checked)} className="w-4 h-4 mt-0.5 rounded border-slate-300 text-blue-600 focus:ring-blue-500" />
                 <span className="text-xs text-slate-600 leading-relaxed">
                   Saya menyatakan bahwa data yang diisikan adalah benar dan bersedia mematuhi ketentuan keamanan data operasional internal Biro Umum.
                 </span>
               </label>
+              {fieldErrors.agree && <p className="text-[11px] text-red-600 mt-1 ml-6">{fieldErrors.agree}</p>}
             </div>
 
             <button
@@ -229,7 +244,7 @@ export default function Register() {
               disabled={loading}
               className="w-full py-3.5 px-4 bg-slate-900 hover:bg-slate-800 disabled:opacity-60 text-white font-semibold rounded-xl text-sm flex items-center justify-center gap-2 shadow-lg shadow-slate-900/10 transition"
             >
-              {loading ? 'Memproses...' : 'Daftar & Masuk ke Dashboard'}
+              {loading ? 'Memproses...' : 'Daftar Akun'}
               <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
             </button>
           </form>

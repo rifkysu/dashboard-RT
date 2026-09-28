@@ -1,14 +1,16 @@
 const crypto = require('crypto');
 
 // Simple in-process rate limiter. For multi-server deployments, move this to Redis.
-function createRateLimiter({ windowMs, max, message }) {
+// keyFn opsional: default per IP; login memakai IP + email supaya satu kantor yang keluar lewat
+// IP yang sama (NAT/proxy) tidak saling mengunci saat banyak pegawai login bersamaan.
+function createRateLimiter({ windowMs, max, message, keyFn }) {
   const hits = new Map();
   let lastCleanup = Date.now();
 
   return (req, res, next) => {
     const now = Date.now();
     const ip = req.ip || req.socket.remoteAddress || 'unknown';
-    const key = ip;
+    const key = keyFn ? `${ip}|${keyFn(req)}` : ip;
     let item = hits.get(key);
 
     if (!item || now - item.start >= windowMs) {
@@ -37,7 +39,8 @@ function createRateLimiter({ windowMs, max, message }) {
 
 // Endpoint SSE (/stream) publik dan koneksinya terbuka lama -> batasi jumlah
 // koneksi bersamaan per IP & total, supaya tidak bisa dipakai menghabiskan resource server.
-function createSseLimiter({ maxPerIp = 20, maxTotal = 1000 } = {}) {
+// Batas per IP dibuat longgar karena satu kantor biasanya berbagi satu IP (tiap tab = 1 koneksi).
+function createSseLimiter({ maxPerIp = 200, maxTotal = 1000 } = {}) {
   const perIp = new Map();
   let total = 0;
   return (req, res, next) => {

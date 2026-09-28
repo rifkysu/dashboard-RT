@@ -17,17 +17,40 @@ const router = express.Router();
 // oleh admin/kabag langsung lewat pgAdmin4 (lihat README.md).
 const SELF_REGISTER_ROLES = ['karyawan'];
 
+// Aturan validasi Daftar Akun -- sama dengan frontend/src/utils/validation.js.
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const NAME_RE = /^[\p{L}][\p{L} .,'-]*$/u;
+const HP_RE = /^(\+?62|0)8\d{7,12}$/;
+const UNIT_KERJA = ['rt', 'perlengkapan', 'kendaraan', 'protokol', 'lainnya'];
+function passwordIssue(pw) {
+  if (typeof pw !== 'string' || !pw) return 'Kata sandi wajib diisi.';
+  if (pw.length < 8) return 'Kata sandi minimal 8 karakter.';
+  if (pw.length > 128) return 'Kata sandi maksimal 128 karakter.';
+  if (!/[A-Za-z]/.test(pw) || !/\d/.test(pw)) return 'Kata sandi harus berisi huruf dan angka.';
+  return null;
+}
+
 // Proteksi spam-klik login: kena timeout tepat 1 menit, tidak berlapis
 // dengan limiter lain supaya lama kuncinya selalu konsisten & bisa ditebak.
+// Dihitung per IP + email: banyak pegawai satu kantor (IP sama) tetap bisa login bersamaan,
+// sedangkan tebak-tebak kata sandi untuk satu akun tetap dikunci setelah 5x per menit.
 const loginLimiter = createRateLimiter({
   windowMs: 60 * 1000,
   max: 5,
   message: 'Terlalu banyak percobaan login. Silakan tunggu 1 menit sebelum mencoba lagi.',
+  keyFn: (req) => String(normalizeEmail(req.body?.email) || '').slice(0, 254),
+});
+// Batas longgar per IP untuk menahan percobaan banyak email sekaligus dari satu sumber.
+const loginIpLimiter = createRateLimiter({
+  windowMs: 60 * 1000,
+  max: 30,
+  message: 'Terlalu banyak percobaan login dari jaringan ini. Silakan tunggu 1 menit.',
 });
 
+// Longgar karena satu kantor biasanya berbagi satu IP (banyak pegawai mendaftar di hari yang sama).
 const registerLimiter = createRateLimiter({
   windowMs: 60 * 60 * 1000,
-  max: 10,
+  max: 50,
   message: 'Terlalu banyak percobaan pendaftaran dari alamat ini.',
 });
 
@@ -54,23 +77,25 @@ function sanitizeUser(user) {
 // ---------------------------------------------------------
 router.post('/register', registerLimiter, async (req, res) => {
   try {
-    const { nama_lengkap, email: rawEmail, password, no_hp, unit_kerja, role } = req.body;
+    const { nama_lengkap: rawNama, email: rawEmail, password, no_hp: rawHp, unit_kerja, role } = req.body;
     const email = normalizeEmail(rawEmail);
+    const nama_lengkap = typeof rawNama === 'string' ? rawNama.trim() : rawNama;
+    const no_hp = typeof rawHp === 'string' ? rawHp.replace(/[\s-]/g, '') : rawHp;
 
-    if (!isSafeText(nama_lengkap, 150) || !isSafeText(email, 254) || (no_hp != null && !isSafeText(no_hp, 30)) || (unit_kerja != null && !isSafeText(unit_kerja, 150))) {
-      return res.status(400).json({ message: 'Format atau panjang data tidak valid.' });
+    if (!isSafeText(nama_lengkap, 150) || nama_lengkap.length < 3 || !NAME_RE.test(nama_lengkap)) {
+      return res.status(400).json({ message: 'Nama lengkap minimal 3 karakter dan hanya boleh berisi huruf, spasi, titik, koma, apostrof, dan tanda hubung.' });
     }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    if (!isSafeText(email, 254) || !EMAIL_RE.test(email)) {
       return res.status(400).json({ message: 'Format email tidak valid.' });
     }
-
-    if (!nama_lengkap || !email || !password || !role) {
-      return res.status(400).json({ message: 'Data wajib diisi: nama_lengkap, email, password, role.' });
+    if (typeof no_hp !== 'string' || !HP_RE.test(no_hp)) {
+      return res.status(400).json({ message: 'Nomor HP tidak valid (contoh: 081234567890 atau +6281234567890).' });
     }
-
-    if (typeof password !== 'string' || password.length < 8 || password.length > 128) {
-      return res.status(400).json({ message: 'Kata sandi minimal 8 karakter.' });
+    if (!UNIT_KERJA.includes(unit_kerja)) {
+      return res.status(400).json({ message: 'Unit kerja / bagian wajib dipilih.' });
     }
+    const pwIssue = passwordIssue(password);
+    if (pwIssue) return res.status(400).json({ message: pwIssue });
 
     // Pertahanan berlapis di server: walaupun request dipaksa mengirim
     // role "pic" langsung ke API, tetap ditolak di sini.
@@ -88,11 +113,13 @@ router.post('/register', registerLimiter, async (req, res) => {
 
     const password_hash = await bcrypt.hash(password, 12);
 
-    const user = await prisma.user.create({ data: { nama_lengkap, email, password_hash, no_hp: no_hp || null, unit_kerja: unit_kerja || null, role } });
-    const token = signToken(user);
+    const user = await prisma.user.create({ data: { nama_lengkap, email, password_hash, no_hp, unit_kerja, role } });
 
-    res.status(201).json({ token, user: sanitizeUser(user) });
+    // Sengaja TIDAK mengembalikan token: setelah daftar, pengguna masuk lewat halaman Login.
+    res.status(201).json({ message: 'Akun berhasil dibuat. Silakan login.', user: sanitizeUser(user) });
   } catch (err) {
+    // Dua pendaftaran bersamaan dengan email sama (mis. klik Daftar dua kali) -> ditahan UNIQUE.
+    if (err.code === 'P2002') return res.status(409).json({ message: 'Email sudah terdaftar. Silakan login.' });
     console.error(err);
     res.status(500).json({ message: 'Terjadi kesalahan server saat mendaftar.' });
   }
@@ -101,7 +128,7 @@ router.post('/register', registerLimiter, async (req, res) => {
 // ---------------------------------------------------------
 // POST /api/auth/login
 // ---------------------------------------------------------
-router.post('/login', loginLimiter, async (req, res) => {
+router.post('/login', loginIpLimiter, loginLimiter, async (req, res) => {
   try {
     const email = normalizeEmail(req.body.email);
     const { password } = req.body;
@@ -110,6 +137,9 @@ router.post('/login', loginLimiter, async (req, res) => {
     }
     if (!email || !password) {
       return res.status(400).json({ message: 'Email dan kata sandi wajib diisi.' });
+    }
+    if (!EMAIL_RE.test(email)) {
+      return res.status(400).json({ message: 'Format email tidak valid.' });
     }
 
     const user = await prisma.user.findFirst({ where: { email, is_active: true } });
