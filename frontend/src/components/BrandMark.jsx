@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 
-const SIZE = { xs: 'w-9 h-9', sm: 'w-10 h-10', md: 'w-11 h-11' };
-const ICON_SIZE = { xs: 'text-[18px]', sm: 'text-[20px]', md: 'text-[23px]' };
+const SIZE = { xs: 'w-9 h-9', sm: 'w-10 h-10', md: 'w-11 h-11', xl: 'w-24 h-24' };
+const ICON_SIZE = { xs: 'text-[18px]', sm: 'text-[20px]', md: 'text-[23px]', xl: 'text-[48px]' };
 
 // Menampilkan logo Kemnaker (public/logo-kemnaker.png). Kalau file belum
 // tersedia, otomatis fallback ke ikon lama supaya UI tidak pernah rusak.

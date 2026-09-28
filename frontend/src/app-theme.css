@@ -157,6 +157,20 @@ main.app-main {
 .feedback-toast { animation: feedback-slide .2s ease-out; }
 @media (prefers-reduced-motion: reduce) { .feedback-fade, .feedback-pop, .feedback-toast { animation: none; } }
 
+/* Popup animasi setelah login berhasil (components/LoginSplash.jsx) */
+@keyframes splash-logo { 0% { opacity: 0; transform: scale(.6) rotate(-8deg); } 55% { opacity: 1; transform: scale(1.08) rotate(3deg); } 75% { transform: scale(.97) rotate(-1deg); } 100% { opacity: 1; transform: none; } }
+@keyframes splash-bob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+@keyframes splash-spin { to { transform: rotate(360deg); } }
+@keyframes splash-progress { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+.splash-logo { animation: splash-logo .9s cubic-bezier(.2,.8,.2,1) both; }
+.splash-bob { animation: splash-bob 1.6s ease-in-out .9s infinite; }
+.splash-ring { animation: splash-spin 1.2s linear infinite; }
+.splash-ring-rev { animation: splash-spin 1.8s linear infinite reverse; }
+.splash-halo { animation: splash-spin 2.4s linear infinite; }
+.splash-progress { transform-origin: left; animation: splash-progress var(--splash-ms, 3000ms) linear both; }
+/* Putaran biru sengaja tetap jalan; yang dimatikan hanya gerakan logo. */
+@media (prefers-reduced-motion: reduce) { .splash-logo, .splash-bob { animation: none; } }
+
 /* Landing page */
 @keyframes landing-float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
 @keyframes landing-rise { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }

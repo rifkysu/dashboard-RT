@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import BrandMark from './BrandMark';
+import LoginSplash from './LoginSplash';
 
 const menu = [
   { to: '/dashboard', icon: 'dashboard', label: 'Dashboard', tone: 'indigo', menuKey: 'dashboard' },
@@ -19,6 +20,8 @@ const menu = [
 // dibaca di layar kecil.
 export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }) {
   const { user, logout, isMenuDown, resetRequestCount } = useAuth();
+  // Popup animasi logo ~3 detik sebelum benar-benar logout.
+  const [leaving, setLeaving] = useState(false);
   const navigate = useNavigate();
   const roleLabel = { karyawan: 'Karyawan', kabag: 'Kepala Bagian', pic: 'PIC', admin: 'Admin' };
   const hideWhenCollapsed = collapsed ? 'md:hidden' : '';
@@ -112,13 +115,14 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
                 <span className={hideWhenCollapsed}>Settings</span>
               </NavLink>
             )}
-            <button onClick={() => { logout(); navigate('/'); }} title={collapsed ? 'Logout' : undefined} className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl text-sm text-slate-500 hover:bg-red-50 hover:text-red-500 transition ${collapsed ? 'md:justify-center' : ''}`}>
+            <button onClick={() => setLeaving(true)} disabled={leaving} title={collapsed ? 'Logout' : undefined} className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl text-sm text-slate-500 hover:bg-red-50 hover:text-red-500 transition ${collapsed ? 'md:justify-center' : ''}`}>
               <span className="w-9 h-9 rounded-xl bg-slate-100 flex items-center justify-center shrink-0"><span className="material-symbols-outlined text-[18px]">logout</span></span>
               <span className={hideWhenCollapsed}>Logout</span>
             </button>
           </div>
         </div>
       </aside>
+      {leaving && <LoginSplash name={user?.nama_lengkap} title="Sampai jumpa" subtitle="Mengakhiri sesi Anda..." onDone={() => { logout(); navigate('/'); }} />}
     </>
   );
 }

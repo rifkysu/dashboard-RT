@@ -4,6 +4,7 @@ import api from '../api';
 import { useAuth } from '../context/AuthContext';
 import BrandMark from '../components/BrandMark';
 import { validateLogin } from '../utils/validation';
+import LoginSplash from '../components/LoginSplash';
 
 export default function Login() {
   const location = useLocation();
@@ -17,6 +18,8 @@ export default function Login() {
   const [searchParams] = useSearchParams();
   const [error, setError] = useState(() => (searchParams.get('sso') === 'gagal' ? 'Login SSO gagal atau akun Anda sedang dinonaktifkan. Silakan coba lagi atau hubungi admin.' : ''));
   const [loading, setLoading] = useState(false);
+  // Popup animasi logo ~3 detik setelah login berhasil, sebelum pindah ke Dashboard.
+  const [splash, setSplash] = useState(null);
   // Anti-spam: kalau backend balas 429 (terlalu banyak percobaan login),
   // tombol dikunci sampai waktu tunggunya habis (biasanya 1 menit).
   const [lockedUntil, setLockedUntil] = useState(0);
@@ -44,7 +47,7 @@ export default function Login() {
 
   async function handleSubmit(e) {
     e.preventDefault();
-    if (isLocked || loading) return;
+    if (isLocked || loading || splash) return;
     setError('');
     const errors = validateLogin({ email, password });
     setFieldErrors(errors);
@@ -54,7 +57,7 @@ export default function Login() {
     try {
       const res = await api.post('/auth/login', { email: email.trim().toLowerCase(), password });
       login(res.data.token, res.data.user);
-      navigate('/dashboard');
+      setSplash({ name: res.data.user?.nama_lengkap || '' });
     } catch (err) {
       if (err.response?.status === 429) {
         const retrySeconds = Number(err.response.headers?.['retry-after']) || 60;
@@ -165,7 +168,7 @@ export default function Login() {
 
               <button
                 type="submit"
-                disabled={loading || isLocked}
+                disabled={loading || isLocked || !!splash}
                 className="w-full py-3.5 px-4 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 disabled:opacity-60 text-white font-semibold rounded-2xl text-sm flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/20 transition"
               >
                 {isLocked ? (
@@ -239,6 +242,7 @@ export default function Login() {
           © 2024 Biro Umum dan Rumah Tangga. Sistem Manajemen Fasilitas &amp; Operasional Kantor.
         </p>
       </div>
+      {splash && <LoginSplash name={splash.name} onDone={() => navigate('/dashboard', { replace: true })} />}
     </div>
   );
 }
