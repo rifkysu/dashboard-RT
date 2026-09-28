@@ -125,6 +125,7 @@ router.post('/', requireRole(EDITOR_ROLES), async (req, res) => {
     if (!STATUS.includes(status || 'Tersedia')) return res.status(400).json({ message: 'Status kendaraan tidak valid.' });
     if (no_bpkb != null && !text(no_bpkb, 50)) return res.status(400).json({ message: 'Nomor BPKB tidak valid.' });
     if (plat_khusus != null && !text(plat_khusus, 30)) return res.status(400).json({ message: 'Plat khusus tidak valid.' });
+    if (sub != null && !text(sub, 150)) return res.status(400).json({ message: 'Keterangan maksimal 150 karakter.' });
     if (!validDate(tanggal_perolehan) || !validDate(masa_berlaku_stnk) || !validDate(waktu_pajak)) {
       return res.status(400).json({ message: 'Format tanggal tidak valid.' });
     }
@@ -187,6 +188,7 @@ router.put('/:id', requireRole(EDITOR_ROLES), async (req, res) => {
     if (body.status !== undefined && !STATUS.includes(body.status)) return res.status(400).json({ message: 'Status kendaraan tidak valid.' });
     if (body.no_bpkb !== undefined && body.no_bpkb != null && !text(body.no_bpkb, 50)) return res.status(400).json({ message: 'Nomor BPKB tidak valid.' });
     if (body.plat_khusus !== undefined && body.plat_khusus != null && !text(body.plat_khusus, 30)) return res.status(400).json({ message: 'Plat khusus tidak valid.' });
+    if (body.sub !== undefined && body.sub != null && !text(body.sub, 150)) return res.status(400).json({ message: 'Keterangan maksimal 150 karakter.' });
     for (const f of ['tanggal_perolehan', 'masa_berlaku_stnk', 'waktu_pajak']) {
       if (body[f] !== undefined && !validDate(body[f])) return res.status(400).json({ message: 'Format tanggal tidak valid.' });
     }

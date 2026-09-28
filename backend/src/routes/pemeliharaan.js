@@ -7,6 +7,7 @@ const { requireAuth, requireRole, EDITOR_ROLES } = require('../middleware/auth')
 const { requireNotInMaintenance } = require('../middleware/maintenance');
 const { signToken } = require('../token');
 const logger = require('../logger');
+const { checkFields, validStatusFilter } = require('../validate');
 
 const router = express.Router();
 router.use(requireAuth);
@@ -17,6 +18,13 @@ const dateOnly = (v) => v == null ? null : (v instanceof Date ? v.toISOString().
 const serialize = (row) => row ? hideFilePaths({ ...row, tanggal: dateOnly(row.tanggal), tanggal_selesai: dateOnly(row.tanggal_selesai), stage2_invoice_date: dateOnly(row.stage2_invoice_date), stage2_ls_date: dateOnly(row.stage2_ls_date), stage1_hps: row.stage1_hps == null ? row.stage1_hps : Number(row.stage1_hps), stage2_invoice_amount: row.stage2_invoice_amount == null ? row.stage2_invoice_amount : Number(row.stage2_invoice_amount), pic: row.createdBy?.nama_lengkap || null, createdBy: undefined, updatedBy: undefined }) : row;
 // Tanggal hari ini menurut zona waktu server (WIB), bukan UTC -- toISOString() akan mundur sehari sebelum jam 07.00 WIB.
 const localToday=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;};
+const T=(label,max,required=false)=>({label,type:'text',max,required});
+const D=label=>({label,type:'date'}), A=label=>({label,type:'amount'});
+// Batas panjang mengikuti kolom database (lihat prisma/schema.prisma); kolom TEXT dibatasi longgar.
+const FIELDS={judul:T('Judul',255,true),lokasi:T('Lokasi',150,true),titik_lokasi:T('Titik lokasi',255),kategori:{label:'Kategori',type:'enum',values:['sarana','prasarana'],required:true},deskripsi:T('Deskripsi',20000),tanggal:D('Tanggal'),jenis_pekerjaan:T('Jenis pekerjaan',100),urgensi:T('Urgensi',20),metode_pengadaan:T('Metode pengadaan',50),request_document_name:T('Nama dokumen permintaan',500),
+ stage1_boq:T('BOQ',20000),stage1_hps:A('Nilai HPS'),stage1_document_name:T('Nama dokumen tahap 1',500),stage2_payment_method:T('Metode pembayaran',20),stage2_ls_date:D('Tanggal LS'),stage2_vendor:T('Vendor',150),stage2_invoice_number:T('Nomor invoice',100),stage2_invoice_date:D('Tanggal invoice'),stage2_invoice_amount:A('Nilai invoice'),stage2_invoice_document_name:T('Nama dokumen invoice',500),stage3_documentation_names:T('Nama dokumentasi',20000),stage3_bast_notes:T('Catatan BAST',20000),catatan:T('Catatan',20000),tanggal_selesai:D('Tanggal selesai')};
+const POST_FIELDS=['judul','lokasi','titik_lokasi','kategori','deskripsi','tanggal','jenis_pekerjaan','urgensi','metode_pengadaan','request_document_name'];
+const pickSpec=keys=>Object.fromEntries(keys.map(k=>[k,FIELDS[k]]));
 function generateKode(){ return `REQ-${new Date().getFullYear()}-${crypto.randomInt(1000,10000)}`; }
 // Kode acak 4 digit bisa bentrok dengan kode yang sudah ada (kolom kode UNIQUE) -> coba ulang dengan kode baru.
 async function createWithUniqueKode(create,makeKode){ for(let attempt=1;;attempt++){ try { return await create(makeKode()); } catch(err){ if(err.code!=='P2002'||attempt>=10) throw err; } } }
@@ -25,6 +33,7 @@ router.get('/', async (req,res)=>{ try {
   const {status,kategori,lokasi,search}=req.query;
   for(const [k,v] of Object.entries(req.query)){ if(!['status','kategori','lokasi','search'].includes(k) || typeof v!=='string' || v.length>150) return res.status(400).json({message:'Parameter filter tidak valid.'}); }
   const where={};
+  if(!validStatusFilter(status)) return res.status(400).json({message:'Filter status tidak valid.'});
   if(status) where.status=status;
   if(kategori) where.kategori={equals:kategori,mode:'insensitive'};
   if(lokasi) where.lokasi={equals:lokasi,mode:'insensitive'};
@@ -39,6 +48,7 @@ router.get('/:id',async(req,res)=>{ try { const id=Number(req.params.id); if(!Nu
 router.post('/',async(req,res)=>{try{
  const {judul,lokasi,titik_lokasi,kategori,deskripsi,tanggal,jenis_pekerjaan,urgensi,metode_pengadaan,request_document_name,request_document_file_data}=req.body;
  if(!judul||!lokasi||!kategori)return res.status(400).json({message:'judul, lokasi, dan kategori wajib diisi.'});
+ const invalid=checkFields(req.body,pickSpec(POST_FIELDS));if(invalid)return res.status(400).json({message:invalid});
  if(request_document_file_data!==undefined&&!validDocumentData(request_document_file_data))return res.status(400).json({message:'Dokumen permintaan tidak valid.'});
  const path=request_document_file_data?await saveDataUrl(request_document_file_data,request_document_name,'pemeliharaan'):null;
  const row=await createWithUniqueKode(kode=>prisma.pemeliharaan.create({data:{kode,judul,lokasi,titik_lokasi:titik_lokasi||null,kategori,deskripsi:deskripsi||null,tanggal: tanggal?new Date(`${tanggal}T00:00:00Z`):new Date(),jenis_pekerjaan:jenis_pekerjaan||null,urgensi:urgensi||'sedang',metode_pengadaan:metode_pengadaan||null,request_document_name:request_document_name||null,request_document_file_data:request_document_file_data||null,request_document_file_path:path,created_by:req.user.id},include:{createdBy:{select:{nama_lengkap:true}}}}),generateKode);
@@ -63,10 +73,11 @@ router.put('/:id',requireRole(EDITOR_ROLES),async(req,res)=>{try{
  // Path file di disk hanya boleh diisi server (hasil saveDataUrl), jangan terima dari client.
  for(const f of Object.keys(body)) if(/_file_paths?$/.test(f)) delete body[f];
  for(const f of ['status','tahap1_status','tahap2_status','tahap3_status'])if(body[f]!==undefined&&!['pending','on_progress','selesai'].includes(body[f]))return res.status(400).json({message:'Status tidak valid.'});
+ const invalid=checkFields(body,FIELDS,{partial:true});if(invalid)return res.status(400).json({message:invalid});
  if(body.status==='selesai' && !body.tanggal_selesai) body.tanggal_selesai=localToday();
  if(body.status && body.status!=='selesai' && body.tanggal_selesai===undefined) body.tanggal_selesai=null;
  for(const f of ['request_document_file_data','stage1_boq_file_data','stage1_document_file_data','stage2_invoice_document_file_data']) if(body[f]!==undefined&&!validDocumentData(body[f])) return res.status(400).json({message:'Dokumen tidak valid.'});
- if(body.stage3_documentation_files!==undefined){let files;try{files=typeof body.stage3_documentation_files==='string'?JSON.parse(body.stage3_documentation_files):body.stage3_documentation_files;}catch{return res.status(400).json({message:'Format dokumentasi final tidak valid.'});} if(!Array.isArray(files)||files.length>20||files.some(f=>!f||typeof f.name!=='string'||!validDocumentData(f.data)))return res.status(400).json({message:'Dokumentasi final tidak valid.'}); const paths=[];for(const f of files)paths.push({name:f.name,path:await saveDataUrl(f.data,f.name,'pemeliharaan/stage3')});body.stage3_documentation_file_paths=JSON.stringify(paths);}
+ if(body.stage3_documentation_files!==undefined){let files;try{files=typeof body.stage3_documentation_files==='string'?JSON.parse(body.stage3_documentation_files):body.stage3_documentation_files;}catch{return res.status(400).json({message:'Format dokumentasi final tidak valid.'});} if(!Array.isArray(files)||files.length>20||files.some(f=>!f||typeof f.name!=='string'||!validDocumentData(f.data)))return res.status(400).json({message:'Dokumentasi final tidak valid.'}); body.stage3_documentation_files=JSON.stringify(files); const paths=[];for(const f of files)paths.push({name:f.name,path:await saveDataUrl(f.data,f.name,'pemeliharaan/stage3')});body.stage3_documentation_file_paths=JSON.stringify(paths);}
  const pathFields={request_document_file_data:['request_document_file_path','request_document_name'],stage1_boq_file_data:['stage1_boq_file_path','stage1_boq'],stage1_document_file_data:['stage1_document_file_path','stage1_document_name'],stage2_invoice_document_file_data:['stage2_invoice_document_file_path','stage2_invoice_document_name']};
  for(const [df,[pf,nf]] of Object.entries(pathFields)) if(body[df]) body[pf]=await saveDataUrl(body[df],body[nf],'pemeliharaan');
  if(body.stage2_payment_number!==undefined&&body.stage2_payment_number!==null&&body.stage2_payment_number!==''){const n=Number(body.stage2_payment_number);const max=body.stage2_payment_method==='TUP'?10:20;if(!Number.isInteger(n)||n<1||n>max)return res.status(400).json({message:body.stage2_payment_method==='TUP'?'Nomor TUP tidak valid (1-10).':'Nomor GUP tidak valid (1-20).'});}

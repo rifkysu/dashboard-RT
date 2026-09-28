@@ -51,7 +51,10 @@ export function AuthProvider({ children }) {
       return;
     }
     refreshUser({
-      onError: () => {
+      onError: (err) => {
+        // Logout hanya kalau token memang ditolak server (401). Backend sedang restart / koneksi
+        // putus sebentar jangan sampai membuat user ter-logout -- data user lama tetap dipakai.
+        if (err?.response?.status !== 401) return;
         localStorage.removeItem('token');
         localStorage.removeItem('user');
         setUser(null);
