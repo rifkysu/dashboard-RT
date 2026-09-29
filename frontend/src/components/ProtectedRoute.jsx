@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, Outlet } from 'react-router-dom';
 import Sidebar from './Sidebar';
+import PageTransition from './PageTransition';
 import { useAuth } from '../context/AuthContext';
 
 function MaintenanceNotice({ message }) {
@@ -15,8 +16,17 @@ function MaintenanceNotice({ message }) {
   );
 }
 
-export default function ProtectedRoute({ children, menuKey }) {
-  const { user, loading, isMenuDown, maintenance } = useAuth();
+// Menu yang sedang maintenance (dan user bukan admin) -> tampilkan pemberitahuan, bukan isi halaman.
+export function MenuGate({ menuKey, children }) {
+  const { isMenuDown, maintenance } = useAuth();
+  return isMenuDown(menuKey) ? <MaintenanceNotice message={maintenance[menuKey]?.message} /> : children;
+}
+
+// Layout semua halaman yang butuh login. Dipasang SEKALI sebagai layout route (lihat App.jsx):
+// sidebar & header tetap di tempat saat pindah menu, cuma isi halaman (Outlet) yang berganti
+// dengan animasi -- sebelumnya tiap menu memasang ulang seluruh kerangka sehingga layar "berkedip".
+export default function ProtectedRoute() {
+  const { user, loading } = useAuth();
   const [collapsed, setCollapsed] = useState(() => {
     try { return localStorage.getItem('sidebarCollapsed') === '1'; } catch { return false; }
   });
@@ -32,7 +42,6 @@ export default function ProtectedRoute({ children, menuKey }) {
 
   if (loading) return <div className="min-h-screen flex items-center justify-center text-slate-500">Memuat...</div>;
   if (!user) return <Navigate to="/login" replace />;
-  const down = menuKey && isMenuDown(menuKey);
   return (
     <div className="app-shell-bg min-h-screen">
       <Sidebar collapsed={collapsed} onToggle={toggleSidebar} mobileOpen={mobileOpen} onMobileClose={() => setMobileOpen(false)} />
@@ -44,7 +53,7 @@ export default function ProtectedRoute({ children, menuKey }) {
           <span className="font-bold text-slate-900 text-sm">Biro Umum</span>
         </header>
         <main className="app-main p-4 sm:p-5 md:p-7 min-h-screen">
-          {down ? <MaintenanceNotice message={maintenance[menuKey]?.message} /> : children}
+          <PageTransition><Outlet /></PageTransition>
         </main>
       </div>
     </div>

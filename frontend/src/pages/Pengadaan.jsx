@@ -1,8 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import api from '../api';
 import { useAuth } from '../context/AuthContext';
 import BrandMark from '../components/BrandMark';
 import PaymentMethodDetail from '../components/PaymentMethodDetail';
+import SlideTransition from '../components/SlideTransition';
 import DocumentViewer from '../components/DocumentViewer';
 import { verifyFileIsGenuine } from '../utils/fileSignature';
 import { useFeedback } from '../components/Feedback';
@@ -129,7 +130,7 @@ export default function Pengadaan() {
       const payload = {};
       const fields = [
         'nama_barang_jasa', 'kategori', 'lokasi', 'titik_lokasi', 'metode_pengadaan', 'nilai_hps', 'deskripsi', 'request_document_name', 'request_document_file_data',
-        'stage2_payment_method', 'stage2_payment_number', 'stage2_ls_date', 'stage2_budget_source', 'stage2_vendor', 'stage2_invoice_number', 'stage2_invoice_amount', 'tanggal', 'status', 'stage2_invoice_document_name', 'stage2_invoice_file_data', 'stage2_payment_proof_name', 'stage2_payment_proof_file_data', 'stage3_final_document_name', 'stage3_final_document_file_data', 'tahap1_status', 'tahap2_status', 'tahap3_status', 'catatan',
+        'stage2_payment_method', 'stage2_payment_number', 'stage2_ls_date', 'stage2_budget_source', 'stage2_vendor', 'stage2_invoice_number', 'stage2_invoice_date', 'stage2_invoice_amount', 'tanggal', 'status', 'stage2_invoice_document_name', 'stage2_invoice_file_data', 'stage2_payment_proof_name', 'stage2_payment_proof_file_data', 'stage3_final_document_name', 'stage3_final_document_file_data', 'tahap1_status', 'tahap2_status', 'tahap3_status', 'catatan',
       ];
       fields.forEach((field) => {
         if (draft[field] === undefined) return;
@@ -249,7 +250,7 @@ export default function Pengadaan() {
     toast(`${exportData.length} data berhasil diexport ke Excel.`);
   }
 
-  const roleLabel = user?.role === 'kabag' ? 'Kabag' : user?.role === 'pic' ? 'PIC' : 'Karyawan';
+  const roleLabel = user?.role === 'admin' ? 'Admin' : user?.role === 'kabag' ? 'Kabag' : user?.role === 'pic' ? 'PIC' : 'Karyawan';
 
   return (
     <div className="menu-page menu-pengadaan relative" style={{ fontFamily: 'Arial, Helvetica, sans-serif' }}>
@@ -365,7 +366,10 @@ function StageModal({ row, stage, draft, setDraft, canEdit, roleLabel, saving, o
   const readOnly = !canEdit;
   const stageStatus = draft[stage.field] || 'pending';
 
-  return <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm overflow-y-auto p-4 md:p-8" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+  // Pindah tahap -> gulir modal ke atas (tombol "Lanjut" ada di bawah form), halus seiring animasi geser.
+  const scrollRef = useRef(null);
+  useEffect(() => { scrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' }); }, [stage.no]);
+  return <div ref={scrollRef} className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm overflow-y-auto p-4 md:p-8" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
     <div className="min-h-full flex items-start justify-center">
       <div className="w-full max-w-6xl bg-[#f7f9fb] rounded-xl shadow-2xl overflow-hidden">
         <div className="bg-white border-b border-slate-200 px-5 md:px-8 py-5 flex items-center justify-between">
@@ -391,9 +395,11 @@ function StageModal({ row, stage, draft, setDraft, canEdit, roleLabel, saving, o
 
           <div className="bg-slate-100 rounded-xl p-4 sm:p-5 flex flex-wrap items-center justify-between gap-3 mb-8"><div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-slate-700"><span><b>Barang/Jasa:</b> {row.nama_barang_jasa}</span><span className="hidden sm:inline text-slate-300">•</span><span><b>Lokasi:</b> {row.lokasi || '-'}</span>{row.titik_lokasi && <><span className="hidden sm:inline text-slate-300">•</span><span><b>Titik Lokasi:</b> {row.titik_lokasi}</span></>}<span className="hidden sm:inline text-slate-300">•</span><span><b>Status:</b> {statusLabel[row.status]}</span></div><span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${statusPill[stageStatus]}`}>{statusLabel[stageStatus]}</span></div>
 
-          {stage.no === 1 && <PengadaanStageOne draft={draft} update={update} readOnly={readOnly} onView={onView} />}
-          {stage.no === 2 && <PengadaanStageTwo draft={draft} update={update} readOnly={readOnly} onView={onView} />}
-          {stage.no === 3 && <PengadaanStageThree draft={draft} update={update} readOnly={readOnly} onView={onView} />}
+          <SlideTransition index={stage.no}>
+            {stage.no === 1 && <PengadaanStageOne draft={draft} update={update} readOnly={readOnly} onView={onView} />}
+            {stage.no === 2 && <PengadaanStageTwo draft={draft} update={update} readOnly={readOnly} onView={onView} />}
+            {stage.no === 3 && <PengadaanStageThree draft={draft} update={update} readOnly={readOnly} onView={onView} />}
+          </SlideTransition>
 
           {!canEdit && <div className="mt-6 bg-slate-100 border border-slate-200 rounded-xl p-4 text-sm text-slate-600"><b>Mode lihat saja.</b> Role {roleLabel} dapat melihat data Tahap {stage.no}, tetapi tidak dapat mengubah atau menyimpan perubahan. Pengeditan hanya untuk Kabag, Admin, dan PIC yang menambahkan pengadaan ini.</div>}
 
@@ -465,7 +471,7 @@ function PengadaanStageTwo({ draft, update, readOnly, onView }) {
           <div className="text-xs text-slate-500 mt-1">{readOnly ? 'Mode lihat saja' : 'Klik untuk memilih berkas'}</div>
         </div>
         {draft[dataField] && <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); onView(draft[nameField], draft[dataField]); }} className="px-3 py-2 rounded-lg bg-white border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-100">Lihat</button>}
-        {!readOnly && <input type="file" className="absolute inset-0 opacity-0 cursor-pointer" accept="application/pdf,image/jpeg,image/png,.pdf,.jpg,.jpeg,.png" onChange={(e) => handleFile(nameField, dataField, e.target.files?.[0])} />}
+        {!readOnly && <input type="file" className="absolute inset-0 opacity-0 cursor-pointer" accept="application/pdf,image/jpeg,image/png,.pdf,.jpg,.jpeg,.png" onChange={(e) => { handleFile(nameField, dataField, e.target.files?.[0]); e.target.value = ''; }} />}
       </label>
     </div>
   );
@@ -478,7 +484,7 @@ function PengadaanStageTwo({ draft, update, readOnly, onView }) {
     <div><label className={labelClass}>2. NAMA PERUSAHAAN <span className="text-red-600">*</span></label><input disabled={readOnly} value={draft.stage2_vendor || ''} onChange={(e) => update('stage2_vendor', e.target.value)} className={inputClass}/></div>
     <div><label className={labelClass}>3. NOMOR INVOICE / KUITANSI</label><input disabled={readOnly} value={draft.stage2_invoice_number || ''} onChange={(e) => update('stage2_invoice_number', e.target.value)} className={inputClass}/></div>
     <div><label className={labelClass}>4. NOMINAL TAGIHAN INVOICE</label><div className="flex"><span className="inline-flex items-center px-3 rounded-l-lg border border-r-0 border-slate-300 bg-slate-100 text-sm font-semibold text-slate-600">Rp</span><input disabled={readOnly} type="number" min="0" value={draft.stage2_invoice_amount ?? ''} onChange={(e) => update('stage2_invoice_amount', e.target.value)} className="w-full h-11 px-3 rounded-r-lg border border-slate-300 bg-slate-50/70 text-sm outline-none focus:bg-white focus:border-slate-900 disabled:opacity-70" /></div>{draft.stage2_invoice_amount && <p className="text-xs text-slate-500 mt-1">Rp {money(draft.stage2_invoice_amount)}</p>}</div>
-    <div><label className={labelClass}>5. TANGGAL PENGADAAN / INVOICE</label><input disabled={readOnly} type="date" value={draft.tanggal || ''} onChange={(e) => update('tanggal', e.target.value)} className={inputClass}/></div>
+    <div><label className={labelClass}>5. TANGGAL INVOICE</label><input disabled={readOnly} type="date" value={draft.stage2_invoice_date || ''} onChange={(e) => update('stage2_invoice_date', e.target.value)} className={inputClass}/></div>
     <div className="pt-1"><div className="mb-4"><h3 className="text-base font-semibold text-slate-900">6. DOKUMEN PENDUKUNG PEMBAYARAN</h3><p className="text-xs text-slate-500 mt-1">Unggah dokumen yang relevan dengan transaksi pengadaan agar proses verifikasi lebih lengkap.</p></div><div className="grid grid-cols-1 md:grid-cols-2 gap-4">
       {fileCard('Invoice / Kuitansi Sah', 'Pilih dokumen invoice / kuitansi', 'stage2_invoice_document_name', 'stage2_invoice_file_data', 'description')}
       {fileCard('Bukti Pembayaran', 'Pilih bukti pembayaran / transfer', 'stage2_payment_proof_name', 'stage2_payment_proof_file_data', 'receipt_long')}
@@ -516,7 +522,7 @@ function PengadaanStageThree({ draft, update, readOnly, onView }) {
         <span className="w-12 h-12 rounded-lg bg-white flex items-center justify-center shadow-sm"><span className="material-symbols-outlined text-[24px] text-slate-600">verified_document</span></span>
         <div className="min-w-0 flex-1"><div className="text-sm font-semibold text-slate-800 truncate">{draft.stage3_final_document_name || 'Pilih BAST / Berita Acara / dokumen serah terima'}</div><div className="text-xs text-slate-500 mt-1">{readOnly ? 'Mode lihat saja' : 'Dokumen final sebagai bukti penyelesaian pengadaan'}</div></div>
         {draft.stage3_final_document_file_data && <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); onView(draft.stage3_final_document_name, draft.stage3_final_document_file_data); }} className="px-3 py-2 rounded-lg bg-white border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-100">Lihat</button>}
-        {!readOnly && <input type="file" className="absolute inset-0 opacity-0 cursor-pointer" accept="application/pdf,image/jpeg,image/png,.pdf,.jpg,.jpeg,.png" onChange={(e) => handleFile(e.target.files?.[0])} />}
+        {!readOnly && <input type="file" className="absolute inset-0 opacity-0 cursor-pointer" accept="application/pdf,image/jpeg,image/png,.pdf,.jpg,.jpeg,.png" onChange={(e) => { handleFile(e.target.files?.[0]); e.target.value = ''; }} />}
       </label>
       <p className="text-xs text-slate-500 mt-2">Contoh: BAST, berita acara penerimaan barang/jasa, surat serah terima, atau dokumen final lain yang membuktikan pengadaan telah selesai.</p>
     </div>

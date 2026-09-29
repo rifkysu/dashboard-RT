@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import api from '../api';
 import { holidayLabel } from '../utils/holidays';
 import useRuangRapatLive from '../hooks/useRuangRapatLive';
+import SlideTransition from './SlideTransition';
 
 const dayNames = ['Senin','Selasa','Rabu','Kamis','Jumat','Sabtu','Minggu'];
 const STATUS = { belum:'bg-red-50 border-red-300 text-red-900', ditinjau:'bg-blue-50 border-blue-300 text-blue-900', diterima:'bg-green-50 border-green-300 text-green-900' };
@@ -41,6 +42,7 @@ export default function RuangRapatSchedule() {
         </div>
       </div>
       {error && <div className="m-4 p-3 rounded-lg bg-red-50 border border-red-200 text-sm text-red-700">{error}</div>}
+      <SlideTransition index={Math.round(Date.parse(`${week}T00:00:00Z`)/(7*86400000))}>
       <div className="overflow-x-auto">
         <div className="min-w-[1180px] grid grid-cols-7 divide-x-2 divide-slate-200 border-t-2 border-slate-200">
           {ds.map(date=>{
@@ -70,6 +72,7 @@ export default function RuangRapatSchedule() {
           })}
         </div>
       </div>
+      </SlideTransition>
     </div>
   );
 }

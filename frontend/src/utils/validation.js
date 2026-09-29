@@ -82,3 +82,27 @@ export function validateLogin({ email, password }) {
   if (!password) e.password = 'Kata sandi wajib diisi.';
   return e;
 }
+
+// ---- Tanggal kendaraan (aturan yang sama dicek ulang di backend/src/routes/kendaraan.js) ----
+// Tanggal YYYY-MM-DD yang benar-benar ada di kalender, tahun 1950-2100
+// (input date di browser bisa menerima tahun 5 digit / tanggal setengah jadi).
+export function realDateInRange(v) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(v || '')) return false;
+  const d = new Date(`${v}T00:00:00Z`);
+  if (Number.isNaN(d.getTime()) || d.toISOString().slice(0, 10) !== v) return false;
+  const y = d.getUTCFullYear();
+  return y >= 1950 && y <= 2100;
+}
+
+// Masa Berlaku STNK & Waktu Pajak: format valid dan tidak sebelum Tanggal Perolehan.
+export function validateVehicleDates({ tanggal_perolehan, masa_berlaku_stnk, waktu_pajak }) {
+  const errors = [];
+  const fields = [['Tanggal perolehan', tanggal_perolehan], ['Masa berlaku STNK', masa_berlaku_stnk], ['Waktu pajak', waktu_pajak]];
+  for (const [label, v] of fields) {
+    if (!isBlank(v) && !realDateInRange(v)) errors.push(`${label} tidak valid (tahun 1950–2100).`);
+  }
+  if (errors.length || isBlank(tanggal_perolehan)) return errors;
+  if (!isBlank(masa_berlaku_stnk) && masa_berlaku_stnk < tanggal_perolehan) errors.push('Masa berlaku STNK tidak boleh sebelum tanggal perolehan.');
+  if (!isBlank(waktu_pajak) && waktu_pajak < tanggal_perolehan) errors.push('Waktu pajak tidak boleh sebelum tanggal perolehan.');
+  return errors;
+}

@@ -219,9 +219,9 @@ router.post('/reset-password', resetPasswordLimiter, async (req, res) => {
     if (typeof token !== 'string' || token.length < 32 || token.length > 256) {
       return res.status(400).json({ message: 'Token reset tidak valid.' });
     }
-    if (typeof password !== 'string' || password.length < 8 || password.length > 128) {
-      return res.status(400).json({ message: 'Kata sandi minimal 8 karakter.' });
-    }
+    // Aturan kata sandi sama dengan saat daftar akun (8-128 karakter, huruf & angka).
+    const pwIssue = passwordIssue(password);
+    if (pwIssue) return res.status(400).json({ message: pwIssue });
 
     const user = await prisma.user.findFirst({
       where: { reset_token: hashResetToken(token), reset_token_expires: { gt: new Date() } },

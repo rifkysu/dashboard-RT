@@ -2,10 +2,11 @@ import React, { useEffect, useMemo, useState } from 'react';
 import api from '../api';
 import { useAuth } from '../context/AuthContext';
 import { useFeedback } from '../components/Feedback';
-import { requireFields } from '../utils/validation';
+import { requireFields, validateVehicleDates } from '../utils/validation';
 import DocumentViewer from '../components/DocumentViewer';
 import { verifyFileIsGenuine } from '../utils/fileSignature';
 import { compressImage } from '../utils/imageCompress';
+import SlideTransition from '../components/SlideTransition';
 
 const JENIS_OPTIONS = ['Roda 2', 'Roda 4', 'Roda 6'];
 const NAMA_BARANG_OPTIONS = ['Sedan', 'Jeep', 'Station Wagon', 'Micro Bus', 'Mini Bus', 'Pick Up', 'Mobil Ambulance', 'Kendaraan Bermotor Khusus Lainnya', 'Sepeda Motor'];
@@ -62,6 +63,7 @@ export default function Kendaraan() {
   const [viewer, setViewer] = useState({ open: false, name: '', data: '' });
   const [saving, setSaving] = useState(false);
   const [busyDoc, setBusyDoc] = useState(null);
+  const [openingId, setOpeningId] = useState(null);
 
   async function load() {
     try {
@@ -81,7 +83,7 @@ export default function Kendaraan() {
     e.preventDefault();
     if (saving) return;
     setError('');
-    const errors = requireFields([['Nama barang', form.nama_barang], ['Merk', form.merk], ['Tipe', form.tipe], ['No polisi', form.plate], ['Jenis kendaraan', form.jenis]]);
+    const errors = [...requireFields([['Nama barang', form.nama_barang], ['Merk', form.merk], ['Tipe', form.tipe], ['No polisi', form.plate], ['Jenis kendaraan', form.jenis]]), ...validateVehicleDates(form)];
     if (errors.length) {
       await alert({ title: 'Data kendaraan belum lengkap', intro: 'Lengkapi data berikut:', message: errors, tone: 'warning' });
       return;
@@ -95,6 +97,8 @@ export default function Kendaraan() {
       await api.post('/kendaraan', form);
       setShow(false);
       setForm(emptyForm);
+      // Pindah ke tab jenis kendaraan yang baru ditambahkan supaya langsung terlihat di tabel.
+      selectTab(form.jenis);
       await load();
       toast(`Kendaraan ${form.plate.trim()} berhasil ditambahkan.`);
     } catch (e) {
@@ -112,14 +116,19 @@ export default function Kendaraan() {
     const toProcess = files.slice(0, room);
     if (files.length > room) toast(`Hanya ${room} foto pertama yang ditambahkan (maksimal ${MAX_PHOTOS} foto).`, 'info');
     for (const file of toProcess) {
-      if (!ALLOWED_TYPES.includes(file.type)) { toast(`"${file.name}" ditolak: foto harus JPG, PNG, atau WebP.`, 'error'); continue; }
-      if (!(await verifyFileIsGenuine(file))) { toast(`"${file.name}" ditolak: bukan gambar asli.`, 'error'); continue; }
-      try {
-        const compressed = await compressImage(file);
-        setForm((f) => (f.photos.length >= MAX_PHOTOS ? f : { ...f, photos: [...f.photos, { name: file.name, data: compressed }] }));
-      } catch {
-        toast(`Gagal memproses foto "${file.name}".`, 'error');
-      }
+      const photo = await preparePhoto(file);
+      if (photo) setForm((f) => (f.photos.length >= MAX_PHOTOS ? f : { ...f, photos: [...f.photos, photo] }));
+    }
+  }
+  // Validasi + kompres satu foto; dipakai form tambah dan modal Detail. Null kalau ditolak.
+  async function preparePhoto(file) {
+    if (!ALLOWED_TYPES.includes(file.type)) { toast(`"${file.name}" ditolak: foto harus JPG, PNG, atau WebP.`, 'error'); return null; }
+    if (!(await verifyFileIsGenuine(file))) { toast(`"${file.name}" ditolak: bukan gambar asli.`, 'error'); return null; }
+    try {
+      return { name: file.name, data: await compressImage(file) };
+    } catch {
+      toast(`Gagal memproses foto "${file.name}".`, 'error');
+      return null;
     }
   }
   function removePhoto(idx) {
@@ -145,9 +154,7 @@ export default function Kendaraan() {
       const payload = { [`${field}_document_name`]: file.name, [`${field}_document_file_data`]: dataUrl };
       const res = await api.put(`/kendaraan/${vehicleId}`, payload);
       const updated = res.data.data;
-      setData((current) => current.map((x) => (x.id === vehicleId ? updated : x)));
-      setDetail(updated);
-      setError('');
+      applyUpdated(vehicleId, updated);
       toast(`Dokumen ${field.toUpperCase()} berhasil disimpan.`);
     } catch (err) {
       alert({ title: 'Gagal menyimpan dokumen', message: err.response?.data?.message || err.message || 'Gagal memperbarui dokumen.', tone: 'error' });
@@ -158,27 +165,43 @@ export default function Kendaraan() {
 
   // Update sebagian data dari modal Detail: Masa Berlaku STNK & Waktu Pajak
   // (disamakan dengan STNK yang baru diupload) atau status kendaraan (Servis dll).
+  // Mengembalikan true kalau tersimpan, supaya modal Detail tahu kapan boleh reset draft-nya.
   async function updateFields(vehicleId, payload, successMessage = 'Data kendaraan berhasil diperbarui.') {
     try {
       const res = await api.put(`/kendaraan/${vehicleId}`, payload);
-      const updated = res.data.data;
-      setData((current) => current.map((x) => (x.id === vehicleId ? updated : x)));
-      setDetail(updated);
-      setError('');
+      applyUpdated(vehicleId, res.data.data);
       toast(successMessage);
+      return true;
     } catch (err) {
       alert({ title: 'Gagal memperbarui', message: err.response?.data?.message || 'Gagal memperbarui data kendaraan.', tone: 'error' });
+      return false;
     }
   }
 
-  // Daftar tidak membawa PDF BPKB/STNK, jadi ambil detail lengkap saat modal Detail dibuka.
-  async function openDetail(vehicle) {
+  // Hasil PUT dari modal Detail. Daftar tidak membawa PDF BPKB/STNK, jadi baris tabel
+  // diganti tanpa isi PDF-nya. Modal hanya diperbarui kalau MASIH membuka kendaraan
+  // yang sama -- kalau modal sudah ditutup selama upload, jangan dibuka lagi.
+  function applyUpdated(vehicleId, updated) {
+    const { bpkb_document_file_data, stnk_document_file_data, ...listRow } = updated;
+    setData((current) => current.map((x) => (x.id === vehicleId ? listRow : x)));
+    setDetail((d) => (d && d.id === vehicleId ? updated : d));
     setError('');
+  }
+
+  // Daftar tidak membawa PDF BPKB/STNK, jadi ambil detail lengkap saat modal Detail dibuka.
+  // Selama masih memuat, klik Detail lain diabaikan (supaya respons yang datang
+  // belakangan tidak menimpa modal kendaraan yang lain).
+  async function openDetail(vehicle) {
+    if (openingId) return;
+    setError('');
+    setOpeningId(vehicle.id);
     try {
       const res = await api.get(`/kendaraan/${vehicle.id}`);
       setDetail(res.data.data);
     } catch (err) {
       alert({ title: 'Gagal memuat detail', message: err.response?.data?.message || 'Gagal memuat detail kendaraan.', tone: 'error' });
+    } finally {
+      setOpeningId(null);
     }
   }
 
@@ -277,6 +300,8 @@ export default function Kendaraan() {
           </div>
           <div className="text-xs text-slate-500 self-center">{filtered.length} kendaraan</div>
         </div>
+        {/* Ganti tab Roda 2/4/6 -> tabel bergeser sesuai arah tab. */}
+        <SlideTransition index={JENIS_OPTIONS.indexOf(tab)}>
         <div className="overflow-x-auto">
           <table className="w-full text-xs">
             <thead className="bg-slate-50 border-b-2 border-slate-200">
@@ -286,7 +311,7 @@ export default function Kendaraan() {
             </thead>
             <tbody className="divide-y divide-slate-100">
               {loading ? <tr><td colSpan={12} className="px-4 py-8 text-center text-slate-500">Memuat kendaraan...</td></tr>
-                : filtered.length === 0 ? <tr><td colSpan={12} className="px-4 py-8 text-center text-slate-500">Belum ada kendaraan pada kategori ini.</td></tr>
+                : filtered.length === 0 ? <tr><td colSpan={12} className="px-4 py-8 text-center text-slate-500">{byJenis.length && activeFilterCount ? 'Tidak ada kendaraan yang cocok dengan pencarian/filter.' : 'Belum ada kendaraan pada kategori ini.'}</td></tr>
                 : filtered.map((x) => (
                   <tr key={x.id} className="divide-x divide-slate-100 hover:bg-slate-50/50">
                     <td className="px-4 py-3">
@@ -319,12 +344,13 @@ export default function Kendaraan() {
                     <td className="px-4 whitespace-nowrap">{fmtDate(x.tanggal_perolehan)}</td>
                     <td className="px-4 whitespace-nowrap">{fmtDate(x.masa_berlaku_stnk)}</td>
                     <td className="px-4 whitespace-nowrap">{fmtDate(x.waktu_pajak)}</td>
-                    <td className="px-4"><button type="button" onClick={() => openDetail(x)} className="detail-btn"><span className="material-symbols-outlined text-[16px]">visibility</span>Detail</button></td>
+                    <td className="px-4"><button type="button" onClick={() => openDetail(x)} disabled={openingId !== null} className="detail-btn disabled:opacity-60"><span className="material-symbols-outlined text-[16px]">{openingId === x.id ? 'progress_activity' : 'visibility'}</span>{openingId === x.id ? 'Memuat...' : 'Detail'}</button></td>
                   </tr>
                 ))}
             </tbody>
           </table>
         </div>
+        </SlideTransition>
       </section>
 
       {show && <VehicleModal form={form} setForm={setForm} error={error} saving={saving} onClose={() => setShow(false)} onSubmit={save} onAddPhotos={addPhotos} onRemovePhoto={removePhoto} onPickDocument={pickFormDocument} onView={(name, data) => setViewer({ open: true, name, data })} />}
@@ -338,6 +364,7 @@ export default function Kendaraan() {
           onView={(name, data) => setViewer({ open: true, name, data })}
           onUpdateDocument={(field, file) => updateDocument(detail.id, field, file)}
           onUpdateFields={(payload, msg) => updateFields(detail.id, payload, msg)}
+          onPreparePhoto={preparePhoto}
           onServicesChanged={(services) => applyServiceSummary(detail.id, services)}
         />
       )}
@@ -463,7 +490,8 @@ function VehicleModal({ form, setForm, error, saving, onClose, onSubmit, onAddPh
   );
 }
 
-function DocumentCard({ label, name, data, onView, onReplace, canManage, busy }) {
+// `locked`: dokumen lain sedang diupload -- tombol dinonaktifkan supaya pilihan file tidak diabaikan diam-diam.
+function DocumentCard({ label, name, data, onView, onReplace, canManage, busy, locked }) {
   return (
     <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
       <div className="flex items-center gap-3">
@@ -475,16 +503,17 @@ function DocumentCard({ label, name, data, onView, onReplace, canManage, busy })
       </div>
       <div className="mt-3 flex gap-2">
         {data && <button type="button" onClick={onView} className="flex-1 px-3 py-2 rounded-lg bg-white border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-100">👁 Lihat</button>}
-        {canManage && <label className={`flex-1 relative px-3 py-2 rounded-lg bg-slate-900 text-white text-xs font-semibold text-center ${busy ? 'opacity-60 cursor-wait' : 'cursor-pointer hover:bg-slate-800'}`}>
+        {canManage && <label className={`flex-1 relative px-3 py-2 rounded-lg bg-slate-900 text-white text-xs font-semibold text-center ${busy || locked ? 'opacity-60 cursor-wait' : 'cursor-pointer hover:bg-slate-800'}`}>
           {busy ? 'Mengupload...' : name ? 'Ganti Dokumen' : 'Upload Dokumen'}
-          {!busy && <input type="file" className="absolute inset-0 opacity-0 cursor-pointer" accept="application/pdf,.pdf" onChange={(e) => { onReplace(e.target.files?.[0]); e.target.value = ''; }} />}
+          {!busy && !locked && <input type="file" className="absolute inset-0 opacity-0 cursor-pointer" accept="application/pdf,.pdf" onChange={(e) => { onReplace(e.target.files?.[0]); e.target.value = ''; }} />}
         </label>}
       </div>
     </div>
   );
 }
 
-function VehicleDetail({ vehicle, error, canManage, busyDoc, onClose, onView, onUpdateDocument, onUpdateFields, onServicesChanged }) {
+function VehicleDetail({ vehicle, error, canManage, busyDoc, onClose, onView, onUpdateDocument, onUpdateFields, onPreparePhoto, onServicesChanged }) {
+  const { alert, confirm, toast } = useFeedback();
   const rows = [
     ['ID Kendaraan', vehicle.id ? `#${vehicle.id}` : '-'],
     ['Nama Barang', vehicle.nama_barang || '-'],
@@ -502,6 +531,44 @@ function VehicleDetail({ vehicle, error, canManage, busyDoc, onClose, onView, on
   ];
   const photos = vehicle.photos || [];
 
+  // Foto dikirim ulang sebagai array utuh (backend mengganti seluruh daftar foto).
+  const [busyPhoto, setBusyPhoto] = useState(false);
+  async function savePhotos(next, msg) {
+    if (next.reduce((sum, p) => sum + (p.data || '').length, 0) > MAX_PAYLOAD_CHARS) {
+      await alert({ title: 'Ukuran foto terlalu besar', message: 'Total ukuran foto kendaraan melebihi batas sekali simpan. Hapus atau ganti sebagian foto dengan ukuran lebih kecil.', tone: 'warning' });
+      return;
+    }
+    setBusyPhoto(true);
+    await onUpdateFields({ photos: next }, msg);
+    setBusyPhoto(false);
+  }
+  async function addDetailPhotos(fileList) {
+    const files = Array.from(fileList || []);
+    const room = MAX_PHOTOS - photos.length;
+    if (!files.length || room <= 0 || busyPhoto) return;
+    if (files.length > room) toast(`Hanya ${room} foto pertama yang ditambahkan (maksimal ${MAX_PHOTOS} foto).`, 'info');
+    setBusyPhoto(true);
+    const added = [];
+    for (const file of files.slice(0, room)) {
+      const photo = await onPreparePhoto(file);
+      if (photo) added.push(photo);
+    }
+    setBusyPhoto(false);
+    if (added.length) await savePhotos([...photos, ...added], `${added.length} foto berhasil ditambahkan.`);
+  }
+  async function replaceDetailPhoto(idx, file) {
+    if (!file || busyPhoto) return;
+    setBusyPhoto(true);
+    const photo = await onPreparePhoto(file);
+    setBusyPhoto(false);
+    if (photo) await savePhotos(photos.map((p, i) => (i === idx ? photo : p)), 'Foto berhasil diganti.');
+  }
+  async function deleteDetailPhoto(idx) {
+    if (busyPhoto) return;
+    const ok = await confirm({ title: 'Hapus foto?', message: `Foto ${idx + 1} (${photos[idx].name}) akan dihapus dari kendaraan ini.`, confirmText: 'Ya, Hapus', tone: 'danger' });
+    if (ok) await savePhotos(photos.filter((_, i) => i !== idx), 'Foto berhasil dihapus.');
+  }
+
   const [stnkDate, setStnkDate] = useState(vehicle.masa_berlaku_stnk || '');
   const [taxDate, setTaxDate] = useState(vehicle.waktu_pajak || '');
   const [savingDates, setSavingDates] = useState(false);
@@ -512,6 +579,15 @@ function VehicleDetail({ vehicle, error, canManage, busyDoc, onClose, onView, on
   const datesChanged = stnkDate !== (vehicle.masa_berlaku_stnk || '') || taxDate !== (vehicle.waktu_pajak || '');
 
   async function saveDates() {
+    if (savingDates) return;
+    const errors = validateVehicleDates({ tanggal_perolehan: vehicle.tanggal_perolehan, masa_berlaku_stnk: stnkDate, waktu_pajak: taxDate });
+    if (errors.length) {
+      await alert({ title: 'Tanggal belum valid', intro: 'Periksa data berikut:', message: errors, tone: 'warning' });
+      return;
+    }
+    // Mengosongkan tanggal yang sebelumnya terisi -> minta konfirmasi, supaya tidak terhapus tanpa sengaja.
+    const cleared = [['Masa berlaku STNK', stnkDate, vehicle.masa_berlaku_stnk], ['Waktu pajak', taxDate, vehicle.waktu_pajak]].filter(([, now, before]) => !now && before).map(([label]) => label);
+    if (cleared.length && !(await confirm({ title: 'Kosongkan tanggal?', message: `${cleared.join(' & ')} akan dikosongkan.`, confirmText: 'Ya, Kosongkan', tone: 'danger' }))) return;
     setSavingDates(true);
     await onUpdateFields({ masa_berlaku_stnk: stnkDate || null, waktu_pajak: taxDate || null }, 'Masa berlaku STNK & waktu pajak berhasil disimpan.');
     setSavingDates(false);
@@ -521,6 +597,16 @@ function VehicleDetail({ vehicle, error, canManage, busyDoc, onClose, onView, on
   const [savingStatus, setSavingStatus] = useState(false);
   useEffect(() => { setStatusDraft(vehicle.status || 'Tersedia'); }, [vehicle.id, vehicle.status]);
   async function saveStatus() {
+    if (savingStatus) return;
+    if (!STATUS_OPTIONS.includes(statusDraft)) {
+      await alert({ title: 'Status tidak valid', message: 'Pilih status kendaraan yang tersedia.', tone: 'warning' });
+      return;
+    }
+    // Keluar dari "Servis" tanpa satu pun riwayat service -> kemungkinan lupa dicatat.
+    if (vehicle.status === 'Servis' && statusDraft !== 'Servis' && !vehicle.service_count) {
+      const ok = await confirm({ title: 'Belum ada riwayat service', message: `Kendaraan ini belum punya riwayat service yang tercatat. Tetap ubah status menjadi ${statusDraft}?`, confirmText: 'Ya, Ubah Status', tone: 'warning' });
+      if (!ok) return;
+    }
     setSavingStatus(true);
     await onUpdateFields({ status: statusDraft }, statusDraft === 'Servis' ? 'Kendaraan ditandai waktunya service. Catat service-nya di Riwayat Service.' : `Status kendaraan diubah menjadi ${statusDraft}.`);
     setSavingStatus(false);
@@ -543,10 +629,37 @@ function VehicleDetail({ vehicle, error, canManage, busyDoc, onClose, onView, on
         <div className="p-6 space-y-5">
           {error && <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-xs text-red-700">{error}</div>}
           <div>
-            <div className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Foto Kendaraan ({photos.length})</div>
-            {photos.length ? (
+            <div className="flex items-center justify-between gap-3 mb-2">
+              <div className="text-xs font-bold text-slate-500 uppercase tracking-wider">Foto Kendaraan ({photos.length}/{MAX_PHOTOS})</div>
+              {busyPhoto && <span className="text-[11px] text-slate-500">Memproses foto...</span>}
+            </div>
+            {photos.length || canManage ? (
               <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
-                {photos.map((p, i) => <img key={`${p.name}-${i}`} src={p.data} alt={p.name} className="h-24 w-full object-cover rounded-xl border border-slate-200" />)}
+                {photos.map((p, i) => (
+                  <div key={`${p.name}-${i}`} className="relative group">
+                    <button type="button" onClick={() => onView(p.name, p.data)} title="Lihat foto" className="block w-full">
+                      <img src={p.data} alt={p.name} className="h-24 w-full object-cover rounded-xl border border-slate-200 hover:opacity-90" />
+                    </button>
+                    {canManage && (
+                      <div className="absolute bottom-1 right-1 flex gap-1">
+                        <label title="Ganti foto" className={`relative w-7 h-7 rounded-full bg-white/95 border border-slate-200 text-slate-700 flex items-center justify-center shadow ${busyPhoto ? 'opacity-50 pointer-events-none' : 'cursor-pointer hover:bg-slate-100'}`}>
+                          <span className="material-symbols-outlined text-[15px]">edit</span>
+                          <input type="file" className="hidden" accept="image/jpeg,image/png,image/webp" disabled={busyPhoto} onChange={(e) => { replaceDetailPhoto(i, e.target.files?.[0]); e.target.value = ''; }} />
+                        </label>
+                        <button type="button" title="Hapus foto" disabled={busyPhoto} onClick={() => deleteDetailPhoto(i)} className="w-7 h-7 rounded-full bg-red-600 text-white flex items-center justify-center shadow hover:bg-red-700 disabled:opacity-50">
+                          <span className="material-symbols-outlined text-[15px]">delete</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ))}
+                {canManage && photos.length < MAX_PHOTOS && (
+                  <label title="Tambah foto" className={`relative h-24 rounded-xl border border-dashed border-slate-300 bg-white flex flex-col items-center justify-center text-slate-500 ${busyPhoto ? 'opacity-50 pointer-events-none' : 'cursor-pointer hover:bg-slate-50'}`}>
+                    <span className="material-symbols-outlined">add_a_photo</span>
+                    <span className="text-[10px] mt-1">Tambah ({MAX_PHOTOS - photos.length} lagi)</span>
+                    <input type="file" multiple className="hidden" accept="image/jpeg,image/png,image/webp" disabled={busyPhoto} onChange={(e) => { addDetailPhotos(e.target.files); e.target.value = ''; }} />
+                  </label>
+                )}
               </div>
             ) : (
               <div className="w-full h-40 rounded-2xl bg-slate-100 border border-slate-200 flex flex-col items-center justify-center text-slate-400">
@@ -586,14 +699,14 @@ function VehicleDetail({ vehicle, error, canManage, busyDoc, onClose, onView, on
                 name={vehicle.bpkb_document_name}
                 data={vehicle.bpkb_document_file_data}
                 onView={() => onView(vehicle.bpkb_document_name, vehicle.bpkb_document_file_data)}
-                canManage={canManage} busy={busyDoc === 'bpkb'} onReplace={(file) => onUpdateDocument('bpkb', file)}
+                canManage={canManage} busy={busyDoc === 'bpkb'} locked={!!busyDoc} onReplace={(file) => onUpdateDocument('bpkb', file)}
               />
               <DocumentCard
                 label="STNK"
                 name={vehicle.stnk_document_name}
                 data={vehicle.stnk_document_file_data}
                 onView={() => onView(vehicle.stnk_document_name, vehicle.stnk_document_file_data)}
-                canManage={canManage} busy={busyDoc === 'stnk'} onReplace={(file) => onUpdateDocument('stnk', file)}
+                canManage={canManage} busy={busyDoc === 'stnk'} locked={!!busyDoc} onReplace={(file) => onUpdateDocument('stnk', file)}
               />
             </div>
 
@@ -603,11 +716,11 @@ function VehicleDetail({ vehicle, error, canManage, busyDoc, onClose, onView, on
               <div className="grid sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-[11px] font-semibold text-slate-500 mb-1">Masa Berlaku STNK</label>
-                  <input type="date" disabled={!canManage} value={stnkDate} onChange={(e) => setStnkDate(e.target.value)} className="w-full h-10 px-3 rounded-lg border border-slate-300 bg-white text-sm outline-none focus:border-slate-900" />
+                  <input type="date" disabled={!canManage} min={vehicle.tanggal_perolehan || '1950-01-01'} max="2100-12-31" value={stnkDate} onChange={(e) => setStnkDate(e.target.value)} className="w-full h-10 px-3 rounded-lg border border-slate-300 bg-white text-sm outline-none focus:border-slate-900" />
                 </div>
                 <div>
                   <label className="block text-[11px] font-semibold text-slate-500 mb-1">Waktu Pajak</label>
-                  <input type="date" disabled={!canManage} value={taxDate} onChange={(e) => setTaxDate(e.target.value)} className="w-full h-10 px-3 rounded-lg border border-slate-300 bg-white text-sm outline-none focus:border-slate-900" />
+                  <input type="date" disabled={!canManage} min={vehicle.tanggal_perolehan || '1950-01-01'} max="2100-12-31" value={taxDate} onChange={(e) => setTaxDate(e.target.value)} className="w-full h-10 px-3 rounded-lg border border-slate-300 bg-white text-sm outline-none focus:border-slate-900" />
                 </div>
               </div>
               {canManage && datesChanged && (

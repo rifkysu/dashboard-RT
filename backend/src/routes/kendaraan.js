@@ -14,6 +14,7 @@ const MAX_PHOTO_BYTES = 4 * 1024 * 1024; // foto sudah dikompres di client, 4MB 
 const MAX_PHOTOS = 6;
 const MAX_DOCUMENT_BYTES = 12 * 1024 * 1024; // dokumen BPKB/STNK (PDF hasil scan)
 const STATUS = ['Tersedia', 'Digunakan', 'Servis'];
+const JENIS = ['Roda 2', 'Roda 4', 'Roda 6'];
 // Kategori "Nama Barang" mengikuti nomenklatur BMN untuk alat angkutan darat bermotor.
 const NAMA_BARANG = ['Sedan', 'Jeep', 'Station Wagon', 'Micro Bus', 'Mini Bus', 'Pick Up', 'Mobil Ambulance', 'Kendaraan Bermotor Khusus Lainnya', 'Sepeda Motor'];
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -30,7 +31,15 @@ const toDate = (v) => (v == null || v === '') ? null : new Date(`${v}T00:00:00Z`
 const dateOnly = (v) => v == null ? null : v.toISOString().slice(0, 10);
 const todayJakarta = () => new Date(Date.now() + 7 * 3600 * 1000).toISOString().slice(0, 10);
 // Tanggal YYYY-MM-DD yang benar-benar ada di kalender (tolak 2026-02-31 dsb).
-const realDate = (v) => typeof v === 'string' && DATE_RE.test(v) && !Number.isNaN(Date.parse(`${v}T00:00:00Z`)) && new Date(`${v}T00:00:00Z`).toISOString().slice(0, 10) === v;
+// Tahun dibatasi 1950-2100 (input date di browser bisa mengirim tahun aneh). Sama dengan frontend utils/validation.js.
+const realDate = (v) => typeof v === 'string' && DATE_RE.test(v) && !Number.isNaN(Date.parse(`${v}T00:00:00Z`)) && new Date(`${v}T00:00:00Z`).toISOString().slice(0, 10) === v && v >= '1950-01-01' && v <= '2100-12-31';
+// Masa berlaku STNK & waktu pajak tidak boleh sebelum tanggal perolehan. Nilai string YYYY-MM-DD / kosong.
+function dateOrderError(perolehan, stnk, pajak) {
+  if (!perolehan) return null;
+  if (stnk && stnk < perolehan) return 'Masa berlaku STNK tidak boleh sebelum tanggal perolehan.';
+  if (pajak && pajak < perolehan) return 'Waktu pajak tidak boleh sebelum tanggal perolehan.';
+  return null;
+}
 const parseId = (v) => { const n = Number(v); return Number.isInteger(n) && n > 0 && n <= 2147483647 ? n : null; };
 
 function parsePhotos(row) {
@@ -129,6 +138,9 @@ router.post('/', requireRole(EDITOR_ROLES), async (req, res) => {
     if (!validDate(tanggal_perolehan) || !validDate(masa_berlaku_stnk) || !validDate(waktu_pajak)) {
       return res.status(400).json({ message: 'Format tanggal tidak valid.' });
     }
+    if (!JENIS.includes(jenis)) return res.status(400).json({ message: 'Jenis kendaraan tidak valid.' });
+    const orderError = dateOrderError(tanggal_perolehan, masa_berlaku_stnk, waktu_pajak);
+    if (orderError) return res.status(400).json({ message: orderError });
     const photoCheck = validatePhotos(photos);
     if (!photoCheck.ok) return res.status(400).json({ message: 'Foto kendaraan tidak valid (maksimal 6 foto, harus gambar asli).' });
     const photoItems = photoCheck.items || [];
@@ -136,6 +148,12 @@ router.post('/', requireRole(EDITOR_ROLES), async (req, res) => {
       if (!validDocument(req.body[`${doc.prefix}_document_name`], req.body[`${doc.prefix}_document_file_data`])) {
         return res.status(400).json({ message: `Dokumen ${doc.label} tidak valid (harus PDF asli).` });
       }
+    }
+
+    // Cek nomor polisi ganda SEBELUM foto/dokumen ditulis ke disk, supaya tidak ada file yatim.
+    // (Unique constraint DB tetap jadi pengaman terakhir kalau dua request bersamaan.)
+    if (await prisma.kendaraan.findUnique({ where: { plate: plate.trim() }, select: { id: true } })) {
+      return res.status(409).json({ message: 'Nomor polisi sudah terdaftar.' });
     }
 
     const savedPaths = [];
@@ -173,8 +191,8 @@ router.post('/', requireRole(EDITOR_ROLES), async (req, res) => {
     });
     res.status(201).json({ data: serialize(row) });
   } catch (err) {
-    logger.error('POST kendaraan gagal', { error: err });
     if (err.code === 'P2002') return res.status(409).json({ message: 'Nomor polisi sudah terdaftar.' });
+    logger.error('POST kendaraan gagal', { error: err });
     res.status(500).json({ message: 'Gagal menambahkan kendaraan.' });
   }
 });
@@ -211,7 +229,17 @@ router.put('/:id', requireRole(EDITOR_ROLES), async (req, res) => {
     if (data.merk !== undefined && !text(data.merk, 100, true)) return res.status(400).json({ message: 'Merk tidak valid.' });
     if (data.tipe !== undefined && !text(data.tipe, 100, true)) return res.status(400).json({ message: 'Tipe tidak valid.' });
     if (data.plate !== undefined && !text(data.plate, 30, true)) return res.status(400).json({ message: 'Nomor polisi tidak valid.' });
-    if (data.jenis !== undefined && !text(data.jenis, 30, true)) return res.status(400).json({ message: 'Jenis kendaraan tidak valid.' });
+    if (data.jenis !== undefined && (!text(data.jenis, 30, true) || !JENIS.includes(data.jenis))) return res.status(400).json({ message: 'Jenis kendaraan tidak valid.' });
+
+    // Urutan tanggal dicek terhadap nilai yang akan tersimpan (gabungan body + data lama).
+    const DATE_FIELDS = ['tanggal_perolehan', 'masa_berlaku_stnk', 'waktu_pajak'];
+    if (DATE_FIELDS.some((f) => body[f] !== undefined)) {
+      const current = await prisma.kendaraan.findUnique({ where: { id }, select: { tanggal_perolehan: true, masa_berlaku_stnk: true, waktu_pajak: true } });
+      if (!current) return res.status(404).json({ message: 'Kendaraan tidak ditemukan.' });
+      const next = Object.fromEntries(DATE_FIELDS.map((f) => [f, body[f] !== undefined ? (body[f] || null) : dateOnly(current[f])]));
+      const orderError = dateOrderError(next.tanggal_perolehan, next.masa_berlaku_stnk, next.waktu_pajak);
+      if (orderError) return res.status(400).json({ message: orderError });
+    }
 
     if (photoCheck.items !== undefined) {
       const savedPaths = [];

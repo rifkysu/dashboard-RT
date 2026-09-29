@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import api from '../api';
 import BrandMark from '../components/BrandMark';
+import { passwordIssue } from '../utils/validation';
 
 export default function ResetPassword() {
   const [searchParams] = useSearchParams();
@@ -18,8 +19,13 @@ export default function ResetPassword() {
   async function handleSubmit(e) {
     e.preventDefault();
     setError('');
-    if (password.length < 8) {
-      setError('Kata sandi minimal 8 karakter.');
+    if (!token) {
+      setError('Link reset tidak valid. Silakan minta link reset baru.');
+      return;
+    }
+    const pwIssue = passwordIssue(password);
+    if (pwIssue) {
+      setError(pwIssue);
       return;
     }
     if (password !== confirm) {

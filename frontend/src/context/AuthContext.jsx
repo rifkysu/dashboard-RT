@@ -112,7 +112,7 @@ export function AuthProvider({ children }) {
 
   // Role yang boleh mengedit modul Pemeliharaan & Pengadaan.
   // karyawan sengaja TIDAK termasuk -> tombol edit disembunyikan / dinonaktifkan.
-  const canEdit = user && ['kabag', 'pic'].includes(user.role);
+  const canEdit = user && ['kabag', 'pic', 'admin'].includes(user.role);
 
   // Izin edit per-baris data: kabag & admin boleh mengedit semua data,
   // sedangkan PIC (termasuk karyawan yang otomatis dipromosikan jadi PIC

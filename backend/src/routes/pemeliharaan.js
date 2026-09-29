@@ -87,7 +87,7 @@ router.put('/:id',requireRole(EDITOR_ROLES),async(req,res)=>{try{
  const data={};for(const f of allowed){if(body[f]===undefined)continue;if(DATE_FIELDS.includes(f))data[f]=body[f]?new Date(`${String(body[f]).slice(0,10)}T00:00:00Z`):null;else if(f==='stage2_payment_number')data[f]=body[f]===''||body[f]==null?null:Number(body[f]);else data[f]=body[f];}
  data.updated_by=req.user.id;
  const row=await prisma.pemeliharaan.update({where:{id},data,include:{createdBy:{select:{nama_lengkap:true}}}});res.json({data:serialize(row)});
-}catch(err){logger.error('PUT pemeliharaan gagal',{error:err,user_id:req.user?.id});if(err.code==='P2025')return res.status(404).json({message:'Data tidak ditemukan.'});res.status(500).json({message:'Gagal memperbarui data pemeliharaan.'});}});
+}catch(err){if(err.code==='P2025')return res.status(404).json({message:'Data tidak ditemukan.'});logger.error('PUT pemeliharaan gagal',{error:err,user_id:req.user?.id});res.status(500).json({message:'Gagal memperbarui data pemeliharaan.'});}});
 
 router.delete('/:id',requireRole(EDITOR_ROLES),async(req,res)=>{try{
  const id=Number(req.params.id); if(!Number.isInteger(id))return res.status(400).json({message:'ID tidak valid.'});

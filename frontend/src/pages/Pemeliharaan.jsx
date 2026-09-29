@@ -1,9 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import api from '../api';
 import { useAuth } from '../context/AuthContext';
 import DocumentViewer from '../components/DocumentViewer';
 import BrandMark from '../components/BrandMark';
 import PaymentMethodDetail from '../components/PaymentMethodDetail';
+import SlideTransition from '../components/SlideTransition';
 import { verifyFileIsGenuine } from '../utils/fileSignature';
 import { useFeedback } from '../components/Feedback';
 import { requireFields, positiveAmount, validatePayment } from '../utils/validation';
@@ -114,7 +115,10 @@ export default function Pemeliharaan() {
   function openStage(row, stage) {
     setSelectedRow(row);
     setSelectedStage(stage);
-    setDraft({
+    setDraft(draftFrom(row));
+  }
+  function draftFrom(row) {
+    return {
       ...row,
       stage1_hps: row.stage1_hps ?? '',
       metode_pengadaan: row.metode_pengadaan || '',
@@ -122,7 +126,7 @@ export default function Pemeliharaan() {
       stage2_payment_method: row.stage2_payment_method || 'GUP',
       stage3_documentation_names: row.stage3_documentation_names || '',
       stage3_documentation_files: row.stage3_documentation_files || '[]',
-    });
+    };
   }
   function closeStage() {
     if (!saving) { setSelectedRow(null); setSelectedStage(null); setDraft({}); }
@@ -152,6 +156,9 @@ export default function Pemeliharaan() {
         // Berkas yang tidak diganti jangan dikirim ulang -- kalau dikirim, backend
         // menyimpan salinan file baru ke disk di setiap "Simpan Draf"/"Lanjut".
         if (FILE_FIELDS.includes(field) && draft[field] === selectedRow[field]) return;
+        // 'GUP' hanya pilihan awal di form Tahap 2 -- jangan ikut tersimpan saat menyimpan tahap lain,
+        // kalau tidak kolom Transaksi langsung tampil "GUP" padahal Tahap 2 belum diisi.
+        if (field === 'stage2_payment_method' && selectedStage.no !== 2 && !selectedRow.stage2_payment_method) return;
         payload[field] = draft[field] === '' ? null : draft[field];
       });
       // Tombol "Lanjut ke Tahap berikutnya" berarti tahap aktif sudah selesai.
@@ -181,7 +188,7 @@ export default function Pemeliharaan() {
         toast(`Pemeliharaan "${updated.judul}" selesai.`);
       } else {
         setSelectedRow(updated);
-        setDraft({ ...updated, stage2_payment_method: updated.stage2_payment_method || 'GUP' });
+        setDraft(draftFrom(updated));
         toast('Draf berhasil disimpan.');
       }
     } catch (err) {
@@ -258,7 +265,7 @@ export default function Pemeliharaan() {
     toast(`${exportData.length} data berhasil diexport ke Excel.`);
   }
 
-  const roleLabel = user?.role === 'kabag' ? 'Kabag' : user?.role === 'pic' ? 'PIC' : 'Karyawan';
+  const roleLabel = user?.role === 'admin' ? 'Admin' : user?.role === 'kabag' ? 'Kabag' : user?.role === 'pic' ? 'PIC' : 'Karyawan';
 
   return (
     <div className="menu-page menu-pemeliharaan relative" style={{ fontFamily: 'Arial, Helvetica, sans-serif' }}>
@@ -380,7 +387,10 @@ function StageModal({ row, stage, draft, setDraft, canEdit, roleLabel, saving, o
   const stageStatus = draft[stage.field] || 'pending';
   const fileName = stage.no === 1 ? draft.stage1_document_name : stage.no === 2 ? draft.stage2_invoice_document_name : draft.stage3_documentation_names;
 
-  return <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm overflow-y-auto p-4 md:p-8" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+  // Pindah tahap -> gulir modal ke atas (tombol "Lanjut" ada di bawah form), halus seiring animasi geser.
+  const scrollRef = useRef(null);
+  useEffect(() => { scrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' }); }, [stage.no]);
+  return <div ref={scrollRef} className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm overflow-y-auto p-4 md:p-8" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
     <div className="min-h-full flex items-start justify-center">
       <div className="w-full max-w-6xl bg-[#f7f9fb] rounded-xl shadow-2xl overflow-hidden">
         <div className="bg-white border-b border-slate-200 px-5 md:px-8 py-5 flex items-center justify-between">
@@ -406,9 +416,11 @@ function StageModal({ row, stage, draft, setDraft, canEdit, roleLabel, saving, o
 
           <div className="bg-slate-100 rounded-xl p-4 sm:p-5 flex flex-wrap items-center justify-between gap-3 mb-8"><div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-slate-700"><span><b>Permintaan:</b> {row.judul}</span><span className="hidden sm:inline text-slate-300">•</span><span><b>Lokasi:</b> {row.lokasi}</span><span className="hidden sm:inline text-slate-300">•</span><span><b>Status:</b> {statusLabel[row.status]}</span></div><span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${statusPill[stageStatus]}`}>{statusLabel[stageStatus]}</span></div>
 
-          {stage.no === 1 && <StageOne draft={draft} update={update} readOnly={readOnly} fileName={fileName} onView={onView} />}
-          {stage.no === 2 && <StageTwo draft={draft} update={update} readOnly={readOnly} fileName={fileName} onView={onView} />}
-          {stage.no === 3 && <StageThree draft={draft} update={update} readOnly={readOnly} fileName={fileName} onView={onView} />}
+          <SlideTransition index={stage.no}>
+            {stage.no === 1 && <StageOne draft={draft} update={update} readOnly={readOnly} fileName={fileName} onView={onView} />}
+            {stage.no === 2 && <StageTwo draft={draft} update={update} readOnly={readOnly} fileName={fileName} onView={onView} />}
+            {stage.no === 3 && <StageThree draft={draft} update={update} readOnly={readOnly} fileName={fileName} onView={onView} />}
+          </SlideTransition>
 
           {!canEdit && <div className="mt-6 bg-slate-100 border border-slate-200 rounded-xl p-4 text-sm text-slate-600"><b>Mode lihat saja.</b> Anda dapat melihat seluruh data Tahap {stage.no}, tetapi tidak dapat mengubah atau menyimpan perubahan. Pengeditan hanya untuk Kabag, Admin, dan PIC yang menambahkan permintaan ini.</div>}
 
@@ -455,7 +467,7 @@ function StageOne({ draft, update, readOnly, fileName, onView }) {
 }
 
 function FileUpload({label,name,data,accept,readOnly,onPick,onView}) {
-  return <div><div className="flex items-center justify-between gap-3 mb-2"><label className={labelClass}>{label}</label><span className="text-xs text-slate-500">PDF, JPG, PNG · Maks. 8MB untuk preview</span></div><label className={`relative flex items-center gap-4 p-5 rounded-xl border border-dashed border-slate-300 bg-slate-50 ${readOnly ? 'opacity-70' : 'cursor-pointer hover:bg-slate-100'}`}><span className="w-12 h-12 rounded-lg bg-white flex items-center justify-center shadow-sm"><span className="material-symbols-outlined text-[24px] text-slate-600">upload_file</span></span><div className="min-w-0 flex-1"><div className="text-sm font-semibold text-slate-800 truncate">{name || `Pilih ${label.toLowerCase()}`}</div><div className="text-xs text-slate-500 mt-1">{readOnly ? 'Mode lihat saja' : 'Klik untuk memilih berkas'}</div></div>{data && <button type="button" onClick={(e)=>{e.preventDefault();e.stopPropagation();onView(name,data);}} className="relative z-10 px-3 py-2 rounded-lg bg-white border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-100">👁 Lihat</button>}{!readOnly && <input type="file" className="absolute inset-0 opacity-0 cursor-pointer" accept={accept} onChange={(e)=>onPick(e.target.files?.[0])} />}</label></div>;
+  return <div><div className="flex items-center justify-between gap-3 mb-2"><label className={labelClass}>{label}</label><span className="text-xs text-slate-500">PDF, JPG, PNG · Maks. 8MB untuk preview</span></div><label className={`relative flex items-center gap-4 p-5 rounded-xl border border-dashed border-slate-300 bg-slate-50 ${readOnly ? 'opacity-70' : 'cursor-pointer hover:bg-slate-100'}`}><span className="w-12 h-12 rounded-lg bg-white flex items-center justify-center shadow-sm"><span className="material-symbols-outlined text-[24px] text-slate-600">upload_file</span></span><div className="min-w-0 flex-1"><div className="text-sm font-semibold text-slate-800 truncate">{name || `Pilih ${label.toLowerCase()}`}</div><div className="text-xs text-slate-500 mt-1">{readOnly ? 'Mode lihat saja' : 'Klik untuk memilih berkas'}</div></div>{data && <button type="button" onClick={(e)=>{e.preventDefault();e.stopPropagation();onView(name,data);}} className="relative z-10 px-3 py-2 rounded-lg bg-white border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-100">👁 Lihat</button>}{!readOnly && <input type="file" className="absolute inset-0 opacity-0 cursor-pointer" accept={accept} onChange={(e)=>{onPick(e.target.files?.[0]);e.target.value='';}} />}</label></div>;
 }
 
 function StageTwo({ draft, update, readOnly, fileName, onView }) {
@@ -476,6 +488,8 @@ function StageThree({ draft, update, readOnly, onView }) {
   let files=[]; try { files=JSON.parse(draft.stage3_documentation_files || '[]'); } catch { files=[]; }
   const pick = async (e) => {
     const selected = Array.from(e.target.files || []);
+    // Kosongkan input supaya file yang sama bisa dipilih ulang (mis. setelah ditolak).
+    e.target.value = '';
     if (!selected.length) return;
     const tooLarge = selected.filter((file) => file.size > MAX_FILE_BYTES);
     if (tooLarge.length) { alert({ ...FILE_TOO_LARGE, intro: 'Berkas berikut melebihi 8MB:', message: tooLarge.map((f) => f.name) }); return; }
@@ -497,5 +511,5 @@ function StageThree({ draft, update, readOnly, onView }) {
 
 function AddModal({ form, setForm, error, saving, onClose, onSubmit }) {
   const { alert } = useFeedback();
-  return <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}><div className="w-full max-w-2xl max-h-[92vh] overflow-y-auto bg-white rounded-xl shadow-2xl"><form noValidate onSubmit={onSubmit}><div className="px-6 pt-6 pb-4 border-b border-slate-100 flex items-start justify-between"><div><h2 className="text-xl font-bold text-slate-900">Tambah Permintaan Pemeliharaan</h2><p className="text-sm text-slate-500 mt-1">Isi formulir untuk melaporkan kerusakan atau kebutuhan perbaikan fasilitas.</p></div><button type="button" onClick={onClose} className="w-9 h-9 rounded-lg text-slate-500 hover:bg-slate-100"><span className="material-symbols-outlined">close</span></button></div><div className="px-6 py-5 space-y-4">{error && <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{error}</div>}<div><label className="block text-xs font-semibold text-slate-700 mb-2">Kategori</label><div className="flex gap-6">{[['sarana','Sarana'],['prasarana','Prasarana']].map(([v,l]) => <label key={v} className="flex items-center gap-2 text-sm text-slate-600"><input type="radio" name="kategori" checked={form.kategori === v} onChange={() => setForm({...form,kategori:v})}/>{l}</label>)}</div></div><div><label className="block text-xs font-semibold text-slate-700 mb-1.5">Judul Masalah *</label><input required value={form.judul} onChange={(e)=>setForm({...form,judul:e.target.value})} className={inputClass}/></div><div className="grid grid-cols-1 sm:grid-cols-2 gap-3"><div><label className="block text-xs font-semibold text-slate-700 mb-1.5">Jenis Pekerjaan</label><select value={form.jenis_pekerjaan} onChange={(e)=>setForm({...form,jenis_pekerjaan:e.target.value})} className={inputClass}><option value="">Pilih Jenis Pekerjaan</option><option value="perbaikan">Perbaikan</option><option value="perawatan">Perawatan</option><option value="penggantian">Penggantian</option><option value="instalasi">Instalasi</option></select></div><div><label className="block text-xs font-semibold text-slate-700 mb-1.5">Lokasi *</label><select required value={form.lokasi} onChange={(e)=>setForm({...form,lokasi:e.target.value})} className={inputClass}><option value="">Pilih Lokasi</option><option value="Graha Kemnaker">Graha Kemnaker</option><option value="Gatsu 51">Gatsu 51</option><option value="Wisma Ciloto">Wisma Ciloto</option><option value="Rumah Dinas">Rumah Dinas</option><option value="RC Walang">RC Walang</option><option value="RC Kranji">RC Kranji</option></select></div></div><div><label className="block text-xs font-semibold text-slate-700 mb-1.5">Titik Lokasi</label><input value={form.titik_lokasi} onChange={(e)=>setForm({...form,titik_lokasi:e.target.value})} className={inputClass}/></div><div><label className="block text-xs font-semibold text-slate-700 mb-1.5">Tanggal Input *</label><input required type="date" value={form.tanggal} onChange={(e)=>setForm({...form,tanggal:e.target.value})} className={inputClass}/></div><div><label className="block text-xs font-semibold text-slate-700 mb-2">Tingkat Urgensi</label><div className="flex flex-wrap gap-5">{[['rendah','Rendah'],['sedang','Sedang'],['tinggi','Tinggi']].map(([v,l])=><label key={v} className="flex items-center gap-2 text-sm text-slate-600"><input type="radio" name="urgensi" checked={form.urgensi===v} onChange={()=>setForm({...form,urgensi:v})}/>{l}</label>)}</div></div><div><label className="block text-xs font-semibold text-slate-700 mb-1.5">Deskripsi Detail</label><textarea maxLength={500} value={form.deskripsi} onChange={(e)=>setForm({...form,deskripsi:e.target.value})} rows={4} className="w-full px-3 py-3 rounded-lg border border-slate-300 bg-slate-50/70 text-sm outline-none focus:bg-white focus:border-slate-900"/><div className="text-right text-[11px] text-slate-500 mt-1">{form.deskripsi.length}/500 karakter</div></div><div><div className="flex items-center justify-between gap-3 mb-1.5"><label className="block text-xs font-semibold text-slate-700">Upload Dokumen Pendukung</label><span className="text-[11px] text-slate-500">PDF, JPG, PNG, WebP · Maks. 8MB</span></div><label className="relative flex items-center gap-3 p-4 rounded-lg border border-dashed border-slate-300 bg-slate-50 cursor-pointer hover:bg-slate-100"><span className="w-10 h-10 rounded-lg bg-white flex items-center justify-center shadow-sm"><span className="material-symbols-outlined text-slate-600">upload_file</span></span><div className="min-w-0 flex-1"><div className="text-sm font-semibold text-slate-800 truncate">{form.request_document_name || 'Pilih dokumen pendukung'}</div><div className="text-xs text-slate-500 mt-1">Lampiran permintaan awal (opsional)</div></div><span className="px-3 py-2 rounded-lg bg-white border border-slate-200 text-xs font-semibold text-slate-700">Pilih Berkas</span><input type="file" className="absolute inset-0 opacity-0 cursor-pointer" accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp" onChange={async (e) => { const f = e.target.files?.[0]; if (!f) return; if (f.size > MAX_FILE_BYTES) { alert(FILE_TOO_LARGE); e.target.value = ''; return; } if (!(await verifyFileIsGenuine(f))) { alert({ title: 'File ditolak', message: FILE_SIGNATURE_REJECT_MESSAGE, tone: 'error' }); e.target.value = ''; return; } const r = new FileReader(); r.onload = () => setForm((cur) => ({ ...cur, request_document_name: f.name, request_document_file_data: r.result })); r.readAsDataURL(f); }} /></label></div></div><div className="px-6 py-4 border-t border-slate-200 flex justify-end gap-3"><button type="button" onClick={onClose} className="px-4 py-2.5 text-sm font-semibold text-slate-700">Batal</button><button type="submit" disabled={saving} className="px-5 py-2.5 bg-slate-900 text-white text-sm font-semibold rounded-lg disabled:opacity-60">{saving ? 'Menyimpan...' : 'Simpan Permintaan'}</button></div></form></div></div>;
+  return <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}><div className="w-full max-w-2xl max-h-[92vh] overflow-y-auto bg-white rounded-xl shadow-2xl"><form noValidate onSubmit={onSubmit}><div className="px-6 pt-6 pb-4 border-b border-slate-100 flex items-start justify-between"><div><h2 className="text-xl font-bold text-slate-900">Tambah Permintaan Pemeliharaan</h2><p className="text-sm text-slate-500 mt-1">Isi formulir untuk melaporkan kerusakan atau kebutuhan perbaikan fasilitas.</p></div><button type="button" onClick={onClose} className="w-9 h-9 rounded-lg text-slate-500 hover:bg-slate-100"><span className="material-symbols-outlined">close</span></button></div><div className="px-6 py-5 space-y-4">{error && <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{error}</div>}<div><label className="block text-xs font-semibold text-slate-700 mb-2">Kategori</label><div className="flex gap-6">{[['sarana','Sarana'],['prasarana','Prasarana']].map(([v,l]) => <label key={v} className="flex items-center gap-2 text-sm text-slate-600"><input type="radio" name="kategori" checked={form.kategori === v} onChange={() => setForm({...form,kategori:v})}/>{l}</label>)}</div></div><div><label className="block text-xs font-semibold text-slate-700 mb-1.5">Judul Masalah *</label><input required value={form.judul} onChange={(e)=>setForm({...form,judul:e.target.value})} className={inputClass}/></div><div className="grid grid-cols-1 sm:grid-cols-2 gap-3"><div><label className="block text-xs font-semibold text-slate-700 mb-1.5">Jenis Pekerjaan</label><select value={form.jenis_pekerjaan} onChange={(e)=>setForm({...form,jenis_pekerjaan:e.target.value})} className={inputClass}><option value="">Pilih Jenis Pekerjaan</option><option value="perbaikan">Perbaikan</option><option value="perawatan">Perawatan</option><option value="penggantian">Penggantian</option><option value="instalasi">Instalasi</option></select></div><div><label className="block text-xs font-semibold text-slate-700 mb-1.5">Lokasi *</label><select required value={form.lokasi} onChange={(e)=>setForm({...form,lokasi:e.target.value})} className={inputClass}><option value="">Pilih Lokasi</option><option value="Graha Kemnaker">Graha Kemnaker</option><option value="Gatsu 51">Gatsu 51</option><option value="Wisma Ciloto">Wisma Ciloto</option><option value="Rumah Dinas">Rumah Dinas</option><option value="RC Walang">RC Walang</option><option value="RC Kranji">RC Kranji</option></select></div></div><div><label className="block text-xs font-semibold text-slate-700 mb-1.5">Titik Lokasi</label><input value={form.titik_lokasi} onChange={(e)=>setForm({...form,titik_lokasi:e.target.value})} className={inputClass}/></div><div><label className="block text-xs font-semibold text-slate-700 mb-1.5">Tanggal Input *</label><input required type="date" value={form.tanggal} onChange={(e)=>setForm({...form,tanggal:e.target.value})} className={inputClass}/></div><div><label className="block text-xs font-semibold text-slate-700 mb-2">Tingkat Urgensi</label><div className="flex flex-wrap gap-5">{[['rendah','Rendah'],['sedang','Sedang'],['tinggi','Tinggi']].map(([v,l])=><label key={v} className="flex items-center gap-2 text-sm text-slate-600"><input type="radio" name="urgensi" checked={form.urgensi===v} onChange={()=>setForm({...form,urgensi:v})}/>{l}</label>)}</div></div><div><label className="block text-xs font-semibold text-slate-700 mb-1.5">Deskripsi Detail</label><textarea maxLength={500} value={form.deskripsi} onChange={(e)=>setForm({...form,deskripsi:e.target.value})} rows={4} className="w-full px-3 py-3 rounded-lg border border-slate-300 bg-slate-50/70 text-sm outline-none focus:bg-white focus:border-slate-900"/><div className="text-right text-[11px] text-slate-500 mt-1">{form.deskripsi.length}/500 karakter</div></div><div><div className="flex items-center justify-between gap-3 mb-1.5"><label className="block text-xs font-semibold text-slate-700">Upload Dokumen Pendukung</label><span className="text-[11px] text-slate-500">PDF, JPG, PNG, WebP · Maks. 8MB</span></div><label className="relative flex items-center gap-3 p-4 rounded-lg border border-dashed border-slate-300 bg-slate-50 cursor-pointer hover:bg-slate-100"><span className="w-10 h-10 rounded-lg bg-white flex items-center justify-center shadow-sm"><span className="material-symbols-outlined text-slate-600">upload_file</span></span><div className="min-w-0 flex-1"><div className="text-sm font-semibold text-slate-800 truncate">{form.request_document_name || 'Pilih dokumen pendukung'}</div><div className="text-xs text-slate-500 mt-1">Lampiran permintaan awal (opsional)</div></div><span className="px-3 py-2 rounded-lg bg-white border border-slate-200 text-xs font-semibold text-slate-700">Pilih Berkas</span><input type="file" className="absolute inset-0 opacity-0 cursor-pointer" accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp" onChange={async (e) => { const f = e.target.files?.[0]; e.target.value = ''; if (!f) return; if (f.size > MAX_FILE_BYTES) { alert(FILE_TOO_LARGE); return; } if (!(await verifyFileIsGenuine(f))) { alert({ title: 'File ditolak', message: FILE_SIGNATURE_REJECT_MESSAGE, tone: 'error' }); return; } const r = new FileReader(); r.onload = () => setForm((cur) => ({ ...cur, request_document_name: f.name, request_document_file_data: r.result })); r.readAsDataURL(f); }} /></label></div></div><div className="px-6 py-4 border-t border-slate-200 flex justify-end gap-3"><button type="button" onClick={onClose} className="px-4 py-2.5 text-sm font-semibold text-slate-700">Batal</button><button type="submit" disabled={saving} className="px-5 py-2.5 bg-slate-900 text-white text-sm font-semibold rounded-lg disabled:opacity-60">{saving ? 'Menyimpan...' : 'Simpan Permintaan'}</button></div></form></div></div>;
 }

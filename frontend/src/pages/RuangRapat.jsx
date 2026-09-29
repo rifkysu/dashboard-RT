@@ -7,6 +7,7 @@ import { verifyFileIsGenuine } from '../utils/fileSignature';
 import DocumentViewer from '../components/DocumentViewer';
 import { holidayLabel } from '../utils/holidays';
 import useRuangRapatLive from '../hooks/useRuangRapatLive';
+import SlideTransition from '../components/SlideTransition';
 
 const STATUS_META = {
   belum: { label: 'Belum Ada Surat', card: 'bg-red-50 border-red-300 text-red-900', badge: 'bg-red-100 text-red-700 border-red-200', dot: 'bg-red-500' },
@@ -126,6 +127,8 @@ export default function RuangRapat() {
     </div>
     {error&&<div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-xs font-medium text-red-700">{error}</div>}
     <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm"><div className="p-4 border-b flex flex-col sm:flex-row justify-between gap-3 sm:items-center"><div><div className="font-bold text-sm">Kalender Booking Ruang Rapat</div><div className="text-xs text-slate-500 mt-1">Senin–Minggu · navigasi bebas ke minggu berapa pun.</div></div><div className="flex items-center gap-2 text-xs"><button onClick={()=>moveWeek(-1)} className="border rounded px-2.5 py-1.5 hover:bg-slate-50">‹</button><span className="font-semibold px-2 whitespace-nowrap">{formatDateLabel(weekDates[0])} – {formatDateLabel(weekDates[6])}</span><button onClick={()=>moveWeek(1)} className="border rounded px-2.5 py-1.5 hover:bg-slate-50">›</button><button onClick={()=>setWeekStart(mondayOf())} className="border rounded px-3 py-1.5 hover:bg-slate-50 font-semibold text-slate-600">Hari Ini</button></div></div>
+      {/* Ganti minggu -> kalender bergeser (minggu depan dari kanan, minggu lalu dari kiri). */}
+      <SlideTransition index={Math.round(Date.parse(`${weekStart}T00:00:00Z`)/(7*86400000))}>
       <div className="overflow-x-auto">
         <table className="min-w-[1400px] w-full border-collapse">
           <thead>
@@ -171,6 +174,7 @@ export default function RuangRapat() {
           </tbody>
         </table>
       </div>
+      </SlideTransition>
     </div>
     {showBook&&<BookModal form={form} setForm={setForm} saving={saving} error={error} onClose={()=>setShowBook(false)} onSubmit={saveBooking}/>} 
     <DocumentViewer open={viewer.open} name={viewer.name} data={viewer.data} onClose={()=>setViewer({open:false,name:'',data:''})} />
