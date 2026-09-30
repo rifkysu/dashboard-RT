@@ -96,10 +96,11 @@ export default function RuangRapat() {
     setExporting(true);
     try{
       const r=await api.get('/ruang-rapat',{params:{from:mulai,to:sampai}});
-      // Booking multi-hari dipecah jadi satu baris per hari (hanya hari yang masuk rentang export).
+      // Booking multi-hari dipecah jadi satu baris per hari, LENGKAP dari tanggal mulai s/d selesai
+      // (tidak dipotong rentang export: booking 30 Sep–2 Okt tetap tertulis 3 hari walau export September).
       const rows=[];
       for(const x of r.data.data||[]){
-        const d=new Date(`${x.date>mulai?x.date:mulai}T00:00:00`);const last=endOf(x)<sampai?endOf(x):sampai;
+        const d=new Date(`${x.date}T00:00:00`);const last=endOf(x);
         for(let day=localDateISO(d);day<=last;d.setDate(d.getDate()+1),day=localDateISO(d))rows.push({...x,day});
       }
       rows.sort((a,b)=>`${a.day} ${a.start} ${a.room}`.localeCompare(`${b.day} ${b.start} ${b.room}`));

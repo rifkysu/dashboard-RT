@@ -33,6 +33,8 @@ export default function useMonthSchedule(endpoint, extraParams) {
   // Hanya respons request terakhir yang dipakai, supaya respons lama tidak menimpa data terbaru.
   const reqRef = useRef(0);
   const paramsRef = useRef(extraParams);
+  // Jeda setelah gagal memuat bulan berikutnya, supaya sentinel yang tetap terlihat tidak memicu request beruntun.
+  const moreFailedAt = useRef(0);
   paramsRef.current = extraParams;
 
   const load = async () => {
@@ -40,11 +42,13 @@ export default function useMonthSchedule(endpoint, extraParams) {
     const { from, to } = monthRange(monthsRef.current);
     try {
       const r = await api.get(endpoint, { params: { ...paramsRef.current, from, to } });
-      if (id !== reqRef.current) return;
+      if (id !== reqRef.current) return true;
       setItems(r.data.data || []);
       setError('');
+      return true;
     } catch (e) {
       if (id === reqRef.current) setError(e.response?.data?.message || 'Jadwal belum dapat dimuat.');
+      return false;
     } finally {
       if (id === reqRef.current) { setLoading(false); setLoadingMore(false); }
     }
@@ -56,10 +60,12 @@ export default function useMonthSchedule(endpoint, extraParams) {
 
   const loadMore = () => {
     const cur = monthsRef.current;
-    if (cur.length >= MAX_MONTHS) return;
-    setMonths([...cur, addMonth(cur[cur.length - 1], 1)]);
+    if (cur.length >= MAX_MONTHS || Date.now() - moreFailedAt.current < 10000) return;
+    const next = [...cur, addMonth(cur[cur.length - 1], 1)];
+    setMonths(next);
     setLoadingMore(true);
-    load();
+    // Gagal memuat -> bulan baru ditarik lagi, supaya tidak tampil kosong seolah tidak ada booking.
+    load().then((ok) => { if (!ok && monthsRef.current === next) { moreFailedAt.current = Date.now(); setMonths(cur); } });
   };
 
   useEffect(() => { load(); const t = setInterval(load, 60000); return () => clearInterval(t); }, []); // eslint-disable-line react-hooks/exhaustive-deps

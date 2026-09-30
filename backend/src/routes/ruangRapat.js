@@ -79,24 +79,31 @@ async function readSurat(row){
 }
 router.get('/surat-export',async(req,res)=>{try{
   const range=dateRange(req.query);if(!range||req.query.from===undefined||req.query.to===undefined)return res.status(400).json({message:'Rentang tanggal export tidak valid (maks. 400 hari).'});
-  const rows=await prisma.ruangRapat.findMany({where:{...range,OR:[{surat_file_path:{not:null}},{surat_file_data:{not:null}}]},select:{id:true,agenda:true,room:true,nomor_surat:true,booking_date:true,end_date:true,surat_name:true,surat_file_path:true},orderBy:[{booking_date:'asc'},{start_time:'asc'},{id:'asc'}]});
-  const seen=new Set(), names=new Set(), files=[], index=[];let total=0;
+  const rows=await prisma.ruangRapat.findMany({where:{...range,OR:[{surat_file_path:{not:null}},{surat_file_data:{not:null}}]},select:{id:true,agenda:true,room:true,pic:true,nomor_surat:true,booking_date:true,end_date:true,start_time:true,surat_name:true,surat_file_path:true},orderBy:[{booking_date:'asc'},{start_time:'asc'},{id:'asc'}]});
+  const seen=new Set(), names=new Set(), files=[], missing=new Map(), fileOf=new Map();let total=0;
+  const keyOf=r=>{const nomor=(r.nomor_surat||'').trim();return nomor?`no:${nomor.toLowerCase()}`:r.surat_file_path?`file:${r.surat_file_path}`:`id:${r.id}`;};
   for(const r of rows){
     const nomor=(r.nomor_surat||'').trim();
-    const key=nomor?`no:${nomor.toLowerCase()}`:r.surat_file_path?`file:${r.surat_file_path}`:`id:${r.id}`;
-    if(seen.has(key))continue;seen.add(key);
-    const file=await readSurat(r);if(!file)continue;
+    const key=keyOf(r);
+    if(seen.has(key))continue;
+    // File hilang dari disk -> coba booking lain dengan nomor surat yang sama; kalau semua hilang, dicatat di daftar.
+    const file=await readSurat(r);if(!file){if(!missing.has(key))missing.set(key,r);continue;}
+    seen.add(key);missing.delete(key);
     total+=file.data.length;if(total>MAX_ZIP_BYTES)return res.status(413).json({message:'Total ukuran surat terlalu besar untuk satu ZIP. Perkecil rentang tanggal.'});
     const tgl=fmtDate(r.booking_date);
     let base=`${nomor?zipSafe(nomor):'Tanpa Nomor'}_${tgl}_${zipSafe(r.agenda)}`, name=`${base}${file.ext}`;
     for(let i=2;names.has(name.toLowerCase());i++)name=`${base} (${i})${file.ext}`;
-    names.add(name.toLowerCase());files.push({name,data:file.data});
-    index.push([index.length+1,nomor||'-',tgl+(+r.end_date!==+r.booking_date?` s.d. ${fmtDate(r.end_date)}`:''),r.room,r.agenda,name]);
+    names.add(name.toLowerCase());files.push({name,data:file.data});fileOf.set(key,name);
   }
-  if(!files.length)return res.status(404).json({message:'Tidak ada surat booking pada rentang tanggal tersebut.'});
-  // Daftar isi ZIP (bisa dibuka di Excel).
+  if(!files.length)return res.status(404).json({message:missing.size?'File surat pada rentang tanggal tersebut tidak ditemukan di server.':'Tidak ada surat booking pada rentang tanggal tersebut.'});
+  // Daftar isi ZIP (bisa dibuka di Excel), satu baris PER HARI seperti Export Excel: booking seminggu
+  // ditulis 7 baris, lengkap dari tanggal mulai s/d selesai. Kolom File menunjuk file surat di ZIP.
+  const perDay=[];
+  for(const r of rows)for(let t=+r.booking_date;t<=+r.end_date;t+=DAY)perDay.push({day:fmtDate(new Date(t)),r});
+  perDay.sort((a,b)=>a.day.localeCompare(b.day)||(+a.r.start_time)-(+b.r.start_time)||a.r.room.localeCompare(b.r.room));
+  const tglID=v=>`${v.slice(8,10)}/${v.slice(5,7)}/${v.slice(0,4)}`;
   const csv=v=>`"${String(v).replace(/"/g,'""')}"`;
-  const list=[['No','Nomor Surat','Tanggal','Ruang Rapat','Nama Rapat','File'],...index].map(r=>r.map(csv).join(',')).join('\r\n');
+  const list=[['No','Tanggal','Ruang Rapat','Nama Rapat','PIC','Nomor Surat','File'],...perDay.map(({day,r},i)=>[i+1,tglID(day),r.room,r.agenda,r.pic,(r.nomor_surat||'').trim()||'-',fileOf.get(keyOf(r))||'(file tidak ditemukan di server)'])].map(r=>r.map(csv).join(',')).join('\r\n');
   files.push({name:'daftar_surat.csv',data:Buffer.from('\ufeff'+list,'utf8')});
   const zip=createZip(files);
   res.setHeader('Content-Type','application/zip');
@@ -139,11 +146,14 @@ router.put('/:id',async(req,res)=>{try{
   const row=await prisma.$transaction(async tx=>{
     const pre=await tx.ruangRapat.findFirst({where:{id,cancelled_at:null},select:{room:true}});
     if(!pre)throw new HttpError(404,'Booking tidak ditemukan atau sudah dibatalkan.');
+    // Selalu kunci ruangan lama (+ ruangan baru bila pindah) dengan urutan tetap supaya tidak deadlock,
+    // lalu baca ulang: booking bisa saja baru dibatalkan / dipindah pengguna lain sebelum kunci didapat.
+    for(const r of [...new Set([pre.room,data.room??pre.room])].sort())await lockRoom(tx,r);
+    const current=await tx.ruangRapat.findFirst({where:{id,cancelled_at:null},select:{room:true,booking_date:true,end_date:true,start_time:true,end_time:true}});
+    if(!current)throw new HttpError(404,'Booking tidak ditemukan atau sudah dibatalkan.');
+    if(current.room!==pre.room)throw new HttpError(409,'Booking baru saja diubah pengguna lain. Muat ulang lalu coba lagi.');
     const scheduleChanged=b.room!==undefined||b.date!==undefined||b.end_date!==undefined||b.start!==undefined||b.end!==undefined;
     if(scheduleChanged){
-      await lockRoom(tx,data.room??pre.room);
-      const current=await tx.ruangRapat.findUnique({where:{id}});
-      if(!current)throw new HttpError(404,'Booking tidak ditemukan.');
       const bd=b.date!==undefined?date(b.date):current.booking_date;
       // Kalau hanya tanggal mulai yang diubah, durasi booking dipertahankan.
       const ed=b.end_date?date(b.end_date):b.end_date!==undefined?bd:new Date(+bd+(current.end_date-current.booking_date));
@@ -177,6 +187,7 @@ router.post('/:id/cancel-dates',async(req,res)=>{try{
     await lockRoom(tx,pre.room);
     const b=await tx.ruangRapat.findFirst({where:{id,cancelled_at:null}});
     if(!b)throw new HttpError(404,'Booking tidak ditemukan atau sudah dibatalkan.');
+    if(b.room!==pre.room)throw new HttpError(409,'Booking baru saja diubah pengguna lain. Muat ulang lalu coba lagi.');
     const days=[];for(let t=+b.booking_date;t<=+b.end_date;t+=DAY)days.push(fmtDate(new Date(t)));
     if([...cancel].some(d=>!days.includes(d)))throw new HttpError(400,'Ada tanggal yang tidak termasuk dalam booking ini.');
     const segmentsOf=pick=>{const out=[];for(const d of days){if(!pick(d))continue;const last=out[out.length-1];if(last&&+date(d)-+date(last.to)===DAY)last.to=d;else out.push({from:d,to:d});}return out;};
