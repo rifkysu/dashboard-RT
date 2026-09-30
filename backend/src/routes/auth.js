@@ -3,7 +3,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const passport = require('passport');
 const prisma = require('../prisma');
-const { requireAuth } = require('../middleware/auth');
+const { requireAuth, ACCOUNT_BANNED, ACCOUNT_BANNED_MESSAGE } = require('../middleware/auth');
 const { createRateLimiter, normalizeEmail, isSafeText } = require('../middleware/security');
 const { signToken, hashResetToken, createResetToken } = require('../token');
 const { isMailConfigured, sendResetPasswordEmail } = require('../mailer');
@@ -142,7 +142,7 @@ router.post('/login', loginIpLimiter, loginLimiter, async (req, res) => {
       return res.status(400).json({ message: 'Format email tidak valid.' });
     }
 
-    const user = await prisma.user.findFirst({ where: { email, is_active: true } });
+    const user = await prisma.user.findFirst({ where: { email } });
 
     if (!user || !user.password_hash) {
       return res.status(401).json({ message: 'Email atau kata sandi salah.' });
@@ -151,6 +151,12 @@ router.post('/login', loginIpLimiter, loginLimiter, async (req, res) => {
     const match = await bcrypt.compare(password, user.password_hash);
     if (!match) {
       return res.status(401).json({ message: 'Email atau kata sandi salah.' });
+    }
+
+    // Status ban baru diberitahukan SETELAH kata sandi terbukti benar, supaya
+    // orang lain tidak bisa mengecek akun siapa yang di-ban cukup dengan emailnya.
+    if (!user.is_active) {
+      return res.status(403).json({ code: ACCOUNT_BANNED, message: ACCOUNT_BANNED_MESSAGE });
     }
 
     const updated = await prisma.user.update({ where: { id: user.id }, data: { last_login_at: new Date() } });
@@ -273,7 +279,16 @@ if (ssoEnabled) {
 
   router.get(
     '/google/callback',
-    passport.authenticate('google', { session: false, failureRedirect: `${process.env.FRONTEND_URL}/login?sso=gagal` }),
+    (req, res, next) => {
+      passport.authenticate('google', { session: false }, (err, user, info) => {
+        if (err || !user) {
+          const reason = info?.banned ? 'banned' : 'gagal';
+          return res.redirect(`${process.env.FRONTEND_URL}/login?sso=${reason}`);
+        }
+        req.user = user;
+        return next();
+      })(req, res, next);
+    },
     async (req, res) => {
       try {
         // req.user diisi oleh strategy passport-google-oauth20 (lihat config/passport.js)

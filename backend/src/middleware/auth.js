@@ -1,6 +1,12 @@
 const jwt = require('jsonwebtoken');
 const prisma = require('../prisma');
 
+// Kode & pesan untuk akun yang di-ban admin (is_active = false). Frontend
+// mengenali kode ini dan menampilkan popup pemberitahuan ban di halaman Login.
+const ACCOUNT_BANNED = 'ACCOUNT_BANNED';
+const ACCOUNT_BANNED_MESSAGE =
+  'Akun Anda telah diblokir oleh admin karena terdeteksi melanggar ketentuan penggunaan atau melakukan spam berlebihan. Hubungi admin Biro Umum jika menurut Anda ini sebuah kesalahan.';
+
 // Middleware: memastikan request punya token JWT yang valid.
 // Role & status aktif SELALU diambil segar dari database (bukan dari klaim
 // token yang bisa basi) -> perubahan role/nonaktifkan akun lewat pgAdmin4
@@ -25,6 +31,11 @@ async function requireAuth(req, res, next) {
       where: { id },
       select: { role: true, is_active: true, nama_lengkap: true, email: true },
     });
+    // Akun di-ban admin saat masih login -> sesi langsung diputus dan frontend
+    // menampilkan pemberitahuan ban (lihat kode ACCOUNT_BANNED di api.js).
+    if (current && !current.is_active) {
+      return res.status(401).json({ code: ACCOUNT_BANNED, message: ACCOUNT_BANNED_MESSAGE });
+    }
     if (!current || !current.is_active || !['karyawan', 'kabag', 'pic', 'admin'].includes(current.role)) {
       return res.status(401).json({ message: 'Akun tidak ditemukan atau tidak aktif. Silakan login kembali.' });
     }
@@ -56,4 +67,4 @@ function requireRole(allowedRoles = []) {
 // (karyawan sengaja TIDAK dimasukkan -> karyawan hanya boleh lihat & buat permintaan baru)
 const EDITOR_ROLES = ['kabag', 'pic', 'admin'];
 
-module.exports = { requireAuth, requireRole, EDITOR_ROLES };
+module.exports = { requireAuth, requireRole, EDITOR_ROLES, ACCOUNT_BANNED, ACCOUNT_BANNED_MESSAGE };

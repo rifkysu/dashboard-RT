@@ -105,7 +105,7 @@ export default function Landing() {
               <BrandMark size="sm" className="!border-white/20" />
               <div>
                 <h1 className="text-base font-extrabold text-white leading-none tracking-tight">Biro Umum</h1>
-                <p className="text-[11px] text-white/60 mt-1">Rumah Tangga &amp; Administrasi</p>
+                <p className="hidden sm:block text-[11px] text-white/60 mt-1">Rumah Tangga &amp; Administrasi</p>
               </div>
             </Link>
             <nav className="hidden md:flex items-center gap-1 p-1 rounded-full bg-white/[0.06] border border-white/10 text-sm font-semibold text-white/70">
@@ -113,13 +113,13 @@ export default function Landing() {
                 <a key={n.href} href={n.href} className="px-4 py-1.5 rounded-full hover:bg-white/10 hover:text-white transition">{n.label}</a>
               ))}
             </nav>
-            <div className="flex items-center gap-2">
-              <Link to="/login" className="hidden sm:inline-block px-4 py-2.5 rounded-full text-sm font-semibold text-white/80 hover:text-white hover:bg-white/10 transition">
+            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+              <Link to="/login" className="inline-block px-3 sm:px-4 py-2 sm:py-2.5 rounded-full text-sm font-semibold text-white/80 hover:text-white hover:bg-white/10 transition">
                 Masuk
               </Link>
-              <Link to="/register" className="group inline-flex items-center gap-1.5 px-4 py-2.5 rounded-full bg-white text-slate-900 text-sm font-bold shadow-lg shadow-indigo-500/20 hover:bg-indigo-50 transition">
+              <Link to="/register" className="group inline-flex items-center gap-1.5 px-3 sm:px-4 py-2 sm:py-2.5 rounded-full bg-white text-slate-900 text-sm font-bold shadow-lg shadow-indigo-500/20 hover:bg-indigo-50 transition">
                 Daftar
-                <span className="material-symbols-outlined text-[18px] group-hover:translate-x-0.5 transition">arrow_forward</span>
+                <span className="hidden sm:inline material-symbols-outlined text-[18px] group-hover:translate-x-0.5 transition">arrow_forward</span>
               </Link>
             </div>
           </header>

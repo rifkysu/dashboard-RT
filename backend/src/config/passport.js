@@ -46,7 +46,7 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
           }
 
           // Akun yang di-ban admin tidak boleh masuk lewat SSO juga.
-          if (!user.is_active) return done(null, false);
+          if (!user.is_active) return done(null, false, { banned: true });
 
           return done(null, user);
         } catch (err) {

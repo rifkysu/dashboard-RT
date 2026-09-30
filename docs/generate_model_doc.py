@@ -33,7 +33,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 LOGO = os.path.join(ROOT, "frontend", "public", "logo-kemnaker.png")
 
-TANGGAL = "29 September 2026"
+TANGGAL = "30 September 2026"
 SISTEM = "Sistem Layanan Biro Umum & Rumah Tangga"
 
 PW, PH = A4
@@ -594,7 +594,9 @@ def isi_aplikasi():
         *bullets(
             "Daftar semua akun: peran, status, metode login, tanggal daftar, login terakhir.",
             "Ban/aktifkan akun (kecuali akun sendiri), notifikasi permintaan reset kata sandi, kirim/salin "
-            "link reset."),
+            "link reset.",
+            "Akun yang di-ban melihat popup *Akun Anda Diblokir* (melanggar ketentuan / spam berlebihan) saat "
+            "login dengan kata sandi yang benar, saat login SSO, atau langsung dikeluarkan bila sedang login."),
 
         PageBreak(),
         h1("4. Alur Proses Bisnis"),
@@ -675,7 +677,8 @@ def isi_aplikasi():
         ]),
         note("Kode respons umum: 200/201 berhasil, 400 input tidak valid (dengan pesan jelas), 401 belum/sesi "
              "habis, 403 peran tidak berwenang, 404 data tidak ada, 409 bentrok/duplikat, 413 berkas terlalu "
-             "besar, 429 terlalu banyak permintaan, 503 menu sedang maintenance."),
+             "besar, 429 terlalu banyak permintaan, 503 menu sedang maintenance. Akun yang di-ban mendapat kode "
+             "`ACCOUNT_BANNED` (403 saat login, 401 pada request lain)."),
 
         PageBreak(),
         h1("7. Model Data"),
@@ -707,7 +710,8 @@ def isi_aplikasi():
             ["Reset kata sandi", "Token reset 32-256 karakter dan belum kedaluwarsa (1 jam); kata sandi baru "
              "8-128 karakter berisi huruf & angka (sama dengan daftar akun)."],
             ["Login", "Email berformat benar; kunci 1 menit setelah 5 percobaan gagal per IP+email; akun "
-             "nonaktif ditolak."],
+             "yang di-ban ditolak dengan pesan ban hanya bila kata sandi benar (selain itu pesan umum "
+             "\"Email atau kata sandi salah\")."],
             ["Pemeliharaan/Pengadaan", "Panjang teks sesuai kolom database; tanggal harus benar-benar ada "
              "(31 Feb ditolak); nominal angka >= 0; status hanya pending/on_progress/selesai; nomor GUP 1-20, "
              "TUP 1-10; asal anggaran RM/PNBP."],
@@ -903,7 +907,7 @@ def isi_infra():
              "IP+email dan 30/menit per IP; daftar 50/jam; lupa sandi 5/jam; reset 20/jam; koneksi SSE maks. "
              "200 per IP & 1000 total."],
             ["Autentikasi", "JWT HS256 berlaku 8 jam; peran & status aktif dibaca ulang dari database setiap "
-             "request; akun nonaktif langsung ditolak."],
+             "request; akun yang di-ban langsung ditolak (kode ACCOUNT_BANNED) dan dikeluarkan dari sesi."],
             ["Kata sandi", "bcrypt cost 12; token reset acak 32 byte, disimpan sebagai hash SHA-256, berlaku "
              "1 jam, tidak pernah ditampilkan ke peminta publik."],
             ["Otorisasi", "RBAC per endpoint (requireRole) + aturan kepemilikan data PIC; menu disembunyikan di "

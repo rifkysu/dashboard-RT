@@ -6,6 +6,9 @@ import BrandMark from '../components/BrandMark';
 import { validateLogin } from '../utils/validation';
 import LoginSplash from '../components/LoginSplash';
 
+const BANNED_MESSAGE =
+  'Akun Anda telah diblokir oleh admin karena terdeteksi melanggar ketentuan penggunaan atau melakukan spam berlebihan. Hubungi admin Biro Umum jika menurut Anda ini sebuah kesalahan.';
+
 export default function Login() {
   const location = useLocation();
   // Datang dari halaman Daftar Akun -> tampilkan pesan sukses & isi email otomatis.
@@ -16,7 +19,10 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [searchParams] = useSearchParams();
-  const [error, setError] = useState(() => (searchParams.get('sso') === 'gagal' ? 'Login SSO gagal atau akun Anda sedang dinonaktifkan. Silakan coba lagi atau hubungi admin.' : ''));
+  const [error, setError] = useState(() => (searchParams.get('sso') === 'gagal' ? 'Login SSO gagal. Silakan coba lagi atau hubungi admin.' : ''));
+  // Popup "akun di-ban": dari respons login (kode ACCOUNT_BANNED), dari SSO
+  // (?sso=banned), atau karena di-ban saat sedang login (?banned=1, lihat api.js).
+  const [banned, setBanned] = useState(() => (searchParams.get('sso') === 'banned' || searchParams.get('banned') === '1' ? BANNED_MESSAGE : ''));
   const [loading, setLoading] = useState(false);
   // Popup animasi logo ~3 detik setelah login berhasil, sebelum pindah ke Dashboard.
   const [splash, setSplash] = useState(null);
@@ -64,6 +70,8 @@ export default function Login() {
         setLockedUntil(Date.now() + retrySeconds * 1000);
         setNow(Date.now());
         setError(err.response?.data?.message || `Terlalu banyak percobaan login. Coba lagi dalam ${retrySeconds} detik.`);
+      } else if (err.response?.data?.code === 'ACCOUNT_BANNED') {
+        setBanned(err.response.data.message || BANNED_MESSAGE);
       } else {
         setError(err.response?.data?.message || 'Gagal login. Periksa email/kata sandi Anda.');
       }
@@ -242,6 +250,25 @@ export default function Login() {
           © 2024 Biro Umum dan Rumah Tangga. Sistem Manajemen Fasilitas &amp; Operasional Kantor.
         </p>
       </div>
+      {banned && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm" role="alertdialog" aria-modal="true" aria-labelledby="banned-title">
+          <div className="w-full max-w-sm bg-white rounded-3xl shadow-2xl p-7 text-center">
+            <span className="inline-flex w-16 h-16 rounded-full bg-red-100 text-red-600 items-center justify-center mb-4">
+              <span className="material-symbols-outlined text-[34px]">block</span>
+            </span>
+            <h3 id="banned-title" className="text-xl font-extrabold text-slate-900">Akun Anda Diblokir</h3>
+            <p className="text-sm text-slate-600 mt-2 leading-relaxed">{banned}</p>
+            <button
+              type="button"
+              autoFocus
+              onClick={() => { setBanned(''); if (searchParams.has('banned') || searchParams.has('sso')) navigate('/login', { replace: true }); }}
+              className="mt-6 w-full py-3 rounded-2xl bg-red-600 hover:bg-red-700 text-white text-sm font-semibold transition"
+            >
+              Saya Mengerti
+            </button>
+          </div>
+        </div>
+      )}
       {splash && <LoginSplash name={splash.name} onDone={() => navigate('/dashboard', { replace: true })} />}
     </div>
   );
