@@ -31,6 +31,9 @@ api.interceptors.response.use(
       // Akun di-ban admin saat sedang login -> langsung keluarkan (termasuk dari
       // polling /auth/me) dan tampilkan popup pemberitahuan ban di halaman Login.
       if (err.response.data?.code === 'ACCOUNT_BANNED') {
+        // Penanda cadangan: ProtectedRoute bisa lebih dulu mengarahkan ke /login
+        // tanpa ?banned=1 (user dikosongkan AuthContext), popup tetap harus muncul.
+        try { sessionStorage.setItem('accountBanned', '1'); } catch {}
         if (!publicPath) window.location.href = '/login?banned=1';
       } else if (!publicPath && !isBackgroundCheck) {
         window.location.href = '/login';

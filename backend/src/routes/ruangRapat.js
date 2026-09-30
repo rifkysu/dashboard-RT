@@ -1,4 +1,4 @@
-const express=require('express');const {EventEmitter}=require('events');const prisma=require('../prisma');const {saveDataUrl,hideFilePaths}=require('../fileStorage');const {isGenuineDocumentDataUrl,maxDataUrlLength}=require('../fileSignature');const {requireAuth}=require('../middleware/auth');const {requireNotInMaintenance}=require('../middleware/maintenance');const logger=require('../logger');const {createSseLimiter}=require('../middleware/security');
+const express=require('express');const {EventEmitter}=require('events');const prisma=require('../prisma');const {saveDataUrl,hideFilePaths}=require('../fileStorage');const {isGenuineDocumentDataUrl,maxDataUrlLength}=require('../fileSignature');const {requireAuth}=require('../middleware/auth');const {requireNotInMaintenance}=require('../middleware/maintenance');const logger=require('../logger');const {createSseLimiter}=require('../middleware/security');const fs=require('fs');const nodePath=require('path');const {UPLOAD_ROOT}=require('../fileStorage');const {createZip}=require('../zip');
 const router=express.Router();
 // Bus internal untuk broadcast SSE (Server-Sent Events) tiap ada booking berubah,
 // supaya kalender publik & admin refresh real-time tanpa polling.
@@ -15,6 +15,9 @@ const validText=(v,m)=>typeof v==='string'&&v.trim().length>0&&v.length<=m;
 const validNomorSurat=v=>v==null||(typeof v==='string'&&v.trim().length<=100);
 // Nama file surat opsional, maks. 255 karakter (kolom surat_name VARCHAR(255)).
 const validSuratName=v=>v==null||(typeof v==='string'&&v.length<=255);
+// Alasan pembatalan opsional, maks. 500 karakter (kolom cancel_reason VARCHAR(500)).
+const validReason=v=>v==null||(typeof v==='string'&&v.length<=500);
+const cancelData=(req)=>({cancelled_at:new Date(),cancelled_by:req.user.id,cancel_reason:typeof req.body?.reason==='string'&&req.body.reason.trim()?req.body.reason.trim():null,updated_by:req.user.id});
 const validPhone=v=>typeof v==='string'&&/^[0-9+()\- .]{6,30}$/.test(v.trim());
 const date=v=>new Date(`${v}T00:00:00Z`); const time=v=>new Date(`1970-01-01T${v}:00Z`);
 const DAY=86400000;
@@ -24,17 +27,17 @@ const validDate=v=>typeof v==='string'&&DATE_RE.test(v)&&!isNaN(date(v))&&date(v
 const validTime=v=>typeof v==='string'&&TIME_RE.test(v);
 const rangeError=(bd,ed)=>ed<bd?'Tanggal selesai tidak boleh sebelum tanggal mulai.':(ed-bd)/DAY+1>MAX_DAYS?`Booking maksimal ${MAX_DAYS} hari.`:null;
 // Bentrok = rentang tanggal beririsan DAN jam beririsan (karena jamnya sama setiap hari).
-const conflictWhere=(room,bd,ed,st,et,excludeId)=>({...(excludeId?{id:{not:excludeId}}:{}),room,booking_date:{lte:ed},end_date:{gte:bd},start_time:{lt:et},end_time:{gt:st}});
+const conflictWhere=(room,bd,ed,st,et,excludeId)=>({...(excludeId?{id:{not:excludeId}}:{}),cancelled_at:null,room,booking_date:{lte:ed},end_date:{gte:bd},start_time:{lt:et},end_time:{gt:st}});
 const fmtDate=d=>d.toISOString().slice(0,10);
 const conflictMessage=c=>`Ruangan sudah dibooking pada waktu tersebut: "${c.agenda}" (${fmtDate(c.booking_date)}${+c.end_date!==+c.booking_date?` s/d ${fmtDate(c.end_date)}`:''}, ${c.start_time.toISOString().slice(11,16)}–${c.end_time.toISOString().slice(11,16)}).`;
 // Kunci per ruangan selama transaksi, supaya dua booking bersamaan untuk ruangan yang sama tidak lolos cek bentrok berbarengan.
 const lockRoom=(tx,room)=>tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${'ruang_rapat:'+room}))`;
 class HttpError extends Error{constructor(status,message){super(message);this.status=status;}}
-const out=r=>hideFilePaths({...r,date:fmtDate(r.booking_date),end_date:fmtDate(r.end_date||r.booking_date),start:r.start_time.toISOString().slice(11,16),end:r.end_time.toISOString().slice(11,16),title:r.agenda,status:r.surat_status,updated_by_name:r.updatedBy?.nama_lengkap||null,updatedBy:undefined});
+const out=r=>hideFilePaths({...r,date:fmtDate(r.booking_date),end_date:fmtDate(r.end_date||r.booking_date),start:r.start_time.toISOString().slice(11,16),end:r.end_time.toISOString().slice(11,16),title:r.agenda,status:r.surat_status,updated_by_name:r.updatedBy?.nama_lengkap||null,updatedBy:undefined,cancelled:!!r.cancelled_at,cancelled_by_name:r.cancelledBy?.nama_lengkap||null,cancelledBy:undefined});
 // Rentang tanggal jadwal (?from=YYYY-MM-DD&to=YYYY-MM-DD). Tanpa parameter:
 // 1 bulan ke belakang s/d 1 tahun ke depan, supaya respons tidak terus
 // membesar seiring bertambahnya riwayat booking. Maksimal 400 hari per request.
-function dateRange(q){const today=new Date(new Date().toISOString().slice(0,10)+'T00:00:00Z');const from=q.from===undefined?new Date(today-31*DAY):(typeof q.from==='string'&&DATE_RE.test(q.from)?date(q.from):null);const to=q.to===undefined?new Date(+today+366*DAY):(typeof q.to==='string'&&DATE_RE.test(q.to)?date(q.to):null);if(!from||!to||isNaN(from)||isNaN(to)||to<from||to-from>400*DAY)return null;return {booking_date:{lte:to},end_date:{gte:from}};}
+function dateRange(q){const today=new Date(new Date().toISOString().slice(0,10)+'T00:00:00Z');const from=q.from===undefined?new Date(today-31*DAY):(typeof q.from==='string'&&DATE_RE.test(q.from)?date(q.from):null);const to=q.to===undefined?new Date(+today+366*DAY):(typeof q.to==='string'&&DATE_RE.test(q.to)?date(q.to):null);if(!from||!to||isNaN(from)||isNaN(to)||to<from||to-from>400*DAY)return null;return {cancelled_at:null,booking_date:{lte:to},end_date:{gte:from}};}
 const publicSelect={id:true,agenda:true,room:true,pic:true,booking_date:true,end_date:true,start_time:true,end_time:true,surat_status:true};
 
 // Public read-only schedule. No token required and only schedule information is returned.
@@ -55,8 +58,53 @@ router.get('/stream',createSseLimiter(),(req,res)=>{
 
 router.use(requireAuth);
 router.use(requireNotInMaintenance('ruang-rapat'));
-router.get('/',async(req,res)=>{try{const range=dateRange(req.query);if(!range)return res.status(400).json({message:'Rentang tanggal tidak valid.'});const rows=await prisma.ruangRapat.findMany({where:range,omit:{surat_file_data:true},include:{updatedBy:{select:{nama_lengkap:true}}},orderBy:[{booking_date:'asc'},{start_time:'asc'},{id:'asc'}]});res.json({data:rows.map(out)});}catch(err){logger.error('GET ruang rapat gagal',{error:err});res.status(500).json({message:'Gagal mengambil jadwal ruang rapat.'});}});
-router.get('/:id',async(req,res)=>{try{const id=Number(req.params.id);if(!Number.isInteger(id))return res.status(400).json({message:'ID booking tidak valid.'});const row=await prisma.ruangRapat.findUnique({where:{id},include:{updatedBy:{select:{nama_lengkap:true}}}});if(!row)return res.status(404).json({message:'Booking tidak ditemukan.'});res.json({data:out(row)});}catch(err){logger.error('GET ruang rapat detail gagal',{error:err});res.status(500).json({message:'Gagal mengambil detail booking.'});}});
+// ?include_cancelled=1 -> booking berstatus batal ikut dikirim (toggle "Tampilkan yang dibatalkan").
+router.get('/',async(req,res)=>{try{const range=dateRange(req.query);if(!range)return res.status(400).json({message:'Rentang tanggal tidak valid.'});if(req.query.include_cancelled==='1')delete range.cancelled_at;const rows=await prisma.ruangRapat.findMany({where:range,omit:{surat_file_data:true},include:{updatedBy:{select:{nama_lengkap:true}},cancelledBy:{select:{nama_lengkap:true}}},orderBy:[{booking_date:'asc'},{start_time:'asc'},{id:'asc'}]});res.json({data:rows.map(out)});}catch(err){logger.error('GET ruang rapat gagal',{error:err});res.status(500).json({message:'Gagal mengambil jadwal ruang rapat.'});}});
+// Export file surat booking (ZIP) untuk rentang tanggal ?from=&to=. Booking batal diabaikan.
+// Nomor surat yang sama cukup diambil satu file saja; booking tanpa nomor surat dibedakan per file
+// (salinan dari cancel sebagian memakai file yang sama sehingga juga cukup satu).
+const MAX_ZIP_BYTES=300*1024*1024;
+const zipSafe=v=>String(v||'').replace(/[\\/:*?"<>|\u0000-\u001f]+/g,'-').replace(/\s+/g,' ').trim().slice(0,80)||'-';
+const MIME_EXT={'application/pdf':'.pdf','image/jpeg':'.jpg','image/png':'.png'};
+async function readSurat(row){
+  if(row.surat_file_path){
+    const abs=nodePath.resolve(__dirname,'..','..',row.surat_file_path);
+    // Hanya file di dalam folder uploads yang boleh dibaca.
+    if(abs.startsWith(UPLOAD_ROOT+nodePath.sep)){try{return {data:await fs.promises.readFile(abs),ext:nodePath.extname(abs).toLowerCase()};}catch{}}
+  }
+  // Data lama yang belum punya file di disk -> pakai salinan base64 di database.
+  const full=await prisma.ruangRapat.findUnique({where:{id:row.id},select:{surat_file_data:true}});
+  const m=full?.surat_file_data?.match(/^data:([^;,]+);base64,(.+)$/s);
+  return m?{data:Buffer.from(m[2],'base64'),ext:MIME_EXT[m[1].toLowerCase()]||nodePath.extname(row.surat_name||'').toLowerCase()||'.bin'}:null;
+}
+router.get('/surat-export',async(req,res)=>{try{
+  const range=dateRange(req.query);if(!range||req.query.from===undefined||req.query.to===undefined)return res.status(400).json({message:'Rentang tanggal export tidak valid (maks. 400 hari).'});
+  const rows=await prisma.ruangRapat.findMany({where:{...range,OR:[{surat_file_path:{not:null}},{surat_file_data:{not:null}}]},select:{id:true,agenda:true,room:true,nomor_surat:true,booking_date:true,end_date:true,surat_name:true,surat_file_path:true},orderBy:[{booking_date:'asc'},{start_time:'asc'},{id:'asc'}]});
+  const seen=new Set(), names=new Set(), files=[], index=[];let total=0;
+  for(const r of rows){
+    const nomor=(r.nomor_surat||'').trim();
+    const key=nomor?`no:${nomor.toLowerCase()}`:r.surat_file_path?`file:${r.surat_file_path}`:`id:${r.id}`;
+    if(seen.has(key))continue;seen.add(key);
+    const file=await readSurat(r);if(!file)continue;
+    total+=file.data.length;if(total>MAX_ZIP_BYTES)return res.status(413).json({message:'Total ukuran surat terlalu besar untuk satu ZIP. Perkecil rentang tanggal.'});
+    const tgl=fmtDate(r.booking_date);
+    let base=`${nomor?zipSafe(nomor):'Tanpa Nomor'}_${tgl}_${zipSafe(r.agenda)}`, name=`${base}${file.ext}`;
+    for(let i=2;names.has(name.toLowerCase());i++)name=`${base} (${i})${file.ext}`;
+    names.add(name.toLowerCase());files.push({name,data:file.data});
+    index.push([index.length+1,nomor||'-',tgl+(+r.end_date!==+r.booking_date?` s.d. ${fmtDate(r.end_date)}`:''),r.room,r.agenda,name]);
+  }
+  if(!files.length)return res.status(404).json({message:'Tidak ada surat booking pada rentang tanggal tersebut.'});
+  // Daftar isi ZIP (bisa dibuka di Excel).
+  const csv=v=>`"${String(v).replace(/"/g,'""')}"`;
+  const list=[['No','Nomor Surat','Tanggal','Ruang Rapat','Nama Rapat','File'],...index].map(r=>r.map(csv).join(',')).join('\r\n');
+  files.push({name:'daftar_surat.csv',data:Buffer.from('\ufeff'+list,'utf8')});
+  const zip=createZip(files);
+  res.setHeader('Content-Type','application/zip');
+  res.setHeader('Content-Disposition',`attachment; filename="surat_ruang_rapat_${req.query.from}_sd_${req.query.to}.zip"`);
+  res.setHeader('X-Surat-Count',String(files.length-1));
+  res.send(zip);
+}catch(err){logger.error('Export surat ruang rapat gagal',{error:err});res.status(500).json({message:'Gagal export surat ruang rapat.'});}});
+router.get('/:id',async(req,res)=>{try{const id=Number(req.params.id);if(!Number.isInteger(id))return res.status(400).json({message:'ID booking tidak valid.'});const row=await prisma.ruangRapat.findFirst({where:{id,cancelled_at:null},include:{updatedBy:{select:{nama_lengkap:true}}}});if(!row)return res.status(404).json({message:'Booking tidak ditemukan.'});res.json({data:out(row)});}catch(err){logger.error('GET ruang rapat detail gagal',{error:err});res.status(500).json({message:'Gagal mengambil detail booking.'});}});
 // Semua user login (termasuk karyawan) boleh menambah, mengedit, mengelola surat/status, dan membatalkan booking.
 router.post('/',async(req,res)=>{try{
   const {title,room,pic,pic_phone,date:startDate,end_date,start,end,status,surat_name,surat_file_data,nomor_surat}=req.body;
@@ -89,8 +137,8 @@ router.put('/:id',async(req,res)=>{try{
   if(b.surat_name!==undefined){if(!validSuratName(b.surat_name))return res.status(400).json({message:'Nama file surat maksimal 255 karakter.'});data.surat_name=b.surat_name||null;}
   if(b.surat_file_data!==undefined&&!validFile(b.surat_file_data))return res.status(400).json({message:'Dokumen surat tidak valid.'});
   const row=await prisma.$transaction(async tx=>{
-    const pre=await tx.ruangRapat.findUnique({where:{id},select:{room:true}});
-    if(!pre)throw new HttpError(404,'Booking tidak ditemukan.');
+    const pre=await tx.ruangRapat.findFirst({where:{id,cancelled_at:null},select:{room:true}});
+    if(!pre)throw new HttpError(404,'Booking tidak ditemukan atau sudah dibatalkan.');
     const scheduleChanged=b.room!==undefined||b.date!==undefined||b.end_date!==undefined||b.start!==undefined||b.end!==undefined;
     if(scheduleChanged){
       await lockRoom(tx,data.room??pre.room);
@@ -113,31 +161,38 @@ router.put('/:id',async(req,res)=>{try{
   },{timeout:20000});
   broadcastChange();res.json({data:out(row)});
 }catch(err){if(err instanceof HttpError)return res.status(err.status).json({message:err.message});if(err.code==='P2025')return res.status(404).json({message:'Booking tidak ditemukan.'});logger.error('PUT ruang rapat gagal',{error:err});res.status(500).json({message:'Gagal memperbarui booking.'});}});
-// Batalkan sebagian tanggal dari booking multi-hari. Sisa tanggal dipecah jadi rentang-rentang berurutan:
-// rentang pertama tetap memakai booking ini, rentang berikutnya jadi booking baru dengan data yang sama
-// (agenda, PIC, surat, status). Kalau semua tanggal dibatalkan, booking dihapus.
+// Batalkan booking (seluruhnya atau sebagian tanggal dari booking multi-hari) TANPA menghapus data:
+// tanggal yang dibatalkan disimpan sebagai booking berstatus batal (cancelled_at + alasan opsional).
+// Sisa tanggal aktif dipecah jadi rentang berurutan: rentang aktif pertama tetap memakai booking ini,
+// rentang lainnya (aktif maupun batal) jadi baris baru dengan data yang sama (agenda, PIC, surat, status).
 router.post('/:id/cancel-dates',async(req,res)=>{try{
   const id=Number(req.params.id);if(!Number.isInteger(id))return res.status(400).json({message:'ID booking tidak valid.'});
   const dates=req.body?.dates;
   if(!Array.isArray(dates)||dates.length===0||dates.length>MAX_DAYS||!dates.every(validDate))return res.status(400).json({message:'Pilih minimal satu tanggal yang valid untuk dibatalkan.'});
+  if(!validReason(req.body?.reason))return res.status(400).json({message:'Alasan pembatalan maksimal 500 karakter.'});
   const cancel=new Set(dates);
   const result=await prisma.$transaction(async tx=>{
-    const pre=await tx.ruangRapat.findUnique({where:{id},select:{room:true}});
-    if(!pre)throw new HttpError(404,'Booking tidak ditemukan.');
+    const pre=await tx.ruangRapat.findFirst({where:{id,cancelled_at:null},select:{room:true}});
+    if(!pre)throw new HttpError(404,'Booking tidak ditemukan atau sudah dibatalkan.');
     await lockRoom(tx,pre.room);
-    const b=await tx.ruangRapat.findUnique({where:{id}});
-    if(!b)throw new HttpError(404,'Booking tidak ditemukan.');
+    const b=await tx.ruangRapat.findFirst({where:{id,cancelled_at:null}});
+    if(!b)throw new HttpError(404,'Booking tidak ditemukan atau sudah dibatalkan.');
     const days=[];for(let t=+b.booking_date;t<=+b.end_date;t+=DAY)days.push(fmtDate(new Date(t)));
     if([...cancel].some(d=>!days.includes(d)))throw new HttpError(400,'Ada tanggal yang tidak termasuk dalam booking ini.');
-    const segments=[];for(const d of days){if(cancel.has(d))continue;const last=segments[segments.length-1];if(last&&+date(d)-+date(last.to)===DAY)last.to=d;else segments.push({from:d,to:d});}
-    if(!segments.length){await tx.ruangRapat.delete({where:{id}});return {deleted:true,bookings:[]};}
+    const segmentsOf=pick=>{const out=[];for(const d of days){if(!pick(d))continue;const last=out[out.length-1];if(last&&+date(d)-+date(last.to)===DAY)last.to=d;else out.push({from:d,to:d});}return out;};
+    const keep=segmentsOf(d=>!cancel.has(d)), gone=segmentsOf(d=>cancel.has(d));
+    const batal=cancelData(req);
+    // Semua tanggal dibatalkan -> booking ini sendiri yang berstatus batal.
+    if(!keep.length){await tx.ruangRapat.update({where:{id},data:batal});return {cancelled:true,bookings:[]};}
     const include={updatedBy:{select:{nama_lengkap:true}}};
-    const rows=[await tx.ruangRapat.update({where:{id},data:{booking_date:date(segments[0].from),end_date:date(segments[0].to),updated_by:req.user.id},include})];
+    const rows=[await tx.ruangRapat.update({where:{id},data:{booking_date:date(keep[0].from),end_date:date(keep[0].to),updated_by:req.user.id},include})];
     const copy={agenda:b.agenda,nomor_surat:b.nomor_surat,room:b.room,pic:b.pic,pic_phone:b.pic_phone,start_time:b.start_time,end_time:b.end_time,surat_status:b.surat_status,surat_name:b.surat_name,surat_file_data:b.surat_file_data,surat_file_path:b.surat_file_path,created_by:b.created_by,updated_by:req.user.id};
-    for(const s of segments.slice(1))rows.push(await tx.ruangRapat.create({data:{...copy,booking_date:date(s.from),end_date:date(s.to)},include}));
-    return {deleted:false,bookings:rows};
+    for(const s of keep.slice(1))rows.push(await tx.ruangRapat.create({data:{...copy,booking_date:date(s.from),end_date:date(s.to)},include}));
+    for(const s of gone)await tx.ruangRapat.create({data:{...copy,...batal,booking_date:date(s.from),end_date:date(s.to)}});
+    return {cancelled:false,bookings:rows};
   },{timeout:20000});
-  broadcastChange();res.json({data:{deleted:result.deleted,bookings:result.bookings.map(out)},message:result.deleted?'Booking dibatalkan.':`${cancel.size} tanggal berhasil dibatalkan.`});
+  broadcastChange();res.json({data:{cancelled:result.cancelled,bookings:result.bookings.map(out)},message:result.cancelled?'Booking dibatalkan.':`${cancel.size} tanggal berhasil dibatalkan.`});
 }catch(err){if(err instanceof HttpError)return res.status(err.status).json({message:err.message});logger.error('Cancel tanggal ruang rapat gagal',{error:err});res.status(500).json({message:'Gagal membatalkan tanggal booking.'});}});
-router.delete('/:id',async(req,res)=>{try{const id=Number(req.params.id);if(!Number.isInteger(id))return res.status(400).json({message:'ID booking tidak valid.'});await prisma.ruangRapat.delete({where:{id}});broadcastChange();res.json({message:'Booking dibatalkan.'});}catch(err){if(err.code==='P2025')return res.status(404).json({message:'Booking tidak ditemukan.'});logger.error('DELETE ruang rapat gagal',{error:err});res.status(500).json({message:'Gagal membatalkan booking.'});}});
+// Batalkan seluruh booking. Data tidak dihapus, hanya diberi status batal (+ alasan opsional di body.reason).
+router.delete('/:id',async(req,res)=>{try{const id=Number(req.params.id);if(!Number.isInteger(id))return res.status(400).json({message:'ID booking tidak valid.'});if(!validReason(req.body?.reason))return res.status(400).json({message:'Alasan pembatalan maksimal 500 karakter.'});const {count}=await prisma.ruangRapat.updateMany({where:{id,cancelled_at:null},data:cancelData(req)});if(!count)return res.status(404).json({message:'Booking tidak ditemukan atau sudah dibatalkan.'});broadcastChange();res.json({message:'Booking dibatalkan.'});}catch(err){logger.error('DELETE ruang rapat gagal',{error:err});res.status(500).json({message:'Gagal membatalkan booking.'});}});
 module.exports=router;module.exports.ROOMS=ROOMS;

@@ -81,6 +81,7 @@ Untuk production serverless seperti Vercel, penyimpanan lokal filesystem tidak p
 
 - `0022_ruang_rapat_multi_hari` menambah kolom `ruang_rapat.end_date` (booking multi-hari, maks. 90 hari, jam yang sama setiap hari). Booking lama otomatis `end_date = booking_date`.
 - `0023_sinkron_kolom_pgadmin` menambahkan kolom yang dulu hanya dibuat lewat script SQL pgAdmin (`ruang_rapat.pic_phone`, `pengadaan.titik_lokasi`) supaya database yang dibuat murni lewat Prisma tidak error. Aman untuk database lama (memakai `IF NOT EXISTS`).
+- `0024_ruang_rapat_cancel` menambah kolom `ruang_rapat.cancelled_at`, `cancelled_by`, `cancel_reason`. Cancel booking tidak lagi menghapus baris: booking diberi status batal + alasan (opsional) dan diabaikan di jadwal & cek bentrok.
 - Cek sinkron (read-only, tidak mengubah data):
 
 ```bash

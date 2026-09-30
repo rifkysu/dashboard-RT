@@ -50,6 +50,7 @@ model User {
   kendaraanServiceUpdated KendaraanService[] @relation("KendaraanServiceUpdatedBy")
   ruangRapatCreated   RuangRapat[]   @relation("RuangRapatCreatedBy")
   ruangRapatUpdated   RuangRapat[]   @relation("RuangRapatUpdatedBy")
+  ruangRapatCancelled RuangRapat[]   @relation("RuangRapatCancelledBy")
   maintenanceModeUpdated MaintenanceMode[] @relation("MaintenanceModeUpdatedBy")
 
   @@map("users")
@@ -257,14 +258,21 @@ model RuangRapat {
   surat_file_path String?
   created_by      Int?
   updated_by      Int?
+  // Booking yang dibatalkan tidak dihapus: cancelled_at terisi = status batal.
+  // Alasan pembatalan opsional. Booking batal diabaikan saat cek bentrok & tidak tampil di jadwal.
+  cancelled_at    DateTime?
+  cancelled_by    Int?
+  cancel_reason   String?   @db.VarChar(500)
   created_at      DateTime  @default(now())
   updated_at      DateTime  @default(now()) @updatedAt
 
-  createdBy User? @relation("RuangRapatCreatedBy", fields: [created_by], references: [id], onDelete: SetNull)
-  updatedBy User? @relation("RuangRapatUpdatedBy", fields: [updated_by], references: [id], onDelete: SetNull)
+  createdBy   User? @relation("RuangRapatCreatedBy", fields: [created_by], references: [id], onDelete: SetNull)
+  updatedBy   User? @relation("RuangRapatUpdatedBy", fields: [updated_by], references: [id], onDelete: SetNull)
+  cancelledBy User? @relation("RuangRapatCancelledBy", fields: [cancelled_by], references: [id], onDelete: SetNull)
 
   @@index([booking_date, room])
   @@index([room, booking_date, end_date])
   @@index([pic])
+  @@index([cancelled_at])
   @@map("ruang_rapat")
 }

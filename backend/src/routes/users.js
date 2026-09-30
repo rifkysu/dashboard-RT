@@ -50,8 +50,9 @@ router.get('/reset-requests/count', async (req, res) => {
 
 // Ban / unban akun -- toggle is_active. Akun yang di-ban langsung tertolak
 // di request berikutnya (requireAuth cek is_active segar dari DB tiap
-// request) dan tidak bisa login lagi (POST /auth/login cuma cari user yang
-// is_active: true), jadi efeknya langsung berlaku tanpa perlu logic tambahan.
+// request, balas kode ACCOUNT_BANNED) dan tidak bisa login lagi (POST
+// /auth/login balas ACCOUNT_BANNED bila kata sandinya benar).
+// Token reset yang masih berlaku ikut dihapus saat di-ban.
 router.put('/:id/status', async (req, res) => {
   try {
     const id = Number(req.params.id);
@@ -60,7 +61,8 @@ router.put('/:id/status', async (req, res) => {
     if (typeof is_active !== 'boolean') return res.status(400).json({ message: 'is_active harus boolean.' });
     if (id === req.user.id) return res.status(400).json({ message: 'Tidak bisa mem-ban/menonaktifkan akun sendiri.' });
 
-    const user = await prisma.user.update({ where: { id }, data: { is_active } });
+    const data = is_active ? { is_active } : { is_active, reset_token: null, reset_token_expires: null, reset_requested_at: null };
+    const user = await prisma.user.update({ where: { id }, data });
     res.json({ data: { id: user.id, is_active: user.is_active } });
   } catch (err) {
     if (err.code === 'P2025') return res.status(404).json({ message: 'Akun tidak ditemukan.' });

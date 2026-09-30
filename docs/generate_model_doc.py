@@ -374,7 +374,7 @@ def d_arsitektur(g):
         g.box(72 + 56.5 * i, 537.7, 52, 36, r, ["route"], "wIndigo", SZ_S)
     g.arrow(297, 583.7, 297, 593.7, both=True)
     g.group(62, 593.7, 470, 80, "LAPISAN DATA", "green")
-    for i, (t, s) in enumerate([("Prisma ORM 6", ["schema.prisma", "23 migration"]),
+    for i, (t, s) in enumerate([("Prisma ORM 6", ["schema.prisma", "24 migration"]),
                                 ("PostgreSQL", ["biro_umum_db", "7 tabel inti"]),
                                 ("File Storage", ["backend/uploads/", "(PDF, JPG, PNG)"])]):
         g.box(72 + 155 * i, 608.7, 140, 55, t, s, "green", SZ_L)
@@ -411,7 +411,7 @@ def d_alur_booking(g):
           ["pilih tanggal yang dibatalkan", "(tanggal diklik tercentang)"], "amber", SZ_L)
     g.box(229, 404.7, 150, 48, "Pecah rentang",
           ["28 Sep-1 Okt, batal 29 Sep", "-> 28 Sep & 30 Sep-1 Okt"], "amber", SZ_L)
-    g.box(399, 404.7, 133, 48, "Semua tanggal dipilih", ["booking dihapus", "+ SSE broadcast"], "amber", SZ_L)
+    g.box(399, 404.7, 133, 48, "Semua tanggal dipilih", ["booking berstatus batal", "+ SSE broadcast"], "amber", SZ_L)
     g.arrow(209, 428.7, 229, 428.7)
     g.arrow(379, 428.7, 399, 428.7)
 
@@ -527,8 +527,8 @@ def isi_aplikasi():
         h1("3. Modul & Fitur"),
         h2("3.1 Landing Page & Layar Kiosk"),
         *bullets(
-            "Halaman awal (**/**) berisi hero, ringkasan modul, dan jadwal ruang rapat mingguan yang "
-            "diperbarui real-time.",
+            "Halaman awal (**/**) berisi hero, ringkasan modul, dan jadwal ruang rapat (tampilan grid "
+            "ruangan x tanggal per bulan, sama dengan menu Ruang Rapat) yang diperbarui real-time.",
             "Halaman kiosk **/jadwal-rapat** menampilkan jadwal yang sama dalam mode baca saja untuk layar di "
             "dekat ruang rapat.",
             "Mengikuti Mode Maintenance menu *landing*; status dibaca dari endpoint publik tanpa login."),
@@ -575,16 +575,29 @@ def isi_aplikasi():
         h2("3.6 Ruang Rapat"),
         *bullets(
             "Lima ruangan: SERBAGUNA, SETJEN II, TRI DHARMA, BIRO UMUM, GRAHA KEMNAKER.",
-            "Kalender matriks ruangan x hari (Senin-Minggu), navigasi minggu bebas, penanda hari libur "
+            "Grid jadwal: **nama ruangan horizontal** (kolom) dan **tanggal vertikal** (baris, dikelompokkan "
+            "per bulan); header ruangan & kolom tanggal menempel saat digulir; penanda hari ini, hari libur "
             "nasional, cuti bersama, dan akhir pekan.",
+            "**Quick filter bulan** (pilih tahun lalu Jan-Des, tombol Bulan Ini) dan **infinite scroll**: bulan "
+            "berikutnya dimuat otomatis saat digulir ke bawah, maks. 12 bulan sekaligus.",
             "**Booking multi-hari** (maks. 90 hari, jam sama setiap hari) dengan label \"Hari 2/3\" di "
             "kalender.",
             "Cek bentrok berdasarkan irisan rentang tanggal dan jam; penguncian per ruangan mencegah "
             "double-booking bersamaan.",
             "**Cancel per tanggal**: tanggal yang dipilih saja yang dibatalkan; rentang otomatis dipecah bila "
             "tanggal di tengah dibatalkan.",
+            "**Cancel tidak menghapus data**: booking/tanggal yang dibatalkan tetap tersimpan di database dengan "
+            "status batal (cancelled_at, cancelled_by) dan **alasan pembatalan opsional** yang diisi di popup "
+            "Cancel. Booking batal tidak tampil di jadwal, dashboard, dan export, serta diabaikan saat cek bentrok.",
+            "Toggle **Tampilkan yang dibatalkan** di menu Ruang Rapat: booking batal tampil abu-abu & dicoret; "
+            "klik untuk melihat alasan, siapa yang membatalkan, dan waktunya (`GET /ruang-rapat?include_cancelled=1`).",
             "Status surat (Belum / Ditinjau / Diterima) dengan unggah surat, nomor surat, export Excel, "
-            "\"Terakhir diedit oleh\", pembaruan real-time (SSE)."),
+            "\"Terakhir diedit oleh\", pembaruan real-time (SSE).",
+            "Export Excel per hari (booking multi-hari dipecah satu baris per tanggal) dengan kolom Tanggal, "
+            "Ruang Rapat, Nama Rapat, PIC, Nomor Surat.",
+            "**Export Surat (ZIP)** dengan rentang tanggal yang sama: semua file surat booking aktif diunduh "
+            "dalam satu ZIP (+ daftar_surat.csv); nomor surat yang sama cukup satu file "
+            "(`GET /ruang-rapat/surat-export`)."),
         h2("3.7 Settings - Mode Maintenance (Admin)"),
         *bullets(
             "Menonaktifkan menu Landing, Dashboard, Pemeliharaan, Pengadaan, Kendaraan, Ruang Rapat dengan "
@@ -596,7 +609,8 @@ def isi_aplikasi():
             "Ban/aktifkan akun (kecuali akun sendiri), notifikasi permintaan reset kata sandi, kirim/salin "
             "link reset.",
             "Akun yang di-ban melihat popup *Akun Anda Diblokir* (melanggar ketentuan / spam berlebihan) saat "
-            "login dengan kata sandi yang benar, saat login SSO, atau langsung dikeluarkan bila sedang login."),
+            "login dengan kata sandi yang benar, saat login SSO, atau langsung dikeluarkan bila sedang login. "
+            "Link reset kata sandi yang masih berlaku ikut dihapus saat akun di-ban."),
 
         PageBreak(),
         h1("4. Alur Proses Bisnis"),
@@ -638,7 +652,9 @@ def isi_aplikasi():
             "**ProtectedRoute** & **Sidebar**: layout halaman login yang dipasang sekali (sidebar tetap di "
             "tempat saat pindah menu), menu per peran; **MenuGate**: notifikasi maintenance per menu.",
             "**PageTransition** & **SlideTransition**: animasi masuk halaman dan animasi geser antar-tahap, "
-            "antar-minggu kalender, dan antar-tab kendaraan.",
+            "dan antar-tab kendaraan.",
+            "**RoomDateGrid** + **MonthFilter** + hook **useMonthSchedule**: grid jadwal ruang rapat per bulan "
+            "dengan infinite scroll, dipakai menu Ruang Rapat, landing page, dan kiosk.",
             "**AuthContext**: sesi, peran, status maintenance, sinkronisasi berkala (30 detik) + SSE.",
             "**Feedback**: popup konfirmasi/peringatan dan notifikasi toast yang seragam.",
             "**DocumentViewer**: pratinjau dokumen melalui Blob URL; **LoginSplash**: popup animasi logo "
@@ -682,8 +698,8 @@ def isi_aplikasi():
 
         PageBreak(),
         h1("7. Model Data"),
-        p("Skema database didefinisikan di `backend/prisma/schema.prisma` dan diterapkan melalui 23 migration "
-          "berurutan (0001 s.d. 0023). Relasi *created_by/updated_by* ke tabel users memakai ON DELETE SET "
+        p("Skema database didefinisikan di `backend/prisma/schema.prisma` dan diterapkan melalui 24 migration "
+          "berurutan (0001 s.d. 0024). Relasi *created_by/updated_by* ke tabel users memakai ON DELETE SET "
           "NULL agar data tetap ada saat akun dihapus."),
         Diagram(137.2, 399.2, d_erd),
         caption("Gambar 5. Diagram relasi entitas (ringkas)"),
@@ -697,7 +713,8 @@ def isi_aplikasi():
             ["kendaraan_service", "Riwayat service",
              "unik (kendaraan_id, tanggal_service); ikut terhapus bersama kendaraan"],
             ["ruang_rapat", "Booking ruang rapat",
-             "booking_date..end_date (CHECK end_date >= booking_date); end_time > start_time"],
+             "booking_date..end_date (CHECK end_date >= booking_date); end_time > start_time; batal = "
+             "cancelled_at terisi + cancel_reason (tidak dihapus)"],
             ["maintenance_mode", "Status maintenance per menu", "menu_key unik"],
         ]),
 
@@ -821,7 +838,7 @@ def isi_infra():
             ["backend/src/routes", "auth, dashboard, pemeliharaan, pengadaan, kendaraan, ruangRapat, maintenance, users"],
             ["backend/src/middleware", "auth (JWT & peran), maintenance, security (header, rate limit, batas SSE)"],
             ["backend/src", "prisma.js, validate.js, fileStorage.js, fileSignature.js, token.js, mailer.js, logger.js"],
-            ["backend/prisma", "schema.prisma dan 23 migration (sumber kebenaran skema)"],
+            ["backend/prisma", "schema.prisma dan 24 migration (sumber kebenaran skema)"],
             ["backend/scripts", "db-verify.js (cek kolom & jumlah baris), cleanup-uploads.js (berkas yatim)"],
             ["backend/sql", "Script SQL manual untuk pgAdmin 4 (arsip pra-Prisma & sinkronisasi)"],
             ["frontend/src", "pages, components, context (AuthContext), hooks (SSE), utils"],
@@ -864,7 +881,7 @@ def isi_infra():
         *bullets(
             "DBMS PostgreSQL 18, database `biro_umum_db`, skema `public`; 7 tabel inti + tabel riwayat "
             "migration Prisma (`_prisma_migrations`).",
-            "Perubahan struktur **hanya** melalui migration Prisma (0001 s.d. 0023) agar Prisma dan pgAdmin 4 "
+            "Perubahan struktur **hanya** melalui migration Prisma (0001 s.d. 0024) agar Prisma dan pgAdmin 4 "
             "selalu sinkron. Cek sinkron: `npx prisma migrate status` dan `npx prisma migrate diff "
             "--from-schema-datasource ... --to-schema-datamodel ...` (read-only).",
             "Integritas dijaga di level database: UNIQUE (email, kode, plate, menu_key, service per tanggal), "

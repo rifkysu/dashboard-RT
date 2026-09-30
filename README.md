@@ -53,6 +53,7 @@ Full-stack app (React + Node.js/Express + PostgreSQL + **Prisma**) untuk mengelo
 - Kalender **matriks** (baris = ruangan, kolom = tanggal Senin–Minggu), navigasi minggu **bebas tanpa batas** (bisa maju/mundur ke tahun berapa pun) + tombol "Hari Ini".
 - **Real-time lewat Server-Sent Events (SSE)** — begitu ada booking baru/diedit/dibatalkan oleh siapa pun, semua orang yang sedang membuka halaman (admin maupun landing page publik) langsung melihat perubahannya tanpa refresh.
 - **Booking multi-hari** — isi "Sampai Tanggal" untuk booking beberapa hari (maks. 90 hari, jam sama setiap hari). Saat Cancel, tanggal bisa dipilih satu per satu; sisa tanggal tetap terbooking (otomatis dipecah jadi beberapa booking kalau yang dibatalkan tanggal di tengah).
+- **Cancel tidak menghapus data** — booking yang dibatalkan tetap tersimpan di database dengan status batal (`cancelled_at`) dan alasan pembatalan opsional (`cancel_reason`) yang diisi di popup Cancel.
 - **Semua role** (termasuk karyawan) bisa menambah, mengedit, mengelola surat/status, dan membatalkan booking.
 - **Nomor Surat** — bisa diisi saat booking (opsional) atau lewat Edit Booking, tampil di detail saat booking diklik (kolom `nomor_surat` tabel `ruang_rapat`). Tidak ikut ditampilkan di jadwal publik/landing page.
 - **Export Excel** — kolom Tanggal, Nomor Surat, Nama Rapat, PIC; rentang tanggal default = minggu yang sedang dilihat (maks. 400 hari), data diambil langsung dari server.

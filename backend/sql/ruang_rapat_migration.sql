@@ -59,3 +59,17 @@ DO $$ BEGIN
   END IF;
 END $$;
 CREATE INDEX IF NOT EXISTS ruang_rapat_room_booking_date_end_date_idx ON ruang_rapat (room, booking_date, end_date);
+
+
+-- Cancel booking tanpa menghapus data (sama dengan Prisma migration 0024_ruang_rapat_cancel).
+-- cancelled_at terisi = booking berstatus batal; cancel_reason = alasan (opsional).
+-- Jika database dikelola dengan Prisma, cukup jalankan `npx prisma migrate deploy`.
+ALTER TABLE ruang_rapat ADD COLUMN IF NOT EXISTS cancelled_at TIMESTAMP(3);
+ALTER TABLE ruang_rapat ADD COLUMN IF NOT EXISTS cancelled_by INTEGER;
+ALTER TABLE ruang_rapat ADD COLUMN IF NOT EXISTS cancel_reason VARCHAR(500);
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'ruang_rapat_cancelled_by_fkey') THEN
+    ALTER TABLE ruang_rapat ADD CONSTRAINT ruang_rapat_cancelled_by_fkey FOREIGN KEY (cancelled_by) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE;
+  END IF;
+END $$;
+CREATE INDEX IF NOT EXISTS ruang_rapat_cancelled_at_idx ON ruang_rapat (cancelled_at);

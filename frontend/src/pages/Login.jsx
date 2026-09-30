@@ -22,7 +22,11 @@ export default function Login() {
   const [error, setError] = useState(() => (searchParams.get('sso') === 'gagal' ? 'Login SSO gagal. Silakan coba lagi atau hubungi admin.' : ''));
   // Popup "akun di-ban": dari respons login (kode ACCOUNT_BANNED), dari SSO
   // (?sso=banned), atau karena di-ban saat sedang login (?banned=1, lihat api.js).
-  const [banned, setBanned] = useState(() => (searchParams.get('sso') === 'banned' || searchParams.get('banned') === '1' ? BANNED_MESSAGE : ''));
+  const [banned, setBanned] = useState(() => {
+    let flagged = false;
+    try { flagged = sessionStorage.getItem('accountBanned') === '1'; sessionStorage.removeItem('accountBanned'); } catch {}
+    return flagged || searchParams.get('sso') === 'banned' || searchParams.get('banned') === '1' ? BANNED_MESSAGE : '';
+  });
   const [loading, setLoading] = useState(false);
   // Popup animasi logo ~3 detik setelah login berhasil, sebelum pindah ke Dashboard.
   const [splash, setSplash] = useState(null);
