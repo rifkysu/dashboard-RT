@@ -556,6 +556,8 @@ def isi_aplikasi():
             "Kartu modul Pemeliharaan & Pengadaan menampilkan komposisi status (Pending / On Progress / "
             "Selesai); kartu Kendaraan menampilkan jumlah belum bayar pajak dan peringatan pajak H-14.",
             "Warna dipakai konsisten hanya untuk status: merah = Pending, kuning = On Progress, hijau = Selesai.",
+            "Pilihan tampilan Terang/Gelap di sidebar, berlaku di semua menu dashboard dan disimpan per browser; "
+            "landing page dan halaman login tetap terang.",
             "Bila data gagal dimuat, tampil pesan error + tombol Coba lagi; angka tidak ditampilkan sebagai 0 "
             "(tampil \"-\" sebelum data pertama termuat, atau data terakhir beserta jamnya).",
             "Status ruang rapat saat ini: Kosong / Dipakai s.d. jam tertentu, termasuk booking multi-hari yang "

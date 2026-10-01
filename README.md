@@ -66,6 +66,11 @@ Full-stack app (React + Node.js/Express + PostgreSQL + **Prisma**) untuk mengelo
   - Tahun Baru Imlek — dihitung dari kalender Tionghoa.
   - **Cuti bersama** & **Nyepi** — didaftar manual per tahun di `frontend/src/utils/holidays.js` (murni kebijakan pemerintah/kalender Saka Bali, tidak bisa dihitung otomatis).
 
+### 🌗 Tampilan Terang / Gelap
+- Pilihan **Terang** / **Gelap** ada di sidebar (bagian "Tampilan"), berlaku di semua menu dashboard termasuk popup & dialog. Saat sidebar diciutkan, tersedia sebagai satu tombol ikon.
+- Pilihan disimpan per browser (`localStorage`, kunci `tema`). Landing page, login, daftar akun, dan kiosk jadwal rapat selalu terang.
+- Teknis: atribut `data-theme="dark"` di `<html>` (dipasang layout dashboard, lihat `src/theme.js` & `ProtectedRoute.jsx`); semua warna gelap ada di satu file `src/dark-theme.css`, jadi mode terang tidak tersentuh.
+
 ### ⚙️ Mode Maintenance (Settings, khusus Admin & Kabag)
 - Admin bisa menonaktifkan menu tertentu (Landing Page/Dashboard/Pemeliharaan/Pengadaan/Kendaraan/Ruang Rapat) untuk semua role selain admin, lengkap dengan pesan custom per menu.
 - Perubahan **real-time lewat SSE** — begitu admin toggle, semua user yang sedang online langsung melihat menu terkunci/terbuka tanpa refresh.

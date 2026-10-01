@@ -6,6 +6,7 @@ import App from './App.jsx';
 import './fonts.css';
 import './tailwind.css';
 import './app-theme.css';
+import './dark-theme.css';
 import { AuthProvider } from './context/AuthContext.jsx';
 import { FeedbackProvider } from './components/Feedback.jsx';
 

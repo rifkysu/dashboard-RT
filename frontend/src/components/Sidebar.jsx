@@ -18,7 +18,7 @@ const menu = [
 // dibuka/ditutup lewat `mobileOpen`/`onMobileClose` -- nggak pernah ikut
 // menyempit jadi mode ikon-saja walau `collapsed` true, supaya tetap gampang
 // dibaca di layar kecil.
-export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }) {
+export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose, theme = 'light', onThemeChange }) {
   const { user, isAdmin, logout, isMenuDown, resetRequestCount } = useAuth();
   // Popup animasi logo ~3 detik sebelum benar-benar logout.
   const [leaving, setLeaving] = useState(false);
@@ -86,6 +86,24 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
         </nav>
 
         <div className="px-3 pb-4">
+          {/* Pilihan tampilan Terang / Gelap */}
+          <div className={`mx-1 mb-3 ${hideWhenCollapsed}`}>
+            <p className="px-2 mb-1.5 text-[11px] font-semibold text-white/45">Tampilan</p>
+            <div className="grid grid-cols-2 gap-1 p-1 rounded-lg bg-black/20" role="radiogroup" aria-label="Tampilan">
+              {[{ k: 'light', icon: 'light_mode', label: 'Terang' }, { k: 'dark', icon: 'dark_mode', label: 'Gelap' }].map((o) => (
+                <button key={o.k} type="button" role="radio" aria-checked={theme === o.k} onClick={() => onThemeChange?.(o.k)}
+                  className={`flex items-center justify-center gap-1.5 py-1.5 rounded-md text-xs font-semibold transition-colors ${theme === o.k ? 'bg-white text-dinas-dark' : 'text-white/65 hover:text-white hover:bg-white/[0.06]'}`}>
+                  <span className="material-symbols-outlined text-[16px]">{o.icon}</span>{o.label}
+                </button>
+              ))}
+            </div>
+          </div>
+          {collapsed && (
+            <button type="button" onClick={() => onThemeChange?.(theme === 'dark' ? 'light' : 'dark')} title={theme === 'dark' ? 'Ganti ke tampilan terang' : 'Ganti ke tampilan gelap'}
+              className="hidden md:flex w-full items-center justify-center py-2.5 mb-2 rounded-lg text-white/65 hover:bg-white/[0.06] hover:text-white">
+              <span className="material-symbols-outlined text-[20px]">{theme === 'dark' ? 'light_mode' : 'dark_mode'}</span>
+            </button>
+          )}
           <div className="border-t border-white/10 pt-3">
             <NavLink to="/profile" onClick={onMobileClose} title={collapsed ? 'Profil' : undefined} className={({isActive}) => `flex items-center gap-3 px-3 py-2 mb-1 rounded-lg text-sm transition ${collapsed ? 'md:justify-center' : ''} ${isActive ? 'bg-white/[0.12]' : 'hover:bg-white/[0.06]'}`}>
               <span className="w-8 h-8 rounded-full bg-kuningan flex items-center justify-center shrink-0 text-white text-sm font-bold">

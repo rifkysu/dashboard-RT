@@ -8,12 +8,22 @@
     /* Warna dasar sebelum CSS aplikasi termuat, supaya tidak berkedip putih/gelap. */
     html,body,#root{margin:0;min-height:100%;width:100%;}
     body{background:#f3f4f7;color:#1b2534;font-family:'Public Sans',Arial,sans-serif;}
+    html[data-theme="dark"] body{background:#0d1522;color:#dde4ed;}
   </style>
   <style>
     * { scrollbar-width: thin; scrollbar-color: #cbd5e1 transparent; }
     ::selection { background: #d5e0ee; color: #152b47; }
   </style>
   <script>
+    // Tema gelap dipasang sebelum aplikasi dimuat (hanya di halaman dashboard), supaya tidak
+    // sempat berkedip terang. Logika lengkapnya ada di src/theme.js & ProtectedRoute.
+    (function () {
+      try {
+        var p = location.pathname;
+        var dash = /^\/(dashboard|pemeliharaan|pengadaan|kendaraan|ruang-rapat|akun|profile|settings)(\/|$)/.test(p);
+        if (dash && localStorage.getItem('tema') === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+      } catch (e) {}
+    })();
     // Tampilkan ikon hanya setelah font-nya benar-benar siap. Kalau font gagal dimuat (jaringan
     // putus), ikon tetap tersembunyi -- lebih rapi daripada potongan teks seperti "arr" / "cl".
     (function () {

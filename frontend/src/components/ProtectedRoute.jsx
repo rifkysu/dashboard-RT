@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useLayoutEffect, useState } from 'react';
 import { Navigate, Outlet } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import PageTransition from './PageTransition';
 import { useAuth } from '../context/AuthContext';
+import { readTheme, saveTheme, applyTheme } from '../theme';
 
 function MaintenanceNotice({ message }) {
   return (
@@ -31,6 +32,13 @@ export default function ProtectedRoute() {
     try { return localStorage.getItem('sidebarCollapsed') === '1'; } catch { return false; }
   });
   const [mobileOpen, setMobileOpen] = useState(false);
+  // Tema Terang/Gelap hanya berlaku selama berada di layout dashboard; keluar (landing/login) kembali terang.
+  const [theme, setTheme] = useState(readTheme);
+  useLayoutEffect(() => {
+    applyTheme(theme);
+    return () => applyTheme('light');
+  }, [theme]);
+  function changeTheme(next) { saveTheme(next); setTheme(next); }
 
   function toggleSidebar() {
     setCollapsed((c) => {
@@ -45,7 +53,7 @@ export default function ProtectedRoute() {
   if (!user) return <Navigate to={loggedOut ? '/' : '/login'} replace />;
   return (
     <div className="app-shell-bg min-h-screen">
-      <Sidebar collapsed={collapsed} onToggle={toggleSidebar} mobileOpen={mobileOpen} onMobileClose={() => setMobileOpen(false)} />
+      <Sidebar collapsed={collapsed} onToggle={toggleSidebar} mobileOpen={mobileOpen} onMobileClose={() => setMobileOpen(false)} theme={theme} onThemeChange={changeTheme} />
       <div className={`min-h-screen transition-all duration-300 ml-0 ${collapsed ? 'md:ml-20' : 'md:ml-60'}`}>
         <header className="md:hidden sticky top-0 z-20 bg-dinas-dark bg-kawung-gelap text-white px-4 py-3 flex items-center gap-3">
           <button type="button" onClick={() => setMobileOpen(true)} aria-label="Buka menu" className="w-10 h-10 rounded-lg flex items-center justify-center text-white hover:bg-white/10">

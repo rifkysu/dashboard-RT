@@ -1,0 +1,164 @@
+/* =====================================================================
+   Tampilan GELAP untuk menu dashboard. Aktif hanya saat <html data-theme="dark">
+   (dipasang oleh layout dashboard, lihat src/theme.js) -- landing & login tetap terang.
+   Semua aturan di sini menimpa warna dari Tailwind & app-theme.css; mode terang tidak tersentuh.
+   ===================================================================== */
+html[data-theme="dark"] {
+  color-scheme: dark;
+  /* Token tema yang dipakai app-theme.css ikut berganti */
+  --kanvas:#0d1522; --garis:#26354b; --teks:#dde4ed; --teks-redup:#98a6b8;
+  --dinas-ink:#eef2f7; --dinas-soft:rgba(143,179,224,.14);
+  --kartu-bayang:0 1px 2px rgba(0,0,0,.35), 0 8px 24px -14px rgba(0,0,0,.6);
+  --gelap-kartu:#151f2f; --gelap-kartu-2:#1b273a; --gelap-hover:#1f2c41; --gelap-input:#0f1828;
+  --gelap-aksen:#9cbde6;
+}
+
+/* ---- Latar ------------------------------------------------------------ */
+html[data-theme="dark"] body,
+html[data-theme="dark"] .app-shell-bg,
+html[data-theme="dark"] main.app-main { background:var(--kanvas) !important; color:var(--teks); }
+html[data-theme="dark"] aside.bg-dinas-dark,
+html[data-theme="dark"] header.bg-dinas-dark { background-color:#0a1220 !important; }
+
+/* ---- Permukaan (kartu, panel, popup) --------------------------------- */
+html[data-theme="dark"] .bg-white,
+html[data-theme="dark"] .bg-white\/75, html[data-theme="dark"] .bg-white\/80,
+html[data-theme="dark"] .bg-white\/85, html[data-theme="dark"] .bg-white\/90,
+html[data-theme="dark"] .bg-white\/95,
+html[data-theme="dark"] .menu-page .bg-white,
+html[data-theme="dark"] .menu-page .bg-white\/90,
+html[data-theme="dark"] .menu-page .fixed .bg-white {
+  background:var(--gelap-kartu) !important; color:var(--teks) !important; border-color:var(--garis) !important;
+}
+html[data-theme="dark"] .bg-slate-50, html[data-theme="dark"] .bg-slate-50\/50,
+html[data-theme="dark"] .bg-slate-50\/70, html[data-theme="dark"] .bg-slate-100,
+html[data-theme="dark"] .bg-slate-100\/80,
+html[data-theme="dark"] .menu-page .bg-slate-50, html[data-theme="dark"] .menu-page .bg-slate-100 {
+  background:var(--gelap-kartu-2) !important; color:var(--teks) !important;
+}
+html[data-theme="dark"] .bg-slate-200 { background:#24324a !important; }
+html[data-theme="dark"] .bg-slate-300 { background:#33435c !important; }
+html[data-theme="dark"] .hover\:bg-slate-50:hover, html[data-theme="dark"] .hover\:bg-slate-100:hover,
+html[data-theme="dark"] .hover\:bg-slate-200:hover, html[data-theme="dark"] .hover\:bg-slate-50\/50:hover,
+html[data-theme="dark"] .hover\:bg-slate-50\/60:hover, html[data-theme="dark"] .hover\:bg-slate-200\/70:hover,
+html[data-theme="dark"] .menu-page .hover\:bg-slate-50:hover { background:var(--gelap-hover) !important; }
+html[data-theme="dark"] .bg-dinas-soft { background:var(--dinas-soft) !important; }
+html[data-theme="dark"] .text-dinas { color:var(--gelap-aksen) !important; }
+html[data-theme="dark"] .text-dinas-ink { color:var(--dinas-ink) !important; }
+
+/* Tombol utama: biru dinas sedikit lebih terang supaya terlihat di latar gelap */
+html[data-theme="dark"] .menu-page .bg-slate-900,
+html[data-theme="dark"] .bg-dinas { background:#2c5689 !important; }
+html[data-theme="dark"] .menu-page .bg-slate-900:hover,
+html[data-theme="dark"] .menu-page .hover\:bg-slate-800:hover { background:#24497a !important; }
+html[data-theme="dark"] .menu-page .border-slate-900 { border-color:#2c5689 !important; }
+
+/* ---- Warna status (latar tipis) -------------------------------------- */
+html[data-theme="dark"] .bg-red-50, html[data-theme="dark"] .bg-red-50\/40,
+html[data-theme="dark"] .bg-red-50\/60 { background:rgba(239,68,68,.12) !important; }
+html[data-theme="dark"] .bg-red-100, html[data-theme="dark"] .hover\:bg-red-100:hover { background:rgba(239,68,68,.2) !important; }
+html[data-theme="dark"] .bg-amber-50, html[data-theme="dark"] .bg-amber-50\/60 { background:rgba(245,158,11,.12) !important; }
+html[data-theme="dark"] .bg-amber-100, html[data-theme="dark"] .bg-amber-200 { background:rgba(245,158,11,.2) !important; }
+html[data-theme="dark"] .bg-emerald-50, html[data-theme="dark"] .bg-green-50 { background:rgba(16,185,129,.12) !important; }
+html[data-theme="dark"] .bg-emerald-100, html[data-theme="dark"] .bg-green-100,
+html[data-theme="dark"] .hover\:bg-emerald-100:hover { background:rgba(16,185,129,.2) !important; }
+html[data-theme="dark"] .bg-blue-50, html[data-theme="dark"] .bg-sky-50,
+html[data-theme="dark"] .bg-sky-50\/70 { background:rgba(59,130,246,.13) !important; }
+html[data-theme="dark"] .bg-blue-100, html[data-theme="dark"] .bg-sky-100 { background:rgba(59,130,246,.22) !important; }
+html[data-theme="dark"] .bg-violet-50 { background:rgba(139,92,246,.15) !important; }
+html[data-theme="dark"] .bg-fuchsia-100 { background:rgba(217,70,239,.18) !important; }
+
+/* ---- Teks --------------------------------------------------------------- */
+html[data-theme="dark"] .text-slate-900, html[data-theme="dark"] .text-slate-800,
+html[data-theme="dark"] .menu-page .text-slate-900, html[data-theme="dark"] .menu-page .text-slate-800,
+html[data-theme="dark"] .menu-page h1, html[data-theme="dark"] .menu-page h2,
+html[data-theme="dark"] .menu-page h3, html[data-theme="dark"] .menu-page h4,
+html[data-theme="dark"] .menu-page .fixed h1, html[data-theme="dark"] .menu-page .fixed h2,
+html[data-theme="dark"] .menu-page .fixed h3, html[data-theme="dark"] .menu-page .fixed .text-slate-900,
+html[data-theme="dark"] .menu-page .fixed .text-slate-800,
+html[data-theme="dark"] .hover\:text-slate-900:hover { color:#eef2f7 !important; }
+html[data-theme="dark"] .text-slate-700, html[data-theme="dark"] .menu-page .text-slate-700,
+html[data-theme="dark"] .menu-page .fixed .text-slate-700, html[data-theme="dark"] .hover\:text-slate-700:hover { color:#cfd7e2 !important; }
+html[data-theme="dark"] .text-slate-600, html[data-theme="dark"] .text-slate-500,
+html[data-theme="dark"] .menu-page .text-slate-600, html[data-theme="dark"] .menu-page .text-slate-500,
+html[data-theme="dark"] .menu-page .fixed .text-slate-600, html[data-theme="dark"] .menu-page .fixed .text-slate-500 { color:var(--teks-redup) !important; }
+html[data-theme="dark"] .text-slate-400, html[data-theme="dark"] .menu-page .text-slate-400 { color:#7d8ba0 !important; }
+html[data-theme="dark"] .text-slate-300 { color:#5f6d82 !important; }
+html[data-theme="dark"] .text-red-500, html[data-theme="dark"] .text-red-600, html[data-theme="dark"] .text-red-700,
+html[data-theme="dark"] .text-red-800, html[data-theme="dark"] .text-red-900 { color:#f4a19b !important; }
+html[data-theme="dark"] .text-amber-600, html[data-theme="dark"] .text-amber-700,
+html[data-theme="dark"] .text-amber-800, html[data-theme="dark"] .text-amber-900 { color:#f1c56f !important; }
+html[data-theme="dark"] .text-emerald-600, html[data-theme="dark"] .text-emerald-700,
+html[data-theme="dark"] .text-emerald-800, html[data-theme="dark"] .text-green-700,
+html[data-theme="dark"] .text-green-900 { color:#74d6ab !important; }
+html[data-theme="dark"] .text-blue-600, html[data-theme="dark"] .text-blue-700,
+html[data-theme="dark"] .text-blue-900 { color:#9fc1f3 !important; }
+html[data-theme="dark"] .text-violet-700 { color:#c9b8fd !important; }
+html[data-theme="dark"] .text-fuchsia-700 { color:#f1b2fb !important; }
+
+/* ---- Garis tepi ----------------------------------------------------------- */
+html[data-theme="dark"] .border-slate-100, html[data-theme="dark"] .border-slate-200,
+html[data-theme="dark"] .border-slate-300,
+html[data-theme="dark"] .menu-page .border-slate-100, html[data-theme="dark"] .menu-page .border-slate-200,
+html[data-theme="dark"] .menu-page .border-slate-300, html[data-theme="dark"] .menu-page .border-b,
+html[data-theme="dark"] .menu-page .border-t { border-color:var(--garis) !important; }
+html[data-theme="dark"] .divide-slate-100 > :not([hidden]) ~ :not([hidden]),
+html[data-theme="dark"] .divide-slate-200 > :not([hidden]) ~ :not([hidden]),
+html[data-theme="dark"] .menu-page .divide-slate-200 > :not([hidden]) ~ :not([hidden]) { border-color:var(--garis) !important; }
+html[data-theme="dark"] .border-red-200, html[data-theme="dark"] .border-red-300 { border-color:rgba(248,113,113,.35) !important; }
+html[data-theme="dark"] .border-amber-200, html[data-theme="dark"] .border-amber-300,
+html[data-theme="dark"] .border-amber-400 { border-color:rgba(245,158,11,.38) !important; }
+html[data-theme="dark"] .border-emerald-100, html[data-theme="dark"] .border-emerald-200,
+html[data-theme="dark"] .border-green-200, html[data-theme="dark"] .border-green-300 { border-color:rgba(52,211,153,.32) !important; }
+html[data-theme="dark"] .border-blue-200, html[data-theme="dark"] .border-blue-300,
+html[data-theme="dark"] .border-sky-200 { border-color:rgba(96,165,250,.35) !important; }
+html[data-theme="dark"] .border-violet-200 { border-color:rgba(167,139,250,.35) !important; }
+
+/* ---- Tabel ---------------------------------------------------------------- */
+html[data-theme="dark"] .menu-page table thead, html[data-theme="dark"] .menu-page thead { background:#18243a !important; }
+html[data-theme="dark"] .menu-page thead th { color:var(--gelap-aksen) !important; }
+html[data-theme="dark"] .menu-page table tbody tr { border-color:var(--garis) !important; }
+html[data-theme="dark"] .menu-page tr:hover { background:#1a2537 !important; }
+
+/* ---- Input ---------------------------------------------------------------- */
+html[data-theme="dark"] .menu-page input:not([type="radio"]):not([type="checkbox"]),
+html[data-theme="dark"] .menu-page select,
+html[data-theme="dark"] .menu-page textarea,
+html[data-theme="dark"] .menu-page .fixed input:not([type="radio"]):not([type="checkbox"]),
+html[data-theme="dark"] .menu-page .fixed select,
+html[data-theme="dark"] .menu-page .fixed textarea {
+  background:var(--gelap-input) !important; color:#e3e8ef !important; border-color:#2c3b52 !important;
+}
+html[data-theme="dark"] .menu-page input:not([type="radio"]):not([type="checkbox"]):focus,
+html[data-theme="dark"] .menu-page select:focus,
+html[data-theme="dark"] .menu-page textarea:focus { border-color:var(--gelap-aksen) !important; box-shadow:0 0 0 3px rgba(156,189,230,.18); }
+html[data-theme="dark"] .menu-page input::placeholder,
+html[data-theme="dark"] .menu-page textarea::placeholder { color:#6b7a90 !important; }
+html[data-theme="dark"] .menu-page option { background:var(--gelap-input); color:#e3e8ef; }
+html[data-theme="dark"] .menu-page input[type="radio"],
+html[data-theme="dark"] .menu-page input[type="checkbox"] { accent-color:#5d8fd0; }
+
+/* ---- Header halaman ------------------------------------------------------- */
+html[data-theme="dark"] .menu-hero { background:var(--gelap-kartu); border-color:var(--garis); }
+html[data-theme="dark"] .menu-hero::before { background-image:var(--kawung-gelap); }
+html[data-theme="dark"] .menu-dashboard .menu-hero { background:#1b3150; border-color:#1b3150; }
+
+/* ---- Komponen khusus -------------------------------------------------------- */
+html[data-theme="dark"] .detail-btn { background:var(--dinas-soft); color:var(--gelap-aksen); border-color:rgba(156,189,230,.25); }
+html[data-theme="dark"] .detail-btn:hover { background:rgba(143,179,224,.22); }
+html[data-theme="dark"] .vehicle-detail-modal { background:var(--gelap-kartu); color:var(--teks); }
+html[data-theme="dark"] .detail-field { background:var(--gelap-kartu-2); border-color:var(--garis); }
+html[data-theme="dark"] .detail-label { color:var(--teks-redup); }
+html[data-theme="dark"] .detail-value { color:#eef2f7; }
+html[data-theme="dark"] * { scrollbar-color:#33435c transparent; }
+html[data-theme="dark"] ::selection { background:#2c5689; color:#ffffff; }
+
+/* ---- Warna khusus yang ditulis langsung di halaman ------------------------ */
+/* Latar badan popup (form Pemeliharaan/Pengadaan/Kendaraan/Ruang Rapat) */
+html[data-theme="dark"] .bg-\[\#f7f9fb\] { background:var(--gelap-kartu) !important; }
+html[data-theme="dark"] .bg-slate-50\/60 { background:var(--gelap-kartu-2) !important; }
+/* Badge "HARI INI" di kalender & ikon dinas: biru dinas versi terang supaya terlihat */
+html[data-theme="dark"] .bg-\[\#1e3a5f\] { background:#2c5689 !important; }
+
+/* ---- Sidebar: elemen putih (kotak logo, tombol ciutkan, pilihan tema aktif) tetap putih -- */
+html[data-theme="dark"] aside .bg-white { background:#ffffff !important; color:#142a47 !important; border-color:rgba(255,255,255,.2) !important; }
