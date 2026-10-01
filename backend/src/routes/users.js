@@ -1,15 +1,15 @@
 const express = require('express');
 const prisma = require('../prisma');
-const { requireAuth, requireRole } = require('../middleware/auth');
+const { requireAuth, requireRole, ADMIN_ROLES } = require('../middleware/auth');
 const logger = require('../logger');
 const { createResetToken } = require('../token');
 const { isMailConfigured, sendResetPasswordEmail } = require('../mailer');
 
 const router = express.Router();
 router.use(requireAuth);
-router.use(requireRole(['admin']));
+router.use(requireRole(ADMIN_ROLES));
 
-// Daftar akun + role, khusus admin -- dipakai di menu "Akun" untuk memantau
+// Daftar akun + role, khusus admin & kabag (ADMIN_ROLES) -- dipakai di menu "Akun" untuk memantau
 // siapa saja yang punya akses ke sistem dan kapan terakhir mereka login.
 router.get('/', async (req, res) => {
   try {
@@ -71,7 +71,7 @@ router.put('/:id/status', async (req, res) => {
   }
 });
 
-// Buat link reset password untuk akun tertentu (khusus admin). Sistem belum
+// Buat link reset password untuk akun tertentu (khusus admin & kabag). Sistem belum
 // punya layanan email, jadi admin menyalin link ini dan mengirimkannya manual
 // (WA/Slack/dsb) ke pemilik akun setelah memverifikasi identitasnya.
 router.post('/:id/reset-link', async (req, res) => {

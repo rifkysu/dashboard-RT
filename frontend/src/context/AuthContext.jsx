@@ -4,6 +4,11 @@ import { subscribeLive } from '../live';
 
 const AuthContext = createContext(null);
 
+// Role dengan hak penuh setara admin (sama dengan ADMIN_ROLES di backend/src/middleware/auth.js):
+// menu Akun & Akses, Settings (mode maintenance), dan tetap bisa masuk menu yang sedang maintenance.
+export const ADMIN_ROLES = ['admin', 'kabag'];
+export const isAdminRole = (role) => ADMIN_ROLES.includes(role);
+
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(() => {
     // Data localStorage yang rusak jangan sampai membuat seluruh app blank.
@@ -16,12 +21,13 @@ export function AuthProvider({ children }) {
   });
   const [loading, setLoading] = useState(true);
   const [maintenance, setMaintenance] = useState({});
-  // Jumlah akun yang minta reset kata sandi (khusus admin) -> badge menu Akun & Akses.
+  // Jumlah akun yang minta reset kata sandi (khusus admin & kabag) -> badge menu Akun & Akses.
   const [resetRequestCount, setResetRequestCount] = useState(0);
+  const [loggedOut, setLoggedOut] = useState(false);
 
   function refreshResetRequests() {
     const current = (() => { try { return JSON.parse(localStorage.getItem('user') || 'null'); } catch { return null; } })();
-    if (!localStorage.getItem('token') || current?.role !== 'admin') { setResetRequestCount(0); return; }
+    if (!localStorage.getItem('token') || !isAdminRole(current?.role)) { setResetRequestCount(0); return; }
     api.get('/users/reset-requests/count').then((res) => setResetRequestCount(res.data.count || 0)).catch(() => {});
   }
 
@@ -95,12 +101,18 @@ export function AuthProvider({ children }) {
     localStorage.setItem('token', token);
     localStorage.setItem('user', JSON.stringify(userData));
     setUser(userData);
+    setLoggedOut(false);
     refreshMaintenance();
   }
 
+  // Logout yang disengaja (tombol Logout) -> halaman ber-login mengarahkan ke landing page,
+  // bukan ke /login. Ditandai lewat state supaya tidak bergantung pada urutan navigate():
+  // React Router 7 memproses perpindahan halaman di startTransition, jadi user=null bisa
+  // tergambar lebih dulu daripada pindah ke '/'.
   function logout() {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
+    setLoggedOut(true);
     setUser(null);
     setMaintenance({});
     setResetRequestCount(0);
@@ -132,15 +144,15 @@ export function AuthProvider({ children }) {
     return false;
   }
 
-  // Menu sedang maintenance & user bukan admin -> akses diblokir di frontend
+  // Menu sedang maintenance & user bukan admin/kabag -> akses diblokir di frontend
   // (backend juga menolak request-nya sebagai lapisan kedua).
   function isMenuDown(menuKey) {
-    if (user?.role === 'admin') return false;
+    if (isAdminRole(user?.role)) return false;
     return !!maintenance[menuKey]?.is_active;
   }
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, refreshAuth, refreshUser, canEdit, canEditRow, maintenance, refreshMaintenance, isMenuDown, resetRequestCount, refreshResetRequests }}>
+    <AuthContext.Provider value={{ user, isAdmin: isAdminRole(user?.role), loggedOut, loading, login, logout, refreshAuth, refreshUser, canEdit, canEditRow, maintenance, refreshMaintenance, isMenuDown, resetRequestCount, refreshResetRequests }}>
       {children}
     </AuthContext.Provider>
   );

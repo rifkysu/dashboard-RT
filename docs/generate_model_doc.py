@@ -502,10 +502,11 @@ def isi_aplikasi():
              "Seperti karyawan + memproses tahapan, mengedit & menghapus **data yang dibuatnya sendiri**; "
              "mengelola kendaraan."],
             ["Kabag", "Diberikan manual oleh admin melalui database.",
-             "Mengedit/menghapus seluruh data di semua modul."],
+             "Setara admin: mengedit/menghapus seluruh data, Mode Maintenance, Akun & Akses, dan tetap dapat "
+             "mengakses menu yang sedang maintenance."],
             ["Admin", "Diberikan manual melalui pgAdmin 4 (tidak tersedia di form Daftar).",
-             "Semua wewenang kabag + Mode Maintenance, Akun & Akses (ban/aktifkan akun, kirim link reset), "
-             "tetap dapat mengakses menu yang sedang maintenance."],
+             "Mengedit/menghapus seluruh data + Mode Maintenance, Akun & Akses (ban/aktifkan akun, kirim link "
+             "reset), tetap dapat mengakses menu yang sedang maintenance."],
         ]),
         h2("Matriks hak akses per modul"),
         table([64, 18, 21, 25, 23, 23], [
@@ -517,8 +518,8 @@ def isi_aplikasi():
             ["Kendaraan: lihat", "-", "Ya", "Ya", "Ya", "Ya"],
             ["Kendaraan: tambah, ubah, foto, dokumen, service", "-", "-", "Ya", "Ya", "Ya"],
             ["Ruang Rapat: booking, edit, surat/status, cancel", "-", "Ya", "Ya", "Ya", "Ya"],
-            ["Akun & Akses, Settings (Mode Maintenance)", "-", "-", "-", "-", "Ya"],
-            ["Akses menu saat maintenance", "-", "-", "-", "-", "Ya"],
+            ["Akun & Akses, Settings (Mode Maintenance)", "-", "-", "-", "Ya", "Ya"],
+            ["Akses menu saat maintenance", "-", "-", "-", "Ya", "Ya"],
         ]),
         note("Otorisasi diterapkan dua lapis: tombol/menu disembunyikan di frontend, dan setiap endpoint API "
              "memeriksa ulang peran (HTTP 403 bila ditolak)."),
@@ -536,7 +537,8 @@ def isi_aplikasi():
         *bullets(
             "Login email & kata sandi; validasi per kolom (email wajib & berformat benar, kata sandi wajib).",
             "Setelah login berhasil muncul **popup animasi logo** selama 3 detik (\"Selamat datang, nama\") "
-            "lalu masuk Dashboard; saat logout muncul popup \"Sampai jumpa\".",
+            "lalu masuk Dashboard; saat logout muncul popup \"Sampai jumpa\" lalu kembali ke landing page "
+            "(sesi yang berakhir karena hal lain, mis. token kedaluwarsa, diarahkan ke halaman login).",
             "Daftar Akun: nama (min. 3 huruf, boleh gelar), email, nomor HP Indonesia, unit kerja, kata sandi "
             "min. 8 karakter berisi huruf & angka. Setelah daftar, pengguna diarahkan ke halaman Login (tidak "
             "otomatis masuk).",
@@ -693,9 +695,9 @@ def isi_aplikasi():
             ["", "GET / , GET /:id, POST /, PUT /:id, DELETE /:id", "Login", "Kelola booking"],
             ["", "POST /:id/cancel-dates", "Login", "Batalkan tanggal tertentu"],
             ["Maintenance", "GET /landing-status, GET /stream (SSE)", "Publik", "Status landing & sinyal real-time"],
-            ["", "GET / ; PUT /:menu_key", "Login; Admin", "Baca & ubah mode maintenance"],
+            ["", "GET / ; PUT /:menu_key", "Login; Admin/Kabag", "Baca & ubah mode maintenance"],
             ["Live", "GET /live/stream (SSE)", "Publik", "Satu sinyal real-time untuk semua modul"],
-            ["Users", "GET /, GET /reset-requests/count, PUT /:id/status, POST /:id/reset-link", "Admin",
+            ["Users", "GET /, GET /reset-requests/count, PUT /:id/status, POST /:id/reset-link", "Admin/Kabag",
              "Akun & Akses"],
             ["Health", "GET /health", "Publik", "Cek backend hidup"],
         ]),

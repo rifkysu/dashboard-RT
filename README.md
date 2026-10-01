@@ -66,13 +66,13 @@ Full-stack app (React + Node.js/Express + PostgreSQL + **Prisma**) untuk mengelo
   - Tahun Baru Imlek — dihitung dari kalender Tionghoa.
   - **Cuti bersama** & **Nyepi** — didaftar manual per tahun di `frontend/src/utils/holidays.js` (murni kebijakan pemerintah/kalender Saka Bali, tidak bisa dihitung otomatis).
 
-### ⚙️ Mode Maintenance (Settings, khusus Admin)
+### ⚙️ Mode Maintenance (Settings, khusus Admin & Kabag)
 - Admin bisa menonaktifkan menu tertentu (Landing Page/Dashboard/Pemeliharaan/Pengadaan/Kendaraan/Ruang Rapat) untuk semua role selain admin, lengkap dengan pesan custom per menu.
 - Perubahan **real-time lewat SSE** — begitu admin toggle, semua user yang sedang online langsung melihat menu terkunci/terbuka tanpa refresh.
 - Diterapkan **dua lapis**: disable tampilan di sidebar/halaman (frontend) **dan** ditolak di API dengan status 503 (backend) — jadi tetap aman walau ada yang mencoba akses API langsung.
-- Halaman **Settings sendiri sekarang khusus admin** — link-nya otomatis hilang dari sidebar untuk role lain, dan redirect ke Dashboard kalau non-admin coba akses `/settings` langsung lewat URL. Info profil pengguna (nama, email, role) dipindah ke halaman terpisah **`/profile`** yang bisa diakses semua role lewat blok profil di sidebar (di atas Settings).
+- Halaman **Settings khusus admin & kabag** — link-nya otomatis hilang dari sidebar untuk role lain, dan redirect ke Dashboard kalau karyawan/PIC coba akses `/settings` langsung lewat URL. Info profil pengguna (nama, email, role) dipindah ke halaman terpisah **`/profile`** yang bisa diakses semua role lewat blok profil di sidebar (di atas Settings).
 
-### 👤 Akun & Akses (`/akun`, khusus Admin)
+### 👤 Akun & Akses (`/akun`, khusus Admin & Kabag)
 - Tabel semua akun terdaftar: nama, email, role, no HP, unit kerja, status, metode login (SSO/password), tanggal daftar, dan **terakhir login** (`last_login_at`, dicatat otomatis tiap kali ada login sukses lewat email/password maupun SSO).
 - **Ban / Aktifkan akun** — admin bisa menonaktifkan (`is_active = false`) akun siapa pun kecuali akun sendiri. Efeknya **langsung berlaku**: akun yang di-ban langsung ditolak di request berikutnya (`requireAuth` selalu cek `is_active` segar dari database) dan tidak bisa login lagi sampai diaktifkan ulang — tanpa logic tambahan, murni memanfaatkan mekanisme cek role/status yang sudah ada.
 - Link menu ini **cuma muncul di sidebar untuk role admin**, dan endpoint `GET/PUT /api/users*` dijaga `requireRole(['admin'])` di backend.
@@ -289,14 +289,15 @@ Ringkasnya: **Register/SSO → Karyawan → (nambah permintaan) → PIC → (man
 |---|:---:|:---:|:---:|:---:|
 | Karyawan | ✅ | ✅ (otomatis jadi PIC setelahnya) | ❌ | ✅ (satu-satunya) |
 | PIC | ✅ | ✅ | ✅ **hanya data buatan sendiri** | ❌ (hanya via pgAdmin4, atau otomatis dari Karyawan) |
-| Kabag | ✅ | ✅ | ✅ semua data | ❌ (hanya via pgAdmin4) |
+| Kabag | ✅ | ✅ | ✅ **setara Admin**: semua data + Akun & Akses + atur Mode Maintenance + selalu bisa akses semua menu | ❌ (hanya via pgAdmin4) |
 | Admin | ✅ | ✅ | ✅ semua data + atur Mode Maintenance + selalu bisa akses semua menu | ❌ (hanya via pgAdmin4) |
 
 Penerapan teknis:
 - **Frontend**: tombol edit/tahapan/hapus otomatis disable untuk role `karyawan`, dan untuk `pic` khusus di baris data milik orang lain (lihat `useAuth().canEditRow()` di `frontend/src/context/AuthContext.jsx`).
 - **Backend**: endpoint `PUT`/`DELETE` di `backend/src/routes/pemeliharaan.js` & `pengadaan.js` dibungkus middleware `requireRole([...])` + pengecekan kepemilikan (`created_by`) untuk role `pic` — kalau dipaksa lewat API langsung (mis. Postman), tetap ditolak HTTP 403. (`kendaraan.js`/`ruangRapat.js` memakai `requireRole([...])` saja tanpa pengecekan kepemilikan — lihat catatan di atas.)
 - Role user diverifikasi ulang dari database di **setiap** request lewat `requireAuth` — token JWT cuma dipakai untuk identitas (id), bukan sumber kebenaran hak akses.
-- **Admin juga bisa mem-ban akun** (`PUT /api/users/:id/status`, lihat bagian Fitur "Akun & Akses") — memanfaatkan mekanisme cek `is_active` yang sama di `requireAuth`, jadi akun yang di-ban langsung kehilangan akses tanpa perlu logic tambahan. Admin tidak bisa mem-ban akun sendiri (dicegah di backend).
+- **Kabag = Admin**: daftar role setara admin ada di satu tempat, `ADMIN_ROLES` (`backend/src/middleware/auth.js` dan `frontend/src/context/AuthContext.jsx`) -- dipakai untuk menu Akun & Akses, Settings/Mode Maintenance, dan akses saat maintenance. Ubah di kedua file itu bila aturannya berubah.
+- **Admin & Kabag bisa mem-ban akun** (`PUT /api/users/:id/status`, lihat bagian Fitur "Akun & Akses") — memanfaatkan mekanisme cek `is_active` yang sama di `requireAuth`, jadi akun yang di-ban langsung kehilangan akses tanpa perlu logic tambahan. Tidak ada yang bisa mem-ban akun sendiri (dicegah di backend).
 
 ---
 

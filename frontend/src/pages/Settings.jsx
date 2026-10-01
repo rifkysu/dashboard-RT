@@ -15,9 +15,9 @@ const MENU_LABELS = {
 const MENU_ORDER = ['landing', 'dashboard', 'pemeliharaan', 'pengadaan', 'kendaraan', 'ruang-rapat'];
 
 export default function Settings() {
-  const { user, maintenance, refreshMaintenance } = useAuth();
+  const { user, isAdmin, maintenance, refreshMaintenance } = useAuth();
 
-  if (user && user.role !== 'admin') return <Navigate to="/dashboard" replace />;
+  if (user && !isAdmin) return <Navigate to="/dashboard" replace />;
 
   return (
     <div className="menu-page menu-settings max-w-4xl mx-auto">
@@ -36,7 +36,7 @@ function MaintenancePanel({ maintenance, refreshMaintenance }) {
   const { confirm, toast } = useFeedback();
 
   async function toggle(menuKey, nextActive) {
-    if (nextActive && !(await confirm({ title: `Aktifkan maintenance ${MENU_LABELS[menuKey]}?`, message: `Menu ${MENU_LABELS[menuKey]} langsung tidak bisa diakses semua pengguna selain Admin${menuKey === 'landing' ? ', termasuk pengunjung publik' : ''}.`, confirmText: 'Ya, Aktifkan Maintenance', tone: 'warning', icon: 'build' }))) return;
+    if (nextActive && !(await confirm({ title: `Aktifkan maintenance ${MENU_LABELS[menuKey]}?`, message: `Menu ${MENU_LABELS[menuKey]} langsung tidak bisa diakses semua pengguna selain Admin & Kepala Bagian${menuKey === 'landing' ? ', termasuk pengunjung publik' : ''}.`, confirmText: 'Ya, Aktifkan Maintenance', tone: 'warning', icon: 'build' }))) return;
     setSaving(menuKey); setError('');
     try {
       await api.put(`/maintenance/${menuKey}`, { is_active: nextActive });
@@ -68,7 +68,7 @@ function MaintenancePanel({ maintenance, refreshMaintenance }) {
         <span className="material-symbols-outlined text-amber-600 text-[20px]">build</span>
         <h2 className="font-bold">Mode Maintenance</h2>
       </div>
-      <p className="text-xs text-slate-500 mb-4">Nonaktifkan menu tertentu untuk role selain Admin. Admin selalu bisa akses semua menu, kapan pun. Khusus "Landing Page", ini juga berlaku untuk pengunjung publik yang belum login.</p>
+      <p className="text-xs text-slate-500 mb-4">Nonaktifkan menu tertentu untuk role selain Admin &amp; Kepala Bagian. Admin dan Kepala Bagian selalu bisa akses semua menu, kapan pun. Khusus "Landing Page", ini juga berlaku untuk pengunjung publik yang belum login.</p>
       {error && <div className="mb-3 px-3 py-2 rounded-lg bg-red-50 border border-red-200 text-xs text-red-700">{error}</div>}
       <div className="space-y-3">
         {MENU_ORDER.map((key) => {

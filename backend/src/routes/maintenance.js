@@ -1,7 +1,7 @@
 const express = require('express');
 const { EventEmitter } = require('events');
 const prisma = require('../prisma');
-const { requireAuth, requireRole } = require('../middleware/auth');
+const { requireAuth, requireRole, ADMIN_ROLES } = require('../middleware/auth');
 const logger = require('../logger');
 const { createSseLimiter } = require('../middleware/security');
 
@@ -53,8 +53,8 @@ router.get('/', async (req, res) => {
   }
 });
 
-// Hanya admin yang boleh mengubah status maintenance.
-router.put('/:menu_key', requireRole(['admin']), async (req, res) => {
+// Hanya admin & kabag (ADMIN_ROLES) yang boleh mengubah status maintenance.
+router.put('/:menu_key', requireRole(ADMIN_ROLES), async (req, res) => {
   try {
     const { menu_key } = req.params;
     if (!MENU_KEYS.includes(menu_key)) return res.status(400).json({ message: 'Menu tidak dikenal.' });

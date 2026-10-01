@@ -26,7 +26,7 @@ function waNumber(noHp) {
 }
 
 export default function Akun() {
-  const { user, refreshResetRequests } = useAuth();
+  const { user, isAdmin, refreshResetRequests } = useAuth();
   const { confirm, toast } = useFeedback();
   const [resetLink, setResetLink] = useState(null);
   const [copied, setCopied] = useState(false);
@@ -95,7 +95,7 @@ export default function Akun() {
 
   const pendingResets = data.filter((u) => u.reset_requested_at && u.is_active);
 
-  if (user && user.role !== 'admin') return <Navigate to="/dashboard" replace />;
+  if (user && !isAdmin) return <Navigate to="/dashboard" replace />;
 
   return (
     <div className="menu-page menu-akun relative">
@@ -146,7 +146,7 @@ export default function Akun() {
                 <tr key={u.id} className="divide-x divide-slate-100 hover:bg-slate-50/50">
                   <td className="px-4 py-3 font-semibold text-slate-800">{u.nama_lengkap}{isSelf && <span className="ml-1.5 text-[10px] font-bold text-slate-500">(Kamu)</span>}{u.reset_requested_at && u.is_active && <div className="mt-1 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 text-[10px] font-bold whitespace-nowrap"><span className="material-symbols-outlined text-[12px]">lock_reset</span>Minta reset · {fmt(u.reset_requested_at)}</div>}</td>
                   <td className="px-4 py-3 text-slate-600">{u.email}</td>
-                  <td className="px-4 py-3"><span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-semibold ${roleBadge[u.role] || roleBadge.karyawan}`}>{roleLabel[u.role] || u.role}</span></td>
+                  <td className="px-4 py-3"><span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-semibold whitespace-nowrap ${roleBadge[u.role] || roleBadge.karyawan}`}>{roleLabel[u.role] || u.role}</span></td>
                   <td className="px-4 py-3 text-slate-600 whitespace-nowrap">{u.no_hp || '-'}</td>
                   <td className="px-4 py-3 text-slate-600">{u.unit_kerja || '-'}</td>
                   <td className="px-4 py-3 text-slate-600 capitalize whitespace-nowrap">{u.sso_provider ? `SSO (${u.sso_provider})` : 'Email/Password'}</td>

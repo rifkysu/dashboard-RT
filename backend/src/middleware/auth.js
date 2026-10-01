@@ -67,4 +67,9 @@ function requireRole(allowedRoles = []) {
 // (karyawan sengaja TIDAK dimasukkan -> karyawan hanya boleh lihat & buat permintaan baru)
 const EDITOR_ROLES = ['kabag', 'pic', 'admin'];
 
-module.exports = { requireAuth, requireRole, EDITOR_ROLES, ACCOUNT_BANNED, ACCOUNT_BANNED_MESSAGE };
+// Role dengan hak penuh setara admin: kelola akun (menu Akun & Akses), mode maintenance (Settings),
+// dan tetap bisa masuk menu yang sedang maintenance. Kabag sengaja disamakan dengan admin.
+const ADMIN_ROLES = ['admin', 'kabag'];
+const isAdminRole = (role) => ADMIN_ROLES.includes(role);
+
+module.exports = { requireAuth, requireRole, EDITOR_ROLES, ADMIN_ROLES, isAdminRole, ACCOUNT_BANNED, ACCOUNT_BANNED_MESSAGE };

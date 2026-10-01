@@ -19,7 +19,7 @@ const menu = [
 // menyempit jadi mode ikon-saja walau `collapsed` true, supaya tetap gampang
 // dibaca di layar kecil.
 export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }) {
-  const { user, logout, isMenuDown, resetRequestCount } = useAuth();
+  const { user, isAdmin, logout, isMenuDown, resetRequestCount } = useAuth();
   // Popup animasi logo ~3 detik sebelum benar-benar logout.
   const [leaving, setLeaving] = useState(false);
   const navigate = useNavigate();
@@ -61,7 +61,7 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
 
         <nav className="flex-1 px-3 py-5 overflow-y-auto overflow-x-hidden">
           <p className={`px-3 mb-3 text-[11px] font-semibold text-white/45 ${hideWhenCollapsed}`}>Menu Utama</p>
-          {menu.filter((item) => !item.adminOnly || user?.role === 'admin').map((item) => {
+          {menu.filter((item) => !item.adminOnly || isAdmin).map((item) => {
             const down = item.menuKey ? isMenuDown(item.menuKey) : false;
             // Badge permintaan reset kata sandi di menu Akun & Akses (admin).
             const notif = item.to === '/akun' ? resetRequestCount : 0;
@@ -96,7 +96,7 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
                 <span className="block text-[11px] text-white/55 truncate">{roleLabel[user?.role] || user?.role || '-'}</span>
               </span>
             </NavLink>
-            {user?.role === 'admin' && (
+            {isAdmin && (
               <NavLink to="/settings" onClick={onMobileClose} title={collapsed ? 'Settings' : undefined} className={({isActive}) => `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition ${collapsed ? 'md:justify-center' : ''} ${isActive ? 'bg-white/[0.12] text-white' : 'text-white/65 hover:bg-white/[0.06] hover:text-white'}`}>
                 <span className="w-8 h-6 flex items-center justify-center shrink-0"><span className="material-symbols-outlined text-[20px]">settings</span></span>
                 <span className={hideWhenCollapsed}>Settings</span>
