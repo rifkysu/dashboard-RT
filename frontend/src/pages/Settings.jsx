@@ -21,7 +21,7 @@ export default function Settings() {
 
   return (
     <div className="menu-page menu-settings max-w-4xl mx-auto">
-      <div className="menu-hero mb-6"><div><span className="menu-kicker">KONFIGURASI • SISTEM</span><h1 className="text-3xl font-bold">Settings</h1><p className="text-sm mt-1">Pengaturan mode maintenance sistem Biro Umum.</p></div><div className="menu-hero-icon"><span className="material-symbols-outlined">settings</span></div></div>
+      <div className="menu-hero mb-6"><div><span className="menu-kicker">Biro Umum / Settings</span><h1 className="text-3xl font-bold">Settings</h1><p className="text-sm mt-1">Pengaturan mode maintenance sistem Biro Umum.</p></div><div className="menu-hero-icon"><span className="material-symbols-outlined">settings</span></div></div>
       <div className="space-y-4">
         <MaintenancePanel maintenance={maintenance} refreshMaintenance={refreshMaintenance} />
       </div>

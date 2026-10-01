@@ -68,8 +68,8 @@ export default function Register() {
         <div className="flex items-center gap-3">
           <BrandMark size="sm" />
           <div>
-            <h1 className="text-base font-bold text-slate-900 leading-none">Biro Umum</h1>
-            <p className="text-xs text-slate-500 mt-0.5">Rumah Tangga &amp; Administrasi</p>
+            <h1 className="text-base font-bold text-slate-900 leading-tight">Biro Umum dan Rumah Tangga</h1>
+            <p className="text-xs text-slate-500 mt-0.5">Kementerian Ketenagakerjaan</p>
           </div>
         </div>
         <div className="flex items-center gap-3 text-xs">
@@ -84,16 +84,11 @@ export default function Register() {
         <div className="w-full max-w-[560px]">
         <Link to="/" className="inline-flex items-center gap-1.5 text-sm text-slate-600 hover:text-slate-900 font-semibold mb-4">
           <span className="material-symbols-outlined text-[18px]">arrow_back</span>
-          Kembali ke Menu Utama
+          Kembali ke beranda
         </Link>
-        <div className="bg-white rounded-2xl shadow-xl shadow-slate-200/60 border border-slate-200/80 p-8 sm:p-10 relative overflow-hidden">
-          <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-emerald-500 via-blue-600 to-slate-900"></div>
+        <div className="bg-white rounded-lg border border-slate-200 p-8 sm:p-10">
 
           <div className="mb-8">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-md bg-emerald-50 text-emerald-700 text-xs font-semibold mb-3">
-              <span className="material-symbols-outlined text-[16px]">person_add</span>
-              Registrasi Pegawai Baru
-            </div>
             <h2 className="text-2xl font-bold text-slate-900">Daftar Akun Pegawai</h2>
             <p className="text-sm text-slate-500 mt-1.5">
               Lengkapi data di bawah ini untuk mendapatkan hak akses pada portal operasional Biro Umum.
@@ -101,14 +96,14 @@ export default function Register() {
           </div>
 
           {error && (
-            <div className="mb-4 px-4 py-3 bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl">
+            <div className="mb-4 px-4 py-3 bg-red-50 border border-red-200 text-red-700 text-sm rounded-md">
               {error}
             </div>
           )}
 
           <form noValidate className="space-y-4" onSubmit={handleSubmit}>
             <div>
-              <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+              <label className="block text-sm font-semibold text-slate-700 mb-1.5">
                 Nama Lengkap &amp; Gelar *
               </label>
               <input
@@ -117,14 +112,14 @@ export default function Register() {
                 value={form.nama_lengkap}
                 onChange={(e) => update('nama_lengkap', e.target.value)}
                 placeholder="Misal: Ahmad Fauzi, S.E."
-                className={inputCls('nama_lengkap', "w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 focus:bg-white transition")}
+                className={inputCls('nama_lengkap', "w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]/15 focus:border-[#1e3a5f] focus:bg-white transition")}
               />
               {fieldErrors.nama_lengkap && <p className="text-[11px] text-red-600 mt-1">{fieldErrors.nama_lengkap}</p>}
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                <label className="block text-sm font-semibold text-slate-700 mb-1.5">
                   Email Kedinasan *
                 </label>
                 <input
@@ -133,12 +128,12 @@ export default function Register() {
                   value={form.email}
                   onChange={(e) => update('email', e.target.value)}
                   placeholder="nama@kemnaker.go.id"
-                  className={inputCls('email', "w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 focus:bg-white transition")}
+                  className={inputCls('email', "w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]/15 focus:border-[#1e3a5f] focus:bg-white transition")}
                 />
                 {fieldErrors.email && <p className="text-[11px] text-red-600 mt-1">{fieldErrors.email}</p>}
               </div>
               <div>
-                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                <label className="block text-sm font-semibold text-slate-700 mb-1.5">
                   Nomor WhatsApp / HP *
                 </label>
                 <input
@@ -147,7 +142,7 @@ export default function Register() {
                   value={form.no_hp}
                   onChange={(e) => update('no_hp', e.target.value)}
                   placeholder="08123456789"
-                  className={inputCls('no_hp', "w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 focus:bg-white transition")}
+                  className={inputCls('no_hp', "w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]/15 focus:border-[#1e3a5f] focus:bg-white transition")}
                 />
                 {fieldErrors.no_hp && <p className="text-[11px] text-red-600 mt-1">{fieldErrors.no_hp}</p>}
               </div>
@@ -155,14 +150,14 @@ export default function Register() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                <label className="block text-sm font-semibold text-slate-700 mb-1.5">
                   Unit Kerja / Bagian *
                 </label>
                 <select
                   required
                   value={form.unit_kerja}
                   onChange={(e) => update('unit_kerja', e.target.value)}
-                  className={inputCls('unit_kerja', "w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 focus:bg-white transition cursor-pointer")}
+                  className={inputCls('unit_kerja', "w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]/15 focus:border-[#1e3a5f] focus:bg-white transition cursor-pointer")}
                 >
                   <option value="">Pilih Bagian...</option>
                   <option value="rt">Bagian Rumah Tangga</option>
@@ -175,14 +170,14 @@ export default function Register() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                <label className="block text-sm font-semibold text-slate-700 mb-1.5">
                   Peran / Hak Akses *
                 </label>
                 <select
                   required
                   value={form.role}
                   onChange={(e) => update('role', e.target.value)}
-                  className={inputCls('role', "w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 focus:bg-white transition cursor-pointer")}
+                  className={inputCls('role', "w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]/15 focus:border-[#1e3a5f] focus:bg-white transition cursor-pointer")}
                 >
                   <option value="" disabled>Pilih Peran</option>
                   <option value="karyawan">Karyawan</option>
@@ -199,7 +194,7 @@ export default function Register() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                <label className="block text-sm font-semibold text-slate-700 mb-1.5">
                   Kata Sandi *
                 </label>
                 <input
@@ -209,12 +204,12 @@ export default function Register() {
                   value={form.password}
                   onChange={(e) => update('password', e.target.value)}
                   placeholder="Min. 8 karakter, huruf & angka"
-                  className={inputCls('password', "w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 focus:bg-white transition")}
+                  className={inputCls('password', "w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]/15 focus:border-[#1e3a5f] focus:bg-white transition")}
                 />
                 {fieldErrors.password && <p className="text-[11px] text-red-600 mt-1">{fieldErrors.password}</p>}
               </div>
               <div>
-                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                <label className="block text-sm font-semibold text-slate-700 mb-1.5">
                   Ulangi Kata Sandi *
                 </label>
                 <input
@@ -223,7 +218,7 @@ export default function Register() {
                   value={form.confirm}
                   onChange={(e) => update('confirm', e.target.value)}
                   placeholder="Konfirmasi kata sandi"
-                  className={inputCls('confirm', "w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 focus:bg-white transition")}
+                  className={inputCls('confirm', "w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]/15 focus:border-[#1e3a5f] focus:bg-white transition")}
                 />
                 {fieldErrors.confirm && <p className="text-[11px] text-red-600 mt-1">{fieldErrors.confirm}</p>}
               </div>
@@ -231,7 +226,7 @@ export default function Register() {
 
             <div className="pt-2">
               <label className="flex items-start gap-2.5 cursor-pointer select-none">
-                <input type="checkbox" checked={form.agree} onChange={(e) => update('agree', e.target.checked)} className="w-4 h-4 mt-0.5 rounded border-slate-300 text-blue-600 focus:ring-blue-500" />
+                <input type="checkbox" checked={form.agree} onChange={(e) => update('agree', e.target.checked)} className="w-4 h-4 mt-0.5 rounded border-slate-300 text-[#1e3a5f] focus:ring-blue-500" />
                 <span className="text-xs text-slate-600 leading-relaxed">
                   Saya menyatakan bahwa data yang diisikan adalah benar dan bersedia mematuhi ketentuan keamanan data operasional internal Biro Umum.
                 </span>
@@ -242,7 +237,7 @@ export default function Register() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-3.5 px-4 bg-slate-900 hover:bg-slate-800 disabled:opacity-60 text-white font-semibold rounded-xl text-sm flex items-center justify-center gap-2 shadow-lg shadow-slate-900/10 transition"
+              className="w-full py-3.5 px-4 bg-[#1e3a5f] hover:bg-[#152b47] disabled:opacity-60 text-white font-semibold rounded-md text-sm flex items-center justify-center gap-2 transition"
             >
               {loading ? 'Memproses...' : 'Daftar Akun'}
               <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
@@ -252,7 +247,7 @@ export default function Register() {
           <div className="mt-6 pt-5 border-t border-slate-100 text-center">
             <p className="text-xs text-slate-500">
               Sudah memiliki akun terdaftar?
-              <Link to="/login" className="text-blue-600 hover:text-blue-700 font-semibold ml-1">
+              <Link to="/login" className="text-[#1e3a5f] hover:underline font-semibold ml-1">
                 Masuk di sini
               </Link>
             </p>

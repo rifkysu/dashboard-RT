@@ -14,7 +14,7 @@ export default class AppErrorBoundary extends React.Component {
   render() {
     if (!this.state.error) return this.props.children;
     return (
-      <div style={{minHeight:'100vh',padding:'40px',background:'#f8fafc',fontFamily:'Inter,Arial,sans-serif',color:'#0f172a'}}>
+      <div style={{minHeight:'100vh',padding:'40px',background:'#f8fafc',fontFamily:"'Public Sans',Arial,sans-serif",color:'#0f172a'}}>
         <div style={{maxWidth:760,margin:'40px auto',background:'#fff',border:'1px solid #e2e8f0',borderRadius:18,padding:28,boxShadow:'0 15px 40px rgba(15,23,42,.08)'}}>
           <h1 style={{margin:'0 0 10px',fontSize:24}}>Aplikasi mengalami error</h1>
           <p style={{color:'#64748b'}}>Halaman tidak lagi blank. Detail error ditampilkan di bawah agar mudah diperbaiki.</p>

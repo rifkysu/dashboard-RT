@@ -16,13 +16,13 @@ export default function RuangRapatSchedule() {
   const last = s.months[s.months.length - 1];
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden text-slate-800">
+    <div className="bg-white rounded-lg border border-slate-200 overflow-hidden text-slate-800">
       <div className="p-4 border-b border-slate-200 flex flex-col xl:flex-row justify-between gap-3 xl:items-center">
         <div>
           <div className="font-bold text-sm text-slate-800">Jadwal Ruang Rapat</div>
           <div className="text-xs text-slate-500 mt-1 inline-flex flex-wrap items-center gap-1.5">
             {monthLabel(s.months[0])}{last !== s.months[0] && ` – ${monthLabel(last)}`} &middot; gulir ke bawah untuk bulan berikutnya &middot;
-            <span className="inline-flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>live real-time</span>
+            <span>diperbarui otomatis</span>
           </div>
         </div>
         <MonthFilter months={s.months} onSelect={s.selectMonth} />

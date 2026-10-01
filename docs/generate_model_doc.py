@@ -548,9 +548,14 @@ def isi_aplikasi():
             "layar."),
         h2("3.3 Dashboard"),
         *bullets(
-            "Kartu KPI gabungan Pemeliharaan + Pengadaan: total, pending, on progress, selesai.",
-            "Kartu modul dengan persentase selesai; kartu Kendaraan menampilkan jumlah belum bayar pajak dan "
-            "peringatan pajak H-14.",
+            "Kartu ringkasan hal yang perlu ditindaklanjuti: permintaan Pending dan On Progress (gabungan "
+            "Pemeliharaan + Pengadaan), pajak kendaraan perlu tindakan (belum bayar + jatuh tempo H-14), dan "
+            "jumlah ruang rapat kosong saat ini.",
+            "Kartu modul Pemeliharaan & Pengadaan menampilkan komposisi status (Pending / On Progress / "
+            "Selesai); kartu Kendaraan menampilkan jumlah belum bayar pajak dan peringatan pajak H-14.",
+            "Warna dipakai konsisten hanya untuk status: merah = Pending, kuning = On Progress, hijau = Selesai.",
+            "Bila data gagal dimuat, tampil pesan error + tombol Coba lagi; angka tidak ditampilkan sebagai 0 "
+            "(tampil \"-\" sebelum data pertama termuat, atau data terakhir beserta jamnya).",
             "Status ruang rapat saat ini: Kosong / Dipakai s.d. jam tertentu, termasuk booking multi-hari yang "
             "sedang berjalan.",
             "Daftar aktivitas terbaru gabungan Pemeliharaan & Pengadaan."),
@@ -655,7 +660,9 @@ def isi_aplikasi():
             "dan antar-tab kendaraan.",
             "**RoomDateGrid** + **MonthFilter** + hook **useMonthSchedule**: grid jadwal ruang rapat per bulan "
             "dengan infinite scroll, dipakai menu Ruang Rapat, landing page, dan kiosk.",
-            "**AuthContext**: sesi, peran, status maintenance, sinkronisasi berkala (30 detik) + SSE.",
+            "**AuthContext**: sesi, peran, status maintenance, sinkronisasi berkala (30 detik) + sinyal live.",
+            "**live.js** + hook **useLive**: satu koneksi SSE bersama per tab; halaman berlangganan topik "
+            "modulnya dan memuat ulang data tanpa kedip saat ada perubahan dari pengguna lain.",
             "**Feedback**: popup konfirmasi/peringatan dan notifikasi toast yang seragam.",
             "**DocumentViewer**: pratinjau dokumen melalui Blob URL; **LoginSplash**: popup animasi logo "
             "login/logout.",
@@ -687,6 +694,7 @@ def isi_aplikasi():
             ["", "POST /:id/cancel-dates", "Login", "Batalkan tanggal tertentu"],
             ["Maintenance", "GET /landing-status, GET /stream (SSE)", "Publik", "Status landing & sinyal real-time"],
             ["", "GET / ; PUT /:menu_key", "Login; Admin", "Baca & ubah mode maintenance"],
+            ["Live", "GET /live/stream (SSE)", "Publik", "Satu sinyal real-time untuk semua modul"],
             ["Users", "GET /, GET /reset-requests/count, PUT /:id/status, POST /:id/reset-link", "Admin",
              "Akun & Akses"],
             ["Health", "GET /health", "Publik", "Cek backend hidup"],
@@ -803,9 +811,13 @@ def isi_infra():
         *bullets(
             "Browser memuat berkas statis frontend, lalu memanggil backend di `/api/*` (JSON melalui "
             "HTTP/HTTPS).",
-            "Pembaruan real-time memakai **Server-Sent Events** (koneksi HTTP satu arah yang tetap terbuka) di "
-            "`/api/ruang-rapat/stream` dan `/api/maintenance/stream`, dengan heartbeat 25 detik dan reconnect "
-            "otomatis 3 detik.",
+            "Pembaruan real-time memakai **Server-Sent Events** (koneksi HTTP satu arah yang tetap terbuka): "
+            "satu koneksi per tab ke `/api/live/stream` untuk semua modul (Pemeliharaan, Pengadaan, Kendaraan, "
+            "Ruang Rapat, Maintenance, Akun). Setiap perubahan data yang berhasil mengirim sinyal nama modul, "
+            "lalu halaman yang terbuka mengambil ulang datanya. Heartbeat 25 detik, reconnect otomatis 3 detik, "
+            "dan setelah reconnect semua halaman memuat ulang sekali.",
+            "Syarat deploy real-time: backend dijalankan sebagai satu proses (bukan cluster/beberapa instance), "
+            "reverse proxy tidak mem-buffer `/api/live/stream`, dan TRUST_PROXY=true bila di belakang proxy.",
             "Backend mengakses PostgreSQL melalui Prisma Client (TCP 5432); pgAdmin 4 dipakai admin untuk "
             "administrasi database.",
             "Berkas unggahan disimpan di `backend/uploads/` dan tidak diekspos sebagai folder publik; isi "
@@ -841,7 +853,7 @@ def isi_infra():
             ["backend/prisma", "schema.prisma dan 24 migration (sumber kebenaran skema)"],
             ["backend/scripts", "db-verify.js (cek kolom & jumlah baris), cleanup-uploads.js (berkas yatim)"],
             ["backend/sql", "Script SQL manual untuk pgAdmin 4 (arsip pra-Prisma & sinkronisasi)"],
-            ["frontend/src", "pages, components, context (AuthContext), hooks (SSE), utils"],
+            ["frontend/src", "pages, components, context (AuthContext), live.js + hooks (useLive, SSE), utils"],
         ]),
 
         PageBreak(),

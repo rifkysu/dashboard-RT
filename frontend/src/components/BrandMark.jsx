@@ -11,7 +11,7 @@ export default function BrandMark({ size = 'sm', className = '' }) {
 
   if (failed) {
     return (
-      <div className={`${boxSize} rounded-xl bg-gradient-to-br from-blue-600 to-indigo-700 flex items-center justify-center text-white shadow-sm shrink-0 ${className}`}>
+      <div className={`${boxSize} rounded-xl bg-[#1e3a5f] flex items-center justify-center text-white shadow-sm shrink-0 ${className}`}>
         <span className={`material-symbols-outlined ${ICON_SIZE[size] || ICON_SIZE.sm}`}>account_balance</span>
       </div>
     );

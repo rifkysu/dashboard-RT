@@ -31,7 +31,7 @@ export function MonthFilter({ months, onSelect }) {
               key={key}
               type="button"
               onClick={() => onSelect(key)}
-              className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold border transition ${active ? 'bg-slate-900 text-white border-slate-900' : loaded ? 'bg-violet-50 text-violet-700 border-violet-200' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'} ${key === current && !active ? 'ring-1 ring-violet-400' : ''}`}
+              className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold border transition ${active ? 'bg-slate-900 text-white border-slate-900' : loaded ? 'bg-sky-50 text-[#1e3a5f] border-sky-200' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'} ${key === current && !active ? 'ring-1 ring-violet-400' : ''}`}
             >
               {name.slice(0, 3)}
             </button>
@@ -122,13 +122,13 @@ export default function RoomDateGrid({ months, rooms, items, loading, loadingMor
                 const isToday = date === today;
                 const cuti = holidayLabel(date);
                 const weekend = idx >= 5;
-                const rowBg = isToday ? 'bg-violet-50' : cuti ? 'bg-amber-50/60' : weekend ? 'bg-red-50/40' : '';
+                const rowBg = isToday ? 'bg-sky-50/70' : cuti ? 'bg-amber-50/60' : weekend ? 'bg-red-50/40' : '';
                 return (
                   <tr key={date} data-day={date}>
-                    <td className={`sticky left-0 z-10 border-b border-r border-slate-200 px-3 py-2.5 align-top w-[150px] min-w-[150px] ${isToday ? 'bg-violet-100' : cuti ? 'bg-amber-100' : weekend ? 'bg-red-50' : 'bg-white'}`}>
+                    <td className={`sticky left-0 z-10 border-b border-r border-slate-200 px-3 py-2.5 align-top w-[150px] min-w-[150px] ${isToday ? 'bg-sky-100' : cuti ? 'bg-amber-100' : weekend ? 'bg-red-50' : 'bg-white'}`}>
                       <div className={`text-xs font-bold ${cuti ? 'text-amber-700' : weekend ? 'text-red-600' : 'text-slate-800'}`}>{DAY_NAMES[idx]}</div>
                       <div className="text-[11px] text-slate-500">{d.getDate()} {d.toLocaleString('id-ID', { month: 'short' })} {d.getFullYear()}</div>
-                      {isToday && <div className="mt-1 inline-block px-1.5 py-0.5 rounded bg-violet-600 text-white text-[9px] font-bold">HARI INI</div>}
+                      {isToday && <div className="mt-1 inline-block px-1.5 py-0.5 rounded bg-[#1e3a5f] text-white text-[9px] font-bold">HARI INI</div>}
                       {cuti && <div className="mt-1 text-[9px] font-bold text-amber-800 leading-tight">{cuti}</div>}
                     </td>
                     {rooms.map((room) => {

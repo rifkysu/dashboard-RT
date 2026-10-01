@@ -113,7 +113,7 @@ biro-umum-app/
     src/
       pages/       -> Landing, Login, Register, Dashboard, Pemeliharaan, Pengadaan, Kendaraan, RuangRapat, Settings, Profile, Akun, dll
       components/  -> Sidebar, ProtectedRoute, BrandMark, RuangRapatSchedule, DocumentViewer, dll
-      hooks/       -> useRuangRapatLive (SSE)
+      hooks/       -> useLive + useRuangRapatLive (realtime lewat satu koneksi SSE bersama, lihat src/live.js)
       utils/       -> holidays.js (hari libur otomatis), fileSignature.js (validasi magic number di client), imageCompress.js (kompresi foto kendaraan)
       context/     -> AuthContext (role, sesi, maintenance mode)
   docs/            -> catatan project lainnya (Update.md, UPLOAD_LOCAL_PLAN.md)
@@ -300,6 +300,41 @@ Penerapan teknis:
 
 ---
 
+## BAGIAN 6 — DEPLOY KE PRODUCTION
+
+Contoh siap pakai (tinggal ganti nilai bertanda `<<GANTI>>`):
+- `backend/.env.production.example` → salin jadi `backend/.env`
+- `frontend/.env.production.example` → salin jadi `frontend/.env.production`
+- `docs/deploy/nginx.conf.example` → konfigurasi Nginx (frontend + API satu domain, termasuk realtime)
+
+Urutan di server:
+
+1. **Backup** database dan folder `backend/uploads/` (kalau server sudah pernah dipakai).
+2. Backend:
+   ```bash
+   cd backend
+   cp .env.production.example .env      # lalu edit: DATABASE_URL, FRONTEND_URL, JWT_SECRET, dll.
+   npm ci --omit=dev
+   npx prisma migrate deploy
+   npx prisma generate
+   pm2 start src/index.js --name biro-umum-api   # SATU proses saja, jangan mode cluster (-i)
+   ```
+3. Frontend:
+   ```bash
+   cd frontend
+   cp .env.production.example .env.production   # lalu edit VITE_API_URL
+   npm ci
+   npm run build                                 # hasil di frontend/dist
+   ```
+4. Nginx: pakai `docs/deploy/nginx.conf.example`, sesuaikan domain & path `frontend/dist`, lalu `sudo nginx -t && sudo systemctl reload nginx`.
+
+Hal yang paling sering terlewat:
+- `FRONTEND_URL` (backend) harus sama persis dengan alamat yang dibuka pengguna, termasuk `https://` -- kalau beda, semua request ditolak CORS.
+- `VITE_API_URL` ditanam saat build -- kalau diganti, `npm run build` ulang.
+- `TRUST_PROXY=true` bila di belakang Nginx; tanpa ini semua pengguna dianggap satu IP (batas koneksi realtime & login cepat penuh).
+- Realtime butuh backend **satu proses** dan `proxy_buffering off` untuk `/api/live/stream` (sudah ada di contoh Nginx).
+- Login Google: daftarkan `GOOGLE_CALLBACK_URL` production di Google Cloud Console.
+
 ## TROUBLESHOOTING UMUM
 
 | Masalah | Solusi |
@@ -320,3 +355,6 @@ Penerapan teknis:
 - **Frontend**: React 18, React Router, Axios, Tailwind CSS (CDN), Vite, Server-Sent Events (native `EventSource`)
 - **Backend**: Node.js, Express, Prisma ORM, JSON Web Token (jsonwebtoken), bcryptjs, Passport.js (Google OAuth strategy)
 - **Database**: PostgreSQL, dikelola lewat Prisma Migrate (`backend/prisma/migrations/`) — pgAdmin4 dipakai untuk operasional (lihat isi data, kelola role user).
+
+
+https://claude.ai/artifact/QUVzQ7RemdfnGh5ccT5dTU

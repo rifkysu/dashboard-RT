@@ -9,14 +9,7 @@ export default function Profile() {
 
   return (
     <div className="menu-page menu-profile max-w-4xl mx-auto">
-      <div className="settings-profile-strip">
-        <div className="settings-profile-avatar">{(user?.nama_lengkap || 'U').trim().charAt(0).toUpperCase()}</div>
-        <div className="min-w-0">
-          <div className="settings-profile-name">{user?.nama_lengkap || '-'}</div>
-          <div className="settings-profile-role">{roleLabel[user?.role] || user?.role || '-'}</div>
-        </div>
-      </div>
-      <div className="menu-hero mb-6"><div><span className="menu-kicker">AKUN • PROFIL</span><h1 className="text-3xl font-bold">Profil Saya</h1><p className="text-sm mt-1">Informasi akun dan preferensi pribadi kamu.</p></div><div className="menu-hero-icon"><span className="material-symbols-outlined">person</span></div></div>
+      <div className="menu-hero mb-6"><div><span className="menu-kicker">Biro Umum / Profil</span><h1 className="text-3xl font-bold">Profil Saya</h1><p className="text-sm mt-1">Informasi akun dan preferensi pribadi kamu.</p></div><div className="menu-hero-icon"><span className="material-symbols-outlined">person</span></div></div>
       <div className="space-y-4">
         <section className="bg-white border border-slate-300 rounded-md p-5">
           <h2 className="font-bold mb-4">Profil Pengguna</h2>

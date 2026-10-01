@@ -90,38 +90,38 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#167992] p-4 sm:p-6">
+    <div className="min-h-screen flex items-center justify-center bg-[#f2f4f7] p-4 sm:p-6">
       <div className="w-full max-w-4xl">
-        <Link to="/" className="inline-flex items-center gap-1.5 text-sm text-white/80 hover:text-white font-semibold mb-4">
+        <Link to="/" className="inline-flex items-center gap-1.5 text-sm text-slate-600 hover:text-slate-900 font-semibold mb-4">
           <span className="material-symbols-outlined text-[18px]">arrow_back</span>
-          Kembali ke Menu Utama
+          Kembali ke beranda
         </Link>
 
-        <div className="grid md:grid-cols-2 bg-white rounded-[2rem] shadow-2xl shadow-slate-300/50 border border-slate-200/60 overflow-hidden">
+        <div className="grid md:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)] bg-white rounded-lg border border-slate-200 overflow-hidden">
           {/* Kiri: form login */}
           <div className="p-8 sm:p-12 flex flex-col justify-center">
             <div className="flex items-center gap-3 mb-8">
               <BrandMark size="sm" />
               <div>
-                <h1 className="text-sm font-bold text-slate-900 leading-none">Biro Umum</h1>
-                <p className="text-[11px] text-slate-500 mt-0.5">Rumah Tangga &amp; Administrasi</p>
+                <h1 className="text-sm font-bold text-slate-900 leading-tight">Biro Umum dan Rumah Tangga</h1>
+                <p className="text-[11px] text-slate-500 mt-0.5">Kementerian Ketenagakerjaan</p>
               </div>
             </div>
 
-            <h2 className="text-3xl font-extrabold text-slate-900">Masuk</h2>
+            <h2 className="text-2xl font-bold text-slate-900">Masuk</h2>
             <p className="text-sm text-slate-500 mt-1.5 mb-7">
               Akses layanan pemeliharaan, pengadaan, kendaraan, dan jadwal ruang rapat.
             </p>
 
             {success && !error && (
-              <div className="mb-4 px-4 py-3 bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm rounded-xl flex items-start gap-2">
+              <div className="mb-4 px-4 py-3 bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm rounded-md flex items-start gap-2">
                 <span className="material-symbols-outlined text-[18px]">check_circle</span>
                 <span>{success}</span>
               </div>
             )}
 
             {error && (
-              <div className="mb-4 px-4 py-3 bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl">
+              <div className="mb-4 px-4 py-3 bg-red-50 border border-red-200 text-red-700 text-sm rounded-md">
                 {error}
               </div>
             )}
@@ -139,7 +139,7 @@ export default function Login() {
                   placeholder="Email"
                   autoComplete="email"
                   aria-invalid={!!fieldErrors.email}
-                  className={`w-full pl-12 pr-4 py-3.5 bg-slate-100 border rounded-2xl ${fieldErrors.email ? 'border-red-400' : 'border-transparent'} text-sm focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 focus:bg-white transition`}
+                  className={`w-full pl-12 pr-4 py-3 bg-white border rounded-md ${fieldErrors.email ? 'border-red-400' : 'border-slate-300'} text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]/15 focus:border-[#1e3a5f] transition`}
                 />
               </div>
                 {fieldErrors.email && <p className="text-[11px] text-red-600 mt-1 ml-1">{fieldErrors.email}</p>}
@@ -157,7 +157,7 @@ export default function Login() {
                   placeholder="Kata Sandi"
                   autoComplete="current-password"
                   aria-invalid={!!fieldErrors.password}
-                  className={`w-full pl-12 pr-11 py-3.5 bg-slate-100 border rounded-2xl ${fieldErrors.password ? 'border-red-400' : 'border-transparent'} text-sm focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 focus:bg-white transition`}
+                  className={`w-full pl-12 pr-11 py-3 bg-white border rounded-md ${fieldErrors.password ? 'border-red-400' : 'border-slate-300'} text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]/15 focus:border-[#1e3a5f] transition`}
                 />
                 <button
                   type="button"
@@ -173,7 +173,7 @@ export default function Login() {
               </div>
 
               <div className="text-right">
-                <Link to="/forgot-password" className="text-xs font-semibold text-blue-600 hover:text-blue-700">
+                <Link to="/forgot-password" className="text-xs font-semibold text-[#1e3a5f] hover:underline">
                   Lupa kata sandi?
                 </Link>
               </div>
@@ -181,7 +181,7 @@ export default function Login() {
               <button
                 type="submit"
                 disabled={loading || isLocked || !!splash}
-                className="w-full py-3.5 px-4 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 disabled:opacity-60 text-white font-semibold rounded-2xl text-sm flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/20 transition"
+                className="w-full py-3 px-4 bg-[#1e3a5f] hover:bg-[#152b47] disabled:opacity-60 text-white font-semibold rounded-md text-sm flex items-center justify-center gap-2 transition"
               >
                 {isLocked ? (
                   <>
@@ -190,8 +190,7 @@ export default function Login() {
                   </>
                 ) : (
                   <>
-                    {loading ? 'Memproses...' : 'Masuk ke Dashboard'}
-                    <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
+                    {loading ? 'Memproses...' : 'Masuk'}
                   </>
                 )}
               </button>
@@ -208,55 +207,46 @@ export default function Login() {
               <button
                 type="button"
                 onClick={handleSSOLogin}
-                className="w-full py-3 px-4 bg-white hover:bg-slate-50 border border-slate-200 rounded-2xl text-xs font-semibold text-slate-700 flex items-center justify-center gap-2.5 transition"
+                className="w-full py-3 px-4 bg-white hover:bg-slate-50 border border-slate-300 rounded-md text-sm font-semibold text-slate-700 flex items-center justify-center gap-2.5 transition"
               >
-                <span className="material-symbols-outlined text-[18px] text-blue-600">domain</span>
+                <span className="material-symbols-outlined text-[18px] text-[#1e3a5f]">domain</span>
                 Masuk dengan Akun Kemenaker / Intranet (SSO)
               </button>
             </form>
 
             <p className="mt-7 text-center text-xs text-slate-500 md:hidden">
               Belum memiliki akun pegawai?
-              <Link to="/register" className="text-blue-600 hover:text-blue-700 font-semibold ml-1">
+              <Link to="/register" className="text-[#1e3a5f] hover:underline font-semibold ml-1">
                 Daftar Akun Baru
               </Link>
             </p>
 
-            <div className="mt-6 pt-5 border-t border-slate-100 flex items-center justify-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-              <span className="text-[11px] font-semibold text-slate-500">Sistem Aktif &amp; Aman</span>
-            </div>
           </div>
 
-          {/* Kanan: panel ajakan daftar akun, disembunyikan di mobile */}
-          <div className="hidden md:flex relative flex-col items-center justify-center text-center p-10 bg-gradient-to-br from-indigo-600 via-blue-600 to-violet-600 rounded-tl-[160px] rounded-bl-[160px] text-white overflow-hidden">
-            <div className="absolute -top-16 -right-10 w-56 h-56 rounded-full bg-white/10 blur-3xl"></div>
-            <div className="absolute -bottom-20 left-0 w-64 h-64 rounded-full bg-fuchsia-400/15 blur-3xl"></div>
-            <div className="relative">
-              <span className="inline-flex w-16 h-16 rounded-2xl bg-white/15 border border-white/25 items-center justify-center mb-6">
-                <span className="material-symbols-outlined text-[32px]">waving_hand</span>
-              </span>
-              <h3 className="text-3xl font-extrabold leading-tight">Halo,<br />Rekan Kerja!</h3>
-              <p className="text-sm text-white/85 mt-4 max-w-[240px] mx-auto leading-relaxed">
-                Belum punya akun pegawai? Daftar sekarang untuk mengakses pemeliharaan, pengadaan, kendaraan, dan booking ruang rapat.
+          {/* Kanan: info daftar akun, disembunyikan di mobile */}
+          <div className="hidden md:flex flex-col justify-between p-10 bg-[#1e3a5f] text-white">
+            <div>
+              <h3 className="text-xl font-bold">Belum punya akun?</h3>
+              <p className="text-sm text-white/80 mt-3 leading-relaxed">
+                Akun pegawai dipakai untuk mengajukan pemeliharaan, pengadaan, dan booking ruang rapat, serta memantau statusnya.
               </p>
-              <Link
-                to="/register"
-                className="inline-flex items-center gap-2 mt-8 px-8 py-3 rounded-full border-2 border-white text-sm font-bold hover:bg-white hover:text-indigo-700 transition"
-              >
-                Daftar Akun Baru
+              <Link to="/register" className="inline-block mt-6 px-5 py-2.5 rounded-md border border-white/50 text-sm font-semibold hover:bg-white/10 transition">
+                Daftar akun pegawai
               </Link>
+            </div>
+            <div className="text-xs text-white/60 leading-relaxed mt-10">
+              Lupa kata sandi atau akun terkunci? Ajukan reset dari halaman ini, atau hubungi admin Biro Umum di <span className="select-all text-white/80">biroumum@kemnaker.go.id</span>.
             </div>
           </div>
         </div>
 
-        <p className="mt-6 text-center text-xs text-white/70">
-          © 2024 Biro Umum dan Rumah Tangga. Sistem Manajemen Fasilitas &amp; Operasional Kantor.
+        <p className="mt-6 text-center text-xs text-slate-500">
+          © {new Date().getFullYear()} Biro Umum dan Rumah Tangga
         </p>
       </div>
       {banned && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm" role="alertdialog" aria-modal="true" aria-labelledby="banned-title">
-          <div className="w-full max-w-sm bg-white rounded-3xl shadow-2xl p-7 text-center">
+          <div className="w-full max-w-sm bg-white rounded-lg shadow-xl p-7 text-center">
             <span className="inline-flex w-16 h-16 rounded-full bg-red-100 text-red-600 items-center justify-center mb-4">
               <span className="material-symbols-outlined text-[34px]">block</span>
             </span>
@@ -266,7 +256,7 @@ export default function Login() {
               type="button"
               autoFocus
               onClick={() => { setBanned(''); if (searchParams.has('banned') || searchParams.has('sso')) navigate('/login', { replace: true }); }}
-              className="mt-6 w-full py-3 rounded-2xl bg-red-600 hover:bg-red-700 text-white text-sm font-semibold transition"
+              className="mt-6 w-full py-3 rounded-md bg-red-600 hover:bg-red-700 text-white text-sm font-semibold transition"
             >
               Saya Mengerti
             </button>

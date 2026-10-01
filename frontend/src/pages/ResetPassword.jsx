@@ -50,45 +50,40 @@ export default function ResetPassword() {
         <div className="flex items-center gap-3">
           <BrandMark size="sm" />
           <div>
-            <h1 className="text-base font-bold text-slate-900 leading-none">Biro Umum</h1>
-            <p className="text-xs text-slate-500 mt-0.5">Rumah Tangga &amp; Administrasi</p>
+            <h1 className="text-base font-bold text-slate-900 leading-tight">Biro Umum dan Rumah Tangga</h1>
+            <p className="text-xs text-slate-500 mt-0.5">Kementerian Ketenagakerjaan</p>
           </div>
         </div>
       </header>
 
       <main className="flex-1 flex items-center justify-center p-6 md:p-10">
-        <div className="w-full max-w-[440px] bg-white rounded-2xl shadow-xl shadow-slate-200/60 border border-slate-200/80 p-8 sm:p-10 relative overflow-hidden">
-          <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-blue-600 via-indigo-600 to-slate-900"></div>
+        <div className="w-full max-w-[440px] bg-white rounded-lg border border-slate-200 p-8 sm:p-10">
 
           <div className="mb-8">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-md bg-blue-50 text-blue-700 text-xs font-semibold mb-3">
-              <span className="material-symbols-outlined text-[16px]">lock_reset</span>
-              Reset Kata Sandi
-            </div>
             <h2 className="text-2xl font-bold text-slate-900">Buat Kata Sandi Baru</h2>
             <p className="text-sm text-slate-500 mt-1.5">Link ini berlaku 1 jam sejak dibuat.</p>
           </div>
 
           {!token && (
-            <div className="mb-4 px-4 py-3 bg-amber-50 border border-amber-200 text-amber-800 text-sm rounded-xl">
+            <div className="mb-4 px-4 py-3 bg-amber-50 border border-amber-200 text-amber-800 text-sm rounded-md">
               Link tidak lengkap (token tidak ditemukan). Minta link reset baru.
             </div>
           )}
 
           {error && (
-            <div className="mb-4 px-4 py-3 bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl">
+            <div className="mb-4 px-4 py-3 bg-red-50 border border-red-200 text-red-700 text-sm rounded-md">
               {error}
             </div>
           )}
 
           {done ? (
-            <div className="px-4 py-3 bg-emerald-50 border border-emerald-200 text-emerald-800 text-sm rounded-xl">
+            <div className="px-4 py-3 bg-emerald-50 border border-emerald-200 text-emerald-800 text-sm rounded-md">
               Kata sandi berhasil diubah. Mengalihkan ke halaman login...
             </div>
           ) : (
             <form className="space-y-5" onSubmit={handleSubmit}>
               <div>
-                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">Kata Sandi Baru</label>
+                <label className="block text-sm font-semibold text-slate-700 mb-1.5">Kata Sandi Baru</label>
                 <div className="relative">
                   <span className="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-[20px]">key</span>
                   <input
@@ -96,7 +91,7 @@ export default function ResetPassword() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="Minimal 8 karakter"
-                    className="w-full pl-11 pr-11 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 focus:bg-white transition"
+                    className="w-full pl-11 pr-11 py-3 bg-white border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]/15 focus:border-[#1e3a5f] focus:bg-white transition"
                     required
                   />
                   <button type="button" onClick={() => setShowPassword((s) => !s)} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
@@ -106,13 +101,13 @@ export default function ResetPassword() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">Konfirmasi Kata Sandi</label>
+                <label className="block text-sm font-semibold text-slate-700 mb-1.5">Konfirmasi Kata Sandi</label>
                 <input
                   type={showPassword ? 'text' : 'password'}
                   value={confirm}
                   onChange={(e) => setConfirm(e.target.value)}
                   placeholder="Ulangi kata sandi baru"
-                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 focus:bg-white transition"
+                  className="w-full px-4 py-3 bg-white border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]/15 focus:border-[#1e3a5f] focus:bg-white transition"
                   required
                 />
               </div>
@@ -120,7 +115,7 @@ export default function ResetPassword() {
               <button
                 type="submit"
                 disabled={loading || !token}
-                className="w-full py-3.5 px-4 bg-slate-900 hover:bg-slate-800 disabled:opacity-60 text-white font-semibold rounded-xl text-sm flex items-center justify-center gap-2 shadow-lg shadow-slate-900/10 transition"
+                className="w-full py-3.5 px-4 bg-[#1e3a5f] hover:bg-[#152b47] disabled:opacity-60 text-white font-semibold rounded-md text-sm flex items-center justify-center gap-2 transition"
               >
                 {loading ? 'Menyimpan...' : 'Simpan Kata Sandi Baru'}
                 <span className="material-symbols-outlined text-[18px]">check</span>

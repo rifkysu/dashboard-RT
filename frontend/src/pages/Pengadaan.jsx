@@ -8,6 +8,7 @@ import DocumentViewer from '../components/DocumentViewer';
 import { verifyFileIsGenuine } from '../utils/fileSignature';
 import { useFeedback } from '../components/Feedback';
 import { requireFields, positiveAmount, validatePayment } from '../utils/validation';
+import useLive from '../hooks/useLive';
 
 const FILE_SIGNATURE_REJECT_MESSAGE = 'File yang diupload tidak terdeteksi sebagai dokumen/gambar asli (kemungkinan file diubah namanya atau berupa script). Harap upload dokumen PDF/JPG/PNG asli.';
 
@@ -89,11 +90,15 @@ export default function Pengadaan() {
   const [exportDateRange, setExportDateRange] = useState({ mulai: '', sampai: '' });
   const [filters, setFilters] = useState({ kategori: '', lokasi: '', titik_lokasi: '', status: '', id: '', nama: '', pic: '', vendor: '', transaksi: '', nilai_invoice: '', tanggal_input: '', tanggal_selesai: '' });
 
-  function load() {
-    setLoading(true);
-    api.get('/pengadaan').then((res) => { setData(res.data.data || []); setLoadError(''); }).catch((err) => { console.error('[LOAD PENGADAAN]', err); setLoadError(err.response?.data?.message || 'Gagal memuat data pengadaan.'); }).finally(() => setLoading(false));
+  // silent = muat ulang dari sinyal live: tabel tidak berkedip "memuat", dan kalau gagal
+  // data lama tetap tampil tanpa pesan error.
+  function load(silent = false) {
+    if (silent !== true) setLoading(true);
+    api.get('/pengadaan').then((res) => { setData(res.data.data || []); setLoadError(''); }).catch((err) => { console.error('[LOAD PENGADAAN]', err); if (silent !== true) setLoadError(err.response?.data?.message || 'Gagal memuat data pengadaan.'); }).finally(() => { if (silent !== true) setLoading(false); });
   }
-  useEffect(load, []);
+  useEffect(() => { load(); }, []);
+  // Realtime: perubahan dari pengguna lain langsung muncul tanpa refresh.
+  useLive('pengadaan', () => load(true));
 
   // Daftar tidak membawa isi dokumen, jadi ambil detail lengkap dulu sebelum modal tahapan dibuka.
   async function openStageWithDetail(row, stage) {
@@ -253,17 +258,9 @@ export default function Pengadaan() {
   const roleLabel = user?.role === 'admin' ? 'Admin' : user?.role === 'kabag' ? 'Kabag' : user?.role === 'pic' ? 'PIC' : 'Karyawan';
 
   return (
-    <div className="menu-page menu-pengadaan relative" style={{ fontFamily: 'Arial, Helvetica, sans-serif' }}>
-      <div className="menu-hero mb-6"><div><span className="menu-kicker">PENGADAAN • BARANG & JASA</span><h1 className="text-2xl font-bold">Pengadaan</h1><p className="text-sm mt-1">Kelola dan pantau proses pengadaan barang dan jasa.</p></div><div className="menu-hero-icon"><span className="material-symbols-outlined">shopping_cart</span></div></div>
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">Daftar Permintaan Pengadaan</h1>
-          <p className="text-sm text-slate-500 mt-1">Kelola dan pantau status pengadaan barang dan jasa.</p>
-        </div>
-        <button onClick={() => { setError(''); setShowAddForm(true); }} className="inline-flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-indigo-600 to-blue-600 text-white text-sm font-semibold rounded-xl hover:from-indigo-700 hover:to-blue-700 shadow-lg shadow-indigo-200">
-          <span className="material-symbols-outlined text-[18px]">add</span>Tambah Pengadaan
-        </button>
-      </div>
+    <div className="menu-page menu-pengadaan relative">
+      <div className="menu-hero mb-6"><div><span className="menu-kicker">Biro Umum / Pengadaan</span><h1 className="text-2xl font-bold">Pengadaan</h1><p className="text-sm mt-1">Kelola dan pantau proses pengadaan barang dan jasa.</p></div><button onClick={() => { setError(''); setShowAddForm(true); }} className="inline-flex items-center gap-2 px-4 py-2.5 bg-slate-900 text-white text-sm font-semibold rounded-xl hover:bg-slate-800"><span className="material-symbols-outlined text-[18px]">add</span>Tambah Pengadaan
+        </button></div>
 
       <div className="flex flex-col sm:flex-row sm:items-end justify-end gap-3 mb-4">
         <div>

@@ -7,6 +7,7 @@ import DocumentViewer from '../components/DocumentViewer';
 import { verifyFileIsGenuine } from '../utils/fileSignature';
 import { compressImage } from '../utils/imageCompress';
 import SlideTransition from '../components/SlideTransition';
+import useLive from '../hooks/useLive';
 
 const JENIS_OPTIONS = ['Roda 2', 'Roda 4', 'Roda 6'];
 const NAMA_BARANG_OPTIONS = ['Sedan', 'Jeep', 'Station Wagon', 'Micro Bus', 'Mini Bus', 'Pick Up', 'Mobil Ambulance', 'Kendaraan Bermotor Khusus Lainnya', 'Sepeda Motor'];
@@ -65,19 +66,22 @@ export default function Kendaraan() {
   const [busyDoc, setBusyDoc] = useState(null);
   const [openingId, setOpeningId] = useState(null);
 
-  async function load() {
+  // silent = muat ulang dari sinyal live: tanpa status "memuat" dan tanpa pesan error.
+  async function load(silent = false) {
     try {
-      setLoading(true);
+      if (silent !== true) setLoading(true);
       const r = await api.get('/kendaraan');
       setData(r.data.data || []);
-      setError('');
+      if (silent !== true) setError('');
     } catch (e) {
-      setError(e.response?.data?.message || 'Gagal memuat data kendaraan.');
+      if (silent !== true) setError(e.response?.data?.message || 'Gagal memuat data kendaraan.');
     } finally {
-      setLoading(false);
+      if (silent !== true) setLoading(false);
     }
   }
   useEffect(() => { load(); }, []);
+  // Realtime: perubahan dari pengguna lain langsung muncul tanpa refresh.
+  useLive('kendaraan', () => load(true));
 
   async function save(e) {
     e.preventDefault();
@@ -259,11 +263,8 @@ export default function Kendaraan() {
   const activeFilterCount = [filterMerek, filterStatus, filterTahun, search].filter(Boolean).length;
 
   return (
-    <div className="menu-page menu-kendaraan relative" style={{ fontFamily: 'Arial, Helvetica, sans-serif' }}>
-      <div className="menu-hero mb-6"><div><span className="menu-kicker">ARMADA • ASSET</span><h1 className="text-3xl font-bold">Kendaraan Dinas</h1><p className="text-sm mt-1">Kelola asset kendaraan, status operasional, dan dokumentasi foto kendaraan.</p></div><div className="menu-hero-icon"><span className="material-symbols-outlined">directions_car</span></div></div>
-      <div className="flex items-end justify-between gap-4 mb-5"><div></div>
-        {canManage && <button onClick={() => { setError(''); setForm(emptyForm); setShow(true); }} className="bg-slate-900 text-white rounded-lg px-4 py-2.5 text-xs font-semibold shadow-sm">＋ Tambah Kendaraan</button>}
-      </div>
+    <div className="menu-page menu-kendaraan relative">
+      <div className="menu-hero mb-6"><div><span className="menu-kicker">Biro Umum / Kendaraan Dinas</span><h1 className="text-3xl font-bold">Kendaraan Dinas</h1><p className="text-sm mt-1">Kelola asset kendaraan, status operasional, dan dokumentasi foto kendaraan.</p></div>{canManage && <button onClick={() => { setError(''); setForm(emptyForm); setShow(true); }} className="inline-flex items-center gap-2 px-4 py-2.5 bg-slate-900 text-white text-sm font-semibold rounded-xl hover:bg-slate-800"><span className="material-symbols-outlined text-[18px]">add</span>Tambah Kendaraan</button>}</div>
       {error && <div className="mb-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-xs text-red-700">{error}</div>}
 
       {/* Search bar */}

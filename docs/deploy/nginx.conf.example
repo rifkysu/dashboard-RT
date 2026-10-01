@@ -1,0 +1,71 @@
+# =====================================================================
+#  CONTOH KONFIGURASI NGINX (frontend + backend dalam satu domain)
+#  Salin ke /etc/nginx/sites-available/biro-umum, ganti <<GANTI_DOMAIN>>
+#  dan path folder, lalu:  sudo nginx -t && sudo systemctl reload nginx
+#
+#  Pasangannya:
+#    backend/.env   -> FRONTEND_URL=https://<<GANTI_DOMAIN>>, TRUST_PROXY=true
+#    frontend/.env.production -> VITE_API_URL=https://<<GANTI_DOMAIN>>/api
+# =====================================================================
+
+server {
+    listen 80;
+    server_name <<GANTI_DOMAIN>>;
+    # Arahkan ke HTTPS. (Sertifikat bisa dibuat dengan: sudo certbot --nginx -d <<GANTI_DOMAIN>>)
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl http2;
+    server_name <<GANTI_DOMAIN>>;
+
+    ssl_certificate     /etc/letsencrypt/live/<<GANTI_DOMAIN>>/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/<<GANTI_DOMAIN>>/privkey.pem;
+
+    # Backend menerima upload dokumen sampai 25 MB per simpan (Base64 dalam JSON).
+    client_max_body_size 30m;
+
+    # --- Frontend: hasil `npm run build` (folder frontend/dist) -------------
+    root /var/www/biro-umum-app/frontend/dist;
+    index index.html;
+
+    location / {
+        # React Router: semua alamat yang bukan file dikembalikan ke index.html
+        try_files $uri $uri/ /index.html;
+    }
+
+    location /assets/ {
+        # Nama file hasil build sudah mengandung hash -> aman di-cache lama
+        expires 30d;
+        add_header Cache-Control "public, immutable";
+    }
+
+    # --- Realtime (Server-Sent Events) ---------------------------------------
+    # Wajib: tanpa ini sinyal realtime tertahan di buffer Nginx dan baru muncul telat.
+    # Mencakup /api/live/stream (dipakai aplikasi) dan stream lama /api/*/stream.
+    location ~ ^/api/(live|ruang-rapat|maintenance)/stream$ {
+        proxy_pass http://127.0.0.1:4000;
+        proxy_http_version 1.1;
+        proxy_set_header Connection "";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_buffering off;
+        proxy_cache off;
+        # Backend mengirim heartbeat tiap 25 detik; beri batas jauh di atasnya.
+        proxy_read_timeout 1h;
+    }
+
+    # --- API backend -----------------------------------------------------------
+    location /api/ {
+        proxy_pass http://127.0.0.1:4000;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        # Export ZIP surat / Excel bisa butuh waktu
+        proxy_read_timeout 120s;
+    }
+}

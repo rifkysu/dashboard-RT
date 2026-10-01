@@ -3,6 +3,7 @@ import { Navigate } from 'react-router-dom';
 import api from '../api';
 import { useAuth } from '../context/AuthContext';
 import { useFeedback } from '../components/Feedback';
+import useLive from '../hooks/useLive';
 
 const roleLabel = { karyawan: 'Karyawan', kabag: 'Kepala Bagian', pic: 'PIC', admin: 'Admin' };
 const roleBadge = {
@@ -34,13 +35,16 @@ export default function Akun() {
   const [error, setError] = useState('');
   const [busyId, setBusyId] = useState(null);
 
-  function load() {
-    setLoading(true);
+  // silent = muat ulang dari sinyal live: tanpa status "memuat" dan tanpa pesan error.
+  function load(silent = false) {
+    if (silent !== true) setLoading(true);
     api.get('/users').then((res) => { setData(res.data.data || []); setError(''); })
-      .catch((err) => setError(err.response?.data?.message || 'Gagal memuat daftar akun.'))
-      .finally(() => setLoading(false));
+      .catch((err) => { if (silent !== true) setError(err.response?.data?.message || 'Gagal memuat daftar akun.'); })
+      .finally(() => { if (silent !== true) setLoading(false); });
   }
-  useEffect(load, []);
+  useEffect(() => { load(); }, []);
+  // Realtime: akun baru daftar, login, ban/aktifkan, atau minta reset langsung terlihat.
+  useLive('users', () => load(true));
 
   async function toggleBan(target) {
     const nextActive = !target.is_active;
@@ -94,10 +98,10 @@ export default function Akun() {
   if (user && user.role !== 'admin') return <Navigate to="/dashboard" replace />;
 
   return (
-    <div className="menu-page menu-akun relative" style={{ fontFamily: 'Arial, Helvetica, sans-serif' }}>
+    <div className="menu-page menu-akun relative">
       <div className="menu-hero mb-6">
         <div>
-          <span className="menu-kicker">ADMIN • MANAJEMEN AKUN</span>
+          <span className="menu-kicker">Biro Umum / Akun &amp; Akses</span>
           <h1 className="text-2xl font-bold">Akun & Akses Pengguna</h1>
           <p className="text-sm mt-1">Pantau siapa saja yang punya akses ke sistem, role, dan kapan terakhir login.</p>
         </div>
@@ -140,14 +144,14 @@ export default function Akun() {
                 const isSelf = u.id === user?.id;
                 return (
                 <tr key={u.id} className="divide-x divide-slate-100 hover:bg-slate-50/50">
-                  <td className="px-4 py-3 font-semibold text-slate-800">{u.nama_lengkap}{isSelf && <span className="ml-1.5 text-[10px] font-bold text-indigo-600">(Kamu)</span>}{u.reset_requested_at && u.is_active && <div className="mt-1 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 text-[10px] font-bold whitespace-nowrap"><span className="material-symbols-outlined text-[12px]">lock_reset</span>Minta reset · {fmt(u.reset_requested_at)}</div>}</td>
+                  <td className="px-4 py-3 font-semibold text-slate-800">{u.nama_lengkap}{isSelf && <span className="ml-1.5 text-[10px] font-bold text-slate-500">(Kamu)</span>}{u.reset_requested_at && u.is_active && <div className="mt-1 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 text-[10px] font-bold whitespace-nowrap"><span className="material-symbols-outlined text-[12px]">lock_reset</span>Minta reset · {fmt(u.reset_requested_at)}</div>}</td>
                   <td className="px-4 py-3 text-slate-600">{u.email}</td>
                   <td className="px-4 py-3"><span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-semibold ${roleBadge[u.role] || roleBadge.karyawan}`}>{roleLabel[u.role] || u.role}</span></td>
                   <td className="px-4 py-3 text-slate-600 whitespace-nowrap">{u.no_hp || '-'}</td>
                   <td className="px-4 py-3 text-slate-600">{u.unit_kerja || '-'}</td>
                   <td className="px-4 py-3 text-slate-600 capitalize whitespace-nowrap">{u.sso_provider ? `SSO (${u.sso_provider})` : 'Email/Password'}</td>
                   <td className="px-4 py-3">
-                    <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-semibold ${u.is_active ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>
+                    <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-semibold whitespace-nowrap ${u.is_active ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>
                       {u.is_active ? 'Aktif' : 'Di-ban'}
                     </span>
                   </td>

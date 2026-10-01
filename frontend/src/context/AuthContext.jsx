@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import api from '../api';
+import { subscribeLive } from '../live';
 
 const AuthContext = createContext(null);
 
@@ -73,15 +74,21 @@ export function AuthProvider({ children }) {
 
   useEffect(() => { refreshResetRequests(); }, [user?.id, user?.role]);
 
-  // Live-reload lewat SSE: begitu admin toggle maintenance di menu mana pun,
-  // semua user yang sedang buka web langsung ke-blokir/ke-buka real-time,
-  // tanpa perlu refresh manual atau nunggu polling 30 detik.
+  // Live-reload lewat koneksi live bersama (src/live.js):
+  // - "maintenance": admin toggle maintenance -> menu langsung ke-blokir/ke-buka untuk semua user.
+  // - "users": role/status akun berubah atau ada permintaan reset -> data user & badge Akun diperbarui
+  //   tanpa nunggu polling 30 detik (polling tetap ada untuk perubahan langsung lewat pgAdmin).
   useEffect(() => {
-    if (!user?.id) return;
-    const streamUrl = `${import.meta.env.VITE_API_URL || 'http://localhost:4000/api'}/maintenance/stream`;
-    const es = new EventSource(streamUrl);
-    es.onmessage = () => refreshMaintenance();
-    return () => es.close();
+    if (!user?.id) return undefined;
+    let timer = null;
+    const unsubscribe = subscribeLive((topic) => {
+      if (topic === 'maintenance' || topic === '*') refreshMaintenance();
+      if (topic === 'users' || topic === '*') {
+        clearTimeout(timer);
+        timer = setTimeout(() => { refreshUser(); refreshResetRequests(); }, 400);
+      }
+    });
+    return () => { clearTimeout(timer); unsubscribe(); };
   }, [user?.id]);
 
   function login(token, userData) {

@@ -3,7 +3,7 @@ const express = require('express');
 const cors = require('cors');
 const passport = require('passport');
 const jwt = require('jsonwebtoken');
-const { requestHardening, createRateLimiter, validateCommonInput, randomRequestId } = require('./middleware/security');
+const { requestHardening, createRateLimiter, createSseLimiter, validateCommonInput, randomRequestId } = require('./middleware/security');
 
 require('./config/passport'); // daftarkan strategy Google SSO (jika dikonfigurasi)
 
@@ -15,6 +15,7 @@ const dashboardRoutes = require('./routes/dashboard');
 const ruangRapatRoutes = require('./routes/ruangRapat');
 const maintenanceRoutes = require('./routes/maintenance');
 const usersRoutes = require('./routes/users');
+const live = require('./live');
 const logger = require('./logger');
 const { ensureUploadRoot } = require('./fileStorage');
 
@@ -70,14 +71,17 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', message: 'Backend Biro Umum berjalan dengan baik.' });
 });
 
-app.use('/api/auth', authRoutes);
-app.use('/api/pemeliharaan', pemeliharaanRoutes);
-app.use('/api/pengadaan', pengadaanRoutes);
-app.use('/api/kendaraan', kendaraanRoutes);
+// Satu stream live untuk semua modul (lihat src/live.js).
+app.get('/api/live/stream', createSseLimiter(), live.streamHandler);
+
+app.use('/api/auth', live.notifyOnWrite('users'), authRoutes);
+app.use('/api/pemeliharaan', live.notifyOnWrite('pemeliharaan'), pemeliharaanRoutes);
+app.use('/api/pengadaan', live.notifyOnWrite('pengadaan'), pengadaanRoutes);
+app.use('/api/kendaraan', live.notifyOnWrite('kendaraan'), kendaraanRoutes);
 app.use('/api/dashboard', dashboardRoutes);
-app.use('/api/ruang-rapat', ruangRapatRoutes);
-app.use('/api/maintenance', maintenanceRoutes);
-app.use('/api/users', usersRoutes);
+app.use('/api/ruang-rapat', live.notifyOnWrite('ruang-rapat'), ruangRapatRoutes);
+app.use('/api/maintenance', live.notifyOnWrite('maintenance'), maintenanceRoutes);
+app.use('/api/users', live.notifyOnWrite('users'), usersRoutes);
 
 // Error dari body parser (mis. upload melebihi batas 25MB) dikembalikan sebagai
 // JSON berpesan jelas, bukan halaman HTML default Express yang tidak terbaca frontend.

@@ -1,22 +1,12 @@
 
-/* Bright, premium light-blue theme for authenticated application menus */
-:root { color-scheme: light; }
-body { min-height: 100vh; background: #eaf1fb !important; }
-.app-shell-bg {
-  background:
-    radial-gradient(circle at 15% 0%, rgba(59,130,246,.14), transparent 38%),
-    radial-gradient(circle at 90% 15%, rgba(16,185,129,.10), transparent 34%),
-    radial-gradient(circle at 50% 100%, rgba(139,92,246,.08), transparent 42%),
-    linear-gradient(180deg, #eef3fb 0%, #e7eff9 100%);
-}
+/* Tema menu aplikasi: satu warna dinas (biru tua, selaras logo Kemnaker), permukaan polos tanpa gradien.
+   Warna lain hanya dipakai untuk arti status (merah/kuning/hijau). */
+:root { color-scheme: light; --dinas:#1e3a5f; --dinas-dark:#152b47; --dinas-soft:#e8eef6; }
+body { min-height: 100vh; background: #f2f4f7 !important; }
+.app-shell-bg { background: #f2f4f7; }
 
 /* Main workspace */
-main.app-main {
-  background:
-    radial-gradient(circle at 10% 0%, rgba(59,130,246,.10), transparent 32%),
-    radial-gradient(circle at 90% 8%, rgba(139,92,246,.08), transparent 30%),
-    linear-gradient(180deg, #eef3fb 0%, #e7eff9 100%) !important;
-}
+main.app-main { background: #f2f4f7 !important; }
 .menu-page { color:#1e293b; }
 .menu-page h1,.menu-page h2,.menu-page h3,.menu-page h4,.menu-page .text-slate-900,.menu-page .text-slate-800 { color:#0f172a !important; }
 .menu-page .text-slate-700 { color:#334155 !important; }
@@ -32,7 +22,7 @@ main.app-main {
   background:#ffffff !important;
   color:#1e293b;
   border-color:#e2e8f0 !important;
-  box-shadow:0 1px 2px rgba(15,23,42,.04), 0 12px 28px rgba(15,23,42,.06);
+  box-shadow:0 1px 2px rgba(15,23,42,.05);
 }
 .menu-page .bg-slate-50,
 .menu-page .bg-slate-50\/50,
@@ -46,9 +36,9 @@ main.app-main {
 .menu-page .border-white\/80 { border-color:#e2e8f0 !important; }
 .menu-page .divide-slate-200 > :not([hidden]) ~ :not([hidden]) { border-color:#e2e8f0 !important; }
 .menu-page .border-b,.menu-page .border-t { border-color:#e2e8f0 !important; }
-.menu-page tr:hover { background:rgba(59,130,246,.045) !important; }
+.menu-page tr:hover { background:#f6f8fa !important; }
 .menu-page thead { background:#f1f5f9 !important; }
-.menu-page .shadow-sm,.menu-page .shadow-lg { box-shadow:0 1px 2px rgba(15,23,42,.04), 0 10px 24px rgba(15,23,42,.06); }
+.menu-page .shadow-sm,.menu-page .shadow-lg { box-shadow:0 1px 2px rgba(15,23,42,.05); }
 
 /* Inputs stay bright and readable */
 .menu-page input:not([type="radio"]):not([type="checkbox"]),
@@ -61,8 +51,8 @@ main.app-main {
 .menu-page input:not([type="radio"]):not([type="checkbox"]):focus,
 .menu-page select:focus,
 .menu-page textarea:focus {
-  border-color:#60a5fa !important;
-  box-shadow:0 0 0 3px rgba(59,130,246,.12);
+  border-color:var(--dinas) !important;
+  box-shadow:0 0 0 3px rgba(30,58,95,.12);
 }
 .menu-page input::placeholder,.menu-page textarea::placeholder { color:#94a3b8 !important; }
 .menu-page option { background:#ffffff; color:#0f172a; }
@@ -89,7 +79,7 @@ main.app-main {
 /* Page title accent */
 .menu-page > div:first-child h1 { letter-spacing:-.025em; }
 
-/* Per-menu identity: colorful top header pops against the white canvas */
+/* Header tiap menu memakai gaya yang sama; menu dibedakan oleh judul dan ikonnya */
 .app-main { min-height:100vh; }
 .menu-page { position:relative; }
 .menu-page .bg-white, .menu-page .bg-white\/85, .menu-page .bg-white\/90, .menu-page .bg-white\/80, .menu-page .bg-white\/75 { background:#ffffff !important; color:#1e293b !important; }
@@ -101,31 +91,31 @@ main.app-main {
 .menu-page .text-slate-600,.menu-page .text-slate-500 { color:#64748b !important; }
 .menu-page .text-slate-400 { color:#94a3b8 !important; }
 .menu-page .border-slate-200,.menu-page .border-slate-300,.menu-page .border-slate-100,.menu-page .border-white\/80 { border-color:#e2e8f0 !important; }
-.menu-hero { display:flex; align-items:center; justify-content:space-between; gap:20px; padding:22px 24px; border-radius:24px; color:#fff; position:relative; overflow:hidden; box-shadow:0 16px 36px rgba(15,23,42,.14); }
-.menu-hero:after { content:''; position:absolute; width:240px; height:240px; right:-70px; top:-100px; border-radius:50%; background:rgba(255,255,255,.14); }
-.menu-kicker { display:inline-block; font-size:10px; font-weight:800; letter-spacing:.18em; opacity:.82; margin-bottom:7px; }
-.menu-hero h1 { color:#fff !important; }
-.menu-hero p { color:rgba(255,255,255,.82) !important; }
-.menu-hero-icon { width:58px; height:58px; border-radius:18px; display:flex; align-items:center; justify-content:center; background:rgba(255,255,255,.16); border:1px solid rgba(255,255,255,.22); position:relative; z-index:1; }
-.menu-hero-icon .material-symbols-outlined { font-size:30px; }
-@media (max-width: 480px) {
-  .menu-hero { padding:16px 18px; border-radius:18px; gap:12px; }
-  .menu-hero h1 { font-size:20px !important; line-height:1.25; }
-  .menu-hero p { font-size:12px !important; }
-  .menu-hero-icon { width:42px; height:42px; border-radius:13px; }
-  .menu-hero-icon .material-symbols-outlined { font-size:22px; }
+/* Judul halaman tiap menu: teks biasa di atas garis tipis, bukan banner berwarna. */
+.menu-hero { display:flex; align-items:flex-end; justify-content:space-between; gap:20px; padding:0 0 16px; border-bottom:1px solid #d9dee5; border-radius:0; box-shadow:none; overflow:visible; color:#0f172a; background:none; }
+.menu-kicker { display:block; font-size:12px; font-weight:600; letter-spacing:0; opacity:1; color:#64748b; margin-bottom:4px; }
+.menu-hero h1 { color:#0f172a !important; font-size:26px !important; font-weight:700 !important; letter-spacing:-.01em; }
+.menu-hero p { color:#5b6675 !important; }
+.menu-hero-icon { display:none; }
+/* Di layar sempit, tombol aksi di header turun ke bawah judul supaya teksnya tidak terlipat. */
+@media (max-width: 640px) {
+  .menu-hero { flex-direction:column; align-items:stretch; gap:12px; }
+  .menu-hero > button, .menu-hero > a { justify-content:center; white-space:nowrap; }
 }
-.menu-kendaraan .menu-hero { background:linear-gradient(135deg,#0369a1,#2563eb 55%,#4f46e5); }
-.menu-pemeliharaan .menu-hero { background:linear-gradient(135deg,#047857,#0f766e 55%,#2563eb); }
-.menu-pengadaan .menu-hero { background:linear-gradient(135deg,#b45309,#d97706 55%,#ea580c); }
-.menu-ruang-rapat .menu-hero { background:linear-gradient(135deg,#6d28d9,#7c3aed 55%,#c026d3); }
-.menu-dashboard .menu-hero { background:linear-gradient(135deg,#4338ca,#2563eb 55%,#0891b2); }
-.menu-settings .menu-hero { background:linear-gradient(135deg,#334155,#475569 55%,#6366f1); }
-.menu-akun .menu-hero { background:linear-gradient(135deg,#9d174d,#be185d 55%,#db2777); }
-.detail-btn { display:inline-flex; align-items:center; gap:5px; padding:7px 11px; border-radius:10px; background:rgba(37,99,235,.08); color:#2563eb; border:1px solid rgba(37,99,235,.18); font-size:11px; font-weight:800; transition:.2s; }
-.detail-btn:hover { background:rgba(37,99,235,.14); transform:translateY(-1px); }
+/* Dropdown filter di kepala tabel jangan sampai terpotong */
+.menu-page thead select { min-width:88px; }
+@media (max-width: 480px) {
+  .menu-hero h1 { font-size:21px !important; line-height:1.25; }
+  .menu-hero p { font-size:12px !important; }
+}
+
+/* Sudut membulat yang wajar untuk aplikasi kerja; kelas rounded-2xl/3xl bawaan halaman diredam di sini. */
+.menu-page .rounded-3xl, .menu-page .rounded-2xl { border-radius:10px !important; }
+.menu-page .rounded-xl { border-radius:8px !important; }
+.detail-btn { display:inline-flex; align-items:center; gap:5px; padding:7px 11px; border-radius:10px; background:var(--dinas-soft); color:var(--dinas); border:1px solid rgba(30,58,95,.18); font-size:11px; font-weight:800; transition:.2s; }
+.detail-btn:hover { background:#dbe4f0; }
 .vehicle-detail-modal { background:#ffffff; color:#0f172a; }
-.vehicle-detail-head { padding:22px 24px; background:linear-gradient(135deg,#0369a1,#2563eb 55%,#4f46e5); color:#fff; display:flex; align-items:center; justify-content:space-between; }
+.vehicle-detail-head { padding:22px 24px; background:var(--dinas); color:#fff; display:flex; align-items:center; justify-content:space-between; }
 .vehicle-detail-icon { width:52px; height:52px; border-radius:16px; display:flex; align-items:center; justify-content:center; background:rgba(255,255,255,.15); border:1px solid rgba(255,255,255,.2); }
 .vehicle-close { width:40px; height:40px; border-radius:12px; background:rgba(255,255,255,.12); color:#fff; display:flex; align-items:center; justify-content:center; }
 .vehicle-close:hover { background:rgba(255,255,255,.22); }
@@ -138,12 +128,11 @@ main.app-main {
 .settings-profile-strip {
   display:flex; align-items:center; gap:12px; margin-bottom:16px; padding:12px 16px;
   border-radius:18px; background:#ffffff;
-  border:1px solid #e2e8f0; box-shadow:0 1px 2px rgba(15,23,42,.04), 0 10px 24px rgba(15,23,42,.06);
+  border:1px solid #e2e8f0; box-shadow:0 1px 2px rgba(15,23,42,.05);
 }
 .settings-profile-avatar {
   width:40px; height:40px; border-radius:13px; display:flex; align-items:center; justify-content:center;
-  background:linear-gradient(135deg,#6366f1,#8b5cf6); color:#fff; font-size:15px; font-weight:900;
-  box-shadow:0 8px 20px rgba(99,102,241,.25);
+  background:var(--dinas); color:#fff; font-size:15px; font-weight:900;
 }
 .settings-profile-name { color:#0f172a; font-size:14px; font-weight:800; line-height:1.2; }
 .settings-profile-role { color:#64748b; font-size:11px; font-weight:600; margin-top:3px; }
@@ -185,46 +174,3 @@ main.app-main {
 .splash-progress { transform-origin: left; animation: splash-progress var(--splash-ms, 3000ms) linear both; }
 /* Putaran biru sengaja tetap jalan; yang dimatikan hanya gerakan logo. */
 @media (prefers-reduced-motion: reduce) { .splash-logo, .splash-bob { animation: none; } }
-
-/* Landing page */
-@keyframes landing-float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
-@keyframes landing-rise { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }
-@keyframes landing-aurora { 0%,100% { transform: translate(0,0) scale(1); } 50% { transform: translate(30px,-20px) scale(1.08); } }
-.landing-float { animation: landing-float 6s ease-in-out infinite; }
-.landing-float-slow { animation: landing-float 8s ease-in-out infinite; animation-delay: -2s; }
-.landing-rise { animation: landing-rise .7s cubic-bezier(.2,.7,.2,1) both; }
-.landing-aurora { animation: landing-aurora 14s ease-in-out infinite; }
-.landing-grid {
-  background-image: linear-gradient(rgba(255,255,255,.06) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.06) 1px, transparent 1px);
-  background-size: 44px 44px;
-  -webkit-mask-image: radial-gradient(ellipse 70% 60% at 50% 40%, #000 30%, transparent 75%);
-  mask-image: radial-gradient(ellipse 70% 60% at 50% 40%, #000 30%, transparent 75%);
-}
-@media (prefers-reduced-motion: reduce) { .landing-float, .landing-float-slow, .landing-rise, .landing-aurora { animation: none; } }
-
-/* Jadwal ruang rapat versi gelap, hanya di landing page (kiosk tetap terang) */
-.landing-dark-schedule .bg-white { background: rgba(13,19,44,.85) !important; border-color: rgba(255,255,255,.1) !important; box-shadow: 0 20px 50px rgba(0,0,0,.3) !important; }
-.landing-dark-schedule .border-slate-200,
-.landing-dark-schedule .divide-slate-200 > * { border-color: rgba(255,255,255,.08) !important; }
-.landing-dark-schedule .bg-slate-50 { background: rgba(255,255,255,.03) !important; }
-.landing-dark-schedule .bg-violet-100 { background: rgba(139,92,246,.22) !important; color: #ddd6fe; }
-.landing-dark-schedule .bg-amber-100\/70 { background: rgba(245,158,11,.14) !important; }
-.landing-dark-schedule .bg-amber-200\/70 { background: rgba(245,158,11,.22) !important; color: #fcd34d !important; }
-.landing-dark-schedule .text-amber-700 { color: #fcd34d !important; }
-.landing-dark-schedule .text-red-600 { color: #fca5a5 !important; }
-.landing-dark-schedule > div { color: #e2e8f0; }
-.landing-dark-schedule .text-slate-800 { color: #f1f5f9 !important; }
-.landing-dark-schedule .text-slate-600 { color: #cbd5e1 !important; }
-.landing-dark-schedule .text-slate-500,
-.landing-dark-schedule .text-slate-400 { color: #94a3b8 !important; }
-.landing-dark-schedule button { color: #e2e8f0; }
-.landing-dark-schedule .hover\:bg-slate-50:hover { background: rgba(255,255,255,.08) !important; }
-/* Kartu rapat per status */
-.landing-dark-schedule .bg-red-50 { background: rgba(239,68,68,.12) !important; border-color: rgba(248,113,113,.35) !important; }
-.landing-dark-schedule .text-red-900 { color: #fecaca !important; }
-.landing-dark-schedule .bg-blue-50 { background: rgba(59,130,246,.12) !important; border-color: rgba(96,165,250,.35) !important; }
-.landing-dark-schedule .text-blue-900 { color: #bfdbfe !important; }
-.landing-dark-schedule .bg-green-50 { background: rgba(34,197,94,.12) !important; border-color: rgba(74,222,128,.35) !important; }
-.landing-dark-schedule .text-green-900 { color: #bbf7d0 !important; }
-.landing-dark-schedule .text-red-700 { color: #fca5a5 !important; }
-.landing-dark-schedule .border-red-200 { border-color: rgba(248,113,113,.35) !important; }
