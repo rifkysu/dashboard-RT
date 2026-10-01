@@ -64,17 +64,17 @@ export default function Register() {
 
   return (
     <div className="min-h-screen flex flex-col justify-between">
-      <header className="w-full border-b border-slate-200 bg-white px-6 py-4 flex items-center justify-between sticky top-0 z-20">
+      <header className="w-full bg-dinas-dark bg-kawung-gelap text-white px-6 py-4 flex items-center justify-between sticky top-0 z-20">
         <div className="flex items-center gap-3">
-          <BrandMark size="sm" />
+          <BrandMark size="sm" className="!border-white/20" />
           <div>
-            <h1 className="text-base font-bold text-slate-900 leading-tight">Biro Umum dan Rumah Tangga</h1>
-            <p className="text-xs text-slate-500 mt-0.5">Kementerian Ketenagakerjaan</p>
+            <h1 className="font-display text-base font-extrabold text-white leading-tight">Biro Umum dan Rumah Tangga</h1>
+            <p className="text-xs text-white/60 mt-0.5">Kementerian Ketenagakerjaan</p>
           </div>
         </div>
         <div className="flex items-center gap-3 text-xs">
-          <span className="text-slate-500 hidden sm:inline">Sudah punya akun?</span>
-          <Link to="/login" className="px-3.5 py-1.5 rounded-lg border border-slate-200 font-semibold text-slate-700 hover:bg-slate-50 transition">
+          <span className="text-white/60 hidden sm:inline">Sudah punya akun?</span>
+          <Link to="/login" className="px-3.5 py-1.5 rounded-lg bg-white font-bold text-dinas hover:bg-[#f7efe0] transition">
             Masuk (Login)
           </Link>
         </div>
@@ -86,17 +86,17 @@ export default function Register() {
           <span className="material-symbols-outlined text-[18px]">arrow_back</span>
           Kembali ke beranda
         </Link>
-        <div className="bg-white rounded-lg border border-slate-200 p-8 sm:p-10">
+        <div className="bg-white rounded-2xl border border-slate-200 p-8 sm:p-10 shadow-[0_1px_2px_rgba(14,30,51,.04),0_20px_50px_-24px_rgba(14,30,51,.3)]">
 
           <div className="mb-8">
-            <h2 className="text-2xl font-bold text-slate-900">Daftar Akun Pegawai</h2>
+            <h2 className="font-display text-2xl font-extrabold text-dinas-ink tracking-tight">Daftar Akun Pegawai</h2>
             <p className="text-sm text-slate-500 mt-1.5">
               Lengkapi data di bawah ini untuk mendapatkan hak akses pada portal operasional Biro Umum.
             </p>
           </div>
 
           {error && (
-            <div className="mb-4 px-4 py-3 bg-red-50 border border-red-200 text-red-700 text-sm rounded-md">
+            <div className="mb-4 px-4 py-3 bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg">
               {error}
             </div>
           )}
@@ -112,7 +112,7 @@ export default function Register() {
                 value={form.nama_lengkap}
                 onChange={(e) => update('nama_lengkap', e.target.value)}
                 placeholder="Misal: Ahmad Fauzi, S.E."
-                className={inputCls('nama_lengkap', "w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]/15 focus:border-[#1e3a5f] focus:bg-white transition")}
+                className={inputCls('nama_lengkap', "w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]/15 focus:border-[#1e3a5f] focus:bg-white transition")}
               />
               {fieldErrors.nama_lengkap && <p className="text-[11px] text-red-600 mt-1">{fieldErrors.nama_lengkap}</p>}
             </div>
@@ -128,7 +128,7 @@ export default function Register() {
                   value={form.email}
                   onChange={(e) => update('email', e.target.value)}
                   placeholder="nama@kemnaker.go.id"
-                  className={inputCls('email', "w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]/15 focus:border-[#1e3a5f] focus:bg-white transition")}
+                  className={inputCls('email', "w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]/15 focus:border-[#1e3a5f] focus:bg-white transition")}
                 />
                 {fieldErrors.email && <p className="text-[11px] text-red-600 mt-1">{fieldErrors.email}</p>}
               </div>
@@ -142,7 +142,7 @@ export default function Register() {
                   value={form.no_hp}
                   onChange={(e) => update('no_hp', e.target.value)}
                   placeholder="08123456789"
-                  className={inputCls('no_hp', "w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]/15 focus:border-[#1e3a5f] focus:bg-white transition")}
+                  className={inputCls('no_hp', "w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]/15 focus:border-[#1e3a5f] focus:bg-white transition")}
                 />
                 {fieldErrors.no_hp && <p className="text-[11px] text-red-600 mt-1">{fieldErrors.no_hp}</p>}
               </div>
@@ -157,7 +157,7 @@ export default function Register() {
                   required
                   value={form.unit_kerja}
                   onChange={(e) => update('unit_kerja', e.target.value)}
-                  className={inputCls('unit_kerja', "w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]/15 focus:border-[#1e3a5f] focus:bg-white transition cursor-pointer")}
+                  className={inputCls('unit_kerja', "w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]/15 focus:border-[#1e3a5f] focus:bg-white transition cursor-pointer")}
                 >
                   <option value="">Pilih Bagian...</option>
                   <option value="rt">Bagian Rumah Tangga</option>
@@ -177,7 +177,7 @@ export default function Register() {
                   required
                   value={form.role}
                   onChange={(e) => update('role', e.target.value)}
-                  className={inputCls('role', "w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]/15 focus:border-[#1e3a5f] focus:bg-white transition cursor-pointer")}
+                  className={inputCls('role', "w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]/15 focus:border-[#1e3a5f] focus:bg-white transition cursor-pointer")}
                 >
                   <option value="" disabled>Pilih Peran</option>
                   <option value="karyawan">Karyawan</option>
@@ -204,7 +204,7 @@ export default function Register() {
                   value={form.password}
                   onChange={(e) => update('password', e.target.value)}
                   placeholder="Min. 8 karakter, huruf & angka"
-                  className={inputCls('password', "w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]/15 focus:border-[#1e3a5f] focus:bg-white transition")}
+                  className={inputCls('password', "w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]/15 focus:border-[#1e3a5f] focus:bg-white transition")}
                 />
                 {fieldErrors.password && <p className="text-[11px] text-red-600 mt-1">{fieldErrors.password}</p>}
               </div>
@@ -218,7 +218,7 @@ export default function Register() {
                   value={form.confirm}
                   onChange={(e) => update('confirm', e.target.value)}
                   placeholder="Konfirmasi kata sandi"
-                  className={inputCls('confirm', "w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]/15 focus:border-[#1e3a5f] focus:bg-white transition")}
+                  className={inputCls('confirm', "w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]/15 focus:border-[#1e3a5f] focus:bg-white transition")}
                 />
                 {fieldErrors.confirm && <p className="text-[11px] text-red-600 mt-1">{fieldErrors.confirm}</p>}
               </div>
@@ -237,7 +237,7 @@ export default function Register() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-3.5 px-4 bg-[#1e3a5f] hover:bg-[#152b47] disabled:opacity-60 text-white font-semibold rounded-md text-sm flex items-center justify-center gap-2 transition"
+              className="w-full py-3.5 px-4 bg-[#1e3a5f] hover:bg-[#152b47] disabled:opacity-60 text-white font-semibold rounded-lg text-sm flex items-center justify-center gap-2 transition"
             >
               {loading ? 'Memproses...' : 'Daftar Akun'}
               <span className="material-symbols-outlined text-[18px]">arrow_forward</span>

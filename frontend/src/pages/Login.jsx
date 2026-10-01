@@ -97,18 +97,18 @@ export default function Login() {
           Kembali ke beranda
         </Link>
 
-        <div className="grid md:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)] bg-white rounded-lg border border-slate-200 overflow-hidden">
+        <div className="grid md:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)] bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-[0_1px_2px_rgba(14,30,51,.04),0_20px_50px_-24px_rgba(14,30,51,.35)]">
           {/* Kiri: form login */}
           <div className="p-8 sm:p-12 flex flex-col justify-center">
             <div className="flex items-center gap-3 mb-8">
               <BrandMark size="sm" />
               <div>
-                <h1 className="text-sm font-bold text-slate-900 leading-tight">Biro Umum dan Rumah Tangga</h1>
+                <h1 className="font-display text-sm font-extrabold text-dinas-ink leading-tight">Biro Umum dan Rumah Tangga</h1>
                 <p className="text-[11px] text-slate-500 mt-0.5">Kementerian Ketenagakerjaan</p>
               </div>
             </div>
 
-            <h2 className="text-2xl font-bold text-slate-900">Masuk</h2>
+            <h2 className="font-display text-[28px] font-extrabold text-dinas-ink tracking-tight">Masuk</h2>
             <p className="text-sm text-slate-500 mt-1.5 mb-7">
               Akses layanan pemeliharaan, pengadaan, kendaraan, dan jadwal ruang rapat.
             </p>
@@ -224,13 +224,14 @@ export default function Login() {
           </div>
 
           {/* Kanan: info daftar akun, disembunyikan di mobile */}
-          <div className="hidden md:flex flex-col justify-between p-10 bg-[#1e3a5f] text-white">
+          <div className="hidden md:flex flex-col justify-between p-10 bg-dinas bg-kawung-gelap text-white">
             <div>
-              <h3 className="text-xl font-bold">Belum punya akun?</h3>
+              <div className="flex items-center gap-2 text-sm font-semibold text-[#e4c27f]"><span className="w-6 h-[2px] rounded bg-kuningan"></span>Akun pegawai</div>
+              <h3 className="font-display text-2xl font-extrabold mt-3 tracking-tight">Belum punya akun?</h3>
               <p className="text-sm text-white/80 mt-3 leading-relaxed">
                 Akun pegawai dipakai untuk mengajukan pemeliharaan, pengadaan, dan booking ruang rapat, serta memantau statusnya.
               </p>
-              <Link to="/register" className="inline-block mt-6 px-5 py-2.5 rounded-md border border-white/50 text-sm font-semibold hover:bg-white/10 transition">
+              <Link to="/register" className="inline-block mt-6 px-5 py-2.5 rounded-lg bg-white text-dinas text-sm font-bold hover:bg-[#f7efe0] transition">
                 Daftar akun pegawai
               </Link>
             </div>

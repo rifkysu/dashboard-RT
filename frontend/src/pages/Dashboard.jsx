@@ -38,7 +38,7 @@ function StatCell({ value, label, hint, tone, to }) {
   return (
     <Tag onClick={to ? () => navigate(to) : undefined} className={`text-left bg-white px-5 py-4 ${to ? 'hover:bg-slate-50 transition-colors' : ''}`}>
       <div className="text-xs font-semibold text-slate-600">{label}</div>
-      <div className={`mt-1.5 text-3xl font-bold leading-none tabular-nums ${value ? TONE[tone].text : 'text-slate-900'}`}>{value ?? '–'}</div>
+      <div className={`mt-2 font-display text-[32px] font-extrabold leading-none tabular-nums ${value ? TONE[tone].text : 'text-slate-900'}`}>{value ?? '–'}</div>
       {hint && <div className="text-[11px] text-slate-500 mt-1.5">{hint}</div>}
     </Tag>
   );
@@ -47,16 +47,16 @@ function StatCell({ value, label, hint, tone, to }) {
 function ModuleCard({ icon, title, desc, badge, badgeTone = 'slate', to, children }) {
   const navigate = useNavigate();
   return (
-    <button onClick={() => navigate(to)} className="text-left group bg-white border border-slate-200 rounded-lg p-5 flex flex-col hover:border-slate-400 transition-colors">
+    <button onClick={() => navigate(to)} className="text-left group bg-white border border-slate-200 rounded-xl p-5 flex flex-col hover:!border-[#1e3a5f]/40 transition-colors">
       <div className="flex justify-between items-center gap-3">
         <h2 className="flex items-center gap-2 text-base font-bold text-slate-900 whitespace-nowrap">
-          <span className="material-symbols-outlined text-[20px] text-slate-500">{icon}</span>{title}
+          <span className="w-8 h-8 rounded-lg bg-dinas-soft text-dinas flex items-center justify-center"><span className="material-symbols-outlined text-[19px]">{icon}</span></span>{title}
         </h2>
         {badge && <span className={`text-[11px] font-bold px-2 py-0.5 rounded whitespace-nowrap ${TONE[badgeTone].chip}`}>{badge}</span>}
       </div>
       <p className="text-xs text-slate-500 mt-1 leading-5">{desc}</p>
       {children}
-      <div className="mt-auto pt-4 text-xs font-semibold text-[#1e3a5f] group-hover:underline">Buka {title} →</div>
+      <div className="mt-auto pt-4 flex items-center gap-1 text-xs font-bold text-dinas">Buka {title}<span className="material-symbols-outlined text-[16px] transition-transform group-hover:translate-x-0.5">arrow_forward</span></div>
     </button>
   );
 }

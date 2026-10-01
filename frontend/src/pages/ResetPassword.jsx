@@ -46,38 +46,38 @@ export default function ResetPassword() {
 
   return (
     <div className="min-h-screen flex flex-col justify-between">
-      <header className="w-full border-b border-slate-200 bg-white px-6 py-4 flex items-center justify-between sticky top-0 z-20">
+      <header className="w-full bg-dinas-dark bg-kawung-gelap text-white px-6 py-4 flex items-center justify-between sticky top-0 z-20">
         <div className="flex items-center gap-3">
-          <BrandMark size="sm" />
+          <BrandMark size="sm" className="!border-white/20" />
           <div>
-            <h1 className="text-base font-bold text-slate-900 leading-tight">Biro Umum dan Rumah Tangga</h1>
-            <p className="text-xs text-slate-500 mt-0.5">Kementerian Ketenagakerjaan</p>
+            <h1 className="font-display text-base font-extrabold text-white leading-tight">Biro Umum dan Rumah Tangga</h1>
+            <p className="text-xs text-white/60 mt-0.5">Kementerian Ketenagakerjaan</p>
           </div>
         </div>
       </header>
 
       <main className="flex-1 flex items-center justify-center p-6 md:p-10">
-        <div className="w-full max-w-[440px] bg-white rounded-lg border border-slate-200 p-8 sm:p-10">
+        <div className="w-full max-w-[440px] bg-white rounded-2xl border border-slate-200 p-8 sm:p-10 shadow-[0_1px_2px_rgba(14,30,51,.04),0_20px_50px_-24px_rgba(14,30,51,.3)]">
 
           <div className="mb-8">
-            <h2 className="text-2xl font-bold text-slate-900">Buat Kata Sandi Baru</h2>
+            <h2 className="font-display text-2xl font-extrabold text-dinas-ink tracking-tight">Buat Kata Sandi Baru</h2>
             <p className="text-sm text-slate-500 mt-1.5">Link ini berlaku 1 jam sejak dibuat.</p>
           </div>
 
           {!token && (
-            <div className="mb-4 px-4 py-3 bg-amber-50 border border-amber-200 text-amber-800 text-sm rounded-md">
+            <div className="mb-4 px-4 py-3 bg-amber-50 border border-amber-200 text-amber-800 text-sm rounded-lg">
               Link tidak lengkap (token tidak ditemukan). Minta link reset baru.
             </div>
           )}
 
           {error && (
-            <div className="mb-4 px-4 py-3 bg-red-50 border border-red-200 text-red-700 text-sm rounded-md">
+            <div className="mb-4 px-4 py-3 bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg">
               {error}
             </div>
           )}
 
           {done ? (
-            <div className="px-4 py-3 bg-emerald-50 border border-emerald-200 text-emerald-800 text-sm rounded-md">
+            <div className="px-4 py-3 bg-emerald-50 border border-emerald-200 text-emerald-800 text-sm rounded-lg">
               Kata sandi berhasil diubah. Mengalihkan ke halaman login...
             </div>
           ) : (
@@ -91,7 +91,7 @@ export default function ResetPassword() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="Minimal 8 karakter"
-                    className="w-full pl-11 pr-11 py-3 bg-white border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]/15 focus:border-[#1e3a5f] focus:bg-white transition"
+                    className="w-full pl-11 pr-11 py-3 bg-white border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]/15 focus:border-[#1e3a5f] focus:bg-white transition"
                     required
                   />
                   <button type="button" onClick={() => setShowPassword((s) => !s)} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
@@ -107,7 +107,7 @@ export default function ResetPassword() {
                   value={confirm}
                   onChange={(e) => setConfirm(e.target.value)}
                   placeholder="Ulangi kata sandi baru"
-                  className="w-full px-4 py-3 bg-white border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]/15 focus:border-[#1e3a5f] focus:bg-white transition"
+                  className="w-full px-4 py-3 bg-white border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]/15 focus:border-[#1e3a5f] focus:bg-white transition"
                   required
                 />
               </div>
@@ -115,7 +115,7 @@ export default function ResetPassword() {
               <button
                 type="submit"
                 disabled={loading || !token}
-                className="w-full py-3.5 px-4 bg-[#1e3a5f] hover:bg-[#152b47] disabled:opacity-60 text-white font-semibold rounded-md text-sm flex items-center justify-center gap-2 transition"
+                className="w-full py-3.5 px-4 bg-[#1e3a5f] hover:bg-[#152b47] disabled:opacity-60 text-white font-semibold rounded-lg text-sm flex items-center justify-center gap-2 transition"
               >
                 {loading ? 'Menyimpan...' : 'Simpan Kata Sandi Baru'}
                 <span className="material-symbols-outlined text-[18px]">check</span>

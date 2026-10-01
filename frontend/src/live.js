@@ -23,11 +23,27 @@ function connect() {
   es.onopen = () => { if (dropped) { dropped = false; emit('*'); } };
 }
 
+function disconnect() {
+  if (es) { es.close(); es = null; dropped = false; }
+}
+
+// Tutup koneksi saat halaman ditinggalkan (reload, pindah alamat, tab ditutup). Tanpa ini,
+// koneksi lama bisa tetap terbuka (mis. halaman disimpan di back/forward cache browser) dan
+// menumpuk; di HTTP/1.1 browser hanya mengizinkan ~6 koneksi per server, sehingga request
+// berikutnya tertahan dan halaman terlihat macet. Saat halaman dipulihkan dari cache tombol
+// Back, sambungkan lagi dan minta semua halaman refetch karena perubahan selama itu terlewat.
+if (typeof window !== 'undefined') {
+  window.addEventListener('pagehide', disconnect);
+  window.addEventListener('pageshow', (e) => {
+    if (listeners.size && !es) { connect(); if (e.persisted) emit('*'); }
+  });
+}
+
 export function subscribeLive(fn) {
   listeners.add(fn);
   connect();
   return () => {
     listeners.delete(fn);
-    if (!listeners.size && es) { es.close(); es = null; dropped = false; }
+    if (!listeners.size) disconnect();
   };
 }

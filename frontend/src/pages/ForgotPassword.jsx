@@ -38,42 +38,42 @@ export default function ForgotPassword() {
 
   return (
     <div className="min-h-screen flex flex-col justify-between">
-      <header className="w-full border-b border-slate-200 bg-white px-6 py-4 flex items-center justify-between sticky top-0 z-20">
+      <header className="w-full bg-dinas-dark bg-kawung-gelap text-white px-6 py-4 flex items-center justify-between sticky top-0 z-20">
         <div className="flex items-center gap-3">
-          <BrandMark size="sm" />
+          <BrandMark size="sm" className="!border-white/20" />
           <div>
-            <h1 className="text-base font-bold text-slate-900 leading-tight">Biro Umum dan Rumah Tangga</h1>
-            <p className="text-xs text-slate-500 mt-0.5">Kementerian Ketenagakerjaan</p>
+            <h1 className="font-display text-base font-extrabold text-white leading-tight">Biro Umum dan Rumah Tangga</h1>
+            <p className="text-xs text-white/60 mt-0.5">Kementerian Ketenagakerjaan</p>
           </div>
         </div>
       </header>
 
       <main className="flex-1 flex items-center justify-center p-6 md:p-10">
-        <div className="w-full max-w-[440px] bg-white rounded-lg border border-slate-200 p-8 sm:p-10">
+        <div className="w-full max-w-[440px] bg-white rounded-2xl border border-slate-200 p-8 sm:p-10 shadow-[0_1px_2px_rgba(14,30,51,.04),0_20px_50px_-24px_rgba(14,30,51,.3)]">
 
           <div className="mb-8">
-            <h2 className="text-2xl font-bold text-slate-900">Reset Kata Sandi</h2>
+            <h2 className="font-display text-2xl font-extrabold text-dinas-ink tracking-tight">Reset Kata Sandi</h2>
             <p className="text-sm text-slate-500 mt-1.5">
               Masukkan email akun kamu. Link reset kata sandi akan dibuatkan oleh Admin Biro Umum dan dikirim ke kamu secara langsung.
             </p>
           </div>
 
           {error && (
-            <div className="mb-4 px-4 py-3 bg-red-50 border border-red-200 text-red-700 text-sm rounded-md">
+            <div className="mb-4 px-4 py-3 bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg">
               {error}
             </div>
           )}
 
           {result ? (
             <div className="space-y-4">
-              <div className="px-4 py-3 bg-emerald-50 border border-emerald-200 text-emerald-800 text-sm rounded-md">
+              <div className="px-4 py-3 bg-emerald-50 border border-emerald-200 text-emerald-800 text-sm rounded-lg">
                 {result.message}
               </div>
               {result.resetUrl && <div>
                 <label className="block text-sm font-semibold text-slate-700 mb-1.5">Link Reset</label>
                 <div className="flex items-stretch gap-2">
-                  <input readOnly value={result.resetUrl} onFocus={(e) => e.target.select()} className="w-full px-3 py-3 bg-slate-50 border border-slate-200 rounded-md text-xs text-slate-700 outline-none" />
-                  <button type="button" onClick={copyLink} className="shrink-0 px-4 rounded-md bg-[#1e3a5f] hover:bg-[#152b47] text-white text-xs font-semibold">
+                  <input readOnly value={result.resetUrl} onFocus={(e) => e.target.select()} className="w-full px-3 py-3 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-700 outline-none" />
+                  <button type="button" onClick={copyLink} className="shrink-0 px-4 rounded-lg bg-[#1e3a5f] hover:bg-[#152b47] text-white text-xs font-semibold">
                     {copied ? 'Tersalin' : 'Salin'}
                   </button>
                 </div>
@@ -91,7 +91,7 @@ export default function ForgotPassword() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="nama@email.com"
-                    className="w-full pl-11 pr-4 py-3 bg-white border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]/15 focus:border-[#1e3a5f] focus:bg-white transition"
+                    className="w-full pl-11 pr-4 py-3 bg-white border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]/15 focus:border-[#1e3a5f] focus:bg-white transition"
                     required
                   />
                 </div>
@@ -100,7 +100,7 @@ export default function ForgotPassword() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-3.5 px-4 bg-[#1e3a5f] hover:bg-[#152b47] disabled:opacity-60 text-white font-semibold rounded-md text-sm flex items-center justify-center gap-2 transition"
+                className="w-full py-3.5 px-4 bg-[#1e3a5f] hover:bg-[#152b47] disabled:opacity-60 text-white font-semibold rounded-lg text-sm flex items-center justify-center gap-2 transition"
               >
                 {loading ? 'Memproses...' : 'Kirim Permintaan Reset'}
                 <span className="material-symbols-outlined text-[18px]">arrow_forward</span>

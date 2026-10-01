@@ -1,121 +1,135 @@
+/* =====================================================================
+   Tema aplikasi Biro Umum
+   - Warna utama: biru dinas (selaras logo Kemnaker), aksen kuningan secukupnya.
+   - Warna lain hanya untuk arti status (merah/kuning/hijau).
+   - Ornamen: motif batik kawung tipis (--kawung-*), hanya di header halaman, sapaan dashboard,
+     landing, dan panel login.
+   - Font: Plus Jakarta Sans (judul), Public Sans (isi), JetBrains Mono (kode & nomor).
+   ===================================================================== */
+:root {
+  color-scheme: light;
+  --dinas:#1e3a5f; --dinas-dark:#142a47; --dinas-ink:#0e1e33; --dinas-soft:#e8eef6;
+  --kuningan:#b8893b; --kuningan-soft:#f7efe0; --kuningan-ink:#7a5a20;
+  --kanvas:#f3f4f7; --garis:#e2e6ed; --teks:#1b2534; --teks-redup:#5f6b7a;
+  --f-display:"Plus Jakarta Sans","Public Sans",Arial,sans-serif;
+  --f-body:"Public Sans",Arial,sans-serif;
+  --f-mono:"JetBrains Mono",Consolas,monospace;
+  --kartu-bayang:0 1px 2px rgba(14,30,51,.04), 0 6px 18px -10px rgba(14,30,51,.12);
+  /* Motif kawung: empat kelopak lonjong mengelilingi titik tengah, diulang sebagai ubin. */
+  --kawung-gelap:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='56' viewBox='0 0 56 56'%3E%3Cg fill='none' stroke='%23ffffff' stroke-opacity='.09' stroke-width='1.1'%3E%3Cellipse cx='14' cy='14' rx='6.5' ry='13' transform='rotate(-45 14 14)'/%3E%3Cellipse cx='42' cy='14' rx='6.5' ry='13' transform='rotate(45 42 14)'/%3E%3Cellipse cx='14' cy='42' rx='6.5' ry='13' transform='rotate(45 14 42)'/%3E%3Cellipse cx='42' cy='42' rx='6.5' ry='13' transform='rotate(-45 42 42)'/%3E%3Ccircle cx='28' cy='28' r='2.2'/%3E%3Ccircle cx='0' cy='0' r='2.2'/%3E%3Ccircle cx='56' cy='0' r='2.2'/%3E%3Ccircle cx='0' cy='56' r='2.2'/%3E%3Ccircle cx='56' cy='56' r='2.2'/%3E%3C/g%3E%3C/svg%3E");
+  --kawung-terang:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='56' viewBox='0 0 56 56'%3E%3Cg fill='none' stroke='%231e3a5f' stroke-opacity='.07' stroke-width='1.1'%3E%3Cellipse cx='14' cy='14' rx='6.5' ry='13' transform='rotate(-45 14 14)'/%3E%3Cellipse cx='42' cy='14' rx='6.5' ry='13' transform='rotate(45 42 14)'/%3E%3Cellipse cx='14' cy='42' rx='6.5' ry='13' transform='rotate(45 14 42)'/%3E%3Cellipse cx='42' cy='42' rx='6.5' ry='13' transform='rotate(-45 42 42)'/%3E%3Ccircle cx='28' cy='28' r='2.2'/%3E%3Ccircle cx='0' cy='0' r='2.2'/%3E%3Ccircle cx='56' cy='0' r='2.2'/%3E%3Ccircle cx='0' cy='56' r='2.2'/%3E%3Ccircle cx='56' cy='56' r='2.2'/%3E%3C/g%3E%3C/svg%3E");
+}
+body { min-height: 100vh; background: var(--kanvas) !important; font-family: var(--f-body); }
+.app-shell-bg { background: var(--kanvas); }
+main.app-main { background: var(--kanvas) !important; min-height:100vh; }
+.font-display { font-family: var(--f-display) !important; }
+.font-mono { font-family: var(--f-mono) !important; }
+.bg-kawung-gelap { background-image: var(--kawung-gelap); }
+.bg-kawung-terang { background-image: var(--kawung-terang); }
 
-/* Tema menu aplikasi: satu warna dinas (biru tua, selaras logo Kemnaker), permukaan polos tanpa gradien.
-   Warna lain hanya dipakai untuk arti status (merah/kuning/hijau). */
-:root { color-scheme: light; --dinas:#1e3a5f; --dinas-dark:#152b47; --dinas-soft:#e8eef6; }
-body { min-height: 100vh; background: #f2f4f7 !important; }
-.app-shell-bg { background: #f2f4f7; }
-
-/* Main workspace */
-main.app-main { background: #f2f4f7 !important; }
-.menu-page { color:#1e293b; }
-.menu-page h1,.menu-page h2,.menu-page h3,.menu-page h4,.menu-page .text-slate-900,.menu-page .text-slate-800 { color:#0f172a !important; }
+/* ---- Teks ---------------------------------------------------------------- */
+.menu-page { color:var(--teks); position:relative; }
+.menu-page h1,.menu-page h2,.menu-page h3 { font-family: var(--f-display); letter-spacing:-.01em; }
+.menu-page h1,.menu-page h2,.menu-page h3,.menu-page h4,.menu-page .text-slate-900,.menu-page .text-slate-800 { color:var(--dinas-ink) !important; }
 .menu-page .text-slate-700 { color:#334155 !important; }
-.menu-page .text-slate-600,.menu-page .text-slate-500 { color:#64748b !important; }
+.menu-page .text-slate-600,.menu-page .text-slate-500 { color:var(--teks-redup) !important; }
 .menu-page .text-slate-400 { color:#94a3b8 !important; }
 
-/* Cards / panels: crisp white with soft depth so they still read as distinct blocks */
+/* ---- Kartu & panel ------------------------------------------------------- */
 .menu-page .bg-white,
 .menu-page .bg-white\/75,
 .menu-page .bg-white\/80,
 .menu-page .bg-white\/85,
 .menu-page .bg-white\/90 {
   background:#ffffff !important;
-  color:#1e293b;
-  border-color:#e2e8f0 !important;
-  box-shadow:0 1px 2px rgba(15,23,42,.05);
+  color:var(--teks) !important;
+  border-color:var(--garis) !important;
+  box-shadow:var(--kartu-bayang);
 }
 .menu-page .bg-slate-50,
 .menu-page .bg-slate-50\/50,
 .menu-page .bg-slate-50\/70,
 .menu-page .bg-slate-100,
-.menu-page .bg-slate-100\/80 {
-  background:#f1f5f9 !important;
-  color:#334155;
-}
+.menu-page .bg-slate-100\/80 { background:#f4f6f9 !important; color:#334155 !important; }
 .menu-page .border-slate-200,.menu-page .border-slate-300,.menu-page .border-slate-100,
-.menu-page .border-white\/80 { border-color:#e2e8f0 !important; }
-.menu-page .divide-slate-200 > :not([hidden]) ~ :not([hidden]) { border-color:#e2e8f0 !important; }
-.menu-page .border-b,.menu-page .border-t { border-color:#e2e8f0 !important; }
-.menu-page tr:hover { background:#f6f8fa !important; }
-.menu-page thead { background:#f1f5f9 !important; }
-.menu-page .shadow-sm,.menu-page .shadow-lg { box-shadow:0 1px 2px rgba(15,23,42,.05); }
+.menu-page .border-white\/80,.menu-page .border-b,.menu-page .border-t { border-color:var(--garis) !important; }
+.menu-page .divide-slate-200 > :not([hidden]) ~ :not([hidden]) { border-color:var(--garis) !important; }
+.menu-page .shadow-sm,.menu-page .shadow-lg { box-shadow:var(--kartu-bayang); }
+.menu-page .rounded-3xl, .menu-page .rounded-2xl { border-radius:12px !important; }
+.menu-page .rounded-xl { border-radius:9px !important; }
 
-/* Inputs stay bright and readable */
+/* ---- Tabel --------------------------------------------------------------- */
+.menu-page table thead, .menu-page thead { background:#f6f8fb !important; }
+.menu-page thead th { color:var(--dinas) !important; letter-spacing:.04em; }
+.menu-page table tbody tr { border-color:var(--garis) !important; }
+.menu-page tr:hover { background:#f7f9fc !important; }
+.menu-page thead select { min-width:88px; }
+
+/* ---- Tombol: tombol gelap bawaan halaman memakai warna dinas ------------ */
+.menu-page .bg-slate-900 { background:var(--dinas) !important; }
+.menu-page .hover\:bg-slate-800:hover, .menu-page .bg-slate-900:hover { background:var(--dinas-dark) !important; }
+.menu-page .border-slate-900 { border-color:var(--dinas) !important; }
+
+/* ---- Input --------------------------------------------------------------- */
 .menu-page input:not([type="radio"]):not([type="checkbox"]),
 .menu-page select,
-.menu-page textarea {
-  background:#ffffff !important;
-  color:#0f172a !important;
-  border-color:#cbd5e1 !important;
-}
+.menu-page textarea { background:#ffffff !important; color:var(--dinas-ink) !important; border-color:#cdd4de !important; }
 .menu-page input:not([type="radio"]):not([type="checkbox"]):focus,
 .menu-page select:focus,
-.menu-page textarea:focus {
-  border-color:var(--dinas) !important;
-  box-shadow:0 0 0 3px rgba(30,58,95,.12);
-}
-.menu-page input::placeholder,.menu-page textarea::placeholder { color:#94a3b8 !important; }
-.menu-page option { background:#ffffff; color:#0f172a; }
+.menu-page textarea:focus { border-color:var(--dinas) !important; box-shadow:0 0 0 3px rgba(30,58,95,.12); outline:none; }
+.menu-page input::placeholder,.menu-page textarea::placeholder { color:#97a1af !important; }
+.menu-page option { background:#ffffff; color:var(--dinas-ink); }
+.menu-page input[type="radio"], .menu-page input[type="checkbox"] { accent-color:var(--dinas); }
 
-/* Dashboard cards get a subtle hover lift */
-.menu-page button.bg-white { color:#0f172a; }
-.menu-page .hover\\:bg-slate-50:hover { background:#f1f5f9 !important; }
-
-/* Dialogs/forms: same bright white, highly readable */
+/* ---- Popup / form di dalam halaman --------------------------------------- */
 .menu-page .fixed .bg-white,
 .menu-page .fixed .bg-white\/95,
-.menu-page .fixed .bg-white\/90 {
-  background:#ffffff !important;
-  color:#0f172a !important;
-  border-color:#e2e8f0 !important;
-}
+.menu-page .fixed .bg-white\/90 { background:#ffffff !important; color:var(--dinas-ink) !important; border-color:var(--garis) !important; }
 .menu-page .fixed h1,.menu-page .fixed h2,.menu-page .fixed h3,.menu-page .fixed h4,
-.menu-page .fixed .text-slate-900,.menu-page .fixed .text-slate-800 { color:#0f172a !important; }
+.menu-page .fixed .text-slate-900,.menu-page .fixed .text-slate-800 { color:var(--dinas-ink) !important; }
 .menu-page .fixed .text-slate-700 { color:#334155 !important; }
-.menu-page .fixed .text-slate-600,.menu-page .fixed .text-slate-500 { color:#64748b !important; }
-.menu-page .fixed input:not([type="radio"]):not([type="checkbox"]),
-.menu-page .fixed select,.menu-page .fixed textarea { background:#ffffff !important; color:#0f172a !important; border-color:#cbd5e1 !important; }
+.menu-page .fixed .text-slate-600,.menu-page .fixed .text-slate-500 { color:var(--teks-redup) !important; }
 
-/* Page title accent */
-.menu-page > div:first-child h1 { letter-spacing:-.025em; }
-
-/* Header tiap menu memakai gaya yang sama; menu dibedakan oleh judul dan ikonnya */
-.app-main { min-height:100vh; }
-.menu-page { position:relative; }
-.menu-page .bg-white, .menu-page .bg-white\/85, .menu-page .bg-white\/90, .menu-page .bg-white\/80, .menu-page .bg-white\/75 { background:#ffffff !important; color:#1e293b !important; }
-.menu-page .bg-slate-50, .menu-page .bg-slate-100 { background:#f1f5f9 !important; color:#334155 !important; }
-.menu-page table thead { background:#f1f5f9 !important; }
-.menu-page table tbody tr { border-color:#e2e8f0 !important; }
-.menu-page .text-slate-900,.menu-page .text-slate-800 { color:#0f172a !important; }
-.menu-page .text-slate-700 { color:#334155 !important; }
-.menu-page .text-slate-600,.menu-page .text-slate-500 { color:#64748b !important; }
-.menu-page .text-slate-400 { color:#94a3b8 !important; }
-.menu-page .border-slate-200,.menu-page .border-slate-300,.menu-page .border-slate-100,.menu-page .border-white\/80 { border-color:#e2e8f0 !important; }
-/* Judul halaman tiap menu: teks biasa di atas garis tipis, bukan banner berwarna. */
-.menu-hero { display:flex; align-items:flex-end; justify-content:space-between; gap:20px; padding:0 0 16px; border-bottom:1px solid #d9dee5; border-radius:0; box-shadow:none; overflow:visible; color:#0f172a; background:none; }
-.menu-kicker { display:block; font-size:12px; font-weight:600; letter-spacing:0; opacity:1; color:#64748b; margin-bottom:4px; }
-.menu-hero h1 { color:#0f172a !important; font-size:26px !important; font-weight:700 !important; letter-spacing:-.01em; }
-.menu-hero p { color:#5b6675 !important; }
+/* ---- Header halaman ------------------------------------------------------
+   Panel putih dengan motif kawung yang memudar ke kiri; dashboard memakai versi biru. */
+.menu-hero {
+  position:relative; overflow:hidden; isolation:isolate;
+  display:flex; align-items:center; justify-content:space-between; gap:20px;
+  padding:22px 26px; border:1px solid var(--garis); border-radius:14px;
+  background:#ffffff; box-shadow:var(--kartu-bayang); color:var(--dinas-ink);
+}
+.menu-hero::before {
+  content:''; position:absolute; inset:0 0 0 auto; width:min(420px,55%); z-index:-1;
+  background-image:var(--kawung-terang);
+  -webkit-mask-image:linear-gradient(to left,#000 30%,transparent);
+          mask-image:linear-gradient(to left,#000 30%,transparent);
+}
+.menu-kicker { display:flex; align-items:center; gap:6px; font-size:12px; font-weight:600; letter-spacing:0; opacity:1; color:var(--teks-redup); margin-bottom:6px; }
+.menu-kicker::before { content:''; width:14px; height:2px; border-radius:2px; background:var(--kuningan); }
+.menu-hero h1 { font-family:var(--f-display); color:var(--dinas-ink) !important; font-size:26px !important; font-weight:800 !important; letter-spacing:-.02em; line-height:1.2; margin:0; }
+.menu-hero p { color:var(--teks-redup) !important; margin-top:6px; }
 .menu-hero-icon { display:none; }
-/* Di layar sempit, tombol aksi di header turun ke bawah judul supaya teksnya tidak terlipat. */
+
+/* Dashboard: sapaan dalam panel biru dinas */
+.menu-dashboard .menu-hero { background:var(--dinas); border-color:var(--dinas); }
+.menu-dashboard .menu-hero::before { background-image:var(--kawung-gelap); width:min(560px,70%); }
+.menu-dashboard .menu-hero h1 { color:#ffffff !important; font-size:30px !important; }
+.menu-dashboard .menu-hero p { color:rgba(255,255,255,.78) !important; }
+.menu-dashboard .menu-kicker { color:rgba(255,255,255,.72); }
+
 @media (max-width: 640px) {
-  .menu-hero { flex-direction:column; align-items:stretch; gap:12px; }
+  .menu-hero { flex-direction:column; align-items:stretch; gap:14px; padding:18px; }
   .menu-hero > button, .menu-hero > a { justify-content:center; white-space:nowrap; }
 }
-/* Dropdown filter di kepala tabel jangan sampai terpotong */
-.menu-page thead select { min-width:88px; }
 @media (max-width: 480px) {
-  .menu-hero h1 { font-size:21px !important; line-height:1.25; }
-  .menu-hero p { font-size:12px !important; }
+  .menu-hero h1, .menu-dashboard .menu-hero h1 { font-size:22px !important; }
+  .menu-hero p { font-size:12.5px !important; }
 }
 
-/* Sudut membulat yang wajar untuk aplikasi kerja; kelas rounded-2xl/3xl bawaan halaman diredam di sini. */
-.menu-page .rounded-3xl, .menu-page .rounded-2xl { border-radius:10px !important; }
-.menu-page .rounded-xl { border-radius:8px !important; }
-.detail-btn { display:inline-flex; align-items:center; gap:5px; padding:7px 11px; border-radius:10px; background:var(--dinas-soft); color:var(--dinas); border:1px solid rgba(30,58,95,.18); font-size:11px; font-weight:800; transition:.2s; }
+.detail-btn { display:inline-flex; align-items:center; gap:5px; padding:7px 11px; border-radius:8px; background:var(--dinas-soft); color:var(--dinas); border:1px solid rgba(30,58,95,.18); font-size:11px; font-weight:800; transition:.2s; }
 .detail-btn:hover { background:#dbe4f0; }
 .vehicle-detail-modal { background:#ffffff; color:#0f172a; }
-.vehicle-detail-head { padding:22px 24px; background:var(--dinas); color:#fff; display:flex; align-items:center; justify-content:space-between; }
+.vehicle-detail-head { padding:22px 24px; background:var(--dinas) var(--kawung-gelap); color:#fff; display:flex; align-items:center; justify-content:space-between; }
 .vehicle-detail-icon { width:52px; height:52px; border-radius:16px; display:flex; align-items:center; justify-content:center; background:rgba(255,255,255,.15); border:1px solid rgba(255,255,255,.2); }
 .vehicle-close { width:40px; height:40px; border-radius:12px; background:rgba(255,255,255,.12); color:#fff; display:flex; align-items:center; justify-content:center; }
 .vehicle-close:hover { background:rgba(255,255,255,.22); }

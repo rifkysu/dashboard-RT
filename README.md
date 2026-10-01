@@ -334,6 +334,8 @@ Hal yang paling sering terlewat:
 - `TRUST_PROXY=true` bila di belakang Nginx; tanpa ini semua pengguna dianggap satu IP (batas koneksi realtime & login cepat penuh).
 - Realtime butuh backend **satu proses** dan `proxy_buffering off` untuk `/api/live/stream` (sudah ada di contoh Nginx).
 - Login Google: daftarkan `GOOGLE_CALLBACK_URL` production di Google Cloud Console.
+- Pakai HTTPS (HTTP/2) seperti contoh Nginx. Server tidak perlu akses internet untuk melayani aplikasi: Tailwind & semua font sudah dibundel saat `npm run build`.
+- Setelah `git pull` yang mengubah `package.json`, jalankan lagi `npm ci` di folder yang berubah (backend/frontend) sebelum build/restart.
 
 ## TROUBLESHOOTING UMUM
 
@@ -352,7 +354,7 @@ Hal yang paling sering terlewat:
 ---
 
 ## TEKNOLOGI YANG DIPAKAI
-- **Frontend**: React 18, React Router, Axios, Tailwind CSS (CDN), Vite, Server-Sent Events (native `EventSource`)
+- **Frontend**: React 18, React Router 7, Axios, Tailwind CSS 3 (dibundel saat build, bukan CDN), Vite, Server-Sent Events (native `EventSource`). Font (Public Sans, Plus Jakarta Sans, JetBrains Mono, Material Symbols) ikut dibundel -- aplikasi tidak memanggil server luar sama sekali saat dibuka.
 - **Backend**: Node.js, Express, Prisma ORM, JSON Web Token (jsonwebtoken), bcryptjs, Passport.js (Google OAuth strategy)
 - **Database**: PostgreSQL, dikelola lewat Prisma Migrate (`backend/prisma/migrations/`) — pgAdmin4 dipakai untuk operasional (lihat isi data, kelola role user).
 

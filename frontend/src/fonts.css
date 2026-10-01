@@ -1,0 +1,47 @@
+/* Semua font dibundel bersama aplikasi (tidak diambil dari Google Fonts saat dibuka),
+   supaya tampilan tetap utuh walau server/jaringan kantor tidak bisa mengakses internet. */
+@import '@fontsource/public-sans/latin-400.css';
+@import '@fontsource/public-sans/latin-500.css';
+@import '@fontsource/public-sans/latin-600.css';
+@import '@fontsource/public-sans/latin-700.css';
+@import '@fontsource/plus-jakarta-sans/latin-500.css';
+@import '@fontsource/plus-jakarta-sans/latin-600.css';
+@import '@fontsource/plus-jakarta-sans/latin-700.css';
+@import '@fontsource/plus-jakarta-sans/latin-800.css';
+@import '@fontsource/jetbrains-mono/latin-500.css';
+
+/* Ikon: Material Symbols Outlined versi statis (wght 400, FILL 0, GRAD 0, opsz 24) -- satu-satunya
+   variasi yang dipakai aplikasi. Dibuat dari paket npm `material-symbols` dengan:
+     fonttools varLib.instancer material-symbols-outlined.woff2 wght=400 FILL=0 GRAD=0 opsz=24 --static
+   (388 KB, dibanding ~4 MB versi variabel lengkap). */
+@font-face {
+  font-family: 'Material Symbols Outlined';
+  font-style: normal;
+  font-weight: 400;
+  font-display: block;
+  src: url('./assets/fonts/material-symbols-outlined-400.woff2') format('woff2');
+}
+.material-symbols-outlined {
+  font-family: 'Material Symbols Outlined';
+  font-weight: normal;
+  font-style: normal;
+  font-size: 24px;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-block;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  font-feature-settings: 'liga';
+  vertical-align: middle;
+  /* Kotak ikon selalu 1em, supaya nama ikon ("arrow_forward") tidak melebar selama font belum termuat. */
+  width: 1em;
+  height: 1em;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+html:not(.icons-ready) .material-symbols-outlined { color: transparent !important; }

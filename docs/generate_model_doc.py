@@ -831,7 +831,7 @@ def isi_infra():
             ["", "React Router DOM", "6.24 (routing SPA)"],
             ["", "Axios", "1.7 (HTTP client, interceptor token & 401)"],
             ["", "Vite + @vitejs/plugin-react", "5.3 (dev server :5173, build ke dist/)"],
-            ["", "Tailwind CSS (CDN) + app-theme.css", "Styling & animasi"],
+            ["", "Tailwind CSS 3 (dibundel saat build) + app-theme.css; font dibundel lokal", "Styling & animasi, tanpa CDN"],
             ["Backend", "Node.js", "22 LTS"],
             ["", "Express", "4.19 (REST API, port 4000)"],
             ["", "Prisma ORM & Prisma Client", "6.19"],

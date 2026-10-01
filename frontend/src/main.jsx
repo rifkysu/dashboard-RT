@@ -2,6 +2,9 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import App from './App.jsx';
+// Urutan penting: font & ikon -> Tailwind -> tema aplikasi (menimpa utilitas Tailwind).
+import './fonts.css';
+import './tailwind.css';
 import './app-theme.css';
 import { AuthProvider } from './context/AuthContext.jsx';
 import { FeedbackProvider } from './components/Feedback.jsx';
