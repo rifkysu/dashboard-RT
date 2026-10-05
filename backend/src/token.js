@@ -18,6 +18,8 @@ function signToken(user) {
       email: user.email,
       role: user.role,
       nama_lengkap: user.nama_lengkap,
+      // Versi sesi: dicocokkan requireAuth dengan users.token_version (lihat middleware/auth.js).
+      tv: user.token_version ?? 0,
     },
     process.env.JWT_SECRET,
     { expiresIn: process.env.JWT_EXPIRES_IN || '8h', algorithm: 'HS256' }

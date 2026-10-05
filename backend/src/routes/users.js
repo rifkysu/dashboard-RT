@@ -61,7 +61,8 @@ router.put('/:id/status', async (req, res) => {
     if (typeof is_active !== 'boolean') return res.status(400).json({ message: 'is_active harus boolean.' });
     if (id === req.user.id) return res.status(400).json({ message: 'Tidak bisa mem-ban/menonaktifkan akun sendiri.' });
 
-    const data = is_active ? { is_active } : { is_active, reset_token: null, reset_token_expires: null, reset_requested_at: null };
+    // Saat di-ban, token_version naik supaya token lama tidak hidup lagi kalau akun nanti diaktifkan ulang.
+    const data = is_active ? { is_active } : { is_active, reset_token: null, reset_token_expires: null, reset_requested_at: null, token_version: { increment: 1 } };
     const user = await prisma.user.update({ where: { id }, data });
     res.json({ data: { id: user.id, is_active: user.is_active } });
   } catch (err) {
@@ -85,7 +86,8 @@ router.post('/:id/reset-link', async (req, res) => {
     const { rawToken, hash, expires } = createResetToken();
     // Permintaan dianggap sudah ditangani begitu admin membuat link-nya.
     await prisma.user.update({ where: { id }, data: { reset_token: hash, reset_token_expires: expires, reset_requested_at: null } });
-    const resetUrl = `${process.env.FRONTEND_URL}/reset-password?token=${rawToken}`;
+    // Token di #fragment: tidak ikut terkirim ke server, jadi tidak tercatat di log Nginx/proxy.
+    const resetUrl = `${process.env.FRONTEND_URL}/reset-password#token=${rawToken}`;
 
     // Kalau SMTP sudah diisi, link sekalian dikirim ke email pemilik akun.
     // Link tetap dikembalikan ke admin sebagai cadangan (Salin / WhatsApp).

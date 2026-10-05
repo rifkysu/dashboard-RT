@@ -33,7 +33,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 LOGO = os.path.join(ROOT, "frontend", "public", "logo-kemnaker.png")
 
-TANGGAL = "30 September 2026"
+TANGGAL = "5 Oktober 2026"
 SISTEM = "Sistem Layanan Biro Umum & Rumah Tangga"
 
 PW, PH = A4
@@ -276,6 +276,86 @@ class Pen:
             c.drawPath(path, stroke=1, fill=1)
             c.setLineWidth(1.1)
 
+    def polyline(self, pts):
+        """Garis siku: semua ruas biasa, ruas terakhir diberi kepala panah."""
+        for (x1, y1), (x2, y2) in zip(pts[:-2], pts[1:-1]):
+            self.c.setStrokeColor(MUTED)
+            self.c.setLineWidth(1.1)
+            self.c.line(self.X(x1), self.Y(y1), self.X(x2), self.Y(y2))
+        self.arrow(*pts[-2], *pts[-1])
+
+    def diamond(self, cx, cy, w, h, title, subs=(), pal="amber2", sz=SZ_M):
+        c = self.c
+        fill, stroke = PALET[pal]
+        c.setFillColor(HexColor(fill))
+        c.setStrokeColor(HexColor(stroke))
+        c.setLineWidth(1)
+        path = c.beginPath()
+        path.moveTo(self.X(cx), self.Y(cy - h / 2))
+        path.lineTo(self.X(cx + w / 2), self.Y(cy))
+        path.lineTo(self.X(cx), self.Y(cy + h / 2))
+        path.lineTo(self.X(cx - w / 2), self.Y(cy))
+        path.close()
+        c.drawPath(path, stroke=1, fill=1)
+        ts, ss, pitch = sz
+        lines = [title, *subs]
+        for i, s in enumerate(lines):
+            by = cy - (len(lines) - 1) * pitch / 2 + i * pitch + ts * 0.33
+            self.text(cx, by, s, ts if i == 0 else ss, NAVY if i == 0 else MUTED, bold=i == 0, align="center")
+
+
+# ------------------------------------------------------------ flowchart
+# Koordinat flowchart: x lokal 0..CONTENT_W (kiri area isi), y dari atas flowable.
+SZ_FC = (7, 6.1, 9.4)
+FC_KIND = {"start": "green", "proc": "blue", "dec": "amber2", "bad": "rose", "info": "violet", "note": "plain"}
+
+
+class Flow:
+    """Penyusun flowchart sederhana: node(kunci, jenis, cx, cy, teks...) lalu link(a, sisi, b, sisi)."""
+
+    def __init__(self, g):
+        self.g, self.n = g, {}
+
+    def node(self, key, kind, cx, cy, title, *subs, w=130, h=None):
+        h = h or (40 if kind == "dec" else 18 + 9.4 * len(subs))
+        x = cx + CONTENT_X
+        if kind == "dec":
+            self.g.diamond(x, cy, w, h, title, subs, FC_KIND[kind], SZ_FC)
+        else:
+            self.g.box(x - w / 2, cy - h / 2, w, h, title, subs, FC_KIND[kind], SZ_FC)
+        self.n[key] = (x, cy, w, h)
+
+    def port(self, key, side):
+        x, y, w, h = self.n[key]
+        return {"t": (x, y - h / 2), "b": (x, y + h / 2), "l": (x - w / 2, y), "r": (x + w / 2, y)}[side]
+
+    def link(self, a, sa, b, sb, label=None, via=()):
+        p1, p2 = self.port(a, sa), self.port(b, sb)
+        via = [(vx + CONTENT_X, vy) for vx, vy in via]
+        if via:
+            pts = [p1, *via, p2]
+        elif p1[0] == p2[0] or p1[1] == p2[1]:
+            pts = [p1, p2]
+        elif sa in "tb":
+            pts = [p1, (p1[0], p2[1]), p2] if sb in "lr" else \
+                  [p1, (p1[0], (p1[1] + p2[1]) / 2), (p2[0], (p1[1] + p2[1]) / 2), p2]
+        else:
+            pts = [p1, (p2[0], p1[1]), p2] if sb in "tb" else \
+                  [p1, ((p1[0] + p2[0]) / 2, p1[1]), ((p1[0] + p2[0]) / 2, p2[1]), p2]
+        self.g.polyline(pts)
+        if label:
+            (x1, y1), (x2, y2) = pts[0], pts[1]
+            if x1 == x2:
+                self.g.text(x1 + 4, y1 + (9 if y2 > y1 else -4), label, 6.3, BLUE, bold=True)
+            elif x2 > x1:
+                self.g.text(x1 + 4, y1 - 3.5, label, 6.3, BLUE, bold=True)
+            else:
+                self.g.text(x1 - 4, y1 - 3.5, label, 6.3, BLUE, bold=True, align="right")
+
+
+def flowchart(height, painter):
+    return Diagram(0, height, lambda g: painter(Flow(g)))
+
 
 # ------------------------------------------------------------------ dokumen
 class ModelDoc(BaseDocTemplate):
@@ -374,7 +454,7 @@ def d_arsitektur(g):
         g.box(72 + 56.5 * i, 537.7, 52, 36, r, ["route"], "wIndigo", SZ_S)
     g.arrow(297, 583.7, 297, 593.7, both=True)
     g.group(62, 593.7, 470, 80, "LAPISAN DATA", "green")
-    for i, (t, s) in enumerate([("Prisma ORM 6", ["schema.prisma", "24 migration"]),
+    for i, (t, s) in enumerate([("Prisma ORM 6", ["schema.prisma", "25 migration"]),
                                 ("PostgreSQL", ["biro_umum_db", "7 tabel inti"]),
                                 ("File Storage", ["backend/uploads/", "(PDF, JPG, PNG)"])]):
         g.box(72 + 155 * i, 608.7, 140, 55, t, s, "green", SZ_L)
@@ -464,6 +544,245 @@ def d_erd(g):
     g.text(123, 347.4, "1 kendaraan : N service", 6.5)
 
 
+# Flowchart bab 9. Kolom: kiri 62, utama 220, kanan 400 (x lokal area isi, lebar 481).
+def fc_umum(f):
+    f.node("buka", "start", 220, 14, "Buka website")
+    f.node("kios", "start", 400, 14, "Layar kiosk")
+    f.node("dl", "dec", 220, 62, "Landing sedang", "maintenance?", w=140)
+    f.node("mtl", "bad", 62, 62, "Pesan maintenance", w=110)
+    f.node("jdw", "proc", 400, 62, "/jadwal-rapat", "jadwal baca saja", w=120)
+    f.node("land", "proc", 220, 114, "Landing page /", "ringkasan + jadwal rapat real-time", w=150)
+    f.node("akun", "dec", 220, 166, "Sudah punya", "akun?", w=120)
+    f.node("daftar", "proc", 62, 166, "Daftar Akun", "peran awal: karyawan", w=110)
+    f.node("login", "proc", 220, 218, "Login", "email + sandi atau SSO Google", w=150)
+    f.node("ok", "dec", 220, 272, "Login berhasil &", "akun aktif?", w=140, h=44)
+    f.node("err", "bad", 400, 272, "Pesan error /", "popup akun diblokir", w=120)
+    f.node("dash", "proc", 220, 326, "Dashboard", "KPI, ruang kosong, pajak H-14", w=150)
+    f.node("logout", "start", 400, 326, "Logout", "token dicabut, ke landing", w=120)
+    f.node("menu", "dec", 220, 380, "Pilih menu", "di sidebar", w=120)
+    f.node("prof", "proc", 62, 380, "Profil", "semua peran", w=110)
+    f.node("adm", "proc", 400, 380, "Settings, Akun & Akses", "admin & kabag", w=120)
+    f.node("modul", "proc", 220, 434, "Pemeliharaan, Pengadaan,", "Kendaraan, Ruang Rapat", w=150)
+    f.node("mt", "dec", 220, 490, "Menu maintenance", "& bukan admin/kabag?", w=160, h=46)
+    f.node("mtm", "bad", 400, 490, "Pemberitahuan", "maintenance (MenuGate)", w=120)
+    f.node("buka2", "start", 220, 546, "Halaman modul terbuka", w=150)
+    f.link("buka", "b", "dl", "t")
+    f.link("dl", "l", "mtl", "r", "Ya")
+    f.link("dl", "b", "land", "t", "Tidak")
+    f.link("kios", "b", "jdw", "t")
+    f.link("land", "b", "akun", "t")
+    f.link("akun", "l", "daftar", "r", "Belum")
+    f.link("daftar", "b", "login", "l")
+    f.link("akun", "b", "login", "t", "Sudah")
+    f.link("login", "b", "ok", "t")
+    f.link("ok", "r", "err", "l", "Tidak")
+    f.link("err", "t", "login", "r")
+    f.link("ok", "b", "dash", "t", "Ya")
+    f.link("dash", "r", "logout", "l")
+    f.link("logout", "r", "land", "r", via=[(472, 326), (472, 114)])
+    f.link("dash", "b", "menu", "t")
+    f.link("menu", "l", "prof", "r")
+    f.link("menu", "r", "adm", "l")
+    f.link("menu", "b", "modul", "t")
+    f.link("modul", "b", "mt", "t")
+    f.link("mt", "r", "mtm", "l", "Ya")
+    f.link("mt", "b", "buka2", "t", "Tidak")
+
+
+def fc_login(f):
+    f.node("login", "start", 220, 14, "Halaman Login")
+    f.node("met", "dec", 220, 62, "Metode", "login", w=110)
+    f.node("sso", "proc", 400, 62, "Redirect Google", "OAuth 2.0", w=120)
+    f.node("lim", "dec", 220, 118, "5x gagal dalam 1 menit", "(IP + email)?", w=160, h=46)
+    f.node("lock", "bad", 62, 118, "Tombol terkunci", "hitung mundur 1 menit", w=114)
+    f.node("cb", "proc", 400, 118, "/sso-callback", "menerima token", w=120)
+    f.node("cek", "dec", 220, 174, "Email & sandi", "cocok?", w=130)
+    f.node("salah", "bad", 62, 174, "Pesan: email atau", "kata sandi salah", w=114)
+    f.node("aktif", "dec", 220, 230, "Akun aktif?", "(is_active)", w=130)
+    f.node("ban", "bad", 62, 230, "Popup", "Akun Anda Diblokir", w=114)
+    f.node("jwt", "proc", 220, 282, "Terbit JWT 8 jam", "catat last_login_at", w=150)
+    f.node("dash", "start", 220, 330, "Popup logo, lalu Dashboard", w=150)
+    f.g.group(CONTENT_X, 362, CONTENT_W, 216, "LUPA KATA SANDI", "indigo")
+    f.node("lupa", "proc", 220, 398, "/forgot-password", "isi email akun", w=150)
+    f.node("smtp", "dec", 220, 452, "SMTP aktif &", "email terkirim?", w=140, h=44)
+    f.node("mail", "proc", 400, 452, "Link reset (1 jam)", "dikirim ke email pemilik", w=120)
+    f.node("notif", "info", 62, 452, "Notifikasi ke admin", "menu Akun & Akses", w=114)
+    f.node("kirim", "info", 62, 504, "Admin klik Kirim Link", "email / salin / WhatsApp", w=114)
+    f.node("reset", "proc", 220, 552, "/reset-password", "sandi baru 8-128, huruf + angka", w=150)
+    f.link("login", "b", "met", "t")
+    f.link("met", "r", "sso", "l", "SSO")
+    f.link("met", "b", "lim", "t", "Email")
+    f.link("lim", "l", "lock", "r", "Ya")
+    f.link("lim", "b", "cek", "t", "Tidak")
+    f.link("sso", "b", "cb", "t")
+    f.link("cb", "b", "aktif", "r")
+    f.link("cek", "l", "salah", "r", "Tidak")
+    f.link("cek", "b", "aktif", "t", "Ya")
+    f.link("aktif", "l", "ban", "r", "Tidak")
+    f.link("aktif", "b", "jwt", "t", "Ya")
+    f.link("jwt", "b", "dash", "t")
+    f.link("lupa", "b", "smtp", "t")
+    f.link("smtp", "r", "mail", "l", "Ya")
+    f.link("smtp", "l", "notif", "r", "Tidak")
+    f.link("notif", "b", "kirim", "t")
+    f.link("mail", "b", "reset", "r")
+    f.link("kirim", "b", "reset", "l")
+
+
+def fc_request(f):
+    tolak = [("auth", "JWT valid?", "(requireAuth)", "Tidak", "401", "kembali ke Login"),
+             ("aktif", "Akun ada & aktif?", "(dibaca ulang dari DB)", "Tidak", "401 ACCOUNT_BANNED",
+              "pengguna dikeluarkan"),
+             ("mt", "Menu maintenance &", "bukan admin/kabag?", "Ya", "503", "pesan maintenance"),
+             ("role", "Peran diizinkan?", "(requireRole)", "Tidak", "403", "peran tidak berwenang"),
+             ("pic", "PIC mengubah data", "milik orang lain?", "Ya", "403", "cek created_by"),
+             ("val", "Input & berkas", "valid? (magic number)", "Tidak", "400", "pesan error jelas")]
+    f.node("req", "start", 200, 14, "Request dari browser", w=150)
+    f.node("api", "proc", 200, 58, "Nginx (HTTPS)", "Express /api, security headers, rate limit", w=170)
+    f.link("req", "b", "api", "t")
+    prev, lolos = "api", None
+    for i, (k, t, s, jawab, kode, ket) in enumerate(tolak):
+        y = 114 + 56 * i
+        f.node(k, "dec", 200, y, t, s, w=160, h=46)
+        f.node(k + "x", "bad", 400, y, kode, ket, w=130)
+        f.link(prev, "b", k, "t", lolos)
+        f.link(k, "r", k + "x", "l", jawab)
+        prev, lolos = k, "Ya" if jawab == "Tidak" else "Tidak"
+    f.node("db", "proc", 200, 470, "Simpan / baca data", "PostgreSQL melalui Prisma", w=150)
+    f.node("res", "start", 200, 520, "Response JSON 200 / 201", w=150)
+    f.node("sse", "info", 400, 470, "Siarkan sinyal SSE", "ke pengguna yang online", w=130)
+    f.link("val", "b", "db", "t", "Ya")
+    f.link("db", "b", "res", "t")
+    f.link("db", "r", "sse", "l", "data berubah")
+    f.g.text(CONTENT_X + 200, 556, "Aturan PIC (data milik sendiri) hanya berlaku di Pemeliharaan dan Pengadaan.",
+             6.8, align="center")
+
+
+def fc_tahapan(f):
+    f.node("add", "start", 220, 14, "Tambah Permintaan", "semua peran", w=150)
+    f.node("form", "proc", 220, 62, "Isi form + dokumen awal", "status: pending", w=150)
+    f.node("kar", "dec", 220, 114, "Pengaju masih", "karyawan?", w=130)
+    f.node("pic", "info", 400, 114, "Peran otomatis", "naik menjadi PIC", w=120)
+    tahap = [("t1", "Tahap 1 - Analisa & HPS", "BOQ, nilai HPS, dokumen"),
+             ("t2", "Tahap 2 - Invoice & Pembayaran", "GUP 1-20 / TUP 1-10 / LS + tanggal",
+              "asal anggaran RM / PNBP, vendor, invoice"),
+             ("t3", "Tahap 3 - Dokumentasi / BAST", "dokumentasi & catatan BAST")]
+    f.link("add", "b", "form", "t")
+    f.link("form", "b", "kar", "t")
+    y = 170
+    prev, side = "kar", "b"
+    for i, (k, t, *s) in enumerate(tahap):
+        f.node(k, "proc", 220, y, t, *s, w=170)
+        f.link(prev, side, k, "t", "Tidak" if prev == "kar" else "Ya")
+        h = f.n[k][3]
+        yd = y + h / 2 + 34
+        f.node(k + "c", "dec", 220, yd, "Selesaikan &" if k == "t3" else "Lanjut & kolom",
+               "kolom wajib lengkap?" if k == "t3" else "wajib lengkap?", w=150, h=44)
+        f.node(k + "p", "bad", 62, yd, "Popup daftar", "kolom yang kosong", w=110)
+        f.link(k, "b", k + "c", "t")
+        f.link(k + "c", "l", k + "p", "r", "Tidak")
+        f.link(k + "p", "t", k, "l")
+        prev, side = k + "c", "b"
+        y = yd + 60
+    f.link("kar", "r", "pic", "l", "Ya")
+    f.link("pic", "b", "t1", "r")
+    f.node("done", "start", 220, y, "Status: selesai", "tanggal_selesai otomatis", w=150)
+    f.link(prev, "b", "done", "t", "Ya")
+    f.node("xl", "note", 400, y, "Export Excel", "filter kolom + rentang tanggal", w=120)
+    f.g.text(CONTENT_X + 400, f.n["t2"][1] - 2, "Simpan Draf: simpan", 6.5, align="center")
+    f.g.text(CONTENT_X + 400, f.n["t2"][1] + 8, "tanpa cek kelengkapan", 6.5, align="center")
+
+
+def fc_kendaraan(f):
+    f.node("menu", "start", 240, 14, "Menu Kendaraan", w=150)
+    f.node("list", "proc", 240, 62, "Daftar kendaraan", "cari, filter merek / status / tahun, tab Roda 2/4/6",
+           w=210)
+    f.node("aksi", "dec", 240, 118, "Aksi", w=100)
+    f.node("add", "proc", 100, 174, "Tambah Kendaraan", "semua peran", w=140)
+    f.node("bmn", "proc", 100, 224, "Data BMN", "No Polisi unik, plat khusus", w=140)
+    f.node("foto", "proc", 100, 274, "Foto maks. 6", "dikompres di browser (1600 px)", w=140)
+    f.node("pdf", "proc", 100, 324, "PDF BPKB & STNK", "opsional", w=140)
+    f.node("save", "start", 100, 376, "Tersimpan", "SSE ke pengguna lain", w=140)
+    f.node("det", "proc", 360, 174, "Buka Detail", "foto, dokumen, riwayat service", w=150)
+    f.node("rol", "dec", 360, 230, "Kabag / PIC", "/ Admin?", w=120)
+    f.node("view", "note", 452, 286, "Hanya lihat", w=56, h=22)
+    f.node("kelola", "proc", 330, 330, "Kelola kendaraan",
+           "ubah status Tersedia / Digunakan / Servis", "update masa berlaku STNK & waktu pajak",
+           "tambah / ganti / hapus foto (maks. 6)", "ganti dokumen BPKB / STNK",
+           "riwayat service + invoice PDF", "hapus kendaraan", w=170)
+    f.node("dash", "info", 330, 430, "Dashboard", "belum bayar pajak & peringatan H-14", w=170)
+    f.link("menu", "b", "list", "t")
+    f.link("list", "b", "aksi", "t")
+    f.link("aksi", "l", "add", "t", "Tambah")
+    f.link("aksi", "r", "det", "t", "Detail")
+    f.link("add", "b", "bmn", "t")
+    f.link("bmn", "b", "foto", "t")
+    f.link("foto", "b", "pdf", "t")
+    f.link("pdf", "b", "save", "t")
+    f.link("det", "b", "rol", "t")
+    f.link("rol", "r", "view", "t", "Tidak")
+    f.link("rol", "b", "kelola", "t", "Ya", via=[(360, 270), (330, 270)])
+    f.link("kelola", "b", "dash", "t")
+
+
+def fc_rapat(f):
+    f.node("menu", "start", 200, 14, "Menu Ruang Rapat", w=150)
+    f.node("grid", "proc", 200, 62, "Grid jadwal per bulan", "ruangan x tanggal, infinite scroll", w=170)
+    f.node("add", "proc", 200, 118, "Tambah Booking", "ruang, agenda, PIC, tanggal s.d., jam", w=170)
+    f.node("val", "dec", 200, 174, "Jam & rentang valid?", "(maks. 90 hari)", w=150, h=44)
+    f.node("valx", "bad", 46, 174, "Pesan validasi", "per kolom", w=88)
+    f.node("lock", "proc", 200, 230, "Kunci ruangan", "advisory lock per ruang", w=150)
+    f.node("bentrok", "dec", 200, 286, "Bentrok tanggal", "+ jam?", w=140, h=44)
+    f.node("bx", "bad", 46, 286, "409 - tampil", "booking bentrok", w=88)
+    f.node("ok", "proc", 200, 342, "Booking tersimpan (201)", "nomor surat opsional", w=150)
+    f.node("sse", "info", 200, 400, "Sinyal SSE", "kalender, dashboard, landing & kiosk", w=170)
+    f.node("cancel", "start", 400, 118, "Cancel booking", w=130)
+    f.node("pilih", "proc", 400, 174, "Pilih tanggal", "+ alasan (opsional)", w=130)
+    f.node("batal", "proc", 400, 230, "Tanggal terpilih batal", "rentang dipecah bila di tengah", w=130)
+    f.node("simpan", "proc", 400, 286, "Data tetap tersimpan", "cancelled_at, cancel_reason", w=130)
+    f.link("menu", "b", "grid", "t")
+    f.link("grid", "b", "add", "t")
+    f.link("add", "b", "val", "t")
+    f.link("val", "l", "valx", "r", "Tidak")
+    f.link("val", "b", "lock", "t", "Ya")
+    f.link("lock", "b", "bentrok", "t")
+    f.link("bentrok", "l", "bx", "r", "Ya")
+    f.link("bentrok", "b", "ok", "t", "Tidak")
+    f.link("ok", "b", "sse", "t")
+    f.link("grid", "r", "cancel", "t")
+    f.link("cancel", "b", "pilih", "t")
+    f.link("pilih", "b", "batal", "t")
+    f.link("batal", "b", "simpan", "t")
+    f.link("simpan", "r", "sse", "r", via=[(476, 286), (476, 400)])
+
+
+def fc_admin(f):
+    f.node("adm", "start", 240, 14, "Admin / Kabag", w=150)
+    f.node("set", "proc", 110, 70, "Settings", "Mode Maintenance", w=160)
+    f.node("tog", "proc", 110, 120, "Aktif / nonaktifkan menu", "+ pesan khusus per menu", w=160)
+    f.node("sse", "info", 110, 170, "Sinyal SSE ke semua", "pengguna yang online", w=160)
+    f.node("ui", "proc", 110, 220, "Frontend: menu terkunci", "(MenuGate)", w=160)
+    f.node("api", "bad", 110, 270, "Backend: API menolak", "HTTP 503", w=160)
+    f.node("bebas", "note", 110, 322, "Admin & kabag tetap bisa", "membuka semua menu", w=160)
+    f.node("akun", "proc", 370, 70, "Akun & Akses", "daftar akun, peran, login terakhir", w=170)
+    f.node("pilih", "dec", 370, 126, "Aksi", w=100)
+    f.node("ban", "proc", 370, 186, "Ban / aktifkan akun", "kecuali akun sendiri", w=170)
+    f.node("efek", "bad", 370, 236, "Ditolak di request berikutnya", "link reset aktif ikut dihapus", w=170)
+    f.node("rst", "proc", 370, 290, "Permintaan reset sandi", "Kirim Link: email / salin / WA", w=170)
+    f.node("pg", "note", 370, 346, "pgAdmin 4", "ubah peran (termasuk admin) manual", w=170)
+    f.link("adm", "b", "set", "t")
+    f.link("adm", "b", "akun", "t")
+    f.link("set", "b", "tog", "t")
+    f.link("tog", "b", "sse", "t")
+    f.link("sse", "b", "ui", "t")
+    f.link("ui", "b", "api", "t")
+    f.link("api", "b", "bebas", "t")
+    f.link("akun", "b", "pilih", "t")
+    f.link("pilih", "b", "ban", "t", "Ban")
+    f.link("ban", "b", "efek", "t")
+    f.link("pilih", "r", "rst", "r", "Reset", via=[(470, 126), (470, 290)])
+
+
 def isi_aplikasi():
     return [
         h1("1. Ringkasan Aplikasi"),
@@ -538,7 +857,7 @@ def isi_aplikasi():
         *bullets(
             "Login email & kata sandi; validasi per kolom (email wajib & berformat benar, kata sandi wajib).",
             "Setelah login berhasil muncul **popup animasi logo** selama 3 detik (\"Selamat datang, nama\") "
-            "lalu masuk Dashboard; saat logout muncul popup \"Sampai jumpa\" lalu kembali ke landing page "
+            "lalu masuk Dashboard; saat logout token dicabut di server, muncul popup \"Sampai jumpa\" lalu kembali ke landing page "
             "(sesi yang berakhir karena hal lain, mis. token kedaluwarsa, diarahkan ke halaman login).",
             "Daftar Akun: nama (min. 3 huruf, boleh gelar), email, nomor HP Indonesia, unit kerja, kata sandi "
             "min. 8 karakter berisi huruf & angka. Setelah daftar, pengguna diarahkan ke halaman Login (tidak "
@@ -684,6 +1003,7 @@ def isi_aplikasi():
             ["Auth", "POST /auth/register", "Publik", "Daftar akun karyawan (tanpa token)"],
             ["", "POST /auth/login", "Publik", "Login, mengembalikan JWT"],
             ["", "POST /auth/forgot-password, /auth/reset-password", "Publik", "Minta & pakai link reset"],
+            ["", "POST /auth/logout", "Login", "Cabut token (token_version naik)"],
             ["", "GET /auth/me; GET /auth/google", "Login; Publik", "Profil sesi; mulai SSO Google"],
             ["Dashboard", "GET /dashboard/summary, /dashboard/activities", "Login", "Ringkasan KPI & aktivitas"],
             ["Pemeliharaan", "GET / , GET /:id, POST /", "Login", "Daftar, detail, ajukan"],
@@ -711,14 +1031,14 @@ def isi_aplikasi():
 
         PageBreak(),
         h1("7. Model Data"),
-        p("Skema database didefinisikan di `backend/prisma/schema.prisma` dan diterapkan melalui 24 migration "
-          "berurutan (0001 s.d. 0024). Relasi *created_by/updated_by* ke tabel users memakai ON DELETE SET "
+        p("Skema database didefinisikan di `backend/prisma/schema.prisma` dan diterapkan melalui 25 migration "
+          "berurutan (0001 s.d. 0025). Relasi *created_by/updated_by* ke tabel users memakai ON DELETE SET "
           "NULL agar data tetap ada saat akun dihapus."),
         Diagram(137.2, 399.2, d_erd),
         caption("Gambar 5. Diagram relasi entitas (ringkas)"),
         table([32, 42, 100], [
             ["Tabel", "Isi", "Kunci & aturan penting"],
-            ["users", "Akun pengguna", "email unik; role enum; password bcrypt; token reset disimpan sebagai hash"],
+            ["users", "Akun pengguna", "email unik; role enum; password bcrypt; token reset disimpan sebagai hash; token_version untuk mencabut sesi"],
             ["pemeliharaan", "Permintaan pemeliharaan",
              "kode unik REQ-tahun-nnnn; kategori sarana/prasarana; status tahap enum"],
             ["pengadaan", "Permintaan pengadaan", "kode unik PGD-tahun-nnnn; nilai_hps desimal (18,2)"],
@@ -755,6 +1075,50 @@ def isi_aplikasi():
             ["Berkas", "Hanya PDF/JPG/PNG/WebP/DOC/DOCX/XLS/XLSX; isi dicek magic number di server & browser; "
              "surat rapat maks. 8 MB, dokumen lain maks. 12 MB; nama berkas disanitasi."],
         ]),
+
+        PageBreak(),
+        h1("9. Flowchart Aplikasi"),
+        h2("9.1 Alur umum pengguna"),
+        p("Pengunjung masuk lewat landing page. Halaman dashboard hanya bisa dibuka setelah login, dan setiap "
+          "menu modul dapat ditutup oleh Mode Maintenance kecuali untuk admin & kabag."),
+        flowchart(560, fc_umum),
+        caption("Gambar 6. Flowchart alur umum: landing page, login, dashboard, dan menu"),
+        PageBreak(),
+        h2("9.2 Login, SSO, dan lupa kata sandi"),
+        p("Link reset kata sandi tidak pernah ditampilkan kepada peminta; link hanya dikirim ke email pemilik "
+          "akun atau diteruskan oleh admin."),
+        flowchart(580, fc_login),
+        caption("Gambar 7. Flowchart login email/sandi, login SSO Google, dan lupa kata sandi"),
+        PageBreak(),
+        h2("9.3 Pemeriksaan setiap request API"),
+        p("Setiap request ke modul yang memerlukan login melewati pemeriksaan berurutan di backend. Peran dan "
+          "status akun dibaca ulang dari database, bukan dari isi token."),
+        flowchart(562, fc_request),
+        caption("Gambar 8. Flowchart pemeriksaan request API dan kode respons penolakannya"),
+        PageBreak(),
+        h2("9.4 Pemeliharaan & Pengadaan"),
+        p("Kedua modul memakai alur yang sama. Tahapan diproses oleh kabag, admin, atau PIC untuk data yang "
+          "dibuatnya sendiri; karyawan hanya melihat dan mengajukan."),
+        flowchart(520, fc_tahapan),
+        caption("Gambar 9. Flowchart permintaan Pemeliharaan / Pengadaan dari pengajuan hingga selesai"),
+        PageBreak(),
+        h2("9.5 Kendaraan"),
+        p("Semua peran dapat menambah kendaraan. Mengubah, menghapus, mengelola foto/dokumen, dan mencatat "
+          "riwayat service hanya untuk kabag, PIC, dan admin."),
+        flowchart(445, fc_kendaraan),
+        caption("Gambar 10. Flowchart tambah kendaraan dan pengelolaan dari modal Detail"),
+        PageBreak(),
+        h2("9.6 Ruang Rapat"),
+        p("Semua peran dapat booking, mengedit booking & surat, dan membatalkan. Edit booking melewati "
+          "pemeriksaan bentrok yang sama dengan booking baru."),
+        flowchart(415, fc_rapat),
+        caption("Gambar 11. Flowchart booking ruang rapat dan cancel per tanggal"),
+        PageBreak(),
+        h2("9.7 Mode Maintenance & Akun"),
+        p("Settings dan Akun & Akses hanya untuk admin dan kabag. Peran admin hanya dapat diberikan manual "
+          "melalui pgAdmin 4."),
+        flowchart(362, fc_admin),
+        caption("Gambar 12. Flowchart Mode Maintenance dan pengelolaan akun"),
     ]
 
 
@@ -835,7 +1199,7 @@ def isi_infra():
             ["Frontend", "React, React DOM", "18.3"],
             ["", "React Router DOM", "6.24 (routing SPA)"],
             ["", "Axios", "1.7 (HTTP client, interceptor token & 401)"],
-            ["", "Vite + @vitejs/plugin-react", "5.3 (dev server :5173, build ke dist/)"],
+            ["", "Vite + @vitejs/plugin-react", "8.3 (dev server :5173, build ke dist/)"],
             ["", "Tailwind CSS 3 (dibundel saat build) + app-theme.css; font dibundel lokal", "Styling & animasi, tanpa CDN"],
             ["Backend", "Node.js", "22 LTS"],
             ["", "Express", "4.19 (REST API, port 4000)"],
@@ -855,7 +1219,7 @@ def isi_infra():
             ["backend/src/routes", "auth, dashboard, pemeliharaan, pengadaan, kendaraan, ruangRapat, maintenance, users"],
             ["backend/src/middleware", "auth (JWT & peran), maintenance, security (header, rate limit, batas SSE)"],
             ["backend/src", "prisma.js, validate.js, fileStorage.js, fileSignature.js, token.js, mailer.js, logger.js"],
-            ["backend/prisma", "schema.prisma dan 24 migration (sumber kebenaran skema)"],
+            ["backend/prisma", "schema.prisma dan 25 migration (sumber kebenaran skema)"],
             ["backend/scripts", "db-verify.js (cek kolom & jumlah baris), cleanup-uploads.js (berkas yatim)"],
             ["backend/sql", "Script SQL manual untuk pgAdmin 4 (arsip pra-Prisma & sinkronisasi)"],
             ["frontend/src", "pages, components, context (AuthContext), live.js + hooks (useLive, SSE), utils"],
@@ -898,7 +1262,7 @@ def isi_infra():
         *bullets(
             "DBMS PostgreSQL 18, database `biro_umum_db`, skema `public`; 7 tabel inti + tabel riwayat "
             "migration Prisma (`_prisma_migrations`).",
-            "Perubahan struktur **hanya** melalui migration Prisma (0001 s.d. 0024) agar Prisma dan pgAdmin 4 "
+            "Perubahan struktur **hanya** melalui migration Prisma (0001 s.d. 0025) agar Prisma dan pgAdmin 4 "
             "selalu sinkron. Cek sinkron: `npx prisma migrate status` dan `npx prisma migrate diff "
             "--from-schema-datasource ... --to-schema-datamodel ...` (read-only).",
             "Integritas dijaga di level database: UNIQUE (email, kode, plate, menu_key, service per tanggal), "
@@ -934,16 +1298,23 @@ def isi_infra():
         caption("Gambar 2. Lapisan pemeriksaan keamanan pada setiap request"),
         table([32, 142], [
             ["Kontrol", "Implementasi"],
-            ["Header keamanan", "CSP, X-Frame-Options DENY, X-Content-Type-Options nosniff, Referrer-Policy, "
-             "Permissions-Policy, COOP/CORP; header X-Powered-By dimatikan."],
+            ["Header keamanan", "API: CSP, X-Frame-Options DENY, X-Content-Type-Options nosniff, Referrer-Policy, "
+             "Permissions-Policy, COOP/CORP; header X-Powered-By dimatikan. Halaman web (Nginx, "
+             "docs/deploy/security-headers.conf): HSTS 1 tahun, CSP script-src 'self' (tanpa script inline), "
+             "Referrer-Policy no-referrer, X-Frame-Options DENY."],
+            ["Server web", "Nginx: hanya TLS 1.2/1.3, HTTP dialihkan ke HTTPS, versi Nginx disembunyikan "
+             "(server_tokens off), file tersembunyi (.env, .git) ditolak."],
             ["CORS", "Hanya origin FRONTEND_URL; metode GET/POST/PUT/DELETE/OPTIONS."],
             ["Rate limit", "Global 180 request/menit per akun (per IP bila belum login); login 5/menit per "
              "IP+email dan 30/menit per IP; daftar 50/jam; lupa sandi 5/jam; reset 20/jam; koneksi SSE maks. "
              "200 per IP & 1000 total."],
             ["Autentikasi", "JWT HS256 berlaku 8 jam; peran & status aktif dibaca ulang dari database setiap "
-             "request; akun yang di-ban langsung ditolak (kode ACCOUNT_BANNED) dan dikeluarkan dari sesi."],
+             "request; akun yang di-ban langsung ditolak (kode ACCOUNT_BANNED) dan dikeluarkan dari sesi. "
+             "Token membawa versi sesi (users.token_version) yang naik saat logout, reset kata sandi, atau "
+             "ban, sehingga token lama langsung tidak berlaku walau belum kedaluwarsa."],
             ["Kata sandi", "bcrypt cost 12; token reset acak 32 byte, disimpan sebagai hash SHA-256, berlaku "
-             "1 jam, tidak pernah ditampilkan ke peminta publik."],
+             "1 jam, tidak pernah ditampilkan ke peminta publik; token dikirim di #fragment link sehingga "
+             "tidak tercatat di log server."],
             ["Otorisasi", "RBAC per endpoint (requireRole) + aturan kepemilikan data PIC; menu disembunyikan di "
              "frontend."],
             ["Validasi input", "Validasi tipe, panjang, tanggal, nominal di backend (validate.js) dan frontend; "
@@ -983,7 +1354,8 @@ def isi_infra():
             "2) Ambil kode terbaru, jalankan `npm install` di backend/ (otomatis `prisma generate`) dan "
             "frontend/.",
             "3) Terapkan skema: `npx prisma migrate deploy`; cek dengan `npx prisma migrate status`.",
-            "4) Build frontend: `npm run build`, sajikan folder dist/ (fallback semua rute ke index.html).",
+            "4) Build frontend: `npm run build`, sajikan folder dist/ (fallback semua rute ke index.html) "
+            "memakai docs/deploy/nginx.conf.example + security-headers.conf.",
             "5) Restart backend (`npm start` via process manager); cek `GET /api/health`.",
             "6) Uji singkat: login, buka tiap menu, buat & batalkan satu booking uji.",
             "Database lama yang dibuat dari script pgAdmin: tandai baseline dengan "

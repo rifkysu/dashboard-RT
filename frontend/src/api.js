@@ -27,7 +27,7 @@ api.interceptors.response.use(
       // redirect ke /login dan membajak pengalaman landing page.
       const publicPath = ['/login', '/jadwal-rapat', '/'].includes(window.location.pathname);
       const url = String(err.config?.url || '');
-      const isBackgroundCheck = url.includes('/auth/me') || url.includes('/ruang-rapat/public-schedule') || url.includes('/maintenance');
+      const isBackgroundCheck = url.includes('/auth/me') || url.includes('/auth/logout') || url.includes('/ruang-rapat/public-schedule') || url.includes('/maintenance');
       // Akun di-ban admin saat sedang login -> langsung keluarkan (termasuk dari
       // polling /auth/me) dan tampilkan popup pemberitahuan ban di halaman Login.
       if (err.response.data?.code === 'ACCOUNT_BANNED') {

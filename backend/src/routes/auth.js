@@ -203,7 +203,7 @@ router.post('/forgot-password', forgotPasswordLimiter, async (req, res) => {
     if (user) {
       const { rawToken, hash, expires } = createResetToken();
       prisma.user.update({ where: { id: user.id }, data: { reset_token: hash, reset_token_expires: expires } })
-        .then(() => sendResetPasswordEmail({ to: user.email, nama: user.nama_lengkap, resetUrl: `${process.env.FRONTEND_URL}/reset-password?token=${rawToken}` }))
+        .then(() => sendResetPasswordEmail({ to: user.email, nama: user.nama_lengkap, resetUrl: `${process.env.FRONTEND_URL}/reset-password#token=${rawToken}` }))
         .catch(async (err) => {
           // Email gagal terkirim -> jangan sampai pengguna terlantar: masuk ke notifikasi admin.
           logger.error('Kirim email reset password gagal', { error: err, user_id: user.id });
@@ -239,13 +239,29 @@ router.post('/reset-password', resetPasswordLimiter, async (req, res) => {
     const password_hash = await bcrypt.hash(password, 12);
     await prisma.user.update({
       where: { id: user.id },
-      data: { password_hash, reset_token: null, reset_token_expires: null, reset_requested_at: null },
+      // token_version naik -> semua sesi lama (mis. milik orang yang mencuri sandi) langsung diputus.
+      data: { password_hash, reset_token: null, reset_token_expires: null, reset_requested_at: null, token_version: { increment: 1 } },
     });
 
     res.json({ message: 'Kata sandi berhasil diubah. Silakan login dengan kata sandi baru.' });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Terjadi kesalahan server saat mereset kata sandi.' });
+  }
+});
+
+// ---------------------------------------------------------
+// POST /api/auth/logout -> cabut token yang sedang dipakai.
+// token_version naik, jadi token ini (dan sesi akun yang sama di perangkat lain)
+// tidak bisa dipakai lagi walaupun masa berlaku 8 jamnya belum habis.
+// ---------------------------------------------------------
+router.post('/logout', requireAuth, async (req, res) => {
+  try {
+    await prisma.user.update({ where: { id: req.user.id }, data: { token_version: { increment: 1 } } });
+    res.json({ message: 'Berhasil logout.' });
+  } catch (err) {
+    logger.error('POST logout gagal', { error: err, user_id: req.user.id });
+    res.status(500).json({ message: 'Gagal logout di server.' });
   }
 });
 

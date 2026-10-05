@@ -110,6 +110,10 @@ export function AuthProvider({ children }) {
   // React Router 7 memproses perpindahan halaman di startTransition, jadi user=null bisa
   // tergambar lebih dulu daripada pindah ke '/'.
   function logout() {
+    // Cabut token di server juga (token_version naik), supaya token yang sempat tersalin
+    // tidak bisa dipakai lagi. Header diisi manual karena token langsung dihapus di bawah.
+    const token = localStorage.getItem('token');
+    if (token) api.post('/auth/logout', null, { headers: { Authorization: `Bearer ${token}` } }).catch(() => {});
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     setLoggedOut(true);

@@ -29,7 +29,7 @@ async function requireAuth(req, res, next) {
 
     const current = await prisma.user.findUnique({
       where: { id },
-      select: { role: true, is_active: true, nama_lengkap: true, email: true },
+      select: { role: true, is_active: true, nama_lengkap: true, email: true, token_version: true },
     });
     // Akun di-ban admin saat masih login -> sesi langsung diputus dan frontend
     // menampilkan pemberitahuan ban (lihat kode ACCOUNT_BANNED di api.js).
@@ -38,6 +38,10 @@ async function requireAuth(req, res, next) {
     }
     if (!current || !current.is_active || !['karyawan', 'kabag', 'pic', 'admin'].includes(current.role)) {
       return res.status(401).json({ message: 'Akun tidak ditemukan atau tidak aktif. Silakan login kembali.' });
+    }
+    // Token dari sebelum logout / reset kata sandi / ban -> sudah dicabut walau belum kedaluwarsa.
+    if (payload.tv !== current.token_version) {
+      return res.status(401).json({ message: 'Sesi Anda sudah berakhir. Silakan login kembali.' });
     }
 
     req.user = { id, email: current.email, role: current.role, nama_lengkap: current.nama_lengkap };

@@ -1,12 +1,17 @@
-import React, { useState } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import api from '../api';
 import BrandMark from '../components/BrandMark';
 import { passwordIssue } from '../utils/validation';
 
 export default function ResetPassword() {
-  const [searchParams] = useSearchParams();
-  const token = searchParams.get('token') || '';
+  // Token ada di #fragment (tidak terkirim ke server/log). ?token= tetap dibaca untuk link lama.
+  // Setelah dibaca, token dihapus dari address bar & riwayat browser.
+  const [token] = useState(() => new URLSearchParams(window.location.hash.slice(1)).get('token')
+    || new URLSearchParams(window.location.search).get('token') || '');
+  useEffect(() => {
+    if (token) window.history.replaceState(null, '', window.location.pathname);
+  }, [token]);
   const navigate = useNavigate();
 
   const [password, setPassword] = useState('');

@@ -94,6 +94,9 @@ Full-stack app (React + Node.js/Express + PostgreSQL + **Prisma**) untuk mengelo
 ### 🔒 Keamanan
 - Otorisasi role diterapkan **di dua lapis**: disable di UI (frontend) **dan** ditolak di API (backend) — aman walau seseorang mencoba akses API langsung (mis. lewat Postman).
 - Rate limiting di endpoint sensitif: login (5x/menit), register, dan lupa password.
+- **Sesi bisa dicabut** — setiap token JWT membawa versi sesi (`users.token_version`, klaim `tv`). Versi ini naik saat **logout** (`POST /api/auth/logout`), **reset kata sandi**, atau **akun di-ban**, dan `requireAuth` menolak token yang versinya beda. Jadi token yang sempat dicuri langsung mati begitu pemiliknya logout atau mereset sandi, tanpa menunggu 8 jam. Konsekuensinya: logout di satu perangkat ikut mengeluarkan sesi akun yang sama di perangkat lain.
+- **Link reset kata sandi memakai `#token=`** (bukan `?token=`) — bagian `#` tidak pernah dikirim ke server, jadi token tidak tercatat di log Nginx/proxy; halaman reset langsung menghapusnya dari address bar.
+- **Header keamanan halaman web** (HSTS, CSP tanpa script inline, `Referrer-Policy: no-referrer`, dll.) dipasang Nginx lewat `docs/deploy/security-headers.conf`. Karena itu `index.html` tidak boleh berisi `<script>` inline — script awal ada di `frontend/public/boot.js`.
 - Header keamanan standar (CSP, X-Frame-Options, dll) di setiap response API.
 - **Validasi isi file, bukan cuma klaim tipe file** — semua upload dokumen (Pemeliharaan, Pengadaan, Kendaraan) dicek **magic number**-nya di server (`backend/src/fileSignature.js`) supaya file yang diklaim PDF/JPG/PNG/DOC/XLS beneran punya isi sesuai tipe itu, bukan script/file lain yang cuma diganti nama/ekstensi/Content-Type. Frontend juga punya pengecekan yang sama (`frontend/src/utils/fileSignature.js`) untuk kasih peringatan instan sebelum upload — tapi validasi di server yang jadi penentu akhir, karena cek di client bisa dilewati kalau API dipanggil langsung.
 - **Preview dokumen pakai Blob URL, bukan `data:` URI mentah** (`frontend/src/components/DocumentViewer.jsx`, dipakai di semua menu yang punya tombol "Lihat" dokumen). Blob URL cuma valid di memori tab/browser yang membuatnya — kalau di-copy dan dibuka di device/browser lain (termasuk oleh orang yang tidak login), otomatis gagal dimuat, beda dengan `data:` URI yang sifatnya *self-contained* dan bisa dibuka di mana saja tanpa hit ke server.
@@ -312,6 +315,7 @@ Contoh siap pakai (tinggal ganti nilai bertanda `<<GANTI>>`):
 - `backend/.env.production.example` → salin jadi `backend/.env`
 - `frontend/.env.production.example` → salin jadi `frontend/.env.production`
 - `docs/deploy/nginx.conf.example` → konfigurasi Nginx (frontend + API satu domain, termasuk realtime)
+- `docs/deploy/security-headers.conf` → header keamanan halaman web, salin ke `/etc/nginx/snippets/biro-umum-security-headers.conf`
 
 Urutan di server:
 
@@ -332,11 +336,21 @@ Urutan di server:
    npm ci
    npm run build                                 # hasil di frontend/dist
    ```
-4. Nginx: pakai `docs/deploy/nginx.conf.example`, sesuaikan domain & path `frontend/dist`, lalu `sudo nginx -t && sudo systemctl reload nginx`.
+4. Nginx: pakai `docs/deploy/nginx.conf.example`, sesuaikan domain & path `frontend/dist`, salin `docs/deploy/security-headers.conf` ke `/etc/nginx/snippets/biro-umum-security-headers.conf`, lalu `sudo nginx -t && sudo systemctl reload nginx`.
+5. Cek header: `curl -sI https://<<GANTI_DOMAIN>>/ | grep -i -E "strict-transport|content-security"` harus menampilkan keduanya.
+
+Checklist keamanan server (wajib, di luar kode):
+- Firewall: hanya buka port **80/443** ke publik. Port **4000** (backend) & **5432** (PostgreSQL) hanya boleh diakses dari server itu sendiri / komputer admin.
+- PostgreSQL: password kuat (bukan `postgres`/`admin`), user database khusus aplikasi bila memungkinkan.
+- `JWT_SECRET` acak panjang (mis. `node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"`), tidak sama dengan lingkungan development. Mengganti `JWT_SECRET` = semua orang ter-logout.
+- Backup otomatis harian database + `backend/uploads/`, simpan salinan di lokasi lain, dan uji restore berkala.
+- Jangan jalankan `npm run dev` (Vite dev server) di server production — sajikan hanya `frontend/dist`.
+- Rutin `npm audit` di backend & frontend dan update OS/Node/Nginx/PostgreSQL. Catatan: `npm audit` frontend masih melaporkan `braces` (dipakai Tailwind 3 saat build) — hanya berjalan saat build dengan pola file milik sendiri, tidak terkirim ke browser; hilang bila nanti migrasi ke Tailwind 4.
 
 Hal yang paling sering terlewat:
 - `FRONTEND_URL` (backend) harus sama persis dengan alamat yang dibuka pengguna, termasuk `https://` -- kalau beda, semua request ditolak CORS.
 - `VITE_API_URL` ditanam saat build -- kalau diganti, `npm run build` ulang.
+- Deploy pertama setelah update keamanan ini: semua pengguna perlu **login ulang sekali** (token lama tidak membawa versi sesi).
 - `TRUST_PROXY=true` bila di belakang Nginx; tanpa ini semua pengguna dianggap satu IP (batas koneksi realtime & login cepat penuh).
 - Realtime butuh backend **satu proses** dan `proxy_buffering off` untuk `/api/live/stream` (sudah ada di contoh Nginx).
 - Login Google: daftarkan `GOOGLE_CALLBACK_URL` production di Google Cloud Console.

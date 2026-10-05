@@ -14,6 +14,10 @@ Versi ini menambahkan hardening dasar untuk deployment produksi:
 - Endpoint upload tidak diekspos sebagai folder static publik.
 - Role `kabag`/`pic` tidak dapat dibuat melalui self-registration; role sensitif harus diberikan oleh administrator.
 - Kode nomor permintaan memakai `crypto.randomInt()`.
+- Token JWT bisa dicabut: versi sesi (`users.token_version`) naik saat logout, reset kata sandi, atau ban; token dengan versi lama ditolak.
+- Link reset kata sandi memakai `#token=` agar token tidak tercatat di log server.
+- Halaman web diberi HSTS, CSP (`script-src 'self'`, tanpa script inline), `Referrer-Policy: no-referrer`, dll. lewat `docs/deploy/security-headers.conf`; Nginx hanya TLS 1.2/1.3, `server_tokens off`, file tersembunyi ditolak.
+- Frontend memakai Vite 8 (celah keamanan dev server Vite 5 sudah tertutup).
 
 ## Penting
 
@@ -27,4 +31,5 @@ Untuk deployment:
 2. Buat `backend/.env` dari `.env.example` dan isi secret/database production.
 3. `npm start`
 4. Build frontend di server/build pipeline dengan `cd frontend && npm ci && npm run build`.
-5. Sajikan `frontend/dist` melalui HTTPS/reverse proxy.
+5. Sajikan `frontend/dist` melalui HTTPS/reverse proxy memakai `docs/deploy/nginx.conf.example` + `security-headers.conf`.
+6. Ikuti "Checklist keamanan server" di README Bagian 6 (firewall, password DB, backup, `JWT_SECRET`).

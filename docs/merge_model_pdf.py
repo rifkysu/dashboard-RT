@@ -21,7 +21,7 @@ A4_LAND = (841.89, 595.28)
 
 # (dokumen asli, penanda nama diagram, judul entri daftar isi, y baris terakhir daftar isi)
 DOCS = [
-    ("Model_Aplikasi_Biro_Umum.pdf", "aplikasi", "Lampiran. Diagram Aplikasi Model (format SEB)", 575.087),
+    ("Model_Aplikasi_Biro_Umum.pdf", "aplikasi", "Lampiran. Diagram Aplikasi Model (format SEB)", 552.087),
     ("Model_Infrastruktur_Biro_Umum.pdf", "infra",
      "Lampiran. Diagram Infrastruktur Model (Server, Jaringan, Sistem Penghubung)", 483.197),
 ]

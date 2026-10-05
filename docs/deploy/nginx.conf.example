@@ -6,7 +6,13 @@
 #  Pasangannya:
 #    backend/.env   -> FRONTEND_URL=https://<<GANTI_DOMAIN>>, TRUST_PROXY=true
 #    frontend/.env.production -> VITE_API_URL=https://<<GANTI_DOMAIN>>/api
+#
+#  Header keamanan halaman web ada di security-headers.conf (di-include di bawah).
+#  Salin ke /etc/nginx/snippets/biro-umum-security-headers.conf.
 # =====================================================================
+
+# Sembunyikan versi Nginx di header & halaman error.
+server_tokens off;
 
 server {
     listen 80;
@@ -21,6 +27,15 @@ server {
 
     ssl_certificate     /etc/letsencrypt/live/<<GANTI_DOMAIN>>/fullchain.pem;
     ssl_certificate_key /etc/letsencrypt/live/<<GANTI_DOMAIN>>/privkey.pem;
+    # Hanya TLS modern (TLS 1.0/1.1 sudah tidak aman).
+    ssl_protocols       TLSv1.2 TLSv1.3;
+    ssl_prefer_server_ciphers off;
+    ssl_session_tickets off;
+
+    # Jangan pernah sajikan file tersembunyi (.env, .git, dll.); /.well-known tetap boleh (certbot).
+    location ~ /\.(?!well-known) {
+        return 404;
+    }
 
     # Backend menerima upload dokumen sampai 25 MB per simpan (Base64 dalam JSON).
     client_max_body_size 30m;
@@ -32,12 +47,17 @@ server {
     location / {
         # React Router: semua alamat yang bukan file dikembalikan ke index.html
         try_files $uri $uri/ /index.html;
+        # index.html jangan di-cache, supaya update aplikasi (dan header di bawah) langsung terpakai.
+        add_header Cache-Control "no-cache";
+        include /etc/nginx/snippets/biro-umum-security-headers.conf;
     }
 
     location /assets/ {
         # Nama file hasil build sudah mengandung hash -> aman di-cache lama
         expires 30d;
         add_header Cache-Control "public, immutable";
+        # Nginx tidak mewarisi add_header dari luar bila location punya add_header sendiri -> include lagi.
+        include /etc/nginx/snippets/biro-umum-security-headers.conf;
     }
 
     # --- Realtime (Server-Sent Events) ---------------------------------------
@@ -55,6 +75,7 @@ server {
         proxy_cache off;
         # Backend mengirim heartbeat tiap 25 detik; beri batas jauh di atasnya.
         proxy_read_timeout 1h;
+        add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
     }
 
     # --- API backend -----------------------------------------------------------
@@ -67,5 +88,6 @@ server {
         proxy_set_header X-Forwarded-Proto $scheme;
         # Export ZIP surat / Excel bisa butuh waktu
         proxy_read_timeout 120s;
+        add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
     }
 }
