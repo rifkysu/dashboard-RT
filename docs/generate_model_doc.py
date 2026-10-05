@@ -859,13 +859,14 @@ def isi_aplikasi():
             "Setelah login berhasil muncul **popup animasi logo** selama 3 detik (\"Selamat datang, nama\") "
             "lalu masuk Dashboard; saat logout token dicabut di server, muncul popup \"Sampai jumpa\" lalu kembali ke landing page "
             "(sesi yang berakhir karena hal lain, mis. token kedaluwarsa, diarahkan ke halaman login).",
-            "Daftar Akun: nama (min. 3 huruf, boleh gelar), email, nomor HP Indonesia, unit kerja, kata sandi "
+            "Daftar Akun: nama (min. 3 huruf, boleh gelar), email kedinasan @kemnaker.go.id, nomor HP Indonesia, unit kerja, kata sandi "
             "min. 8 karakter berisi huruf & angka. Setelah daftar, pengguna diarahkan ke halaman Login (tidak "
             "otomatis masuk).",
             "Lupa kata sandi: link reset berlaku 1 jam, dikirim via email (SMTP) atau diteruskan admin dari "
             "menu Akun & Akses. Kata sandi baru mengikuti aturan yang sama dengan Daftar Akun (8-128 karakter, "
             "huruf & angka), diperiksa di frontend dan backend.",
-            "Login Google (SSO) opsional melalui OAuth 2.0.",
+            "Login Google (SSO) opsional melalui OAuth 2.0; hanya untuk email @kemnaker.go.id yang sudah "
+            "terverifikasi Google. Akun lama dengan domain lain tetap bisa login dengan email & kata sandi.",
             "Proteksi percobaan login: 5 kali per menit per kombinasi IP + email, dengan hitung mundur di "
             "layar."),
         h2("3.3 Dashboard"),
@@ -1055,7 +1056,7 @@ def isi_aplikasi():
         h1("8. Aturan Validasi & Bisnis"),
         table([36, 138], [
             ["Area", "Aturan"],
-            ["Daftar akun", "Nama 3-150 karakter (huruf, spasi, . , ' -); email valid; HP 08/62/+62 10-15 digit; "
+            ["Daftar akun", "Nama 3-150 karakter (huruf, spasi, . , ' -); email valid berdomain @kemnaker.go.id; HP 08/62/+62 10-15 digit; "
              "unit kerja wajib; kata sandi 8-128 karakter berisi huruf & angka; email tidak boleh ganda."],
             ["Reset kata sandi", "Token reset 32-256 karakter dan belum kedaluwarsa (1 jam); kata sandi baru "
              "8-128 karakter berisi huruf & angka (sama dengan daftar akun)."],
@@ -1311,7 +1312,9 @@ def isi_infra():
             ["Autentikasi", "JWT HS256 berlaku 8 jam; peran & status aktif dibaca ulang dari database setiap "
              "request; akun yang di-ban langsung ditolak (kode ACCOUNT_BANNED) dan dikeluarkan dari sesi. "
              "Token membawa versi sesi (users.token_version) yang naik saat logout, reset kata sandi, atau "
-             "ban, sehingga token lama langsung tidak berlaku walau belum kedaluwarsa."],
+             "ban, sehingga token lama langsung tidak berlaku walau belum kedaluwarsa. Login dengan email tidak "
+             "terdaftar tetap menjalankan bcrypt agar waktu respons sama. Login Google memakai parameter OAuth "
+             "state (cookie HttpOnly) untuk mencegah login CSRF."],
             ["Kata sandi", "bcrypt cost 12; token reset acak 32 byte, disimpan sebagai hash SHA-256, berlaku "
              "1 jam, tidak pernah ditampilkan ke peminta publik; token dikirim di #fragment link sehingga "
              "tidak tercatat di log server."],

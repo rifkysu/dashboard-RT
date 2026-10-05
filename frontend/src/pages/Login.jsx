@@ -19,7 +19,11 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [searchParams] = useSearchParams();
-  const [error, setError] = useState(() => (searchParams.get('sso') === 'gagal' ? 'Login SSO gagal. Silakan coba lagi atau hubungi admin.' : ''));
+  const [error, setError] = useState(() => {
+    const sso = searchParams.get('sso');
+    if (sso === 'domain') return 'Login Google hanya untuk akun email kedinasan @kemnaker.go.id yang sudah terverifikasi.';
+    return sso === 'gagal' ? 'Login SSO gagal. Silakan coba lagi atau hubungi admin.' : '';
+  });
   // Popup "akun di-ban": dari respons login (kode ACCOUNT_BANNED), dari SSO
   // (?sso=banned), atau karena di-ban saat sedang login (?banned=1, lihat api.js).
   const [banned, setBanned] = useState(() => {

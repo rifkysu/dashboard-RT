@@ -90,6 +90,14 @@ function isSafeText(value, max = 5000) {
   return typeof value === 'string' && value.length <= max && !/[\u0000]/.test(value);
 }
 
+// Hanya email instansi yang boleh membuat akun baru (Daftar Akun & login SSO Google).
+// Akun lama dengan domain lain tetap bisa login dengan email + kata sandi.
+// Sama dengan ALLOWED_EMAIL_DOMAIN di frontend/src/utils/validation.js -- ubah keduanya bila berubah.
+const ALLOWED_EMAIL_DOMAIN = 'kemnaker.go.id';
+function isAllowedEmailDomain(email) {
+  return typeof email === 'string' && email.toLowerCase().endsWith(`@${ALLOWED_EMAIL_DOMAIN}`);
+}
+
 function randomRequestId() {
   return crypto.randomBytes(12).toString('hex');
 }
@@ -102,4 +110,6 @@ module.exports = {
   normalizeEmail,
   isSafeText,
   randomRequestId,
+  ALLOWED_EMAIL_DOMAIN,
+  isAllowedEmailDomain,
 };

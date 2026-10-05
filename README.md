@@ -11,6 +11,7 @@ Full-stack app (React + Node.js/Express + PostgreSQL + **Prisma**) untuk mengelo
 
 ### 🔐 Autentikasi & Role
 - Login email/password + **Login SSO** (Google OAuth 2.0 — bisa diganti ke SSO instansi lain lewat `backend/src/config/passport.js`).
+- **Hanya email @kemnaker.go.id** yang bisa membuat akun baru, baik lewat Daftar Akun maupun Login Google (email Google juga harus sudah terverifikasi). Akun lama dengan domain lain tetap bisa login dengan email + kata sandi. Domainnya diatur di `ALLOWED_EMAIL_DOMAIN` (`backend/src/middleware/security.js` dan `frontend/src/utils/validation.js` — ubah keduanya).
 - **Lupa Password** — link reset (berlaku 1 jam) **tidak pernah** ditampilkan ke peminta publik (kalau ditampilkan, siapa pun bisa mengambil alih akun orang lain hanya dengan mengetik emailnya).
   - **SMTP diisi** (lihat Bagian 2): link langsung dikirim ke email pemilik akun.
   - **SMTP kosong / email gagal terkirim**: permintaan masuk sebagai notifikasi admin (badge merah di menu Akun & Akses + penanda di baris akunnya). Admin klik **Kirim Link** → link dikirim ke email (kalau SMTP aktif) dan bisa juga disalin atau dikirim via WhatsApp.
@@ -95,6 +96,8 @@ Full-stack app (React + Node.js/Express + PostgreSQL + **Prisma**) untuk mengelo
 - Otorisasi role diterapkan **di dua lapis**: disable di UI (frontend) **dan** ditolak di API (backend) — aman walau seseorang mencoba akses API langsung (mis. lewat Postman).
 - Rate limiting di endpoint sensitif: login (5x/menit), register, dan lupa password.
 - **Sesi bisa dicabut** — setiap token JWT membawa versi sesi (`users.token_version`, klaim `tv`). Versi ini naik saat **logout** (`POST /api/auth/logout`), **reset kata sandi**, atau **akun di-ban**, dan `requireAuth` menolak token yang versinya beda. Jadi token yang sempat dicuri langsung mati begitu pemiliknya logout atau mereset sandi, tanpa menunggu 8 jam. Konsekuensinya: logout di satu perangkat ikut mengeluarkan sesi akun yang sama di perangkat lain.
+- **Login Google memakai parameter OAuth `state`** (nilai acak di cookie HttpOnly `oauth_state`, dicocokkan saat Google kembali ke callback) — mencegah login CSRF, yaitu korban dibuat diam-diam masuk ke akun milik penyerang.
+- **Waktu respons login selalu sama** — untuk email yang tidak terdaftar, bcrypt tetap dijalankan terhadap hash pembanding, jadi daftar email pegawai tidak bisa ditebak dari lamanya respons.
 - **Link reset kata sandi memakai `#token=`** (bukan `?token=`) — bagian `#` tidak pernah dikirim ke server, jadi token tidak tercatat di log Nginx/proxy; halaman reset langsung menghapusnya dari address bar.
 - **Header keamanan halaman web** (HSTS, CSP tanpa script inline, `Referrer-Policy: no-referrer`, dll.) dipasang Nginx lewat `docs/deploy/security-headers.conf`. Karena itu `index.html` tidak boleh berisi `<script>` inline — script awal ada di `frontend/public/boot.js`.
 - Header keamanan standar (CSP, X-Frame-Options, dll) di setiap response API.

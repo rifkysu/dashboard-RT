@@ -189,7 +189,7 @@ export default function Register() {
             </div>
 
             <p className="text-[11px] text-slate-400 -mt-2">
-              *Akun yang didaftarkan mandiri hanya memiliki role Karyawan. Role PIC dan Kabag diberikan manual melalui database.
+              *Pendaftaran hanya untuk email kedinasan @kemnaker.go.id. Akun yang didaftarkan mandiri hanya memiliki role Karyawan. Role PIC dan Kabag diberikan manual melalui database.
             </p>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

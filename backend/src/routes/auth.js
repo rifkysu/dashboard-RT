@@ -1,10 +1,11 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
+const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 const passport = require('passport');
 const prisma = require('../prisma');
 const { requireAuth, ACCOUNT_BANNED, ACCOUNT_BANNED_MESSAGE } = require('../middleware/auth');
-const { createRateLimiter, normalizeEmail, isSafeText } = require('../middleware/security');
+const { createRateLimiter, normalizeEmail, isSafeText, ALLOWED_EMAIL_DOMAIN, isAllowedEmailDomain } = require('../middleware/security');
 const { signToken, hashResetToken, createResetToken } = require('../token');
 const { isMailConfigured, sendResetPasswordEmail } = require('../mailer');
 const logger = require('../logger');
@@ -67,6 +68,10 @@ const resetPasswordLimiter = createRateLimiter({
 });
 
 
+// Hash pembanding untuk email yang tidak terdaftar: bcrypt tetap dijalankan supaya lama
+// respons login sama, sehingga orang tidak bisa menebak email mana yang terdaftar dari waktunya.
+const DUMMY_PASSWORD_HASH = bcrypt.hashSync(crypto.randomBytes(16).toString('hex'), 12);
+
 function sanitizeUser(user) {
   const { password_hash, reset_token, reset_token_expires, reset_requested_at, ...rest } = user;
   return rest;
@@ -87,6 +92,9 @@ router.post('/register', registerLimiter, async (req, res) => {
     }
     if (!isSafeText(email, 254) || !EMAIL_RE.test(email)) {
       return res.status(400).json({ message: 'Format email tidak valid.' });
+    }
+    if (!isAllowedEmailDomain(email)) {
+      return res.status(400).json({ message: `Pendaftaran hanya untuk email kedinasan @${ALLOWED_EMAIL_DOMAIN}.` });
     }
     if (typeof no_hp !== 'string' || !HP_RE.test(no_hp)) {
       return res.status(400).json({ message: 'Nomor HP tidak valid (contoh: 081234567890 atau +6281234567890).' });
@@ -144,12 +152,8 @@ router.post('/login', loginIpLimiter, loginLimiter, async (req, res) => {
 
     const user = await prisma.user.findFirst({ where: { email } });
 
-    if (!user || !user.password_hash) {
-      return res.status(401).json({ message: 'Email atau kata sandi salah.' });
-    }
-
-    const match = await bcrypt.compare(password, user.password_hash);
-    if (!match) {
+    const match = await bcrypt.compare(password, user?.password_hash || DUMMY_PASSWORD_HASH);
+    if (!user || !user.password_hash || !match) {
       return res.status(401).json({ message: 'Email atau kata sandi salah.' });
     }
 
@@ -298,7 +302,7 @@ if (ssoEnabled) {
     (req, res, next) => {
       passport.authenticate('google', { session: false }, (err, user, info) => {
         if (err || !user) {
-          const reason = info?.banned ? 'banned' : 'gagal';
+          const reason = info?.banned ? 'banned' : info?.domain ? 'domain' : 'gagal';
           return res.redirect(`${process.env.FRONTEND_URL}/login?sso=${reason}`);
         }
         req.user = user;

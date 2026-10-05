@@ -33,6 +33,9 @@ export const PHONE_RE = /^[0-9+()\- .]{6,30}$/;
 
 // ---- Login & Daftar Akun (aturan yang sama dicek ulang di backend/src/routes/auth.js) ----
 export const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+// Daftar Akun hanya untuk email instansi. Sama dengan ALLOWED_EMAIL_DOMAIN di
+// backend/src/middleware/security.js -- ubah keduanya bila berubah.
+export const ALLOWED_EMAIL_DOMAIN = 'kemnaker.go.id';
 // Nama boleh berisi huruf, spasi, titik, koma, apostrof, dan tanda hubung (untuk gelar, mis. "Ahmad Fauzi, S.E.").
 export const NAME_RE = /^[\p{L}][\p{L} .,'-]*$/u;
 // Nomor HP Indonesia: 08xx / 628xx / +628xx, total 10-15 digit. Spasi & tanda hubung diabaikan.
@@ -60,6 +63,7 @@ export function validateRegister(f) {
   const email = f.email.trim();
   if (!email) e.email = 'Email wajib diisi.';
   else if (email.length > 254 || !EMAIL_RE.test(email)) e.email = 'Format email tidak valid (contoh: nama@kemnaker.go.id).';
+  else if (!email.toLowerCase().endsWith(`@${ALLOWED_EMAIL_DOMAIN}`)) e.email = `Gunakan email kedinasan @${ALLOWED_EMAIL_DOMAIN}.`;
   const hp = normalizePhone(f.no_hp);
   if (!hp) e.no_hp = 'Nomor WhatsApp / HP wajib diisi.';
   else if (!HP_RE.test(hp)) e.no_hp = 'Nomor HP tidak valid (contoh: 081234567890 atau +6281234567890).';

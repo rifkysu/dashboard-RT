@@ -15,6 +15,8 @@ Versi ini menambahkan hardening dasar untuk deployment produksi:
 - Role `kabag`/`pic` tidak dapat dibuat melalui self-registration; role sensitif harus diberikan oleh administrator.
 - Kode nomor permintaan memakai `crypto.randomInt()`.
 - Token JWT bisa dicabut: versi sesi (`users.token_version`) naik saat logout, reset kata sandi, atau ban; token dengan versi lama ditolak.
+- Login Google memakai parameter OAuth `state` (cookie HttpOnly) untuk mencegah login CSRF; hanya email @kemnaker.go.id yang terverifikasi.
+- Login dengan email tidak terdaftar tetap menjalankan bcrypt, sehingga waktu respons tidak membocorkan email mana yang terdaftar.
 - Link reset kata sandi memakai `#token=` agar token tidak tercatat di log server.
 - Halaman web diberi HSTS, CSP (`script-src 'self'`, tanpa script inline), `Referrer-Policy: no-referrer`, dll. lewat `docs/deploy/security-headers.conf`; Nginx hanya TLS 1.2/1.3, `server_tokens off`, file tersembunyi ditolak.
 - Frontend memakai Vite 8 (celah keamanan dev server Vite 5 sudah tertutup).
