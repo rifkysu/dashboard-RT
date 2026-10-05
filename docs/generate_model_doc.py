@@ -901,6 +901,8 @@ def isi_aplikasi():
             "Galeri hingga 6 foto (dikompres di browser, maks. 1600 px), dokumen PDF BPKB & STNK. Di modal "
             "Detail foto bisa dibuka ukuran penuh; kabag/PIC/admin dapat menambah, mengganti, dan menghapus "
             "foto (tetap maks. 6).",
+            "Modal Detail: tombol **Edit Data** untuk mengubah semua data yang diisi saat Tambah Kendaraan "
+            "(kabag/PIC/admin).",
             "Status Tersedia / Digunakan / Servis; riwayat service per tanggal (satu catatan per tanggal) "
             "dengan invoice PDF.",
             "Pencarian dan filter pill: merek, status, tahun perolehan; tab Roda 2/4/6."),

@@ -613,6 +613,28 @@ function VehicleDetail({ vehicle, error, canManage, busyDoc, onClose, onView, on
     await onUpdateFields({ status: statusDraft }, statusDraft === 'Servis' ? 'Kendaraan ditandai waktunya service. Catat service-nya di Riwayat Service.' : `Status kendaraan diubah menjadi ${statusDraft}.`);
     setSavingStatus(false);
   }
+  // Edit data utama kendaraan (field yang sama dengan form Tambah Kendaraan). Status, tanggal STNK/pajak,
+  // foto, dokumen, dan service punya bagian sendiri di atas.
+  const EDITABLE = ['nama_barang', 'merk', 'tipe', 'no_bpkb', 'plate', 'plat_khusus', 'jenis', 'sub', 'tanggal_perolehan'];
+  const draftOf = (v) => Object.fromEntries(EDITABLE.map((f) => [f, v[f] || '']));
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(() => draftOf(vehicle));
+  const [savingInfo, setSavingInfo] = useState(false);
+  useEffect(() => { setEditing(false); setDraft(draftOf(vehicle)); }, [vehicle.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  const set = (f) => (e) => setDraft((d) => ({ ...d, [f]: e.target.value }));
+  async function saveInfo() {
+    if (savingInfo) return;
+    const errors = [...requireFields([['Nama barang', draft.nama_barang], ['Merk', draft.merk], ['Tipe', draft.tipe], ['No polisi', draft.plate], ['Jenis kendaraan', draft.jenis]]),
+      ...validateVehicleDates({ tanggal_perolehan: draft.tanggal_perolehan, masa_berlaku_stnk: vehicle.masa_berlaku_stnk, waktu_pajak: vehicle.waktu_pajak })];
+    if (errors.length) { await alert({ title: 'Data kendaraan belum valid', intro: 'Periksa data berikut:', message: errors, tone: 'warning' }); return; }
+    const changed = Object.fromEntries(EDITABLE.filter((f) => draft[f].trim() !== (vehicle[f] || '')).map((f) => [f, draft[f].trim() || null]));
+    if (!Object.keys(changed).length) { setEditing(false); return; }
+    setSavingInfo(true);
+    const ok = await onUpdateFields(changed, 'Data kendaraan berhasil diperbarui.');
+    setSavingInfo(false);
+    if (ok) setEditing(false);
+  }
+  const inputCls = 'w-full h-10 px-3 rounded-lg border border-slate-300 bg-white text-sm outline-none focus:border-slate-900';
   const inService = vehicle.status === 'Servis';
   return (
     <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-slate-950/75 backdrop-blur-md" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
@@ -733,8 +755,38 @@ function VehicleDetail({ vehicle, error, canManage, busyDoc, onClose, onView, on
             </div>
           </div>
 
-          <div className="grid sm:grid-cols-2 gap-3">
-            {rows.map(([label, value]) => <div key={label} className="detail-field"><div className="detail-label">{label}</div><div className="detail-value">{value}</div></div>)}
+          <div>
+            <div className="flex items-center justify-between gap-3 mb-2">
+              <div className="text-xs font-bold text-slate-500 uppercase tracking-wider">Data Kendaraan</div>
+              {canManage && !editing && (
+                <button type="button" onClick={() => { setDraft(draftOf(vehicle)); setEditing(true); }} className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-slate-300 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-50">
+                  <span className="material-symbols-outlined text-[15px]">edit</span>Edit Data
+                </button>
+              )}
+            </div>
+            {editing ? (
+              <div className="rounded-xl border border-blue-200 bg-blue-50/40 p-4">
+                <div className="grid sm:grid-cols-2 gap-3">
+                  <Field label="Nama Barang" required><select value={draft.nama_barang} onChange={set('nama_barang')} className={inputCls}><option value="" disabled>Pilih Kategori</option>{NAMA_BARANG_OPTIONS.map((x) => <option key={x}>{x}</option>)}</select></Field>
+                  <Field label="Merk" required><input value={draft.merk} onChange={set('merk')} maxLength={100} className={inputCls} placeholder="Toyota" /></Field>
+                  <Field label="Tipe" required><input value={draft.tipe} onChange={set('tipe')} maxLength={100} className={inputCls} placeholder="Innova / Avanza / Pick Up" /></Field>
+                  <Field label="No BPKB"><input value={draft.no_bpkb} onChange={set('no_bpkb')} maxLength={50} className={inputCls} placeholder="Nomor BPKB (opsional)" /></Field>
+                  <Field label="No Polisi" required><input value={draft.plate} onChange={set('plate')} maxLength={30} className={inputCls} placeholder="B 1234 XYZ" /></Field>
+                  <Field label="Plat Khusus"><input value={draft.plat_khusus} onChange={set('plat_khusus')} maxLength={30} className={inputCls} placeholder="Opsional" /></Field>
+                  <Field label="Jenis Kendaraan" required><select value={draft.jenis} onChange={set('jenis')} className={inputCls}>{JENIS_OPTIONS.map((x) => <option key={x}>{x}</option>)}</select></Field>
+                  <Field label="Keterangan"><input value={draft.sub} onChange={set('sub')} maxLength={150} className={inputCls} placeholder="VIP / Operasional / Lapangan" /></Field>
+                  <Field label="Tanggal Perolehan"><input type="date" min="1950-01-01" max="2100-12-31" value={draft.tanggal_perolehan} onChange={set('tanggal_perolehan')} className={inputCls} /></Field>
+                </div>
+                <div className="mt-4 flex justify-end gap-2">
+                  <button type="button" onClick={() => { setEditing(false); setDraft(draftOf(vehicle)); }} disabled={savingInfo} className="px-4 py-2 rounded-lg border border-slate-300 bg-white text-xs font-semibold">Batal</button>
+                  <button type="button" onClick={saveInfo} disabled={savingInfo} className="px-4 py-2 rounded-lg bg-slate-900 text-white text-xs font-semibold disabled:opacity-60">{savingInfo ? 'Menyimpan...' : 'Simpan Perubahan'}</button>
+                </div>
+              </div>
+            ) : (
+              <div className="grid sm:grid-cols-2 gap-3">
+                {rows.map(([label, value]) => <div key={label} className="detail-field"><div className="detail-label">{label}</div><div className="detail-value">{value}</div></div>)}
+              </div>
+            )}
           </div>
         </div>
         <div className="px-6 py-4 border-t border-slate-200 flex justify-end"><button onClick={onClose} className="px-5 py-2.5 rounded-xl bg-slate-900 text-white text-sm font-semibold">Tutup</button></div>
