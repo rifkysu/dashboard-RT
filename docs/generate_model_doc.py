@@ -454,7 +454,7 @@ def d_arsitektur(g):
         g.box(72 + 56.5 * i, 537.7, 52, 36, r, ["route"], "wIndigo", SZ_S)
     g.arrow(297, 583.7, 297, 593.7, both=True)
     g.group(62, 593.7, 470, 80, "LAPISAN DATA", "green")
-    for i, (t, s) in enumerate([("Prisma ORM 6", ["schema.prisma", "25 migration"]),
+    for i, (t, s) in enumerate([("Prisma ORM 6", ["schema.prisma", "26 migration"]),
                                 ("PostgreSQL", ["biro_umum_db", "7 tabel inti"]),
                                 ("File Storage", ["backend/uploads/", "(PDF, JPG, PNG)"])]):
         g.box(72 + 155 * i, 608.7, 140, 55, t, s, "green", SZ_L)
@@ -925,7 +925,8 @@ def isi_aplikasi():
             "Cancel. Booking batal tidak tampil di jadwal, dashboard, dan export, serta diabaikan saat cek bentrok.",
             "Toggle **Tampilkan yang dibatalkan** di menu Ruang Rapat: booking batal tampil abu-abu & dicoret; "
             "klik untuk melihat alasan, siapa yang membatalkan, dan waktunya (`GET /ruang-rapat?include_cancelled=1`).",
-            "Status surat (Belum / Ditinjau / Diterima) dengan unggah surat, nomor surat, export Excel, "
+            "Status surat **otomatis**: ada file surat = Diterima (hijau), tidak ada = Belum Ada Surat (merah); "
+            "unggah/hapus surat, nomor surat, export Excel, "
             "\"Terakhir diedit oleh\", pembaruan real-time (SSE).",
             "Export Excel per hari (booking multi-hari dipecah satu baris per tanggal) dengan kolom Tanggal, "
             "Ruang Rapat, Nama Rapat, PIC, Nomor Surat.",
@@ -1036,8 +1037,8 @@ def isi_aplikasi():
 
         PageBreak(),
         h1("7. Model Data"),
-        p("Skema database didefinisikan di `backend/prisma/schema.prisma` dan diterapkan melalui 25 migration "
-          "berurutan (0001 s.d. 0025). Relasi *created_by/updated_by* ke tabel users memakai ON DELETE SET "
+        p("Skema database didefinisikan di `backend/prisma/schema.prisma` dan diterapkan melalui 26 migration "
+          "berurutan (0001 s.d. 0026). Relasi *created_by/updated_by* ke tabel users memakai ON DELETE SET "
           "NULL agar data tetap ada saat akun dihapus."),
         Diagram(137.2, 399.2, d_erd),
         caption("Gambar 5. Diagram relasi entitas (ringkas)"),
@@ -1224,7 +1225,7 @@ def isi_infra():
             ["backend/src/routes", "auth, dashboard, pemeliharaan, pengadaan, kendaraan, ruangRapat, maintenance, users"],
             ["backend/src/middleware", "auth (JWT & peran), maintenance, security (header, rate limit, batas SSE)"],
             ["backend/src", "prisma.js, validate.js, fileStorage.js, fileSignature.js, token.js, mailer.js, logger.js"],
-            ["backend/prisma", "schema.prisma dan 25 migration (sumber kebenaran skema)"],
+            ["backend/prisma", "schema.prisma dan 26 migration (sumber kebenaran skema)"],
             ["backend/scripts", "db-verify.js (cek kolom & jumlah baris), cleanup-uploads.js (berkas yatim)"],
             ["backend/sql", "Script SQL manual untuk pgAdmin 4 (arsip pra-Prisma & sinkronisasi)"],
             ["frontend/src", "pages, components, context (AuthContext), live.js + hooks (useLive, SSE), utils"],
@@ -1267,7 +1268,7 @@ def isi_infra():
         *bullets(
             "DBMS PostgreSQL 18, database `biro_umum_db`, skema `public`; 7 tabel inti + tabel riwayat "
             "migration Prisma (`_prisma_migrations`).",
-            "Perubahan struktur **hanya** melalui migration Prisma (0001 s.d. 0025) agar Prisma dan pgAdmin 4 "
+            "Perubahan struktur **hanya** melalui migration Prisma (0001 s.d. 0026) agar Prisma dan pgAdmin 4 "
             "selalu sinkron. Cek sinkron: `npx prisma migrate status` dan `npx prisma migrate diff "
             "--from-schema-datasource ... --to-schema-datamodel ...` (read-only).",
             "Integritas dijaga di level database: UNIQUE (email, kode, plate, menu_key, service per tanggal), "

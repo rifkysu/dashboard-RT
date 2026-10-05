@@ -4,7 +4,9 @@ const router=express.Router();
 // supaya kalender publik & admin refresh real-time tanpa polling.
 const bus=new EventEmitter();bus.setMaxListeners(0);
 const broadcastChange=()=>bus.emit('change');
-const STATUS=['belum','ditinjau','diterima'];
+// Status surat OTOMATIS: ada file surat -> 'diterima' (hijau), tidak ada -> 'belum' (merah).
+// Status yang dikirim klien diabaikan.
+const suratStatus=fileData=>fileData?'diterima':'belum';
 const ROOMS=['SERBAGUNA','SETJEN II','TRI DHARMA','BIRO UMUM','GRAHA KEMNAKER'];
 const PREFIX=['data:application/pdf;base64,','data:image/jpeg;base64,','data:image/png;base64,'];
 // Selain prefix MIME, cek juga magic number isi file (sama seperti modul lain) supaya file palsu yang cuma diganti nama/tipe ditolak.
@@ -118,12 +120,12 @@ router.get('/surat-export',async(req,res)=>{try{
 router.get('/:id',async(req,res)=>{try{const id=Number(req.params.id);if(!Number.isInteger(id))return res.status(400).json({message:'ID booking tidak valid.'});const row=await prisma.ruangRapat.findFirst({where:{id,cancelled_at:null},include:{updatedBy:{select:{nama_lengkap:true}}}});if(!row)return res.status(404).json({message:'Booking tidak ditemukan.'});res.json({data:out(row)});}catch(err){logger.error('GET ruang rapat detail gagal',{error:err});res.status(500).json({message:'Gagal mengambil detail booking.'});}});
 // Semua user login (termasuk karyawan) boleh menambah, mengedit, mengelola surat/status, dan membatalkan booking.
 router.post('/',async(req,res)=>{try{
-  const {title,room,pic,pic_phone,date:startDate,end_date,start,end,status,surat_name,surat_file_data,nomor_surat,dates}=req.body;
+  const {title,room,pic,pic_phone,date:startDate,end_date,start,end,surat_name,surat_file_data,nomor_surat,dates}=req.body;
   const picked=dates!==undefined;
   if(picked&&(!Array.isArray(dates)||!dates.length||dates.length>MAX_PICKED||!dates.every(validDate)))return res.status(400).json({message:`Pilih 1-${MAX_PICKED} tanggal yang valid.`});
   if(!validNomorSurat(nomor_surat))return res.status(400).json({message:'Nomor surat maksimal 100 karakter.'});
   if(!validText(title,255)||!validText(room,150)||!validText(pic,150)||!validPhone(pic_phone)||(!picked&&(!validDate(startDate)||(end_date!=null&&end_date!==''&&!validDate(end_date))))||!validTime(start)||!validTime(end))return res.status(400).json({message:'Data booking atau nomor HP PIC tidak valid.'});
-  if(!ROOMS.includes(room)||!STATUS.includes(status||'belum')||!validFile(surat_file_data)||!validSuratName(surat_name))return res.status(400).json({message:'Ruangan, status, atau surat tidak valid.'});
+  if(!ROOMS.includes(room)||!validFile(surat_file_data)||!validSuratName(surat_name))return res.status(400).json({message:'Ruangan, status, atau surat tidak valid.'});
   if(start>=end)return res.status(400).json({message:'Jam selesai harus lebih besar dari jam mulai.'});
   let ranges;
   if(picked)ranges=dateRuns(dates);
@@ -136,7 +138,7 @@ router.post('/',async(req,res)=>{try{
     if(conflicts.length)throw new HttpError(409,conflictMessage(conflicts[0])+(conflicts.length>1?` (dan ${conflicts.length-1} tanggal lain juga bentrok)`:''));
     const path=surat_file_data?await saveDataUrl(surat_file_data,surat_name,'ruang-rapat'):null;
     const created=[];
-    for(const [bd,ed] of ranges)created.push(await tx.ruangRapat.create({data:{agenda:title.trim(),nomor_surat:nomor_surat?.trim()||null,room,pic:pic.trim(),pic_phone:pic_phone.trim(),booking_date:bd,end_date:ed,start_time:time(start),end_time:time(end),surat_status:status||'belum',surat_name:surat_name||null,surat_file_data:surat_file_data||null,surat_file_path:path,created_by:req.user.id,updated_by:req.user.id},include:{updatedBy:{select:{nama_lengkap:true}}}}));
+    for(const [bd,ed] of ranges)created.push(await tx.ruangRapat.create({data:{agenda:title.trim(),nomor_surat:nomor_surat?.trim()||null,room,pic:pic.trim(),pic_phone:pic_phone.trim(),booking_date:bd,end_date:ed,start_time:time(start),end_time:time(end),surat_status:suratStatus(surat_file_data),surat_name:surat_name||null,surat_file_data:surat_file_data||null,surat_file_path:path,created_by:req.user.id,updated_by:req.user.id},include:{updatedBy:{select:{nama_lengkap:true}}}}));
     return created;
   },{timeout:20000});
   // Booking biasa tetap membalas satu objek (kompatibel); tanggal pilihan membalas array.
@@ -152,7 +154,6 @@ router.put('/:id',async(req,res)=>{try{
   if(b.room!==undefined){if(!ROOMS.includes(b.room))return res.status(400).json({message:'Ruangan tidak valid.'});data.room=b.room;}
   if(b.pic!==undefined){if(!validText(b.pic,150))return res.status(400).json({message:'Nama PIC tidak valid.'});data.pic=b.pic.trim();}
   if(b.pic_phone!==undefined){if(!validPhone(b.pic_phone))return res.status(400).json({message:'Nomor HP PIC tidak valid.'});data.pic_phone=b.pic_phone.trim();}
-  if(b.status!==undefined){if(!STATUS.includes(b.status))return res.status(400).json({message:'Status surat tidak valid.'});data.surat_status=b.status;}
   if(b.surat_name!==undefined){if(!validSuratName(b.surat_name))return res.status(400).json({message:'Nama file surat maksimal 255 karakter.'});data.surat_name=b.surat_name||null;}
   if(b.surat_file_data!==undefined&&!validFile(b.surat_file_data))return res.status(400).json({message:'Dokumen surat tidak valid.'});
   const row=await prisma.$transaction(async tx=>{
@@ -177,7 +178,7 @@ router.put('/:id',async(req,res)=>{try{
       Object.assign(data,{booking_date:bd,end_date:ed,start_time:st,end_time:et});
     }
     // File surat disimpan paling akhir, setelah semua validasi & cek bentrok lolos.
-    if(b.surat_file_data!==undefined){data.surat_file_data=b.surat_file_data||null;data.surat_file_path=b.surat_file_data?await saveDataUrl(b.surat_file_data,b.surat_name,'ruang-rapat'):null;}
+    if(b.surat_file_data!==undefined){data.surat_status=suratStatus(b.surat_file_data);data.surat_file_data=b.surat_file_data||null;data.surat_file_path=b.surat_file_data?await saveDataUrl(b.surat_file_data,b.surat_name,'ruang-rapat'):null;}
     data.updated_by=req.user.id;
     return tx.ruangRapat.update({where:{id},data,include:{updatedBy:{select:{nama_lengkap:true}}}});
   },{timeout:20000});
