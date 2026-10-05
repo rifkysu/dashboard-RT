@@ -728,7 +728,7 @@ def fc_kendaraan(f):
 def fc_rapat(f):
     f.node("menu", "start", 200, 14, "Menu Ruang Rapat", w=150)
     f.node("grid", "proc", 200, 62, "Grid jadwal per bulan", "ruangan x tanggal, infinite scroll", w=170)
-    f.node("add", "proc", 200, 118, "Tambah Booking", "ruang, agenda, PIC, tanggal s.d., jam", w=170)
+    f.node("add", "proc", 200, 118, "Tambah Booking", "rentang tanggal / pilih beberapa tanggal", w=170)
     f.node("val", "dec", 200, 174, "Jam & rentang valid?", "(maks. 90 hari)", w=150, h=44)
     f.node("valx", "bad", 46, 174, "Pesan validasi", "per kolom", w=88)
     f.node("lock", "proc", 200, 230, "Kunci ruangan", "advisory lock per ruang", w=150)
@@ -852,6 +852,8 @@ def isi_aplikasi():
             "ruangan x tanggal per bulan, sama dengan menu Ruang Rapat) yang diperbarui real-time.",
             "Halaman kiosk **/jadwal-rapat** menampilkan jadwal yang sama dalam mode baca saja untuk layar di "
             "dekat ruang rapat.",
+            "Pilihan ruangan (Semua Ruangan atau satu ruangan) di landing page & kiosk, tetap real-time; "
+            "tersimpan di URL, mis. **/jadwal-rapat?ruang=SERBAGUNA** untuk layar di depan satu ruangan.",
             "Mengikuti Mode Maintenance menu *landing*; status dibaca dari endpoint publik tanpa login."),
         h2("3.2 Autentikasi"),
         *bullets(
@@ -910,6 +912,8 @@ def isi_aplikasi():
             "nasional, cuti bersama, dan akhir pekan.",
             "**Quick filter bulan** (pilih tahun lalu Jan-Des, tombol Bulan Ini) dan **infinite scroll**: bulan "
             "berikutnya dimuat otomatis saat digulir ke bawah, maks. 12 bulan sekaligus.",
+            "**Pilih beberapa tanggal** (loncat-loncat, maks. 60) lewat kalender di form booking; tanggal berurutan "
+            "digabung jadi satu booking, semua dicek bentrok sekaligus (satu bentrok = tidak ada yang disimpan).",
             "**Booking multi-hari** (maks. 90 hari, jam sama setiap hari) dengan label \"Hari 2/3\" di "
             "kalender.",
             "Cek bentrok berdasarkan irisan rentang tanggal dan jam; penguncian per ruangan mencegah "

@@ -7,6 +7,7 @@ Full-stack app (React + Node.js/Express + PostgreSQL + **Prisma**) untuk mengelo
 ### 🌐 Landing page & akses publik (tanpa login)
 - **Landing page** (`/`) — hero + ringkasan modul + jadwal ketersediaan ruang rapat secara **real-time**, plus ajakan Masuk/Daftar akun. Ini yang muncul pertama kali dibuka, bukan halaman login.
 - **Halaman kiosk read-only** (`/jadwal-rapat`) — versi tampilan layar besar (mis. dipasang di layar dekat ruang rapat), read-only, data sama dengan landing page.
+- **Pilihan ruangan** di jadwal kiosk & landing page: tombol *Semua Ruangan* atau satu nama ruangan, tetap real-time. Pilihan tersimpan di URL, jadi layar di depan satu ruangan cukup dibuka dengan link seperti `/jadwal-rapat?ruang=SERBAGUNA` (nama ruangan persis seperti di tombol; spasi ditulis `%20`, mis. `?ruang=SETJEN%20II`).
 - **Landing page ikut Mode Maintenance** — admin bisa menonaktifkan landing page juga (menu `landing` di panel Mode Maintenance), dicek lewat endpoint publik `GET /api/maintenance/landing-status` (tanpa perlu login) supaya pengunjung yang belum punya akun tetap melihat notifikasi maintenance yang benar.
 
 ### 🔐 Autentikasi & Role
@@ -53,6 +54,7 @@ Full-stack app (React + Node.js/Express + PostgreSQL + **Prisma**) untuk mengelo
 - **5 ruangan tetap**: SERBAGUNA, SETJEN II, TRI DHARMA, BIRO UMUM, GRAHA KEMNAKER.
 - Kalender **matriks** (baris = ruangan, kolom = tanggal Senin–Minggu), navigasi minggu **bebas tanpa batas** (bisa maju/mundur ke tahun berapa pun) + tombol "Hari Ini".
 - **Real-time lewat Server-Sent Events (SSE)** — begitu ada booking baru/diedit/dibatalkan oleh siapa pun, semua orang yang sedang membuka halaman (admin maupun landing page publik) langsung melihat perubahannya tanpa refresh.
+- **Pilih beberapa tanggal (loncat-loncat)** — di form Book Ruangan, pilih *Pilih beberapa tanggal* lalu klik tanggal mana saja di kalender (maks. 60 tanggal, jam sama). Tanggal yang berurutan otomatis digabung jadi satu booking multi-hari, sisanya jadi booking terpisah. Semua tanggal dicek bentrok sekaligus: kalau ada satu yang bentrok, tidak ada yang disimpan. API: `POST /api/ruang-rapat` dengan `dates: ["YYYY-MM-DD", ...]` sebagai pengganti `date`/`end_date`.
 - **Booking multi-hari** — isi "Sampai Tanggal" untuk booking beberapa hari (maks. 90 hari, jam sama setiap hari). Saat Cancel, tanggal bisa dipilih satu per satu; sisa tanggal tetap terbooking (otomatis dipecah jadi beberapa booking kalau yang dibatalkan tanggal di tengah).
 - **Cancel tidak menghapus data** — booking yang dibatalkan tetap tersimpan di database dengan status batal (`cancelled_at`) dan alasan pembatalan opsional (`cancel_reason`) yang diisi di popup Cancel.
 - **Semua role** (termasuk karyawan) bisa menambah, mengedit, mengelola surat/status, dan membatalkan booking.
