@@ -123,7 +123,9 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-router.post('/', requireRole(EDITOR_ROLES), async (req, res) => {
+// Tambah kendaraan terbuka untuk semua role yang login (seperti Ruang Rapat);
+// ubah/hapus/service tetap hanya kabag/PIC/admin.
+router.post('/', async (req, res) => {
   try {
     const { nama_barang, merk, tipe, no_bpkb, plate, plat_khusus, jenis, sub, status, tanggal_perolehan, masa_berlaku_stnk, waktu_pajak, photos } = req.body;
 

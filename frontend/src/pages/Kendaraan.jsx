@@ -47,7 +47,8 @@ const todayLocal = () => { const d = new Date(); return `${d.getFullYear()}-${St
 export default function Kendaraan() {
   const { user } = useAuth();
   const { alert, toast } = useFeedback();
-  // Backend hanya mengizinkan kabag/PIC/admin menambah & mengubah kendaraan.
+  // Semua role yang login boleh menambah kendaraan; mengubah/hapus/service hanya kabag/PIC/admin.
+  const canAdd = !!user;
   const canManage = ['kabag', 'pic', 'admin'].includes(user?.role);
   const [tab, setTab] = useState('Roda 4');
   const [show, setShow] = useState(false);
@@ -264,7 +265,7 @@ export default function Kendaraan() {
 
   return (
     <div className="menu-page menu-kendaraan relative">
-      <div className="menu-hero mb-6"><div><span className="menu-kicker">Biro Umum / Kendaraan Dinas</span><h1 className="text-3xl font-bold">Kendaraan Dinas</h1><p className="text-sm mt-1">Kelola asset kendaraan, status operasional, dan dokumentasi foto kendaraan.</p></div>{canManage && <button onClick={() => { setError(''); setForm(emptyForm); setShow(true); }} className="inline-flex items-center gap-2 px-4 py-2.5 bg-slate-900 text-white text-sm font-semibold rounded-xl hover:bg-slate-800"><span className="material-symbols-outlined text-[18px]">add</span>Tambah Kendaraan</button>}</div>
+      <div className="menu-hero mb-6"><div><span className="menu-kicker">Biro Umum / Kendaraan Dinas</span><h1 className="text-3xl font-bold">Kendaraan Dinas</h1><p className="text-sm mt-1">Kelola asset kendaraan, status operasional, dan dokumentasi foto kendaraan.</p></div>{canAdd && <button onClick={() => { setError(''); setForm(emptyForm); setShow(true); }} className="inline-flex items-center gap-2 px-4 py-2.5 bg-slate-900 text-white text-sm font-semibold rounded-xl hover:bg-slate-800"><span className="material-symbols-outlined text-[18px]">add</span>Tambah Kendaraan</button>}</div>
       {error && <div className="mb-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-xs text-red-700">{error}</div>}
 
       {/* Search bar */}
