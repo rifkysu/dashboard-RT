@@ -454,7 +454,7 @@ def d_arsitektur(g):
         g.box(72 + 56.5 * i, 537.7, 52, 36, r, ["route"], "wIndigo", SZ_S)
     g.arrow(297, 583.7, 297, 593.7, both=True)
     g.group(62, 593.7, 470, 80, "LAPISAN DATA", "green")
-    for i, (t, s) in enumerate([("Prisma ORM 6", ["schema.prisma", "26 migration"]),
+    for i, (t, s) in enumerate([("Prisma ORM 6", ["schema.prisma", "27 migration"]),
                                 ("PostgreSQL", ["biro_umum_db", "7 tabel inti"]),
                                 ("File Storage", ["backend/uploads/", "(PDF, JPG, PNG)"])]):
         g.box(72 + 155 * i, 608.7, 140, 55, t, s, "green", SZ_L)
@@ -918,7 +918,8 @@ def isi_aplikasi():
             "kalender.",
             "Cek bentrok berdasarkan irisan rentang tanggal dan jam; penguncian per ruangan mencegah "
             "double-booking bersamaan.",
-            "**Cancel per tanggal**: tanggal yang dipilih saja yang dibatalkan; rentang otomatis dipecah bila "
+            "**Cancel per tanggal** untuk **satu pengajuan** (kode booking_group): semua tanggal pengajuan, termasuk yang "
+            "loncat-loncat, tampil di satu popup; tanggal yang dipilih saja yang dibatalkan; rentang otomatis dipecah bila "
             "tanggal di tengah dibatalkan.",
             "**Cancel tidak menghapus data**: booking/tanggal yang dibatalkan tetap tersimpan di database dengan "
             "status batal (cancelled_at, cancelled_by) dan **alasan pembatalan opsional** yang diisi di popup "
@@ -1022,7 +1023,7 @@ def isi_aplikasi():
              "Kelola aset, dokumen, service"],
             ["Ruang Rapat", "GET /public-schedule, GET /stream (SSE)", "Publik", "Jadwal publik & sinyal real-time"],
             ["", "GET / , GET /:id, POST /, PUT /:id, DELETE /:id", "Login", "Kelola booking"],
-            ["", "POST /:id/cancel-dates", "Login", "Batalkan tanggal tertentu"],
+            ["", "GET /:id/group-dates; POST /:id/cancel-dates", "Login", "Tanggal satu pengajuan; batalkan tanggal tertentu"],
             ["Maintenance", "GET /landing-status, GET /stream (SSE)", "Publik", "Status landing & sinyal real-time"],
             ["", "GET / ; PUT /:menu_key", "Login; Admin/Kabag", "Baca & ubah mode maintenance"],
             ["Live", "GET /live/stream (SSE)", "Publik", "Satu sinyal real-time untuk semua modul"],
@@ -1037,8 +1038,8 @@ def isi_aplikasi():
 
         PageBreak(),
         h1("7. Model Data"),
-        p("Skema database didefinisikan di `backend/prisma/schema.prisma` dan diterapkan melalui 26 migration "
-          "berurutan (0001 s.d. 0026). Relasi *created_by/updated_by* ke tabel users memakai ON DELETE SET "
+        p("Skema database didefinisikan di `backend/prisma/schema.prisma` dan diterapkan melalui 27 migration "
+          "berurutan (0001 s.d. 0027). Relasi *created_by/updated_by* ke tabel users memakai ON DELETE SET "
           "NULL agar data tetap ada saat akun dihapus."),
         Diagram(137.2, 399.2, d_erd),
         caption("Gambar 5. Diagram relasi entitas (ringkas)"),
@@ -1225,7 +1226,7 @@ def isi_infra():
             ["backend/src/routes", "auth, dashboard, pemeliharaan, pengadaan, kendaraan, ruangRapat, maintenance, users"],
             ["backend/src/middleware", "auth (JWT & peran), maintenance, security (header, rate limit, batas SSE)"],
             ["backend/src", "prisma.js, validate.js, fileStorage.js, fileSignature.js, token.js, mailer.js, logger.js"],
-            ["backend/prisma", "schema.prisma dan 26 migration (sumber kebenaran skema)"],
+            ["backend/prisma", "schema.prisma dan 27 migration (sumber kebenaran skema)"],
             ["backend/scripts", "db-verify.js (cek kolom & jumlah baris), cleanup-uploads.js (berkas yatim)"],
             ["backend/sql", "Script SQL manual untuk pgAdmin 4 (arsip pra-Prisma & sinkronisasi)"],
             ["frontend/src", "pages, components, context (AuthContext), live.js + hooks (useLive, SSE), utils"],
@@ -1268,7 +1269,7 @@ def isi_infra():
         *bullets(
             "DBMS PostgreSQL 18, database `biro_umum_db`, skema `public`; 7 tabel inti + tabel riwayat "
             "migration Prisma (`_prisma_migrations`).",
-            "Perubahan struktur **hanya** melalui migration Prisma (0001 s.d. 0026) agar Prisma dan pgAdmin 4 "
+            "Perubahan struktur **hanya** melalui migration Prisma (0001 s.d. 0027) agar Prisma dan pgAdmin 4 "
             "selalu sinkron. Cek sinkron: `npx prisma migrate status` dan `npx prisma migrate diff "
             "--from-schema-datasource ... --to-schema-datamodel ...` (read-only).",
             "Integritas dijaga di level database: UNIQUE (email, kode, plate, menu_key, service per tanggal), "

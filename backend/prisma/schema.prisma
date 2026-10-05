@@ -265,6 +265,9 @@ model RuangRapat {
   cancelled_at    DateTime?
   cancelled_by    Int?
   cancel_reason   String?   @db.VarChar(500)
+  // Kode pengajuan: semua baris dari satu kali booking (pilih beberapa tanggal, atau pecahan
+  // hasil cancel sebagian) punya nilai sama, jadi tetap diperlakukan sebagai satu booking saat cancel.
+  booking_group   String?   @db.VarChar(36)
   created_at      DateTime  @default(now())
   updated_at      DateTime  @default(now()) @updatedAt
 
@@ -276,5 +279,6 @@ model RuangRapat {
   @@index([room, booking_date, end_date])
   @@index([pic])
   @@index([cancelled_at])
+  @@index([booking_group])
   @@map("ruang_rapat")
 }
