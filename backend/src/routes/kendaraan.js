@@ -50,16 +50,19 @@ function parsePhotos(row) {
 // Path file di disk tidak pernah dikirim ke client.
 const serializeService = (row) => row ? ({ ...row, tanggal_service: dateOnly(row.tanggal_service), invoice_document_file_path: undefined }) : row;
 // Service terakhir + jumlah riwayat, ditampilkan di tabel daftar kendaraan.
+// Nama pembuat & pengedit terakhir ikut dikirim untuk keterangan "Terakhir diedit oleh" di Detail.
 const WITH_SERVICE_SUMMARY = {
   services: { select: { id: true, tanggal_service: true }, orderBy: [{ tanggal_service: 'desc' }, { id: 'desc' }], take: 1 },
   _count: { select: { services: true } },
+  createdBy: { select: { nama_lengkap: true } },
+  updatedBy: { select: { nama_lengkap: true } },
 };
 
 // Frontend cuma butuh preview + nama; array asli (dengan base64) tetap dikirim
 // supaya galeri foto kendaraan bisa langsung ditampilkan tanpa request tambahan.
 const serialize = (row) => {
   if (!row) return row;
-  const { services, _count, ...rest } = row;
+  const { services, _count, createdBy, updatedBy, ...rest } = row;
   const last = services?.[0];
   return hideFilePaths({
     ...rest,
@@ -70,6 +73,8 @@ const serialize = (row) => {
     photo_file_paths: undefined,
     service_count: _count?.services ?? 0,
     last_service: last ? { id: last.id, tanggal_service: dateOnly(last.tanggal_service) } : null,
+    created_by_name: createdBy?.nama_lengkap || null,
+    updated_by_name: updatedBy?.nama_lengkap || null,
   });
 };
 
@@ -294,6 +299,10 @@ const SERVICE_RESPONSE = {
   include: { createdBy: { select: { nama_lengkap: true } } },
 };
 
+// Perubahan riwayat service juga dihitung sebagai edit kendaraan: updated_by & updated_at
+// kendaraan ikut diperbarui supaya keterangan "Terakhir diedit oleh" di Detail ikut berubah.
+const touchVehicle = (id, userId) => prisma.kendaraan.update({ where: { id }, data: { updated_by: userId } }).catch(() => {});
+
 // Invoice wajib PDF asli + nama file. Mengembalikan pesan error atau null.
 function invoiceError(name, data) {
   if (typeof data !== 'string' || !data) return 'File invoice PDF wajib dipilih.';
@@ -348,6 +357,7 @@ router.post('/:id/services', requireRole(EDITOR_ROLES), async (req, res) => {
       data: { kendaraan_id: id, tanggal_service: toDate(tanggal), bagian_service: body.bagian_service.trim(), ...invoice, created_by: req.user.id, updated_by: req.user.id },
       ...SERVICE_RESPONSE,
     });
+    await touchVehicle(id, req.user.id);
     res.status(201).json({ data: serializeService(row) });
   } catch (err) {
     // Kendaraan dihapus di antara pengecekan & insert -> FK gagal.
@@ -401,6 +411,7 @@ router.put('/:id/services/:serviceId/invoice', requireRole(EDITOR_ROLES), async 
       },
       ...SERVICE_RESPONSE,
     });
+    await touchVehicle(id, req.user.id);
     res.json({ data: serializeService(row) });
   } catch (err) {
     if (err.code === 'P2025') return res.status(404).json({ message: 'Riwayat service tidak ditemukan.' });
@@ -416,6 +427,7 @@ router.delete('/:id/services/:serviceId', requireRole(EDITOR_ROLES), async (req,
     if (!id || !serviceId) return res.status(400).json({ message: 'ID tidak valid.' });
     const { count } = await prisma.kendaraanService.deleteMany({ where: { id: serviceId, kendaraan_id: id } });
     if (!count) return res.status(404).json({ message: 'Riwayat service tidak ditemukan.' });
+    await touchVehicle(id, req.user.id);
     res.json({ message: 'Riwayat service berhasil dihapus.' });
   } catch (err) {
     logger.error('DELETE riwayat service gagal', { error: err });

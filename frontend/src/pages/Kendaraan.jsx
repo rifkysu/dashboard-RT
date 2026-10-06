@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import api from '../api';
 import { useAuth } from '../context/AuthContext';
 import { useFeedback } from '../components/Feedback';
@@ -42,6 +42,15 @@ const payloadSize = (form) => ['bpkb', 'stnk'].reduce((sum, f) => sum + (form[`$
   + form.photos.reduce((sum, p) => sum + (p.data || '').length, 0);
 const fmtDate = (v) => v ? new Date(`${v}T00:00:00`).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : '-';
 // Tanggal hari ini versi lokal (bukan UTC) untuk batas maksimal input tanggal service.
+const fmtDateTime = (v) => v ? new Date(v).toLocaleString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-';
+// "baru saja", "5 menit lalu", "2 jam lalu", ... -- dihitung ulang tiap 30 detik di modal Detail.
+function relativeTime(v, now) {
+  const sec = Math.max(0, Math.round((now - new Date(v).getTime()) / 1000));
+  if (sec < 60) return 'baru saja';
+  if (sec < 3600) return `${Math.floor(sec / 60)} menit lalu`;
+  if (sec < 86400) return `${Math.floor(sec / 3600)} jam lalu`;
+  return `${Math.floor(sec / 86400)} hari lalu`;
+}
 const todayLocal = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
 
 export default function Kendaraan() {
@@ -81,8 +90,21 @@ export default function Kendaraan() {
     }
   }
   useEffect(() => { load(); }, []);
-  // Realtime: perubahan dari pengguna lain langsung muncul tanpa refresh.
-  useLive('kendaraan', () => load(true));
+  // Realtime: perubahan dari pengguna lain langsung muncul tanpa refresh -- termasuk modal Detail
+  // yang sedang terbuka (data, "Terakhir diedit oleh", dan jamnya ikut diperbarui).
+  const detailIdRef = useRef(null);
+  detailIdRef.current = detail?.id ?? null;
+  async function refreshDetail() {
+    const id = detailIdRef.current;
+    if (!id) return;
+    try {
+      const res = await api.get(`/kendaraan/${id}`);
+      setDetail((d) => (d && d.id === id ? res.data.data : d));
+    } catch (err) {
+      if (err.response?.status === 404 && detailIdRef.current === id) { setDetail(null); toast('Kendaraan ini sudah dihapus oleh pengguna lain.', 'info'); }
+    }
+  }
+  useLive('kendaraan', () => { load(true); refreshDetail(); });
 
   async function save(e) {
     e.preventDefault();
@@ -528,10 +550,13 @@ function VehicleDetail({ vehicle, error, canManage, busyDoc, onClose, onView, on
     ['Keterangan', vehicle.sub || '-'],
     ['Status', vehicle.status || '-'],
     ['Tanggal Perolehan', fmtDate(vehicle.tanggal_perolehan)],
-    ['Dibuat Pada', vehicle.created_at ? new Date(vehicle.created_at).toLocaleString('id-ID') : '-'],
-    ['Diperbarui Pada', vehicle.updated_at ? new Date(vehicle.updated_at).toLocaleString('id-ID') : '-'],
+    ['Dibuat Pada', vehicle.created_at ? `${fmtDateTime(vehicle.created_at)}${vehicle.created_by_name ? ` oleh ${vehicle.created_by_name}` : ''}` : '-'],
+    ['Diperbarui Pada', vehicle.updated_at ? `${fmtDateTime(vehicle.updated_at)}${vehicle.updated_by_name ? ` oleh ${vehicle.updated_by_name}` : ''}` : '-'],
   ];
   const photos = vehicle.photos || [];
+  // Jam sekarang untuk label "x menit lalu"; diperbarui tiap 30 detik selama modal terbuka.
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => { setNow(Date.now()); const t = setInterval(() => setNow(Date.now()), 30000); return () => clearInterval(t); }, [vehicle.updated_at]);
 
   // Foto dikirim ulang sebagai array utuh (backend mengganti seluruh daftar foto).
   const [busyPhoto, setBusyPhoto] = useState(false);
@@ -652,6 +677,15 @@ function VehicleDetail({ vehicle, error, canManage, busyDoc, onClose, onView, on
         </div>
         <div className="p-6 space-y-5">
           {error && <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-xs text-red-700">{error}</div>}
+          {vehicle.updated_at && (
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-xs text-slate-600">
+              <span className="material-symbols-outlined text-[16px] text-slate-500">history</span>
+              <span>Terakhir diedit oleh <b className="text-slate-800">{vehicle.updated_by_name || '—'}</b></span>
+              <span className="text-slate-300">·</span>
+              <span>{fmtDateTime(vehicle.updated_at)}</span>
+              <span className="text-slate-400">({relativeTime(vehicle.updated_at, now)})</span>
+            </div>
+          )}
           <div>
             <div className="flex items-center justify-between gap-3 mb-2">
               <div className="text-xs font-bold text-slate-500 uppercase tracking-wider">Foto Kendaraan ({photos.length}/{MAX_PHOTOS})</div>
@@ -713,7 +747,7 @@ function VehicleDetail({ vehicle, error, canManage, busyDoc, onClose, onView, on
             </div>
           </div>
 
-          <ServiceHistory vehicleId={vehicle.id} canManage={canManage} onView={onView} onChanged={onServicesChanged} />
+          <ServiceHistory vehicleId={vehicle.id} refreshKey={vehicle.updated_at} canManage={canManage} onView={onView} onChanged={onServicesChanged} />
 
           <div>
             <div className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Dokumen Kendaraan</div>
@@ -798,7 +832,9 @@ function VehicleDetail({ vehicle, error, canManage, busyDoc, onClose, onView, on
 // Riwayat service kendaraan: daftar tanggal kapan kendaraan diservis (terbaru
 // di atas) + invoice PDF opsional. PDF hanya diambil lewat API yang butuh login
 // dan dibuka lewat DocumentViewer (blob URL -- tidak bisa dibuka di luar tab ini).
-function ServiceHistory({ vehicleId, canManage, onView, onChanged }) {
+// refreshKey (updated_at kendaraan) berubah -> riwayat dimuat ulang, supaya service yang
+// ditambah/dihapus pengguna lain ikut muncul selama modal terbuka.
+function ServiceHistory({ vehicleId, refreshKey, canManage, onView, onChanged }) {
   const { alert, confirm, toast } = useFeedback();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -822,16 +858,19 @@ function ServiceHistory({ vehicleId, canManage, onView, onChanged }) {
     setBagian('');
     setInvoice({ name: '', data: '' });
   }, [vehicleId]);
+  const loadedFor = useRef(null);
   useEffect(() => {
     let alive = true;
-    setLoading(true);
-    setLoadError('');
+    // Muat ulang karena refreshKey berubah -> diam-diam (tanpa "Memuat..." yang bikin form berkedip).
+    const silent = loadedFor.current === vehicleId;
+    loadedFor.current = vehicleId;
+    if (!silent) { setLoading(true); setLoadError(''); }
     api.get(`/kendaraan/${vehicleId}/services`)
       .then((res) => { if (alive) setItems(res.data.data || []); })
-      .catch((err) => { if (alive) setLoadError(err.response?.data?.message || 'Gagal memuat riwayat service.'); })
+      .catch((err) => { if (alive && !silent) { loadedFor.current = null; setLoadError(err.response?.data?.message || 'Gagal memuat riwayat service.'); } })
       .finally(() => { if (alive) setLoading(false); });
     return () => { alive = false; };
-  }, [vehicleId, loadKey]);
+  }, [vehicleId, loadKey, refreshKey]);
 
   async function pickInvoice(file) {
     if (!file) return;
