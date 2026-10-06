@@ -90,7 +90,7 @@ function isSafeText(value, max = 5000) {
   return typeof value === 'string' && value.length <= max && !/[\u0000]/.test(value);
 }
 
-// Hanya email instansi yang boleh membuat akun baru (Daftar Akun & login SSO Google).
+// Hanya email instansi yang boleh membuat akun baru (Daftar Akun).
 // Akun lama dengan domain lain tetap bisa login dengan email + kata sandi.
 // Sama dengan ALLOWED_EMAIL_DOMAIN di frontend/src/utils/validation.js -- ubah keduanya bila berubah.
 const ALLOWED_EMAIL_DOMAIN = 'kemnaker.go.id';

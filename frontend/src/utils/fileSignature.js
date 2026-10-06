@@ -31,3 +31,40 @@ export function verifyFileIsGenuine(file) {
     reader.readAsArrayBuffer(file.slice(0, 16));
   });
 }
+
+const OFFICE_MIME = {
+  doc: 'application/msword',
+  xls: 'application/vnd.ms-excel',
+  docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+};
+
+// MIME asli file dari magic number-nya ('' kalau bukan dokumen/gambar yang didukung).
+// Browser di Windows sering memberi file.type kosong (mis. .docx/.xlsx di komputer tanpa
+// Office), sehingga data URL-nya jadi "application/octet-stream" dan ditolak backend.
+// Word & Excel punya magic number yang sama (OLE2 / ZIP), jadi jenisnya diambil dari ekstensi.
+export async function detectFileMime(file) {
+  let arr;
+  try { arr = new Uint8Array(await file.slice(0, 16).arrayBuffer()); } catch { return ''; }
+  const [pdf, jpeg, png, webp, ole, zip] = SIGNATURES.map((sig) => matchesSignature(arr, sig));
+  if (pdf) return 'application/pdf';
+  if (jpeg) return 'image/jpeg';
+  if (png) return 'image/png';
+  if (webp) return 'image/webp';
+  const ext = String(file.name || '').split('.').pop().toLowerCase();
+  if (ole) return ext === 'xls' ? OFFICE_MIME.xls : ext === 'doc' ? OFFICE_MIME.doc : file.type === OFFICE_MIME.xls || file.type === OFFICE_MIME.doc ? file.type : '';
+  if (zip) return ext === 'xlsx' ? OFFICE_MIME.xlsx : ext === 'docx' ? OFFICE_MIME.docx : file.type === OFFICE_MIME.xlsx || file.type === OFFICE_MIME.docx ? file.type : '';
+  return '';
+}
+
+// Baca file jadi data URL dengan MIME hasil deteksi magic number (bukan file.type dari browser).
+export async function readFileAsDataUrl(file) {
+  const mime = await detectFileMime(file);
+  const raw = await new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(new Error('Gagal membaca file.'));
+    reader.readAsDataURL(file);
+  });
+  return mime ? raw.replace(/^data:[^;,]*;base64,/, `data:${mime};base64,`) : raw;
+}

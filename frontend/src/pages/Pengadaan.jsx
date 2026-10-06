@@ -5,7 +5,7 @@ import BrandMark from '../components/BrandMark';
 import PaymentMethodDetail from '../components/PaymentMethodDetail';
 import SlideTransition from '../components/SlideTransition';
 import DocumentViewer from '../components/DocumentViewer';
-import { verifyFileIsGenuine } from '../utils/fileSignature';
+import { verifyFileIsGenuine, detectFileMime, readFileAsDataUrl } from '../utils/fileSignature';
 import { useFeedback } from '../components/Feedback';
 import { requireFields, positiveAmount, validatePayment } from '../utils/validation';
 import useLive from '../hooks/useLive';
@@ -440,19 +440,20 @@ function PengadaanStageTwo({ draft, update, readOnly, onView }) {
       alert({ title: 'File terlalu besar', message: 'Ukuran file maksimal 8MB.', tone: 'warning' });
       return;
     }
-    const allowed = ['application/pdf', 'image/jpeg', 'image/png'];
-    if (!allowed.includes(file.type)) {
-      alert({ title: 'Format tidak didukung', message: 'Format file hanya PDF, JPG, atau PNG.', tone: 'warning' });
-      return;
-    }
-    if (!(await verifyFileIsGenuine(file))) {
+    // Jenis file dicek dari isinya (magic number), bukan file.type -- browser di Windows
+    // kadang memberi file.type kosong walaupun filenya PDF/JPG/PNG asli.
+    const mime = await detectFileMime(file);
+    if (!mime) {
       alert({ title: 'File ditolak', message: FILE_SIGNATURE_REJECT_MESSAGE, tone: 'error' });
       return;
     }
+    if (!['application/pdf', 'image/jpeg', 'image/png'].includes(mime)) {
+      alert({ title: 'Format tidak didukung', message: 'Format file hanya PDF, JPG, atau PNG.', tone: 'warning' });
+      return;
+    }
+    const data = await readFileAsDataUrl(file);
     update(nameField, file.name);
-    const reader = new FileReader();
-    reader.onload = () => update(dataField, reader.result);
-    reader.readAsDataURL(file);
+    update(dataField, data);
   };
 
   const fileCard = (title, hint, nameField, dataField, icon) => (
@@ -497,19 +498,20 @@ function PengadaanStageThree({ draft, update, readOnly, onView }) {
       alert({ title: 'File terlalu besar', message: 'Ukuran file maksimal 8MB.', tone: 'warning' });
       return;
     }
-    const allowed = ['application/pdf', 'image/jpeg', 'image/png'];
-    if (!allowed.includes(file.type)) {
-      alert({ title: 'Format tidak didukung', message: 'Format file hanya PDF, JPG, atau PNG.', tone: 'warning' });
-      return;
-    }
-    if (!(await verifyFileIsGenuine(file))) {
+    // Jenis file dicek dari isinya (magic number), bukan file.type -- browser di Windows
+    // kadang memberi file.type kosong walaupun filenya PDF/JPG/PNG asli.
+    const mime = await detectFileMime(file);
+    if (!mime) {
       alert({ title: 'File ditolak', message: FILE_SIGNATURE_REJECT_MESSAGE, tone: 'error' });
       return;
     }
+    if (!['application/pdf', 'image/jpeg', 'image/png'].includes(mime)) {
+      alert({ title: 'Format tidak didukung', message: 'Format file hanya PDF, JPG, atau PNG.', tone: 'warning' });
+      return;
+    }
+    const data = await readFileAsDataUrl(file);
     update('stage3_final_document_name', file.name);
-    const reader = new FileReader();
-    reader.onload = () => update('stage3_final_document_file_data', reader.result);
-    reader.readAsDataURL(file);
+    update('stage3_final_document_file_data', data);
   };
 
   return <section className="bg-white/90 backdrop-blur rounded-2xl shadow-lg shadow-slate-200/40 p-6 md:p-8 border border-white/80"><h2 className="text-xl font-semibold text-slate-900 mb-6">Dokumentasi & Finalisasi Pengadaan</h2><div className="space-y-7">
@@ -543,7 +545,7 @@ function AddModal({ form, setForm, error, saving, onClose, onSubmit }) {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3"><div><label className="block text-xs font-semibold text-slate-700 mb-1.5">Tanggal</label><input type="date" value={form.tanggal} onChange={e=>setForm({...form,tanggal:e.target.value})} className={inputClass}/></div></div>
         <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-800"><b>Nilai HPS</b> tidak diinput saat membuat pengadaan. Nilai HPS diisi pada <b>Aksi Tahap 1 (Analisa & HPS)</b>.</div>
         <div><label className="block text-xs font-semibold text-slate-700 mb-1.5">Deskripsi Detail</label><textarea maxLength={500} value={form.deskripsi} onChange={e=>setForm({...form,deskripsi:e.target.value})} rows={4} className="w-full px-3 py-3 rounded-lg border border-slate-300 bg-slate-50/70 text-sm outline-none focus:bg-white focus:border-slate-900"/><div className="text-right text-[11px] text-slate-500 mt-1">{form.deskripsi.length}/500 karakter</div></div>
-        <div><div className="flex items-center justify-between gap-3 mb-1.5"><label className="block text-xs font-semibold text-slate-700">Upload Dokumen Pendukung</label><span className="text-[11px] text-slate-500">PDF, JPG, PNG, WebP · Maks. 8MB</span></div><label className="relative flex items-center gap-3 p-4 rounded-lg border border-dashed border-slate-300 bg-slate-50 cursor-pointer hover:bg-slate-100"><span className="w-10 h-10 rounded-lg bg-white flex items-center justify-center shadow-sm"><span className="material-symbols-outlined text-slate-600">upload_file</span></span><div className="min-w-0 flex-1"><div className="text-sm font-semibold text-slate-800 truncate">{form.request_document_name || 'Pilih dokumen pendukung'}</div><div className="text-xs text-slate-500 mt-1">Lampiran permintaan awal (opsional)</div></div><span className="px-3 py-2 rounded-lg bg-white border border-slate-200 text-xs font-semibold text-slate-700">Pilih Berkas</span><input type="file" className="absolute inset-0 opacity-0 cursor-pointer" accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp" onChange={async e=>{const f=e.target.files?.[0];if(!f)return;if(f.size>8*1024*1024){alert({ title: 'File terlalu besar', message: 'Ukuran dokumen maksimal 8MB.', tone: 'warning' });e.target.value='';return;}if(!(await verifyFileIsGenuine(f))){alert({ title: 'File ditolak', message: FILE_SIGNATURE_REJECT_MESSAGE, tone: 'error' });e.target.value='';return;}const r=new FileReader();r.onload=()=>setForm(cur=>({...cur,request_document_name:f.name,request_document_file_data:r.result}));r.readAsDataURL(f);}}/></label></div>
+        <div><div className="flex items-center justify-between gap-3 mb-1.5"><label className="block text-xs font-semibold text-slate-700">Upload Dokumen Pendukung</label><span className="text-[11px] text-slate-500">PDF, JPG, PNG, WebP · Maks. 8MB</span></div><label className="relative flex items-center gap-3 p-4 rounded-lg border border-dashed border-slate-300 bg-slate-50 cursor-pointer hover:bg-slate-100"><span className="w-10 h-10 rounded-lg bg-white flex items-center justify-center shadow-sm"><span className="material-symbols-outlined text-slate-600">upload_file</span></span><div className="min-w-0 flex-1"><div className="text-sm font-semibold text-slate-800 truncate">{form.request_document_name || 'Pilih dokumen pendukung'}</div><div className="text-xs text-slate-500 mt-1">Lampiran permintaan awal (opsional)</div></div><span className="px-3 py-2 rounded-lg bg-white border border-slate-200 text-xs font-semibold text-slate-700">Pilih Berkas</span><input type="file" className="absolute inset-0 opacity-0 cursor-pointer" accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp" onChange={async e=>{const f=e.target.files?.[0];if(!f)return;if(f.size>8*1024*1024){alert({ title: 'File terlalu besar', message: 'Ukuran dokumen maksimal 8MB.', tone: 'warning' });e.target.value='';return;}if(!(await verifyFileIsGenuine(f))){alert({ title: 'File ditolak', message: FILE_SIGNATURE_REJECT_MESSAGE, tone: 'error' });e.target.value='';return;}const data=await readFileAsDataUrl(f);e.target.value='';setForm(cur=>({...cur,request_document_name:f.name,request_document_file_data:data}));}}/></label></div>
       </div>
       <div className="px-6 py-4 border-t border-slate-200 flex justify-end gap-3"><button type="button" onClick={onClose} className="px-4 py-2.5 text-sm font-semibold text-slate-700">Batal</button><button type="submit" disabled={saving} className="px-5 py-2.5 bg-slate-900 text-white text-sm font-semibold rounded-lg disabled:opacity-60">{saving ? 'Menyimpan...' : 'Simpan Pengadaan'}</button></div>
     </form></div></div>;

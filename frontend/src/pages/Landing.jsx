@@ -19,7 +19,7 @@ const RUANG = ['SERBAGUNA', 'SETJEN II', 'TRI DHARMA', 'BIRO UMUM', 'GRAHA KEMNA
 const judulRuang = (r) => r.toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase()).replace(/\bIi\b/, 'II');
 
 const LANGKAH = [
-  { title: 'Daftar akun pegawai', desc: 'Isi nama, email, nomor HP, dan unit kerja. Masuk dengan email dan kata sandi, atau lewat SSO.' },
+  { title: 'Daftar akun pegawai', desc: 'Isi nama, email, nomor HP, dan unit kerja. Masuk dengan email dan kata sandi.' },
   { title: 'Ajukan dari menu layanan', desc: 'Pilih Pemeliharaan, Pengadaan, atau Ruang Rapat, lengkapi formulir, lalu unggah dokumen pendukung.' },
   { title: 'Pantau sampai selesai', desc: 'Status bergerak dari Pending ke On Progress hingga Selesai, dan perubahannya langsung terlihat.' },
 ];

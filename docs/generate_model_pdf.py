@@ -222,7 +222,7 @@ def aplikasi_model(c):
         "Permintaan pemeliharaan & pengadaan", "Data kendaraan & service",
         "Booking ruang rapat", "Akun pengguna (registrasi)"])
     dint = box(c, 196, 540, 150, "DATA INPUT INTEGRASI", [
-        "Profil Google SSO (nama, email)"])
+        "Tidak ada (login hanya email & kata sandi)"])
     dp = box(c, 380, 468, 170, "DATA PRODUK LAYANAN", [
         "Dokumen HPS, invoice & BAST (PDF)", "Foto kendaraan, BPKB, STNK",
         "Invoice service kendaraan", "Jadwal ruang rapat & nomor surat"])
@@ -233,7 +233,7 @@ def aplikasi_model(c):
     kam = box(c, 812, 468, 200, "PERANGKAT KEAMANAN", [
         "Firewall / reverse proxy HTTPS (disarankan)",
         "Enkripsi: hash bcrypt, JWT HS256, TLS",
-        "Manajemen identitas & akses: RBAC 4 role, Google SSO",
+        "Manajemen identitas & akses: RBAC 4 role",
         "Rate limit login & API, CORS, header CSP",
         "Monitoring: log aplikasi (logs/app.log)"])
 
@@ -318,7 +318,7 @@ def infra_network(c):
     t = 124
     eko = box(c, 60, t, 200, "EKOSISTEM YANG DIDUKUNG", [
         "Jaringan intra kantor (LAN/Wi-Fi)", "Internet (HTTPS)",
-        "Data center / server aplikasi instansi", "Layanan eksternal: Google OAuth, SMTP"])
+        "Data center / server aplikasi instansi", "Layanan eksternal: SMTP (opsional)"])
     awal = box(c, 300, t, 200, "POIN AWAL", [
         "Browser pegawai (PC / HP)", "Layar kiosk dekat ruang rapat",
         "Pengunjung landing page", "Akses poin: Wi-Fi / LAN kantor"])
@@ -326,7 +326,7 @@ def infra_network(c):
         "Data center: server aplikasi (frontend + API :4000)",
         "Server database PostgreSQL (:5432)",
         "Penyimpanan berkas backend/uploads",
-        "Google OAuth 2.0 & server SMTP (opsional)"])
+        "Server SMTP (opsional)"])
     arrow(c, [eko.r, (awal.x, eko.r[1])])
     arrow(c, [awal.r, (akhir.x, awal.r[1])])
     nb = max(eko.y + eko.h, awal.y + awal.h, akhir.y + akhir.h) + 12
@@ -334,14 +334,14 @@ def infra_network(c):
         "Firewall (hanya port 443 terbuka untuk pengguna)",
         "Rate limiting aplikasi: 5 percobaan login/menit/IP, 180 request/menit (IDS jaringan disarankan)",
         "Enkripsi lalu lintas HTTPS/TLS melalui reverse proxy",
-        "Autentikasi: password + JWT, atau Google SSO"])
+        "Autentikasi: email & password + JWT"])
 
     c.setFont(FONT, 11.5); c.setFillColor(black)
     c.drawString(40, Y(300), "c. Model Infrastruktur Sistem Penghubung Layanan")
     label(c, 60, 322, "INFRASTRUCTURE MODEL - SISTEM PENGHUBUNG")
     t = 332
     get = box(c, 60, t, 170, "GET APP", [
-        "Frontend React SPA (browser)", "Halaman publik & kiosk", "Callback Google SSO"])
+        "Frontend React SPA (browser)", "Halaman publik & kiosk", "Halaman reset kata sandi"])
     gw = box(c, 270, t, 200, "API GATEWAY PROTOCOL", [
         "Transport Layer Security (HTTPS)", "Otorisasi: token JWT Bearer + role",
         "REST JSON /api/* & SSE real-time", "Batas ukuran body & rate limit"])
@@ -349,7 +349,7 @@ def infra_network(c):
         ("Ada", False), ("Tidak ada", True)])
     post = box(c, 700, t, 200, "POST APP", [
         "Backend API Express (8 modul route)", "Database PostgreSQL via Prisma",
-        "Google OAuth 2.0 (SSO)", "Server SMTP (email reset password)"])
+        "Server SMTP (email reset password)"])
     arrow(c, [get.r, (gw.x, get.r[1])])
     elbow(c, gw.r, portal.l)
     elbow(c, portal.r, post.l)

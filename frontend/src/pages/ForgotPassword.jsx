@@ -54,7 +54,7 @@ export default function ForgotPassword() {
           <div className="mb-8">
             <h2 className="font-display text-2xl font-extrabold text-dinas-ink tracking-tight">Reset Kata Sandi</h2>
             <p className="text-sm text-slate-500 mt-1.5">
-              Masukkan email akun kamu. Link reset kata sandi akan dibuatkan oleh Admin Biro Umum dan dikirim ke kamu secara langsung.
+              Masukkan email akun kamu. Link reset kata sandi akan dikirim ke email tersebut, atau diteruskan oleh Admin Biro Umum.
             </p>
           </div>
 
@@ -118,7 +118,7 @@ export default function ForgotPassword() {
       </main>
 
       <footer className="w-full py-4 text-center text-xs text-slate-400 border-t border-slate-100 bg-white">
-        © 2024 Biro Umum dan Rumah Tangga. Sistem Manajemen Fasilitas &amp; Operasional Kantor.
+        © {new Date().getFullYear()} Biro Umum dan Rumah Tangga. Sistem Manajemen Fasilitas &amp; Operasional Kantor.
       </footer>
     </div>
   );

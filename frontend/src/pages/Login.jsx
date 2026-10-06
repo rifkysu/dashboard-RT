@@ -19,17 +19,13 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [searchParams] = useSearchParams();
-  const [error, setError] = useState(() => {
-    const sso = searchParams.get('sso');
-    if (sso === 'domain') return 'Login Google hanya untuk akun email kedinasan @kemnaker.go.id yang sudah terverifikasi.';
-    return sso === 'gagal' ? 'Login SSO gagal. Silakan coba lagi atau hubungi admin.' : '';
-  });
-  // Popup "akun di-ban": dari respons login (kode ACCOUNT_BANNED), dari SSO
-  // (?sso=banned), atau karena di-ban saat sedang login (?banned=1, lihat api.js).
+  const [error, setError] = useState('');
+  // Popup "akun di-ban": dari respons login (kode ACCOUNT_BANNED) atau karena
+  // di-ban saat sedang login (?banned=1, lihat api.js).
   const [banned, setBanned] = useState(() => {
     let flagged = false;
     try { flagged = sessionStorage.getItem('accountBanned') === '1'; sessionStorage.removeItem('accountBanned'); } catch {}
-    return flagged || searchParams.get('sso') === 'banned' || searchParams.get('banned') === '1' ? BANNED_MESSAGE : '';
+    return flagged || searchParams.get('banned') === '1' ? BANNED_MESSAGE : '';
   });
   const [loading, setLoading] = useState(false);
   // Popup animasi logo ~3 detik setelah login berhasil, sebelum pindah ke Dashboard.
@@ -86,11 +82,6 @@ export default function Login() {
     } finally {
       setLoading(false);
     }
-  }
-
-  function handleSSOLogin() {
-    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:4000/api';
-    window.location.href = `${apiUrl}/auth/google`;
   }
 
   return (
@@ -199,23 +190,6 @@ export default function Login() {
                 )}
               </button>
 
-              <div className="relative my-6">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-slate-200"></div>
-                </div>
-                <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-white px-3 text-slate-400 font-medium">Atau</span>
-                </div>
-              </div>
-
-              <button
-                type="button"
-                onClick={handleSSOLogin}
-                className="w-full py-3 px-4 bg-white hover:bg-slate-50 border border-slate-300 rounded-md text-sm font-semibold text-slate-700 flex items-center justify-center gap-2.5 transition"
-              >
-                <span className="material-symbols-outlined text-[18px] text-[#1e3a5f]">domain</span>
-                Masuk dengan Akun Kemenaker / Intranet (SSO)
-              </button>
             </form>
 
             <p className="mt-7 text-center text-xs text-slate-500 md:hidden">
@@ -260,7 +234,7 @@ export default function Login() {
             <button
               type="button"
               autoFocus
-              onClick={() => { setBanned(''); if (searchParams.has('banned') || searchParams.has('sso')) navigate('/login', { replace: true }); }}
+              onClick={() => { setBanned(''); if (searchParams.has('banned')) navigate('/login', { replace: true }); }}
               className="mt-6 w-full py-3 rounded-md bg-red-600 hover:bg-red-700 text-white text-sm font-semibold transition"
             >
               Saya Mengerti

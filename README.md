@@ -11,8 +11,8 @@ Full-stack app (React + Node.js/Express + PostgreSQL + **Prisma**) untuk mengelo
 - **Landing page ikut Mode Maintenance** — admin bisa menonaktifkan landing page juga (menu `landing` di panel Mode Maintenance), dicek lewat endpoint publik `GET /api/maintenance/landing-status` (tanpa perlu login) supaya pengunjung yang belum punya akun tetap melihat notifikasi maintenance yang benar.
 
 ### 🔐 Autentikasi & Role
-- Login email/password + **Login SSO** (Google OAuth 2.0 — bisa diganti ke SSO instansi lain lewat `backend/src/config/passport.js`).
-- **Hanya email @kemnaker.go.id** yang bisa membuat akun baru, baik lewat Daftar Akun maupun Login Google (email Google juga harus sudah terverifikasi). Akun lama dengan domain lain tetap bisa login dengan email + kata sandi. Domainnya diatur di `ALLOWED_EMAIL_DOMAIN` (`backend/src/middleware/security.js` dan `frontend/src/utils/validation.js` — ubah keduanya).
+- Login email/password (Login Google/SSO sudah dihapus).
+- **Hanya email @kemnaker.go.id** yang bisa membuat akun baru lewat Daftar Akun. Akun lama dengan domain lain tetap bisa login dengan email + kata sandi. Domainnya diatur di `ALLOWED_EMAIL_DOMAIN` (`backend/src/middleware/security.js` dan `frontend/src/utils/validation.js` — ubah keduanya).
 - **Lupa Password** — link reset (berlaku 1 jam) **tidak pernah** ditampilkan ke peminta publik (kalau ditampilkan, siapa pun bisa mengambil alih akun orang lain hanya dengan mengetik emailnya).
   - **SMTP diisi** (lihat Bagian 2): link langsung dikirim ke email pemilik akun.
   - **SMTP kosong / email gagal terkirim**: permintaan masuk sebagai notifikasi admin (badge merah di menu Akun & Akses + penanda di baris akunnya). Admin klik **Kirim Link** → link dikirim ke email (kalau SMTP aktif) dan bisa juga disalin atau dikirim via WhatsApp.
@@ -84,7 +84,7 @@ Full-stack app (React + Node.js/Express + PostgreSQL + **Prisma**) untuk mengelo
 - Halaman **Settings khusus admin & kabag** — link-nya otomatis hilang dari sidebar untuk role lain, dan redirect ke Dashboard kalau karyawan/PIC coba akses `/settings` langsung lewat URL. Info profil pengguna (nama, email, role) dipindah ke halaman terpisah **`/profile`** yang bisa diakses semua role lewat blok profil di sidebar (di atas Settings).
 
 ### 👤 Akun & Akses (`/akun`, khusus Admin & Kabag)
-- Tabel semua akun terdaftar: nama, email, role, no HP, unit kerja, status, metode login (SSO/password), tanggal daftar, dan **terakhir login** (`last_login_at`, dicatat otomatis tiap kali ada login sukses lewat email/password maupun SSO).
+- Tabel semua akun terdaftar: nama, email, role, no HP, unit kerja, status, metode login (password; akun lama yang dulu dibuat lewat SSO ditandai "SSO (google)"), tanggal daftar, dan **terakhir login** (`last_login_at`, dicatat otomatis tiap kali ada login sukses lewat email/password).
 - **Ban / Aktifkan akun** — admin bisa menonaktifkan (`is_active = false`) akun siapa pun kecuali akun sendiri. Efeknya **langsung berlaku**: akun yang di-ban langsung ditolak di request berikutnya (`requireAuth` selalu cek `is_active` segar dari database) dan tidak bisa login lagi sampai diaktifkan ulang — tanpa logic tambahan, murni memanfaatkan mekanisme cek role/status yang sudah ada.
 - Link menu ini **cuma muncul di sidebar untuk role admin**, dan endpoint `GET/PUT /api/users*` dijaga `requireRole(['admin'])` di backend.
 
@@ -101,7 +101,6 @@ Full-stack app (React + Node.js/Express + PostgreSQL + **Prisma**) untuk mengelo
 - Otorisasi role diterapkan **di dua lapis**: disable di UI (frontend) **dan** ditolak di API (backend) — aman walau seseorang mencoba akses API langsung (mis. lewat Postman).
 - Rate limiting di endpoint sensitif: login (5x/menit), register, dan lupa password.
 - **Sesi bisa dicabut** — setiap token JWT membawa versi sesi (`users.token_version`, klaim `tv`). Versi ini naik saat **logout** (`POST /api/auth/logout`), **reset kata sandi**, atau **akun di-ban**, dan `requireAuth` menolak token yang versinya beda. Jadi token yang sempat dicuri langsung mati begitu pemiliknya logout atau mereset sandi, tanpa menunggu 8 jam. Konsekuensinya: logout di satu perangkat ikut mengeluarkan sesi akun yang sama di perangkat lain.
-- **Login Google memakai parameter OAuth `state`** (nilai acak di cookie HttpOnly `oauth_state`, dicocokkan saat Google kembali ke callback) — mencegah login CSRF, yaitu korban dibuat diam-diam masuk ke akun milik penyerang.
 - **Waktu respons login selalu sama** — untuk email yang tidak terdaftar, bcrypt tetap dijalankan terhadap hash pembanding, jadi daftar email pegawai tidak bisa ditebak dari lamanya respons.
 - **Link reset kata sandi memakai `#token=`** (bukan `?token=`) — bagian `#` tidak pernah dikirim ke server, jadi token tidak tercatat di log Nginx/proxy; halaman reset langsung menghapusnya dari address bar.
 - **Header keamanan halaman web** (HSTS, CSP tanpa script inline, `Referrer-Policy: no-referrer`, dll.) dipasang Nginx lewat `docs/deploy/security-headers.conf`. Karena itu `index.html` tidak boleh berisi `<script>` inline — script awal ada di `frontend/public/boot.js`.
@@ -264,42 +263,16 @@ Kamu akan melihat **Landing page** (jadwal ruang rapat publik). Klik **"Masuk ke
 
 ---
 
-## BAGIAN 4 — MENGAKTIFKAN LOGIN SSO (Google, opsional)
-
-Contoh di project ini pakai **Google OAuth 2.0** sebagai penyedia SSO (paling gampang untuk uji coba). Kalau instansi kamu punya SSO sendiri (Azure AD / Keycloak / SAML Kemnaker), pola kodenya tetap sama — cukup ganti strategy di `backend/src/config/passport.js` (misalnya pakai `passport-saml` atau `passport-openidconnect`), sisanya (routing, JWT) tidak perlu diubah.
-
-Langkah aktifkan Google SSO untuk uji coba:
-1. Buka https://console.cloud.google.com/ → buat project baru (atau pakai yang sudah ada).
-2. Menu **APIs & Services > OAuth consent screen** → isi info dasar aplikasi → Save.
-3. Menu **APIs & Services > Credentials** → **Create Credentials > OAuth client ID**.
-   - Application type: **Web application**
-   - Authorized redirect URI: `http://localhost:4000/api/auth/google/callback`
-4. Setelah dibuat, copy **Client ID** dan **Client Secret**.
-5. Tempel ke file `.env` backend:
-   ```env
-   GOOGLE_CLIENT_ID=isi_client_id_kamu
-   GOOGLE_CLIENT_SECRET=isi_client_secret_kamu
-   GOOGLE_CALLBACK_URL=http://localhost:4000/api/auth/google/callback
-   ```
-6. Restart backend (`npm run dev` ulang).
-7. Klik tombol **"Masuk dengan Akun Kemenaker / Intranet (SSO)"** di halaman login → diarahkan ke Google → setelah izin, otomatis kembali ke aplikasi dan langsung login.
-
-> Catatan: kalau `.env` belum diisi, tombol SSO akan menampilkan pesan bahwa SSO belum dikonfigurasi (tidak error/crash).
-> User yang login pertama kali lewat SSO otomatis dibuatkan akun baru dengan role **karyawan**. Untuk menaikkan role, ubah lewat pgAdmin4 seperti di Bagian 1.
-
----
-
-## BAGIAN 5 — RINGKASAN ATURAN HAK AKSES (RBAC)
+## BAGIAN 4 — RINGKASAN ATURAN HAK AKSES (RBAC)
 
 ### Alur mendapatkan role (penting dipahami sebelum maintenance)
 Semua akun **selalu mulai dari role `karyawan`** — tidak ada jalur pendaftaran/login yang langsung memberi role lebih tinggi:
 
 1. **Daftar mandiri** (form Register) → role `karyawan`.
-2. **Login SSO pertama kali** (email belum terdaftar) → backend otomatis buat akun baru role `karyawan` juga (`backend/src/config/passport.js`). Kalau email itu ternyata **sudah ada** duluan (misalnya sudah di-upgrade manual lewat pgAdmin4), SSO **tidak** menimpa/reset role yang sudah ada.
-3. **Auto-promote ke PIC** — begitu seorang `karyawan` berhasil menambahkan permintaan baru **di Pemeliharaan ATAU Pengadaan** (endpoint `POST /pemeliharaan` atau `POST /pengadaan`), backend otomatis update role user itu jadi `pic` **saat itu juga**, lalu kirim token JWT baru di response supaya sesi langsung ter-update tanpa logout/login ulang (`refreshAuth` di frontend). Promosi ini **berlaku global** (bukan per-modul) — cukup sekali nambah di modul mana pun, role langsung `pic` di semua tempat. **Catatan**: Kendaraan dan Ruang Rapat sengaja **tidak** memakai alur auto-promote ini — di Ruang Rapat semua role bisa booking & mengelola; di Kendaraan semua role (termasuk karyawan) bisa **menambah** kendaraan, tetapi ubah/hapus/foto/dokumen/service hanya kabag/PIC/admin (tanpa pembatasan kepemilikan antar sesama PIC/kabag/admin).
-4. **PIC (lewat pgAdmin4), Kabag, dan Admin** — role-role ini **tidak bisa** didapat otomatis lewat aksi apa pun di aplikasi (selain auto-promote PIC di poin 3); satu-satunya cara adalah admin/DBA mengubahnya manual lewat pgAdmin4 (lihat query di Bagian 1).
+2. **Auto-promote ke PIC** — begitu seorang `karyawan` berhasil menambahkan permintaan baru **di Pemeliharaan ATAU Pengadaan** (endpoint `POST /pemeliharaan` atau `POST /pengadaan`), backend otomatis update role user itu jadi `pic` **saat itu juga**, lalu kirim token JWT baru di response supaya sesi langsung ter-update tanpa logout/login ulang (`refreshAuth` di frontend). Promosi ini **berlaku global** (bukan per-modul) — cukup sekali nambah di modul mana pun, role langsung `pic` di semua tempat. **Catatan**: Kendaraan dan Ruang Rapat sengaja **tidak** memakai alur auto-promote ini — di Ruang Rapat semua role bisa booking & mengelola; di Kendaraan semua role (termasuk karyawan) bisa **menambah** kendaraan, tetapi ubah/hapus/foto/dokumen/service hanya kabag/PIC/admin (tanpa pembatasan kepemilikan antar sesama PIC/kabag/admin).
+3. **PIC (lewat pgAdmin4), Kabag, dan Admin** — role-role ini **tidak bisa** didapat otomatis lewat aksi apa pun di aplikasi (selain auto-promote PIC di poin 2); satu-satunya cara adalah admin/DBA mengubahnya manual lewat pgAdmin4 (lihat query di Bagian 1).
 
-Ringkasnya: **Register/SSO → Karyawan → (nambah permintaan) → PIC → (manual pgAdmin4) → Kabag/Admin**.
+Ringkasnya: **Register → Karyawan → (nambah permintaan) → PIC → (manual pgAdmin4) → Kabag/Admin**.
 
 | Role | Bisa buka data? | Bisa tambah permintaan baru? | Bisa edit / proses tahapan? | Bisa dipilih saat daftar akun? |
 |---|:---:|:---:|:---:|:---:|
@@ -317,7 +290,7 @@ Penerapan teknis:
 
 ---
 
-## BAGIAN 6 — DEPLOY KE PRODUCTION
+## BAGIAN 5 — DEPLOY KE PRODUCTION
 
 Contoh siap pakai (tinggal ganti nilai bertanda `<<GANTI>>`):
 - `backend/.env.production.example` → salin jadi `backend/.env`
@@ -361,7 +334,6 @@ Hal yang paling sering terlewat:
 - Deploy pertama setelah update keamanan ini: semua pengguna perlu **login ulang sekali** (token lama tidak membawa versi sesi).
 - `TRUST_PROXY=true` bila di belakang Nginx; tanpa ini semua pengguna dianggap satu IP (batas koneksi realtime & login cepat penuh).
 - Realtime butuh backend **satu proses** dan `proxy_buffering off` untuk `/api/live/stream` (sudah ada di contoh Nginx).
-- Login Google: daftarkan `GOOGLE_CALLBACK_URL` production di Google Cloud Console.
 - Pakai HTTPS (HTTP/2) seperti contoh Nginx. Server tidak perlu akses internet untuk melayani aplikasi: Tailwind & semua font sudah dibundel saat `npm run build`.
 - Setelah `git pull` yang mengubah `package.json`, jalankan lagi `npm ci` di folder yang berubah (backend/frontend) sebelum build/restart.
 
@@ -383,7 +355,7 @@ Hal yang paling sering terlewat:
 
 ## TEKNOLOGI YANG DIPAKAI
 - **Frontend**: React 18, React Router 7, Axios, Tailwind CSS 3 (dibundel saat build, bukan CDN), Vite, Server-Sent Events (native `EventSource`). Font (Public Sans, Plus Jakarta Sans, JetBrains Mono, Material Symbols) ikut dibundel -- aplikasi tidak memanggil server luar sama sekali saat dibuka.
-- **Backend**: Node.js, Express, Prisma ORM, JSON Web Token (jsonwebtoken), bcryptjs, Passport.js (Google OAuth strategy)
+- **Backend**: Node.js, Express, Prisma ORM, JSON Web Token (jsonwebtoken), bcryptjs
 - **Database**: PostgreSQL, dikelola lewat Prisma Migrate (`backend/prisma/migrations/`) — pgAdmin4 dipakai untuk operasional (lihat isi data, kelola role user).
 
 

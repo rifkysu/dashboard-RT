@@ -15,7 +15,7 @@ Versi ini menambahkan hardening dasar untuk deployment produksi:
 - Role `kabag`/`pic` tidak dapat dibuat melalui self-registration; role sensitif harus diberikan oleh administrator.
 - Kode nomor permintaan memakai `crypto.randomInt()`.
 - Token JWT bisa dicabut: versi sesi (`users.token_version`) naik saat logout, reset kata sandi, atau ban; token dengan versi lama ditolak.
-- Login Google memakai parameter OAuth `state` (cookie HttpOnly) untuk mencegah login CSRF; hanya email @kemnaker.go.id yang terverifikasi.
+- Hanya email @kemnaker.go.id yang dapat membuat akun baru; tidak ada login pihak ketiga (Google/SSO).
 - Login dengan email tidak terdaftar tetap menjalankan bcrypt, sehingga waktu respons tidak membocorkan email mana yang terdaftar.
 - Link reset kata sandi memakai `#token=` agar token tidak tercatat di log server.
 - Halaman web diberi HSTS, CSP (`script-src 'self'`, tanpa script inline), `Referrer-Policy: no-referrer`, dll. lewat `docs/deploy/security-headers.conf`; Nginx hanya TLS 1.2/1.3, `server_tokens off`, file tersembunyi ditolak.
@@ -34,4 +34,4 @@ Untuk deployment:
 3. `npm start`
 4. Build frontend di server/build pipeline dengan `cd frontend && npm ci && npm run build`.
 5. Sajikan `frontend/dist` melalui HTTPS/reverse proxy memakai `docs/deploy/nginx.conf.example` + `security-headers.conf`.
-6. Ikuti "Checklist keamanan server" di README Bagian 6 (firewall, password DB, backup, `JWT_SECRET`).
+6. Ikuti "Checklist keamanan server" di README Bagian 5 (firewall, password DB, backup, `JWT_SECRET`).

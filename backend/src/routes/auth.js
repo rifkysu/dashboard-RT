@@ -2,7 +2,6 @@ const express = require('express');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
-const passport = require('passport');
 const prisma = require('../prisma');
 const { requireAuth, ACCOUNT_BANNED, ACCOUNT_BANNED_MESSAGE } = require('../middleware/auth');
 const { createRateLimiter, normalizeEmail, isSafeText, ALLOWED_EMAIL_DOMAIN, isAllowedEmailDomain } = require('../middleware/security');
@@ -284,54 +283,5 @@ router.get('/me', requireAuth, async (req, res) => {
     res.status(500).json({ message: 'Terjadi kesalahan server.' });
   }
 });
-
-// ---------------------------------------------------------
-// SSO (Single Sign-On) via Google OAuth 2.0
-// Hanya aktif jika GOOGLE_CLIENT_ID & GOOGLE_CLIENT_SECRET diisi di .env
-// ---------------------------------------------------------
-const ssoEnabled = Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET);
-
-if (ssoEnabled) {
-  router.get(
-    '/google',
-    passport.authenticate('google', { scope: ['profile', 'email'], session: false })
-  );
-
-  router.get(
-    '/google/callback',
-    (req, res, next) => {
-      passport.authenticate('google', { session: false }, (err, user, info) => {
-        if (err || !user) {
-          const reason = info?.banned ? 'banned' : info?.domain ? 'domain' : 'gagal';
-          return res.redirect(`${process.env.FRONTEND_URL}/login?sso=${reason}`);
-        }
-        req.user = user;
-        return next();
-      })(req, res, next);
-    },
-    async (req, res) => {
-      try {
-        // req.user diisi oleh strategy passport-google-oauth20 (lihat config/passport.js)
-        const updated = await prisma.user.update({ where: { id: req.user.id }, data: { last_login_at: new Date() } });
-        const token = signToken(updated);
-        // Token dikirim lewat fragment (#), bukan query string: fragment tidak
-        // pernah dikirim browser ke server, jadi tidak tercatat di log/referrer.
-        res.redirect(`${process.env.FRONTEND_URL}/sso-callback#token=${encodeURIComponent(token)}`);
-      } catch (err) {
-        console.error(err);
-        res.redirect(`${process.env.FRONTEND_URL}/login?sso=gagal`);
-      }
-    }
-  );
-} else {
-  // Kalau SSO belum dikonfigurasi, tetap sediakan route agar frontend
-  // tidak error 404 total -> beri pesan yang jelas.
-  router.get('/google', (req, res) => {
-    res.status(503).json({
-      message:
-        'Login SSO belum dikonfigurasi. Isi GOOGLE_CLIENT_ID & GOOGLE_CLIENT_SECRET di file .env backend (lihat README.md).',
-    });
-  });
-}
 
 module.exports = router;

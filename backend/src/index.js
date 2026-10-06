@@ -1,11 +1,8 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-const passport = require('passport');
 const jwt = require('jsonwebtoken');
 const { requestHardening, createRateLimiter, createSseLimiter, validateCommonInput, randomRequestId } = require('./middleware/security');
-
-require('./config/passport'); // daftarkan strategy Google SSO (jika dikonfigurasi)
 
 const authRoutes = require('./routes/auth');
 const pemeliharaanRoutes = require('./routes/pemeliharaan');
@@ -55,7 +52,6 @@ ensureUploadRoot();
 app.use(validateCommonInput);
 // Jangan expose folder upload sebagai static publik. File sensitif sebaiknya disajikan lewat endpoint yang terautentikasi.
 // app.use('/uploads', express.static(...));
-app.use(passport.initialize());
 
 // Request logger: catat endpoint, status, durasi, user, dan error agar mudah
 // mengetahui apakah masalah berasal dari frontend, API, atau database.

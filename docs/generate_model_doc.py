@@ -506,8 +506,8 @@ def d_alur_auth(g):
         g.box(x, 511.2, w, 45, t, s, pal, SZ_L)
         if i < len(steps) - 1:
             g.arrow(x + w, 534.2, steps[i + 1][0], 534.2)
-    g.box(59, 571.2, 230, 38, "Login Google (SSO, opsional)",
-          ["OAuth 2.0 -> /sso-callback#token -> langsung ke Dashboard"], "plain", SZ_L)
+    g.box(59, 571.2, 230, 38, "Lupa Kata Sandi",
+          ["link reset 1 jam via email (SMTP) atau dari admin"], "plain", SZ_L)
     g.box(304, 571.2, 230, 38, "Logout (dari Sidebar)",
           ['popup "Sampai jumpa" 3 detik -> sesi dihapus -> Landing'], "violet", SZ_L)
 
@@ -554,7 +554,7 @@ def fc_umum(f):
     f.node("land", "proc", 220, 114, "Landing page /", "ringkasan + jadwal rapat real-time", w=150)
     f.node("akun", "dec", 220, 166, "Sudah punya", "akun?", w=120)
     f.node("daftar", "proc", 62, 166, "Daftar Akun", "peran awal: karyawan", w=110)
-    f.node("login", "proc", 220, 218, "Login", "email + sandi atau SSO Google", w=150)
+    f.node("login", "proc", 220, 218, "Login", "email + kata sandi", w=150)
     f.node("ok", "dec", 220, 272, "Login berhasil &", "akun aktif?", w=140, h=44)
     f.node("err", "bad", 400, 272, "Pesan error /", "popup akun diblokir", w=120)
     f.node("dash", "proc", 220, 326, "Dashboard", "KPI, ruang kosong, pajak H-14", w=150)
@@ -591,11 +591,8 @@ def fc_umum(f):
 
 def fc_login(f):
     f.node("login", "start", 220, 14, "Halaman Login")
-    f.node("met", "dec", 220, 62, "Metode", "login", w=110)
-    f.node("sso", "proc", 400, 62, "Redirect Google", "OAuth 2.0", w=120)
     f.node("lim", "dec", 220, 118, "5x gagal dalam 1 menit", "(IP + email)?", w=160, h=46)
     f.node("lock", "bad", 62, 118, "Tombol terkunci", "hitung mundur 1 menit", w=114)
-    f.node("cb", "proc", 400, 118, "/sso-callback", "menerima token", w=120)
     f.node("cek", "dec", 220, 174, "Email & sandi", "cocok?", w=130)
     f.node("salah", "bad", 62, 174, "Pesan: email atau", "kata sandi salah", w=114)
     f.node("aktif", "dec", 220, 230, "Akun aktif?", "(is_active)", w=130)
@@ -609,13 +606,9 @@ def fc_login(f):
     f.node("notif", "info", 62, 452, "Notifikasi ke admin", "menu Akun & Akses", w=114)
     f.node("kirim", "info", 62, 504, "Admin klik Kirim Link", "email / salin / WhatsApp", w=114)
     f.node("reset", "proc", 220, 552, "/reset-password", "sandi baru 8-128, huruf + angka", w=150)
-    f.link("login", "b", "met", "t")
-    f.link("met", "r", "sso", "l", "SSO")
-    f.link("met", "b", "lim", "t", "Email")
+    f.link("login", "b", "lim", "t")
     f.link("lim", "l", "lock", "r", "Ya")
     f.link("lim", "b", "cek", "t", "Tidak")
-    f.link("sso", "b", "cb", "t")
-    f.link("cb", "b", "aktif", "r")
     f.link("cek", "l", "salah", "r", "Tidak")
     f.link("cek", "b", "aktif", "t", "Ya")
     f.link("aktif", "l", "ban", "r", "Tidak")
@@ -867,8 +860,8 @@ def isi_aplikasi():
             "Lupa kata sandi: link reset berlaku 1 jam, dikirim via email (SMTP) atau diteruskan admin dari "
             "menu Akun & Akses. Kata sandi baru mengikuti aturan yang sama dengan Daftar Akun (8-128 karakter, "
             "huruf & angka), diperiksa di frontend dan backend.",
-            "Login Google (SSO) opsional melalui OAuth 2.0; hanya untuk email @kemnaker.go.id yang sudah "
-            "terverifikasi Google. Akun lama dengan domain lain tetap bisa login dengan email & kata sandi.",
+            "Login hanya dengan email & kata sandi (tidak ada login Google/SSO). Akun lama dengan domain "
+            "lain tetap bisa login dengan email & kata sandi.",
             "Proteksi percobaan login: 5 kali per menit per kombinasi IP + email, dengan hitung mundur di "
             "layar."),
         h2("3.3 Dashboard"),
@@ -947,7 +940,7 @@ def isi_aplikasi():
             "Ban/aktifkan akun (kecuali akun sendiri), notifikasi permintaan reset kata sandi, kirim/salin "
             "link reset.",
             "Akun yang di-ban melihat popup *Akun Anda Diblokir* (melanggar ketentuan / spam berlebihan) saat "
-            "login dengan kata sandi yang benar, saat login SSO, atau langsung dikeluarkan bila sedang login. "
+            "login dengan kata sandi yang benar, atau langsung dikeluarkan bila sedang login. "
             "Link reset kata sandi yang masih berlaku ikut dihapus saat akun di-ban."),
 
         PageBreak(),
@@ -975,7 +968,6 @@ def isi_aplikasi():
             ["/register", "Daftar Akun", "Publik", "Validasi lengkap, lanjut ke Login"],
             ["/forgot-password, /reset-password", "Lupa & Reset Kata Sandi", "Publik",
              "Link reset berlaku 1 jam; aturan sandi sama dengan Daftar Akun"],
-            ["/sso-callback", "SSO Callback", "Publik", "Menerima token login Google"],
             ["/dashboard", "Dashboard", "Login", "KPI, status ruang, aktivitas"],
             ["/pemeliharaan", "Pemeliharaan", "Login", "Daftar, tahapan, export"],
             ["/pengadaan", "Pengadaan", "Login", "Daftar, tahapan, export"],
@@ -1013,7 +1005,7 @@ def isi_aplikasi():
             ["", "POST /auth/login", "Publik", "Login, mengembalikan JWT"],
             ["", "POST /auth/forgot-password, /auth/reset-password", "Publik", "Minta & pakai link reset"],
             ["", "POST /auth/logout", "Login", "Cabut token (token_version naik)"],
-            ["", "GET /auth/me; GET /auth/google", "Login; Publik", "Profil sesi; mulai SSO Google"],
+            ["", "GET /auth/me", "Login", "Profil sesi"],
             ["Dashboard", "GET /dashboard/summary, /dashboard/activities", "Login", "Ringkasan KPI & aktivitas"],
             ["Pemeliharaan", "GET / , GET /:id, POST /", "Login", "Daftar, detail, ajukan"],
             ["", "PUT /:id, DELETE /:id", "PIC (milik)/Kabag/Admin", "Proses tahap, ubah, hapus"],
@@ -1093,11 +1085,11 @@ def isi_aplikasi():
         flowchart(560, fc_umum),
         caption("Gambar 6. Flowchart alur umum: landing page, login, dashboard, dan menu"),
         PageBreak(),
-        h2("9.2 Login, SSO, dan lupa kata sandi"),
+        h2("9.2 Login dan lupa kata sandi"),
         p("Link reset kata sandi tidak pernah ditampilkan kepada peminta; link hanya dikirim ke email pemilik "
           "akun atau diteruskan oleh admin."),
         flowchart(580, fc_login),
-        caption("Gambar 7. Flowchart login email/sandi, login SSO Google, dan lupa kata sandi"),
+        caption("Gambar 7. Flowchart login email/sandi dan lupa kata sandi"),
         PageBreak(),
         h2("9.3 Pemeriksaan setiap request API"),
         p("Setiap request ke modul yang memerlukan login melewati pemeriksaan berurutan di backend. Peran dan "
@@ -1160,9 +1152,8 @@ def d_topologi(g):
     g.text(148, 393.7, "TCP 5432", 6.8)
     g.arrow(207, 447.2, 217, 447.2, both=True)
     g.group(372, 401.2, 160, 82, "EKSTERNAL (opsional)", "amber")
-    g.box(382, 419.2, 140, 24, "Google OAuth 2.0", [], "amber2", (7.5, 7.5, 0))
-    g.box(382, 451.2, 140, 24, "SMTP (email reset)", [], "amber2", (7.5, 7.5, 0))
-    g.arrow(357, 308.2, 512, 419.2)
+    g.box(382, 435.2, 140, 24, "SMTP (email reset)", [], "amber2", (7.5, 7.5, 0))
+    g.arrow(357, 308.2, 512, 435.2)
 
 
 def d_lapisan_keamanan(g):
@@ -1181,8 +1172,8 @@ def isi_infra():
     return [
         h1("1. Topologi Sistem"),
         p("Sistem terdiri atas frontend statis (hasil build Vite), backend REST API Node.js, database "
-          "PostgreSQL, dan penyimpanan berkas di disk server aplikasi. Layanan eksternal (Google OAuth dan "
-          "SMTP) bersifat opsional dan hanya aktif bila dikonfigurasi."),
+          "PostgreSQL, dan penyimpanan berkas di disk server aplikasi. Layanan eksternal (SMTP) "
+          "bersifat opsional dan hanya aktif bila dikonfigurasi."),
         Diagram(137.2, 487.2, d_topologi),
         caption("Gambar 1. Topologi infrastruktur"),
         h2("Arus komunikasi"),
@@ -1215,7 +1206,6 @@ def isi_infra():
             ["", "Prisma ORM & Prisma Client", "6.19"],
             ["", "jsonwebtoken", "9 (JWT HS256, masa berlaku 8 jam)"],
             ["", "bcryptjs", "2.4 (hash kata sandi, cost 12)"],
-            ["", "passport + passport-google-oauth20", "SSO Google (opsional)"],
             ["", "nodemailer", "10 (email reset kata sandi, opsional)"],
             ["", "cors, dotenv", "CORS & konfigurasi environment"],
             ["Database", "PostgreSQL", "18 (database biro_umum_db, port 5432)"],
@@ -1256,11 +1246,10 @@ def isi_infra():
             ["DATABASE_URL", "Ya", "Koneksi PostgreSQL (postgresql://user:pass@host:5432/biro_umum_db)"],
             ["JWT_SECRET", "Ya", "Kunci tanda tangan token, minimal 32 karakter (server menolak start bila kurang)"],
             ["JWT_EXPIRES_IN", "Tidak", "Masa berlaku token, default 8h"],
-            ["FRONTEND_URL", "Ya", "Origin yang diizinkan CORS & dasar link reset/SSO"],
+            ["FRONTEND_URL", "Ya", "Origin yang diizinkan CORS & dasar link reset kata sandi"],
             ["PORT", "Tidak", "Port backend, default 4000"],
             ["TRUST_PROXY", "Tidak", "true bila di belakang reverse proxy agar IP klien terbaca benar"],
             ["PRISMA_LOG", "Tidak", "true untuk log peringatan Prisma"],
-            ["GOOGLE_CLIENT_ID / SECRET / CALLBACK_URL", "Tidak", "Mengaktifkan login Google"],
             ["SMTP_HOST / PORT / USER / PASS, MAIL_FROM", "Tidak",
              "Mengirim email reset kata sandi; bila kosong permintaan masuk ke notifikasi admin"],
             ["VITE_API_URL (frontend)", "Tidak", "Alamat API untuk frontend, default http://localhost:4000/api"],
@@ -1297,7 +1286,6 @@ def isi_infra():
             ["Frontend (dev)", "5173 / HTTP", "Browser pengguna"],
             ["Backend API", "4000 / HTTP(S), JSON + SSE", "Browser (origin FRONTEND_URL)"],
             ["PostgreSQL", "5432 / TCP", "Backend & pgAdmin 4 saja (jangan dibuka ke publik)"],
-            ["Google OAuth", "443 / HTTPS keluar", "Backend (opsional)"],
             ["SMTP", "465 (SSL) atau 587 / keluar", "Backend (opsional)"],
         ]),
 
@@ -1321,8 +1309,7 @@ def isi_infra():
              "request; akun yang di-ban langsung ditolak (kode ACCOUNT_BANNED) dan dikeluarkan dari sesi. "
              "Token membawa versi sesi (users.token_version) yang naik saat logout, reset kata sandi, atau "
              "ban, sehingga token lama langsung tidak berlaku walau belum kedaluwarsa. Login dengan email tidak "
-             "terdaftar tetap menjalankan bcrypt agar waktu respons sama. Login Google memakai parameter OAuth "
-             "state (cookie HttpOnly) untuk mencegah login CSRF."],
+             "terdaftar tetap menjalankan bcrypt agar waktu respons sama."],
             ["Kata sandi", "bcrypt cost 12; token reset acak 32 byte, disimpan sebagai hash SHA-256, berlaku "
              "1 jam, tidak pernah ditampilkan ke peminta publik; token dikirim di #fragment link sehingga "
              "tidak tercatat di log server."],

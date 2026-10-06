@@ -23,8 +23,6 @@
     "express": "^4.19.2",
     "jsonwebtoken": "^9.0.2",
     "nodemailer": "^10.0.10",
-    "passport": "^0.7.0",
-    "passport-google-oauth20": "^2.0.0",
     "prisma": "^6.16.2"
   },
   "devDependencies": {
