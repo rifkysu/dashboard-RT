@@ -22,6 +22,10 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const NAME_RE = /^[\p{L}][\p{L} .,'-]*$/u;
 const HP_RE = /^(\+?62|0)8\d{7,12}$/;
 const UNIT_KERJA = ['rt', 'perlengkapan', 'kendaraan', 'protokol', 'lainnya'];
+// Kolom users.email VARCHAR(150) -- lebih panjang dari ini ditolak di validasi, bukan crash 500 di database.
+const EMAIL_MAX = 150;
+// Cari akun tanpa membedakan huruf besar/kecil: akun yang dibuat/diubah lewat pgAdmin bisa saja tersimpan dengan huruf besar.
+const emailWhere = (email) => ({ email: { equals: email, mode: 'insensitive' } });
 function passwordIssue(pw) {
   if (typeof pw !== 'string' || !pw) return 'Kata sandi wajib diisi.';
   if (pw.length < 8) return 'Kata sandi minimal 8 karakter.';
@@ -92,6 +96,9 @@ router.post('/register', registerLimiter, async (req, res) => {
     if (!isSafeText(email, 254) || !EMAIL_RE.test(email)) {
       return res.status(400).json({ message: 'Format email tidak valid.' });
     }
+    if (email.length > EMAIL_MAX) {
+      return res.status(400).json({ message: `Email maksimal ${EMAIL_MAX} karakter.` });
+    }
     if (!isAllowedEmailDomain(email)) {
       return res.status(400).json({ message: `Pendaftaran hanya untuk email kedinasan @${ALLOWED_EMAIL_DOMAIN}.` });
     }
@@ -113,7 +120,7 @@ router.post('/register', registerLimiter, async (req, res) => {
       });
     }
 
-    const existing = await prisma.user.findUnique({ where: { email }, select: { id: true } });
+    const existing = await prisma.user.findFirst({ where: emailWhere(email), select: { id: true } });
     if (existing) {
       return res.status(409).json({ message: 'Email sudah terdaftar. Silakan login.' });
     }
@@ -149,7 +156,7 @@ router.post('/login', loginIpLimiter, loginLimiter, async (req, res) => {
       return res.status(400).json({ message: 'Format email tidak valid.' });
     }
 
-    const user = await prisma.user.findFirst({ where: { email } });
+    const user = await prisma.user.findFirst({ where: emailWhere(email) });
 
     const match = await bcrypt.compare(password, user?.password_hash || DUMMY_PASSWORD_HASH);
     if (!user || !user.password_hash || !match) {

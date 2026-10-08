@@ -62,7 +62,8 @@ export function validateRegister(f) {
   else if (!NAME_RE.test(nama)) e.nama_lengkap = 'Nama hanya boleh berisi huruf, spasi, titik, koma, apostrof, dan tanda hubung.';
   const email = f.email.trim();
   if (!email) e.email = 'Email wajib diisi.';
-  else if (email.length > 254 || !EMAIL_RE.test(email)) e.email = 'Format email tidak valid (contoh: nama@kemnaker.go.id).';
+  else if (!EMAIL_RE.test(email)) e.email = 'Format email tidak valid (contoh: nama@kemnaker.go.id).';
+  else if (email.length > 150) e.email = 'Email maksimal 150 karakter.';
   else if (!email.toLowerCase().endsWith(`@${ALLOWED_EMAIL_DOMAIN}`)) e.email = `Gunakan email kedinasan @${ALLOWED_EMAIL_DOMAIN}.`;
   const hp = normalizePhone(f.no_hp);
   if (!hp) e.no_hp = 'Nomor WhatsApp / HP wajib diisi.';

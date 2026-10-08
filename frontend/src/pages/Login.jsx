@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, Navigate, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import api from '../api';
 import { useAuth } from '../context/AuthContext';
 import BrandMark from '../components/BrandMark';
@@ -34,7 +34,7 @@ export default function Login() {
   // tombol dikunci sampai waktu tunggunya habis (biasanya 1 menit).
   const [lockedUntil, setLockedUntil] = useState(0);
   const [now, setNow] = useState(Date.now());
-  const { login } = useAuth();
+  const { user, login } = useAuth();
   const navigate = useNavigate();
   // Bersihkan state navigasi supaya pesan sukses tidak muncul lagi saat halaman di-refresh.
   useEffect(() => { if (registered) navigate(location.pathname + location.search, { replace: true, state: null }); }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -76,6 +76,9 @@ export default function Login() {
         setError(err.response?.data?.message || `Terlalu banyak percobaan login. Coba lagi dalam ${retrySeconds} detik.`);
       } else if (err.response?.data?.code === 'ACCOUNT_BANNED') {
         setBanned(err.response.data.message || BANNED_MESSAGE);
+      } else if (!err.response) {
+        // Backend mati / alamat API salah (mis. VITE_API_URL masih localhost saat dibuka dari PC lain).
+        setError('Tidak dapat terhubung ke server. Periksa koneksi jaringan Anda atau hubungi admin Biro Umum.');
       } else {
         setError(err.response?.data?.message || 'Gagal login. Periksa email/kata sandi Anda.');
       }
@@ -83,6 +86,9 @@ export default function Login() {
       setLoading(false);
     }
   }
+
+  // Sudah login lalu membuka /login -> langsung ke Dashboard (kecuali sedang menampilkan popup selamat datang).
+  if (user && !splash) return <Navigate to="/dashboard" replace />;
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#f2f4f7] p-4 sm:p-6">

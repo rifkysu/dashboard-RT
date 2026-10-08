@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, Navigate, useNavigate } from 'react-router-dom';
 import api from '../api';
 import { validateRegister, normalizePhone } from '../utils/validation';
 import BrandMark from '../components/BrandMark';
+import { useAuth } from '../context/AuthContext';
 
 export default function Register() {
   const [form, setForm] = useState({
@@ -20,6 +21,7 @@ export default function Register() {
   const [fieldErrors, setFieldErrors] = useState({});
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   function update(field, value) {
     setForm((f) => ({ ...f, [field]: value }));
@@ -52,13 +54,18 @@ export default function Register() {
       navigate('/login', { replace: true, state: { registered: true, email } });
     } catch (err) {
       const status = err.response?.status;
-      const message = err.response?.data?.message || 'Gagal mendaftar. Silakan coba lagi.';
+      const message = !err.response
+        ? 'Tidak dapat terhubung ke server. Periksa koneksi jaringan Anda atau hubungi admin Biro Umum.'
+        : err.response.data?.message || 'Gagal mendaftar. Silakan coba lagi.';
       if (status === 409) setFieldErrors({ email: message });
       setError(message);
     } finally {
       setLoading(false);
     }
   }
+
+  // Sudah login -> tidak perlu daftar lagi.
+  if (user) return <Navigate to="/dashboard" replace />;
 
   const inputCls = (field, base) => `${base}${fieldErrors[field] ? ' !border-red-400 !bg-red-50/40' : ''}`;
 
@@ -257,7 +264,7 @@ export default function Register() {
       </main>
 
       <footer className="w-full py-4 text-center text-xs text-slate-400 border-t border-slate-100 bg-white">
-        © 2024 Biro Umum dan Rumah Tangga. Sistem Manajemen Fasilitas &amp; Operasional Kantor.
+        © {new Date().getFullYear()} Biro Umum dan Rumah Tangga. Sistem Manajemen Fasilitas &amp; Operasional Kantor.
       </footer>
     </div>
   );
