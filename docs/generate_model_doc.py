@@ -945,7 +945,9 @@ def isi_aplikasi():
             "pesan khusus.",
             "Berlaku real-time lewat SSE; API menolak akses dengan HTTP 503 kecuali untuk admin.",
             "Halaman Profil menampilkan kartu identitas (avatar inisial, peran) dan informasi akun: nama, email, "
-            "No. HP, unit kerja, metode login, tanggal terdaftar."),
+            "No. HP, unit kerja, metode login, tanggal terdaftar. Tombol **Edit** mengubah nama lengkap & No. HP "
+            "akun sendiri (validasi sama dengan Daftar Akun) dan langsung tersimpan ke database; email, peran, "
+            "dan unit kerja tetap tidak bisa diubah sendiri."),
         h2("3.8 Akun & Akses (Admin)"),
         *bullets(
             "Kartu ringkasan: total akun (jumlah admin/kabag/PIC), akun aktif, akun di-ban, dan permintaan "
@@ -1023,6 +1025,7 @@ def isi_aplikasi():
             ["", "POST /auth/forgot-password, /auth/reset-password", "Publik", "Minta & pakai link reset"],
             ["", "POST /auth/logout", "Login", "Cabut token (token_version naik)"],
             ["", "GET /auth/me", "Login", "Profil sesi"],
+            ["", "PUT /auth/me", "Login", "Ubah nama & No. HP akun sendiri"],
             ["Dashboard", "GET /dashboard/summary, /dashboard/activities", "Login", "Ringkasan KPI & aktivitas"],
             ["Pemeliharaan", "GET / , GET /:id, POST /", "Login", "Daftar, detail, ajukan"],
             ["", "PUT /:id, DELETE /:id", "PIC (milik)/Kabag/Admin", "Proses tahap, ubah, hapus"],

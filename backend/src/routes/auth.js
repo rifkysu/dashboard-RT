@@ -291,4 +291,35 @@ router.get('/me', requireAuth, async (req, res) => {
   }
 });
 
+// ---------------------------------------------------------
+// PUT /api/auth/me  -> ubah nama lengkap & nomor HP akun sendiri (dari halaman Profil).
+// Email, role, dan unit kerja sengaja tidak bisa diubah di sini.
+// ---------------------------------------------------------
+router.put('/me', requireAuth, async (req, res) => {
+  try {
+    const { nama_lengkap: rawNama, no_hp: rawHp } = req.body || {};
+    const nama_lengkap = typeof rawNama === 'string' ? rawNama.trim() : rawNama;
+    const no_hp = typeof rawHp === 'string' ? rawHp.replace(/[\s-]/g, '') : rawHp;
+
+    if (!isSafeText(nama_lengkap, 150) || nama_lengkap.length < 3 || !NAME_RE.test(nama_lengkap)) {
+      return res.status(400).json({ message: 'Nama lengkap minimal 3 karakter dan hanya boleh berisi huruf, spasi, titik, koma, apostrof, dan tanda hubung.' });
+    }
+    if (typeof no_hp !== 'string' || !HP_RE.test(no_hp)) {
+      return res.status(400).json({ message: 'Nomor HP tidak valid (contoh: 081234567890 atau +6281234567890).' });
+    }
+
+    const user = await prisma.user.update({
+      where: { id: Number(req.user.id) },
+      data: { nama_lengkap, no_hp },
+      select: { id: true, nama_lengkap: true, email: true, no_hp: true, unit_kerja: true, role: true, sso_provider: true, created_at: true },
+    });
+    logger.info('Profil akun diubah', { user_id: user.id });
+    res.json({ message: 'Profil berhasil disimpan.', user });
+  } catch (err) {
+    if (err.code === 'P2025') return res.status(404).json({ message: 'User tidak ditemukan.' });
+    logger.error('PUT /auth/me gagal', { error: err });
+    res.status(500).json({ message: 'Gagal menyimpan profil.' });
+  }
+});
+
 module.exports = router;
