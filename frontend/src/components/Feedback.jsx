@@ -92,8 +92,8 @@ function Dialog({ dialog, onClose }) {
   const lines = Array.isArray(dialog.message) ? dialog.message : null;
 
   return (
-    <div className="fixed inset-0 z-[200] bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4 feedback-fade" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(cancelValue); }}>
-      <div role="alertdialog" aria-modal="true" aria-labelledby={`fb-title-${dialog.id}`} className="w-full max-w-md bg-white rounded-2xl shadow-2xl p-6 feedback-pop">
+    <div className="fixed inset-0 z-[200] bg-slate-950/60 backdrop-blur-sm flex overflow-y-auto overscroll-contain p-4 feedback-fade" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(cancelValue); }}>
+      <div role="alertdialog" aria-modal="true" aria-labelledby={`fb-title-${dialog.id}`} className="m-auto w-full max-w-md bg-white rounded-2xl shadow-2xl p-6 feedback-pop">
         <div className="flex items-start gap-4">
           <span className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 ${tone.iconBox}`}>
             <span className="material-symbols-outlined text-[26px]">{dialog.icon || tone.icon}</span>

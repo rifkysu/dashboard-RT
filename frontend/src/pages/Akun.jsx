@@ -244,8 +244,8 @@ export default function Akun() {
       </div>
 
       {resetLink && (
-        <div className="fixed inset-0 z-50 bg-slate-900/55 backdrop-blur-sm flex items-center justify-center p-4" onMouseDown={(e) => { if (e.target === e.currentTarget) setResetLink(null); }}>
-          <div className="w-full max-w-lg bg-white rounded-2xl shadow-2xl p-6">
+        <div className="fixed inset-0 z-50 bg-slate-900/55 backdrop-blur-sm flex overflow-y-auto overscroll-contain p-4" onMouseDown={(e) => { if (e.target === e.currentTarget) setResetLink(null); }}>
+          <div className="m-auto w-full max-w-lg bg-white rounded-2xl shadow-2xl p-6">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <h2 className="text-lg font-bold text-slate-900">Link Reset Kata Sandi</h2>

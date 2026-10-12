@@ -458,8 +458,8 @@ function DocumentPicker({ label, name, data, onPick, onView }) {
 
 function VehicleModal({ form, setForm, error, saving, onClose, onSubmit, onAddPhotos, onRemovePhoto, onPickDocument, onView }) {
   return (
-    <div className="fixed inset-0 z-50 bg-slate-900/55 backdrop-blur-sm flex items-center justify-center p-4" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="w-full max-w-3xl max-h-[92vh] overflow-y-auto bg-[#f7f9fb] rounded-2xl shadow-2xl">
+    <div className="fixed inset-0 z-50 bg-slate-900/55 backdrop-blur-sm flex overflow-y-auto overscroll-contain p-4" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="m-auto w-full max-w-3xl bg-[#f7f9fb] rounded-2xl shadow-2xl">
         <div className="bg-white border-b px-6 py-5 flex items-center justify-between sticky top-0 z-10">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-slate-900 text-white flex items-center justify-center"><span className="material-symbols-outlined">directions_car</span></div>
@@ -671,8 +671,8 @@ function VehicleDetail({ vehicle, error, canManage, busyDoc, onClose, onView, on
   const inputCls = 'w-full h-10 px-3 rounded-lg border border-slate-300 bg-white text-sm outline-none focus:border-slate-900';
   const inService = vehicle.status === 'Servis';
   return (
-    <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-slate-950/75 backdrop-blur-md" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="vehicle-detail-modal w-full max-w-3xl max-h-[92vh] overflow-y-auto rounded-3xl shadow-2xl">
+    <div className="fixed inset-0 z-[70] flex overflow-y-auto overscroll-contain p-4 bg-slate-950/75 backdrop-blur-md" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="vehicle-detail-modal m-auto w-full max-w-3xl rounded-3xl shadow-2xl">
         <div className="vehicle-detail-head">
           <div className="flex items-center gap-4">
             <div className="vehicle-detail-icon"><span className="material-symbols-outlined">directions_car</span></div>

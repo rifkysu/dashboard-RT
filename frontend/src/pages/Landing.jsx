@@ -28,6 +28,22 @@ const NAV = [
   { href: '#layanan', label: 'Layanan' },
   { href: '#jadwal', label: 'Jadwal Ruang Rapat' },
   { href: '#cara', label: 'Cara Mengajukan' },
+  { href: '#faq', label: 'FAQ' },
+];
+
+const KEUNGGULAN = [
+  { icon: 'bolt', title: 'Realtime', desc: 'Perubahan status dan jadwal langsung terlihat tanpa memuat ulang halaman.' },
+  { icon: 'folder_managed', title: 'Dokumen tercatat', desc: 'Dokumen pendukung, invoice, dan BAST tersimpan di setiap permintaan.' },
+  { icon: 'verified_user', title: 'Akses sesuai peran', desc: 'Karyawan, PIC, Kepala Bagian, dan Admin punya hak akses masing-masing.' },
+  { icon: 'devices', title: 'Bisa dari HP', desc: 'Tampilan menyesuaikan layar, nyaman dibuka dari komputer maupun ponsel.' },
+];
+
+const FAQ = [
+  { q: 'Siapa yang bisa memakai aplikasi ini?', a: 'Pegawai yang memiliki email kedinasan @kemnaker.go.id. Daftar lewat halaman Daftar Akun; akun baru otomatis berperan Karyawan, dan peran lain diatur oleh Admin.' },
+  { q: 'Apakah jadwal ruang rapat bisa dilihat tanpa login?', a: 'Bisa. Jadwal di halaman ini dan tampilan layar penuh (kiosk) terbuka untuk umum dan diperbarui otomatis. Untuk booking, Anda perlu masuk terlebih dahulu.' },
+  { q: 'Bagaimana cara booking ruang rapat?', a: 'Masuk, buka menu Jadwal Ruang Rapat, lalu klik sel ruangan dan tanggal yang masih kosong (atau tombol Booking Ruang Rapat). Surat permohonan bisa diunggah saat itu juga atau menyusul; status surat berubah hijau setelah surat diunggah.' },
+  { q: 'Bagaimana memantau permintaan pemeliharaan atau pengadaan?', a: 'Setiap permintaan punya nomor dan status Pending, On Progress, hingga Selesai. Perubahannya tampil langsung di menu terkait dan di Dashboard.' },
+  { q: 'Saya lupa kata sandi, apa yang harus dilakukan?', a: 'Klik "Lupa kata sandi" di halaman Masuk. Link reset dikirim ke email Anda bila layanan email aktif; jika tidak, permintaan diteruskan ke Admin yang akan mengirimkan link reset (berlaku 1 jam).' },
 ];
 
 const STATS = [
@@ -121,6 +137,44 @@ function RuangHariIni() {
   );
 }
 
+// Posisi gulir halaman (0..1). Dipakai komponen kecil di bawah supaya hanya mereka yang
+// di-render ulang saat digulir, bukan seluruh landing page.
+function useScrollRatio() {
+  const [ratio, setRatio] = useState(0);
+  useEffect(() => {
+    let frame = 0;
+    const onScroll = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        const max = document.documentElement.scrollHeight - window.innerHeight;
+        setRatio(max > 0 ? Math.min(1, window.scrollY / max) : 0);
+      });
+    };
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onScroll);
+    return () => { cancelAnimationFrame(frame); window.removeEventListener('scroll', onScroll); window.removeEventListener('resize', onScroll); };
+  }, []);
+  return ratio;
+}
+
+// Garis kemajuan baca di bawah header.
+function ScrollProgress() {
+  const ratio = useScrollRatio();
+  return <div className="absolute left-0 bottom-0 w-full h-[2px] bg-gradient-to-r from-kuningan to-[#e4c27f] origin-left" style={{ transform: `scaleX(${ratio})` }} aria-hidden="true"></div>;
+}
+
+// Tombol bulat "kembali ke atas", muncul setelah halaman digulir cukup jauh.
+function BackToTop() {
+  const show = useScrollRatio() > 0.15;
+  return (
+    <button type="button" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} aria-label="Kembali ke atas" tabIndex={show ? 0 : -1}
+      className={`fixed right-4 bottom-4 md:right-6 md:bottom-6 z-40 w-11 h-11 rounded-full bg-dinas text-white flex items-center justify-center shadow-[0_12px_28px_-10px_rgba(14,30,51,.7)] transition duration-300 hover:bg-dinas-dark hover:-translate-y-0.5 ${show ? 'opacity-100' : 'opacity-0 pointer-events-none translate-y-2'}`}>
+      <span className="material-symbols-outlined text-[20px]">arrow_upward</span>
+    </button>
+  );
+}
+
 function Eyebrow({ children, light }) {
   return (
     <div className={`flex items-center gap-2 text-sm font-semibold ${light ? 'text-[#e4c27f]' : 'text-kuningan-ink'}`}>
@@ -150,6 +204,8 @@ export default function Landing() {
   const { user, loading } = useAuth();
   const [landingDown, setLandingDown] = useState(null);
   const [scrolled, setScrolled] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [active, setActive] = useState('');
 
   useEffect(() => {
     function refresh() {
@@ -162,11 +218,26 @@ export default function Landing() {
   }, []);
 
   useEffect(() => {
+    // Gulir halus untuk tautan #layanan dll. -- hanya selama di landing page (bukan seluruh aplikasi).
+    const root = document.documentElement;
+    if (!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) root.style.scrollBehavior = 'smooth';
     const onScroll = () => setScrolled(window.scrollY > 8);
     onScroll();
     window.addEventListener('scroll', onScroll, { passive: true });
-    return () => window.removeEventListener('scroll', onScroll);
+    return () => { window.removeEventListener('scroll', onScroll); root.style.scrollBehavior = ''; };
   }, []);
+
+  // Penanda menu aktif di header sesuai bagian yang sedang terlihat (scrollspy).
+  const ready = !loading && landingDown === false && !user;
+  useEffect(() => {
+    if (!ready || typeof IntersectionObserver === 'undefined') return undefined;
+    const els = NAV.map((n) => document.querySelector(n.href)).filter(Boolean);
+    const io = new IntersectionObserver((entries) => {
+      entries.forEach((e) => { if (e.isIntersecting) setActive(`#${e.target.id}`); });
+    }, { rootMargin: '-45% 0px -50% 0px' });
+    els.forEach((el) => io.observe(el));
+    return () => io.disconnect();
+  }, [ready]);
 
   if (loading || landingDown === null) return <div className="min-h-screen flex items-center justify-center bg-dinas-dark text-white/60 text-sm">Memuat…</div>;
   if (user) return <Navigate to="/dashboard" replace />;
@@ -185,14 +256,28 @@ export default function Landing() {
           </Link>
           <nav className="hidden md:flex items-center gap-7 text-sm font-medium text-white/70">
             {NAV.map((n) => (
-              <a key={n.href} href={n.href} className="relative py-1 transition-colors hover:text-white after:absolute after:left-0 after:-bottom-0.5 after:h-[2px] after:w-full after:origin-left after:scale-x-0 after:rounded after:bg-kuningan after:transition-transform hover:after:scale-x-100">{n.label}</a>
+              <a key={n.href} href={n.href} aria-current={active === n.href ? 'location' : undefined} className={`relative py-1 transition-colors hover:text-white after:absolute after:left-0 after:-bottom-0.5 after:h-[2px] after:w-full after:origin-left after:rounded after:bg-kuningan after:transition-transform hover:after:scale-x-100 ${active === n.href ? 'text-white after:scale-x-100' : 'after:scale-x-0'}`}>{n.label}</a>
             ))}
           </nav>
           <div className="flex items-center gap-2 shrink-0">
             <Link to="/register" className="hidden sm:inline-block px-4 py-2 rounded-lg text-sm font-semibold text-white/85 transition-colors hover:bg-white/10">Daftar</Link>
             <Link to="/login" className="px-4 py-2 rounded-lg bg-white text-dinas text-sm font-bold shadow-sm transition hover:bg-[#f7efe0] hover:shadow-[0_0_0_4px_rgba(184,137,59,.25)]">Masuk</Link>
+            <button type="button" onClick={() => setMenuOpen((o) => !o)} aria-expanded={menuOpen} aria-label={menuOpen ? 'Tutup menu' : 'Buka menu'} className="md:hidden w-10 h-10 -mr-2 rounded-lg flex items-center justify-center text-white hover:bg-white/10">
+              <span className="material-symbols-outlined">{menuOpen ? 'close' : 'menu'}</span>
+            </button>
           </div>
         </div>
+        {menuOpen && (
+          <nav className="landing-mobile-menu md:hidden border-t border-white/10 px-4 pb-4 pt-2">
+            {NAV.map((n) => (
+              <a key={n.href} href={n.href} onClick={() => setMenuOpen(false)} className={`flex items-center justify-between px-3 py-3 rounded-lg text-sm font-semibold ${active === n.href ? 'bg-white/10 text-white' : 'text-white/75 hover:bg-white/5'}`}>
+                {n.label}<span className="material-symbols-outlined text-[18px] text-white/40">chevron_right</span>
+              </a>
+            ))}
+            <Link to="/register" className="mt-2 flex justify-center px-3 py-3 rounded-lg border border-white/20 text-sm font-semibold text-white">Daftar akun pegawai</Link>
+          </nav>
+        )}
+        <ScrollProgress />
       </header>
 
       <main className="flex-1">
@@ -233,6 +318,23 @@ export default function Landing() {
             </div>
           </div>
           <div className="absolute bottom-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-kuningan/60 to-transparent" aria-hidden="true"></div>
+        </section>
+
+        {/* Keunggulan: menumpang di batas bawah hero */}
+        <section className="relative z-10 max-w-[1200px] mx-auto px-4 md:px-8 -mt-10 md:-mt-14">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+            {KEUNGGULAN.map((k, i) => (
+              <Reveal key={k.title} delay={i * 80}>
+                <div className="group h-full rounded-2xl bg-white border border-slate-200 p-4 md:p-5 shadow-[0_18px_40px_-24px_rgba(14,30,51,.45)] transition duration-300 hover:-translate-y-1 hover:border-kuningan/40">
+                  <span className="w-10 h-10 rounded-xl bg-[#f7efe0] text-kuningan-ink flex items-center justify-center transition-colors group-hover:bg-kuningan group-hover:text-white">
+                    <span className="material-symbols-outlined text-[20px]">{k.icon}</span>
+                  </span>
+                  <div className="font-display font-bold text-dinas-ink mt-3">{k.title}</div>
+                  <p className="text-xs text-slate-600 mt-1 leading-relaxed">{k.desc}</p>
+                </div>
+              </Reveal>
+            ))}
+          </div>
         </section>
 
         {/* Layanan */}
@@ -306,8 +408,32 @@ export default function Landing() {
           </ol>
         </section>
 
+        {/* FAQ */}
+        <section id="faq" className="scroll-mt-20 bg-white border-y border-slate-200">
+          <div className="max-w-[1200px] mx-auto px-4 md:px-8 py-16 md:py-24 grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.6fr)] gap-10">
+            <Reveal>
+              <Eyebrow>FAQ</Eyebrow>
+              <h2 className="font-display text-3xl md:text-[2.25rem] font-extrabold text-dinas-ink mt-3 tracking-tight">Pertanyaan yang sering diajukan</h2>
+              <p className="text-slate-600 mt-3 leading-relaxed">Belum menemukan jawabannya? Hubungi Biro Umum di <a href={`mailto:${EMAIL}`} className="font-semibold text-dinas hover:underline">{EMAIL}</a>.</p>
+            </Reveal>
+            <Reveal delay={100} className="space-y-3">
+              {FAQ.map((f, i) => (
+                <details key={f.q} className="landing-faq group rounded-2xl border border-slate-200 bg-[#f8f9fb] open:bg-white open:shadow-[0_16px_40px_-26px_rgba(14,30,51,.45)] open:border-kuningan/40 transition" open={i === 0}>
+                  <summary className="flex items-center justify-between gap-4 cursor-pointer list-none px-5 py-4 font-display font-bold text-dinas-ink">
+                    {f.q}
+                    <span className="shrink-0 w-8 h-8 rounded-full bg-white border border-slate-200 flex items-center justify-center text-dinas transition-transform group-open:rotate-45">
+                      <span className="material-symbols-outlined text-[18px]">add</span>
+                    </span>
+                  </summary>
+                  <p className="px-5 pb-5 -mt-1 text-sm text-slate-600 leading-relaxed">{f.a}</p>
+                </details>
+              ))}
+            </Reveal>
+          </div>
+        </section>
+
         {/* Penutup */}
-        <section className="max-w-[1200px] mx-auto px-4 md:px-8 pb-20">
+        <section className="max-w-[1200px] mx-auto px-4 md:px-8 py-16 md:py-20">
           <Reveal className="relative overflow-hidden rounded-3xl landing-hero text-white px-6 py-10 md:px-12 md:py-14 flex flex-col md:flex-row md:items-center justify-between gap-6 shadow-[0_30px_60px_-30px_rgba(14,30,51,.7)]">
             <div className="absolute inset-0 bg-kawung-gelap" aria-hidden="true"></div>
             <div className="absolute -right-20 -bottom-24 w-80 h-80 rounded-full bg-kuningan/30 blur-[90px] landing-glow pointer-events-none" aria-hidden="true"></div>
@@ -325,27 +451,44 @@ export default function Landing() {
         </section>
       </main>
 
-      <footer className="relative bg-dinas-ink text-white/65">
+      <footer className="relative bg-dinas-ink text-white/65 overflow-hidden">
         <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-kuningan/50 to-transparent" aria-hidden="true"></div>
-        <div className="max-w-[1200px] mx-auto px-4 md:px-8 py-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div className="flex items-center gap-3">
-            <BrandMark size="sm" className="!border-white/20" />
-            <div>
-              <div className="font-display text-sm font-extrabold text-white">Biro Umum dan Rumah Tangga</div>
-              <div className="text-xs mt-0.5">Kementerian Ketenagakerjaan Republik Indonesia</div>
-              <div className="text-xs mt-0.5 select-all">{EMAIL}</div>
+        <div className="absolute inset-0 bg-kawung-gelap opacity-60 [mask-image:linear-gradient(to_top,#000,transparent)]" aria-hidden="true"></div>
+        <div className="relative max-w-[1200px] mx-auto px-4 md:px-8 py-12 grid gap-10 md:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)]">
+          <div>
+            <div className="flex items-center gap-3">
+              <BrandMark size="sm" className="!border-white/20" />
+              <div>
+                <div className="font-display text-sm font-extrabold text-white">Biro Umum dan Rumah Tangga</div>
+                <div className="text-xs mt-0.5">Kementerian Ketenagakerjaan Republik Indonesia</div>
+              </div>
             </div>
+            <p className="text-xs leading-relaxed mt-4 max-w-[42ch]">Aplikasi internal untuk pengajuan pemeliharaan, pengadaan, pengelolaan kendaraan dinas, dan booking ruang rapat.</p>
+            <a href={`mailto:${EMAIL}`} className="mt-4 inline-flex items-center gap-2 text-xs font-semibold text-white/85 hover:text-white">
+              <span className="material-symbols-outlined text-[16px] text-[#e4c27f]">mail</span>{EMAIL}
+            </a>
           </div>
-          <nav className="flex flex-wrap gap-x-6 gap-y-2 text-xs font-semibold">
-            {NAV.map((n) => <a key={n.href} href={n.href} className="transition-colors hover:text-white">{n.label}</a>)}
-            <Link to="/jadwal-rapat" className="transition-colors hover:text-white">Kiosk</Link>
-            <Link to="/login" className="transition-colors hover:text-white">Masuk</Link>
-          </nav>
+          <div>
+            <div className="text-xs font-bold uppercase tracking-wider text-white/90">Layanan</div>
+            <ul className="mt-3 space-y-2 text-xs">
+              {LAYANAN.map((l) => <li key={l.label}><a href="#layanan" className="inline-flex items-center gap-2 transition-colors hover:text-white"><span className="material-symbols-outlined text-[15px] text-white/40">{l.icon}</span>{l.label}</a></li>)}
+            </ul>
+          </div>
+          <div>
+            <div className="text-xs font-bold uppercase tracking-wider text-white/90">Tautan</div>
+            <ul className="mt-3 space-y-2 text-xs">
+              {NAV.map((n) => <li key={n.href}><a href={n.href} className="transition-colors hover:text-white">{n.label}</a></li>)}
+              <li><Link to="/jadwal-rapat" className="transition-colors hover:text-white">Tampilan kiosk</Link></li>
+              <li><Link to="/login" className="transition-colors hover:text-white">Masuk</Link> · <Link to="/register" className="transition-colors hover:text-white">Daftar</Link></li>
+            </ul>
+          </div>
         </div>
-        <div className="border-t border-white/10 py-4 text-center text-xs text-white/45">
+        <div className="relative border-t border-white/10 py-4 text-center text-xs text-white/45">
           © {new Date().getFullYear()} Biro Umum dan Rumah Tangga
         </div>
       </footer>
+
+      <BackToTop />
     </div>
   );
 }

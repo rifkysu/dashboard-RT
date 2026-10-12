@@ -546,8 +546,8 @@ function PengadaanStageThree({ draft, update, readOnly, onView }) {
 
 function AddModal({ form, setForm, error, saving, onClose, onSubmit }) {
   const { alert } = useFeedback();
-  return <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-    <div className="w-full max-w-2xl max-h-[92vh] overflow-y-auto bg-white rounded-xl shadow-2xl"><form noValidate onSubmit={onSubmit}>
+  return <div className="fixed inset-0 z-50 flex overflow-y-auto overscroll-contain p-4 bg-slate-900/50 backdrop-blur-sm" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+    <div className="m-auto w-full max-w-2xl bg-white rounded-xl shadow-2xl"><form noValidate onSubmit={onSubmit}>
       <div className="px-6 pt-6 pb-4 border-b border-slate-100 flex items-start justify-between"><div><h2 className="text-xl font-bold text-slate-900">Tambah Pengadaan</h2><p className="text-sm text-slate-500 mt-1">Isi formulir untuk membuat permintaan pengadaan barang atau jasa.</p></div><button type="button" onClick={onClose} className="w-9 h-9 rounded-lg text-slate-500 hover:bg-slate-100"><span className="material-symbols-outlined">close</span></button></div>
       <div className="px-6 py-5 space-y-4">
         {error && <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{error}</div>}
