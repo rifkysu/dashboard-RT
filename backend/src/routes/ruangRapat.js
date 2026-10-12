@@ -20,7 +20,9 @@ const validSuratName=v=>v==null||(typeof v==='string'&&v.length<=255);
 // Alasan pembatalan opsional, maks. 500 karakter (kolom cancel_reason VARCHAR(500)).
 const validReason=v=>v==null||(typeof v==='string'&&v.length<=500);
 const cancelData=(req)=>({cancelled_at:new Date(),cancelled_by:req.user.id,cancel_reason:typeof req.body?.reason==='string'&&req.body.reason.trim()?req.body.reason.trim():null,updated_by:req.user.id});
-const validPhone=v=>typeof v==='string'&&/^[0-9+()\- .]{6,30}$/.test(v.trim());
+// No. HP PIC: format sama dengan Daftar Akun/Profil (08... atau +628...); spasi & tanda hubung dibuang sebelum disimpan.
+const normPhone=v=>typeof v==='string'?v.replace(/[\s-]/g,''):v;
+const validPhone=v=>typeof v==='string'&&/^(\+?62|0)8\d{7,12}$/.test(normPhone(v));
 const date=v=>new Date(`${v}T00:00:00Z`); const time=v=>new Date(`1970-01-01T${v}:00Z`);
 const DAY=86400000;
 // Booking multi-hari: berlaku tiap hari dari booking_date s/d end_date pada jam yang sama. Maks. 90 hari per booking.
@@ -124,7 +126,7 @@ router.post('/',async(req,res)=>{try{
   const picked=dates!==undefined;
   if(picked&&(!Array.isArray(dates)||!dates.length||dates.length>MAX_PICKED||!dates.every(validDate)))return res.status(400).json({message:`Pilih 1-${MAX_PICKED} tanggal yang valid.`});
   if(!validNomorSurat(nomor_surat))return res.status(400).json({message:'Nomor surat maksimal 100 karakter.'});
-  if(!validText(title,255)||!validText(room,150)||!validText(pic,150)||!validPhone(pic_phone)||(!picked&&(!validDate(startDate)||(end_date!=null&&end_date!==''&&!validDate(end_date))))||!validTime(start)||!validTime(end))return res.status(400).json({message:'Data booking atau nomor HP PIC tidak valid.'});
+  if(!validText(title,255)||!validText(room,150)||!validText(pic,150)||!validPhone(pic_phone)||(!picked&&(!validDate(startDate)||(end_date!=null&&end_date!==''&&!validDate(end_date))))||!validTime(start)||!validTime(end))return res.status(400).json({message:'Data booking tidak lengkap atau No. HP PIC tidak valid (contoh: 081234567890 atau +6281234567890).'});
   if(!ROOMS.includes(room)||!validFile(surat_file_data)||!validSuratName(surat_name))return res.status(400).json({message:'Ruangan, status, atau surat tidak valid.'});
   if(start>=end)return res.status(400).json({message:'Jam selesai harus lebih besar dari jam mulai.'});
   let ranges;
@@ -139,7 +141,7 @@ router.post('/',async(req,res)=>{try{
     if(conflicts.length)throw new HttpError(409,conflictMessage(conflicts[0])+(conflicts.length>1?` (dan ${conflicts.length-1} tanggal lain juga bentrok)`:''));
     const path=surat_file_data?await saveDataUrl(surat_file_data,surat_name,'ruang-rapat'):null;
     const created=[];
-    for(const [bd,ed] of ranges)created.push(await tx.ruangRapat.create({data:{agenda:title.trim(),nomor_surat:nomor_surat?.trim()||null,room,pic:pic.trim(),pic_phone:pic_phone.trim(),booking_date:bd,end_date:ed,start_time:time(start),end_time:time(end),surat_status:suratStatus(surat_file_data),surat_name:surat_name||null,surat_file_data:surat_file_data||null,surat_file_path:path,booking_group:group,created_by:req.user.id,updated_by:req.user.id},include:{updatedBy:{select:{nama_lengkap:true}}}}));
+    for(const [bd,ed] of ranges)created.push(await tx.ruangRapat.create({data:{agenda:title.trim(),nomor_surat:nomor_surat?.trim()||null,room,pic:pic.trim(),pic_phone:normPhone(pic_phone),booking_date:bd,end_date:ed,start_time:time(start),end_time:time(end),surat_status:suratStatus(surat_file_data),surat_name:surat_name||null,surat_file_data:surat_file_data||null,surat_file_path:path,booking_group:group,created_by:req.user.id,updated_by:req.user.id},include:{updatedBy:{select:{nama_lengkap:true}}}}));
     return created;
   },{timeout:20000});
   // Booking biasa tetap membalas satu objek (kompatibel); tanggal pilihan membalas array.
@@ -154,7 +156,11 @@ router.put('/:id',async(req,res)=>{try{
   if(b.nomor_surat!==undefined){if(!validNomorSurat(b.nomor_surat))return res.status(400).json({message:'Nomor surat maksimal 100 karakter.'});data.nomor_surat=b.nomor_surat?.trim()||null;}
   if(b.room!==undefined){if(!ROOMS.includes(b.room))return res.status(400).json({message:'Ruangan tidak valid.'});data.room=b.room;}
   if(b.pic!==undefined){if(!validText(b.pic,150))return res.status(400).json({message:'Nama PIC tidak valid.'});data.pic=b.pic.trim();}
-  if(b.pic_phone!==undefined){if(!validPhone(b.pic_phone))return res.status(400).json({message:'Nomor HP PIC tidak valid.'});data.pic_phone=b.pic_phone.trim();}
+  if(b.pic_phone!==undefined){
+    // Booking lama banyak berisi '-' / nomor format lama: nilai yang tidak diubah tetap diterima apa adanya.
+    if(!validPhone(b.pic_phone)){const cur=await prisma.ruangRapat.findUnique({where:{id},select:{pic_phone:true}});if(!cur||b.pic_phone!==cur.pic_phone)return res.status(400).json({message:'Nomor HP PIC tidak valid (contoh: 081234567890 atau +6281234567890).'});}
+    else data.pic_phone=normPhone(b.pic_phone);
+  }
   if(b.surat_name!==undefined){if(!validSuratName(b.surat_name))return res.status(400).json({message:'Nama file surat maksimal 255 karakter.'});data.surat_name=b.surat_name||null;}
   if(b.surat_file_data!==undefined&&!validFile(b.surat_file_data))return res.status(400).json({message:'Dokumen surat tidak valid.'});
   const row=await prisma.$transaction(async tx=>{

@@ -1085,13 +1085,14 @@ def isi_aplikasi():
              "\"Email atau kata sandi salah\")."],
             ["Pemeliharaan/Pengadaan", "Panjang teks sesuai kolom database; tanggal harus benar-benar ada "
              "(31 Feb ditolak); nominal angka >= 0; status hanya pending/on_progress/selesai; nomor GUP 1-20, "
-             "TUP 1-10; asal anggaran RM/PNBP."],
+             "TUP 1-10; asal anggaran RM/PNBP; metode pembayaran hanya GUP/TUP/LS; urgensi hanya rendah/sedang/tinggi; "
+             "nama file dokumentasi final maks. 255 karakter."],
             ["Kendaraan", "Nama barang dari daftar BMN; jenis Roda 2/4/6; No Polisi unik (dicek sebelum foto/dokumen disimpan); "
-             "tanggal tahun 1950-2100, masa berlaku STNK & waktu pajak tidak sebelum tanggal perolehan; tanggal service tidak melebihi hari ini "
+             "saat edit, kendaraan dicek masih ada sebelum foto/dokumen disimpan; tanggal tahun 1950-2100, masa berlaku STNK & waktu pajak tidak sebelum tanggal perolehan; tanggal service tidak melebihi hari ini "
              "dan tidak ganda per tanggal; maks. 6 foto. Di modal Detail: mengosongkan tanggal & keluar dari status Servis tanpa "
              "riwayat service minta konfirmasi."],
             ["Ruang Rapat", "Jam selesai > jam mulai; rentang maks. 90 hari; tidak boleh beririsan tanggal+jam "
-             "di ruangan yang sama; nomor HP PIC 6-30 karakter; nomor surat maks. 100 karakter; nama file surat maks. 255 "
+             "di ruangan yang sama; No. HP PIC format 08... / +628... (sama dengan Daftar Akun; nilai lama seperti \"-\" tetap diterima selama tidak diubah); nomor surat maks. 100 karakter; nama file surat maks. 255 "
              "karakter."],
             ["Berkas", "Hanya PDF/JPG/PNG/WebP/DOC/DOCX/XLS/XLSX; isi dicek magic number di server & browser; "
              "surat rapat maks. 8 MB, dokumen lain maks. 12 MB; nama berkas disanitasi."],

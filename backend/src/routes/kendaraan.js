@@ -248,6 +248,11 @@ router.put('/:id', requireRole(EDITOR_ROLES), async (req, res) => {
       if (orderError) return res.status(400).json({ message: orderError });
     }
 
+    // Pastikan kendaraan masih ada SEBELUM foto/dokumen ditulis ke disk, supaya tidak ada file yatim
+    // kalau kendaraan ini baru saja dihapus pengguna lain.
+    if (!(await prisma.kendaraan.findUnique({ where: { id }, select: { id: true } }))) {
+      return res.status(404).json({ message: 'Kendaraan tidak ditemukan.' });
+    }
     if (photoCheck.items !== undefined) {
       const savedPaths = [];
       for (const p of photoCheck.items) savedPaths.push({ name: p.name, path: await saveDataUrl(p.data, p.name, 'kendaraan') });
