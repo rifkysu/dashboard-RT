@@ -79,6 +79,13 @@ app.use('/api/ruang-rapat', live.notifyOnWrite('ruang-rapat'), ruangRapatRoutes)
 app.use('/api/maintenance', live.notifyOnWrite('maintenance'), maintenanceRoutes);
 app.use('/api/users', live.notifyOnWrite('users'), usersRoutes);
 
+// Endpoint API yang tidak dikenal -> JSON berpesan jelas (bukan halaman HTML default Express),
+// supaya frontend tidak cuma menampilkan "Gagal ..." -- biasanya karena backend belum di-restart
+// setelah update kode.
+app.use('/api', (req, res) => {
+  res.status(404).json({ message: 'Fitur ini belum tersedia di server. Pastikan backend sudah di-restart setelah update aplikasi.' });
+});
+
 // Error dari body parser (mis. upload melebihi batas 25MB) dikembalikan sebagai
 // JSON berpesan jelas, bukan halaman HTML default Express yang tidak terbaca frontend.
 app.use((err, req, res, next) => {

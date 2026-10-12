@@ -1,9 +1,9 @@
 -- =========================================================
 -- ROLE MANAGEMENT
 -- Jalankan di pgAdmin4 pada database biro_umum_db.
--- Pendaftaran mandiri membuat Karyawan. Kabag/PIC/Admin diberikan
--- setelah akun dibuat. Versi aplikasi juga menyediakan menu Settings
--- untuk Kabag/Admin.
+-- Pendaftaran mandiri membuat Karyawan. Sehari-hari role diubah dari
+-- menu "Akun & Akses" di aplikasi (Admin/Kabag; role Admin hanya oleh Admin).
+-- Script ini terutama untuk menjadikan ADMIN PERTAMA atau kondisi darurat.
 -- =========================================================
 
 -- Lihat seluruh akun dan role saat ini.

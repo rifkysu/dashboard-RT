@@ -813,12 +813,12 @@ def isi_aplikasi():
              "dinaikkan menjadi PIC.",
              "Seperti karyawan + memproses tahapan, mengedit & menghapus **data yang dibuatnya sendiri**; "
              "mengelola kendaraan."],
-            ["Kabag", "Diberikan manual oleh admin melalui database.",
+            ["Kabag", "Diberikan Admin/Kabag lewat menu Akun & Akses (atau pgAdmin 4).",
              "Setara admin: mengedit/menghapus seluruh data, Mode Maintenance, Akun & Akses, dan tetap dapat "
              "mengakses menu yang sedang maintenance."],
-            ["Admin", "Diberikan manual melalui pgAdmin 4 (tidak tersedia di form Daftar).",
+            ["Admin", "Diberikan Admin lain lewat menu Akun & Akses; admin pertama lewat pgAdmin 4 (tidak tersedia di form Daftar).",
              "Mengedit/menghapus seluruh data + Mode Maintenance, Akun & Akses (ban/aktifkan akun, kirim link "
-             "reset), tetap dapat mengakses menu yang sedang maintenance."],
+             "reset, ubah role), tetap dapat mengakses menu yang sedang maintenance."],
         ]),
         h2("Matriks hak akses per modul"),
         table([64, 18, 21, 25, 23, 23], [
@@ -912,6 +912,9 @@ def isi_aplikasi():
             "Grid jadwal: **nama ruangan horizontal** (kolom) dan **tanggal vertikal** (baris, dikelompokkan "
             "per bulan); header ruangan & kolom tanggal menempel saat digulir; penanda hari ini, hari libur "
             "nasional, cuti bersama, dan akhir pekan.",
+            "Klik sel kosong (tombol **+ Booking**, muncul saat sel disorot) untuk langsung membuka form booking "
+            "dengan ruangan & tanggal sel tersebut sudah terisi; sel yang sudah berisi booking punya tombol "
+            "**+ Tambah** untuk booking jam lain di hari & ruangan yang sama.",
             "**Quick filter bulan** (pilih tahun lalu Jan-Des, tombol Bulan Ini) dan **infinite scroll**: bulan "
             "berikutnya dimuat otomatis saat digulir ke bawah, maks. 12 bulan sekaligus.",
             "**Pilih beberapa tanggal** (loncat-loncat, maks. 60) lewat kalender di form booking; tanggal berurutan "
@@ -950,6 +953,9 @@ def isi_aplikasi():
             "Daftar semua akun (dengan avatar inisial): peran, status, metode login, tanggal daftar, login terakhir.",
             "Ban/aktifkan akun (kecuali akun sendiri), notifikasi permintaan reset kata sandi, kirim/salin "
             "link reset.",
+            "Ubah role langsung dari tabel (dropdown + konfirmasi, `PUT /users/:id/role`): role akun sendiri tidak "
+            "bisa diubah; memberi/mencabut role Admin hanya oleh Admin. Berlaku seketika (role dibaca dari "
+            "database tiap request) dan tampilan pemilik akun diperbarui lewat SSE.",
             "Akun yang di-ban melihat popup *Akun Anda Diblokir* (melanggar ketentuan / spam berlebihan) saat "
             "login dengan kata sandi yang benar, atau langsung dikeluarkan bila sedang login. "
             "Link reset kata sandi yang masih berlaku ikut dihapus saat akun di-ban."),
@@ -1032,7 +1038,7 @@ def isi_aplikasi():
             ["Maintenance", "GET /landing-status, GET /stream (SSE)", "Publik", "Status landing & sinyal real-time"],
             ["", "GET / ; PUT /:menu_key", "Login; Admin/Kabag", "Baca & ubah mode maintenance"],
             ["Live", "GET /live/stream (SSE)", "Publik", "Satu sinyal real-time untuk semua modul"],
-            ["Users", "GET /, GET /reset-requests/count, PUT /:id/status, POST /:id/reset-link", "Admin/Kabag",
+            ["Users", "GET /, GET /reset-requests/count, PUT /:id/status, PUT /:id/role, POST /:id/reset-link", "Admin/Kabag",
              "Akun & Akses"],
             ["Health", "GET /health", "Publik", "Cek backend hidup"],
         ]),

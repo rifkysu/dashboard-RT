@@ -48,7 +48,9 @@ export function MonthFilter({ months, onSelect }) {
 // Grid jadwal: ruangan horizontal (kolom), tanggal vertikal (baris), dikelompokkan per bulan.
 // Header ruangan & kolom tanggal menempel saat digulir; bulan berikutnya dimuat otomatis
 // saat sentinel di bawah terlihat (infinite scroll).
-export default function RoomDateGrid({ months, rooms, items, loading, loadingMore, hasMore, onLoadMore, renderItem }) {
+// onAddBooking(date, room): kalau diisi, tiap sel punya tombol "+ Booking" (sel kosong: seluruh sel bisa diklik)
+// yang membuka form booking dengan ruangan & tanggal sel tersebut sudah terisi.
+export default function RoomDateGrid({ months, rooms, items, loading, loadingMore, hasMore, onLoadMore, renderItem, onAddBooking }) {
   const scrollRef = useRef(null);
   const headRef = useRef(null);
   const sentinelRef = useRef(null);
@@ -135,7 +137,20 @@ export default function RoomDateGrid({ months, rooms, items, loading, loadingMor
                       const list = cells.get(`${date}|${room}`) || [];
                       return (
                         <td key={room} className={`border-b border-l border-slate-200 p-1.5 align-top min-w-[190px] ${rowBg}`}>
-                          <div className="space-y-1.5 min-h-[44px]">{list.map((x) => renderItem(x, date))}</div>
+                          <div className="group/cell space-y-1.5 min-h-[44px]">
+                            {list.map((x) => renderItem(x, date))}
+                            {onAddBooking && (list.length ? (
+                              <button type="button" onClick={() => onAddBooking(date, room)} title={`Booking ${room} · ${d.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}`}
+                                className="cell-add w-full flex items-center justify-center gap-1 py-1 rounded-md border border-dashed border-slate-300 text-[10px] font-semibold text-slate-500 hover:border-sky-300 hover:bg-sky-50 hover:text-[#1e3a5f]">
+                                <span className="material-symbols-outlined text-[14px]">add</span>Tambah
+                              </button>
+                            ) : (
+                              <button type="button" onClick={() => onAddBooking(date, room)} title={`Booking ${room} · ${d.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}`}
+                                className="cell-add w-full min-h-[44px] flex items-center justify-center gap-1 rounded-lg border border-dashed border-slate-300 text-[11px] font-semibold text-slate-500 hover:border-sky-300 hover:bg-sky-50 hover:text-[#1e3a5f]">
+                                <span className="material-symbols-outlined text-[16px]">add</span>Booking
+                              </button>
+                            ))}
+                          </div>
                         </td>
                       );
                     })}

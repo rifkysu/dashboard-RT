@@ -22,8 +22,8 @@ Full-stack app (React + Node.js/Express + PostgreSQL + **Prisma**) untuk mengelo
   - **Auto-promote PIC** — begitu seorang karyawan berhasil menambahkan permintaan Pemeliharaan/Pengadaan pertamanya, role-nya **otomatis naik jadi PIC** (tanpa logout/login ulang).
   - **PIC** — hanya boleh **mengedit data yang dia buat sendiri** (dicek dari `created_by`), tidak bisa mengedit punya orang lain.
   - **Kabag & Admin** — bebas mengedit/menghapus semua data di semua modul.
-  - **Admin** — role tertinggi, **hanya bisa diberikan manual lewat pgAdmin4** (tidak ada di form Register). Satu-satunya role yang bisa mengatur Mode Maintenance, dan selalu bisa mengakses semua menu walau sedang di-maintenance.
-  - Role & status aktif user **selalu dicek ulang langsung dari database di setiap request** (bukan dipercaya dari isi token JWT) — jadi kalau role diubah manual lewat pgAdmin4, perubahannya langsung berlaku ke request berikutnya, **tanpa perlu logout**.
+  - **Admin** — role tertinggi, tidak ada di form Register; diberikan oleh Admin lain lewat menu **Akun & Akses** (atau manual lewat pgAdmin4 untuk admin pertama). Satu-satunya role yang bisa mengatur Mode Maintenance, dan selalu bisa mengakses semua menu walau sedang di-maintenance.
+  - Role & status aktif user **selalu dicek ulang langsung dari database di setiap request** (bukan dipercaya dari isi token JWT) — jadi kalau role diubah (lewat menu Akun & Akses maupun pgAdmin4), perubahannya langsung berlaku ke request berikutnya, **tanpa perlu logout**.
 
 ### 📊 Dashboard
 - **Kartu KPI**: Total Permintaan, Pending, On Progress, Selesai — gabungan Pemeliharaan + Pengadaan.
@@ -86,6 +86,7 @@ Full-stack app (React + Node.js/Express + PostgreSQL + **Prisma**) untuk mengelo
 ### 👤 Akun & Akses (`/akun`, khusus Admin & Kabag)
 - Tabel semua akun terdaftar: nama, email, role, no HP, unit kerja, status, metode login (password; akun lama yang dulu dibuat lewat SSO ditandai "SSO (google)"), tanggal daftar, dan **terakhir login** (`last_login_at`, dicatat otomatis tiap kali ada login sukses lewat email/password).
 - **Ban / Aktifkan akun** — admin bisa menonaktifkan (`is_active = false`) akun siapa pun kecuali akun sendiri. Efeknya **langsung berlaku**: akun yang di-ban langsung ditolak di request berikutnya (`requireAuth` selalu cek `is_active` segar dari database) dan tidak bisa login lagi sampai diaktifkan ulang — tanpa logic tambahan, murni memanfaatkan mekanisme cek role/status yang sudah ada.
+- **Ubah role langsung dari tabel** — kolom Role berupa dropdown (Karyawan / PIC / Kepala Bagian / Admin), dengan konfirmasi sebelum disimpan (`PUT /api/users/:id/role`). Aturan: role akun sendiri tidak bisa diubah, dan memberi/mencabut role **Admin** hanya bisa dilakukan oleh Admin (Kabag bisa mengatur Karyawan/PIC/Kabag). Perubahan langsung berlaku, dan tampilan pemilik akun ikut diperbarui lewat sinyal realtime.
 - Link menu ini **cuma muncul di sidebar untuk role admin**, dan endpoint `GET/PUT /api/users*` dijaga `requireRole(['admin'])` di backend.
 
 ### 🎨 Tampilan
@@ -155,8 +156,11 @@ Database sudah siap. ✅
 > **Punya database lama** yang sudah berisi data dari sebelum project ini pakai Prisma? Jangan langsung jalankan `prisma migrate dev`. Ikuti panduan baseline di `backend/docs/PRISMA_PRODUCTION.md` bagian "Database lama yang sudah berisi data".
 > Selain `production_schema.sql`, `role_management.sql`, dan `import_ruang_rapat_2026.sql`, file di `backend/sql/` adalah arsip skema pra-Prisma — bukan untuk dijalankan lagi.
 
-### Cara memberikan Role "Admin" / "PIC" / "Kabag" (khusus lewat pgAdmin4)
-Ketiga role ini **sengaja tidak ada** di pilihan saat mendaftar akun baru (form Register cuma bisa bikin akun Karyawan). Untuk menaikkan role seorang user, jalankan di **Query Tool** pgAdmin4 (lihat juga `backend/sql/role_management.sql`):
+### Cara memberikan Role "Admin" / "PIC" / "Kabag"
+Ketiga role ini **sengaja tidak ada** di pilihan saat mendaftar akun baru (form Register cuma bisa bikin akun Karyawan).
+
+- **Cara biasa:** login sebagai Admin/Kabag → menu **Akun & Akses** → pilih role baru di kolom **Role** pada baris akun tsb → konfirmasi. Role Admin hanya bisa diberikan/dicabut oleh Admin.
+- **Admin pertama** (belum ada admin sama sekali) atau kondisi darurat: jalankan di **Query Tool** pgAdmin4 (lihat juga `backend/sql/role_management.sql`):
 
 ```sql
 -- Lihat semua user & role-nya
@@ -261,7 +265,7 @@ File di `backend/uploads/` yang tidak lagi direferensikan database (mis. dokumen
    ```
 5. Buka browser ke alamat yang ditampilkan, biasanya `http://localhost:5173`.
 
-Kamu akan melihat **Landing page** (jadwal ruang rapat publik). Klik **"Masuk ke Dashboard"** → **"Daftar Akun Baru"** untuk membuat akun pertama (otomatis role Karyawan). Untuk testing dengan hak edit penuh, naikkan role akun tsb jadi Kabag/Admin lewat pgAdmin4 (lihat Bagian 1), lalu logout–login lagi.
+Kamu akan melihat **Landing page** (jadwal ruang rapat publik). Klik **"Masuk ke Dashboard"** → **"Daftar Akun Baru"** untuk membuat akun pertama (otomatis role Karyawan). Untuk testing dengan hak edit penuh, naikkan role akun tsb jadi Admin lewat pgAdmin4 (lihat Bagian 1). Akun berikutnya cukup diatur dari menu Akun & Akses.
 
 ---
 
@@ -272,7 +276,7 @@ Semua akun **selalu mulai dari role `karyawan`** — tidak ada jalur pendaftaran
 
 1. **Daftar mandiri** (form Register) → role `karyawan`.
 2. **Auto-promote ke PIC** — begitu seorang `karyawan` berhasil menambahkan permintaan baru **di Pemeliharaan ATAU Pengadaan** (endpoint `POST /pemeliharaan` atau `POST /pengadaan`), backend otomatis update role user itu jadi `pic` **saat itu juga**, lalu kirim token JWT baru di response supaya sesi langsung ter-update tanpa logout/login ulang (`refreshAuth` di frontend). Promosi ini **berlaku global** (bukan per-modul) — cukup sekali nambah di modul mana pun, role langsung `pic` di semua tempat. **Catatan**: Kendaraan dan Ruang Rapat sengaja **tidak** memakai alur auto-promote ini — di Ruang Rapat semua role bisa booking & mengelola; di Kendaraan semua role (termasuk karyawan) bisa **menambah** kendaraan, tetapi ubah/hapus/foto/dokumen/service hanya kabag/PIC/admin (tanpa pembatasan kepemilikan antar sesama PIC/kabag/admin).
-3. **PIC (lewat pgAdmin4), Kabag, dan Admin** — role-role ini **tidak bisa** didapat otomatis lewat aksi apa pun di aplikasi (selain auto-promote PIC di poin 2); satu-satunya cara adalah admin/DBA mengubahnya manual lewat pgAdmin4 (lihat query di Bagian 1).
+3. **PIC, Kabag, dan Admin** — role-role ini **tidak bisa** didapat sendiri lewat aksi apa pun di aplikasi (selain auto-promote PIC di poin 2); Admin/Kabag mengaturnya lewat menu **Akun & Akses** (role Admin hanya oleh Admin), atau manual lewat pgAdmin4 (lihat Bagian 1). Catatan: akun yang diturunkan ke Karyawan akan otomatis naik lagi jadi PIC kalau ia menambah permintaan baru (poin 2).
 
 Ringkasnya: **Register → Karyawan → (nambah permintaan) → PIC → (manual pgAdmin4) → Kabag/Admin**.
 
@@ -358,7 +362,7 @@ Hal yang paling sering terlewat:
 ## TEKNOLOGI YANG DIPAKAI
 - **Frontend**: React 18, React Router 7, Axios, Tailwind CSS 3 (dibundel saat build, bukan CDN), Vite, Server-Sent Events (native `EventSource`). Font (Public Sans, Plus Jakarta Sans, JetBrains Mono, Material Symbols) ikut dibundel -- aplikasi tidak memanggil server luar sama sekali saat dibuka.
 - **Backend**: Node.js, Express, Prisma ORM, JSON Web Token (jsonwebtoken), bcryptjs
-- **Database**: PostgreSQL, dikelola lewat Prisma Migrate (`backend/prisma/migrations/`) — pgAdmin4 dipakai untuk operasional (lihat isi data, kelola role user).
+- **Database**: PostgreSQL, dikelola lewat Prisma Migrate (`backend/prisma/migrations/`) — pgAdmin4 dipakai untuk operasional (lihat isi data, bootstrap admin pertama).
 
 
 https://claude.ai/artifact/QUVzQ7RemdfnGh5ccT5dTU

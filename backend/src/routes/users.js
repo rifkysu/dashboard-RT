@@ -72,6 +72,37 @@ router.put('/:id/status', async (req, res) => {
   }
 });
 
+// Ubah role akun dari menu "Akun & Akses" (pengganti UPDATE manual lewat pgAdmin4).
+// Role baru langsung berlaku: requireAuth membaca role segar dari DB tiap request, dan sinyal live
+// "users" membuat tab pemilik akun memuat ulang datanya. Aturan:
+//   - tidak bisa mengubah role akun sendiri (mencegah admin terakhir tidak sengaja turun role);
+//   - memberi atau mencabut role admin hanya boleh oleh admin (kabag tidak bisa membuat admin baru).
+const ROLES = ['karyawan', 'pic', 'kabag', 'admin'];
+router.put('/:id/role', async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id)) return res.status(400).json({ message: 'ID akun tidak valid.' });
+    const { role } = req.body;
+    if (!ROLES.includes(role)) return res.status(400).json({ message: 'Role tidak valid.' });
+    if (id === req.user.id) return res.status(400).json({ message: 'Tidak bisa mengubah role akun sendiri.' });
+
+    const target = await prisma.user.findUnique({ where: { id }, select: { role: true } });
+    if (!target) return res.status(404).json({ message: 'Akun tidak ditemukan.' });
+    if ((role === 'admin' || target.role === 'admin') && req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Hanya Admin yang bisa memberi atau mencabut role Admin.' });
+    }
+    if (target.role === role) return res.json({ data: { id, role } });
+
+    const user = await prisma.user.update({ where: { id }, data: { role } });
+    logger.info('Role akun diubah', { by: req.user.id, user_id: id, from: target.role, to: role });
+    res.json({ data: { id: user.id, role: user.role } });
+  } catch (err) {
+    if (err.code === 'P2025') return res.status(404).json({ message: 'Akun tidak ditemukan.' });
+    logger.error('PUT user role gagal', { error: err });
+    res.status(500).json({ message: 'Gagal mengubah role akun.' });
+  }
+});
+
 // Buat link reset password untuk akun tertentu (khusus admin & kabag). Sistem belum
 // punya layanan email, jadi admin menyalin link ini dan mengirimkannya manual
 // (WA/Slack/dsb) ke pemilik akun setelah memverifikasi identitasnya.

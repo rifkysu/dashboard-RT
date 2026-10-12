@@ -162,6 +162,10 @@ html[data-theme="dark"] .menu-tabel table tbody tr:nth-child(even) { background:
 html[data-theme="dark"] .menu-tabel table tbody tr:hover > td:first-child { box-shadow:inset 3px 0 0 var(--gelap-aksen); }
 html[data-theme="dark"] .menu-page thead input:not([type="radio"]):not([type="checkbox"]),
 html[data-theme="dark"] .menu-page thead select { background:var(--gelap-input) !important; }
+html[data-theme="dark"] .menu-page select.role-select[data-role="karyawan"] { background-color:#1b273a !important; color:#cfd7e2 !important; border-color:#33435c !important; }
+html[data-theme="dark"] .menu-page select.role-select[data-role="pic"] { background-color:rgba(59,130,246,.13) !important; color:#9fc1f3 !important; border-color:rgba(96,165,250,.35) !important; }
+html[data-theme="dark"] .menu-page select.role-select[data-role="kabag"] { background-color:rgba(139,92,246,.15) !important; color:#c9b8fd !important; border-color:rgba(167,139,250,.35) !important; }
+html[data-theme="dark"] .menu-page select.role-select[data-role="admin"] { background-color:rgba(245,158,11,.12) !important; color:#f1c56f !important; border-color:rgba(245,158,11,.38) !important; }
 html[data-theme="dark"] .profile-avatar { border-color:var(--gelap-kartu); }
 html[data-theme="dark"] .profile-cover {
   background:
@@ -194,3 +198,4 @@ html[data-theme="dark"] .bg-\[\#1e3a5f\] { background:#2c5689 !important; }
 
 /* ---- Sidebar: elemen putih (kotak logo, tombol ciutkan, pilihan tema aktif) tetap putih -- */
 html[data-theme="dark"] aside .bg-white { background:#ffffff !important; color:#142a47 !important; border-color:rgba(255,255,255,.2) !important; }
+html[data-theme="dark"] .cell-add:hover { color:var(--gelap-aksen) !important; }

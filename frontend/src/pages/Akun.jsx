@@ -14,6 +14,7 @@ const roleBadge = {
   admin: 'bg-amber-50 text-amber-700 border border-amber-200',
 };
 
+const ROLE_OPTIONS = ['karyawan', 'pic', 'kabag', 'admin'];
 const avatarTone = {
   karyawan: 'bg-slate-200 text-slate-700',
   pic: 'bg-blue-100 text-blue-700',
@@ -70,6 +71,30 @@ export default function Akun() {
       refreshResetRequests();
     } catch (err) {
       setError(err.response?.data?.message || 'Gagal memperbarui status akun.');
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  // Ubah role langsung dari tabel (pengganti UPDATE manual lewat pgAdmin4).
+  async function changeRole(target, nextRole) {
+    if (!nextRole || nextRole === target.role) return;
+    const ok = await confirm({
+      title: 'Ubah role akun?',
+      message: `Role "${target.nama_lengkap}" diubah dari ${roleLabel[target.role] || target.role} menjadi ${roleLabel[nextRole]}. Hak akses barunya langsung berlaku.`,
+      confirmText: `Ya, Jadikan ${roleLabel[nextRole]}`,
+      tone: 'warning',
+      icon: 'manage_accounts',
+    });
+    if (!ok) return;
+    setBusyId(target.id);
+    setError('');
+    try {
+      await api.put(`/users/${target.id}/role`, { role: nextRole });
+      setData((current) => current.map((u) => (u.id === target.id ? { ...u, role: nextRole } : u)));
+      toast(`Role ${target.nama_lengkap} sekarang ${roleLabel[nextRole]}.`);
+    } catch (err) {
+      setError(err.response?.data?.message || 'Gagal mengubah role akun.');
     } finally {
       setBusyId(null);
     }
@@ -162,7 +187,17 @@ export default function Akun() {
                 <tr key={u.id} className="divide-x divide-slate-100 hover:bg-slate-50/50">
                   <td className="px-4 py-3 font-semibold text-slate-800"><div className="flex items-start gap-2.5"><span className={`shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold ${u.is_active ? (avatarTone[u.role] || avatarTone.karyawan) : 'bg-red-100 text-red-700'}`}>{initials(u.nama_lengkap)}</span><div className="min-w-0"><div className="whitespace-nowrap">{u.nama_lengkap}{isSelf && <span className="ml-1.5 text-[10px] font-bold text-slate-500">(Kamu)</span>}</div>{u.reset_requested_at && u.is_active && <div className="mt-1 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 text-[10px] font-bold whitespace-nowrap"><span className="material-symbols-outlined text-[12px]">lock_reset</span>Minta reset · {fmt(u.reset_requested_at)}</div>}</div></div></td>
                   <td className="px-4 py-3 text-slate-600">{u.email}</td>
-                  <td className="px-4 py-3"><span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-semibold whitespace-nowrap ${roleBadge[u.role] || roleBadge.karyawan}`}>{roleLabel[u.role] || u.role}</span></td>
+                  <td className="px-4 py-3">
+                    {/* Role admin hanya bisa diberi/dicabut oleh Admin; role akun sendiri tidak bisa diubah. */}
+                    {isSelf || (u.role === 'admin' && user?.role !== 'admin') ? (
+                      <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-semibold whitespace-nowrap ${roleBadge[u.role] || roleBadge.karyawan}`} title={isSelf ? 'Role akun sendiri tidak bisa diubah' : 'Hanya Admin yang bisa mengubah role Admin'}>{roleLabel[u.role] || u.role}</span>
+                    ) : (
+                      <select value={u.role} disabled={busyId === u.id} onChange={(e) => changeRole(u, e.target.value)} aria-label={`Role ${u.nama_lengkap}`} title="Ubah role"
+                        data-role={u.role} className="role-select h-8 pl-2.5 pr-7 rounded-full border text-xs font-semibold cursor-pointer disabled:opacity-60">
+                        {ROLE_OPTIONS.filter((r) => r !== 'admin' || user?.role === 'admin').map((r) => <option key={r} value={r}>{roleLabel[r]}</option>)}
+                      </select>
+                    )}
+                  </td>
                   <td className="px-4 py-3 text-slate-600 whitespace-nowrap">{u.no_hp || '-'}</td>
                   <td className="px-4 py-3 text-slate-600">{u.unit_kerja || '-'}</td>
                   <td className="px-4 py-3 text-slate-600 capitalize whitespace-nowrap">{u.sso_provider ? `SSO (${u.sso_provider})` : 'Email/Password'}</td>

@@ -9,7 +9,7 @@ File-file di folder ini adalah **script SQL yang dijalankan manual lewat pgAdmin
   3. Jalankan backend, daftar akun pertama lewat Register, lalu jadikan admin dengan `role_management.sql`.
 
   Script menolak jalan kalau tabel `users` sudah ada (database lama → pakai `npx prisma migrate deploy`). **Setiap ada migration Prisma baru, file ini juga harus diperbarui** (struktur + baris `_prisma_migrations`, checksum = `sha256sum migration.sql`).
-- **`role_management.sql`** — lihat & ubah role user (Karyawan/Kabag/PIC/Admin) langsung lewat pgAdmin4. Role tidak bisa diubah dari UI, jadi file ini masih dipakai aktif.
+- **`role_management.sql`** — lihat & ubah role user langsung lewat pgAdmin4. Sehari-hari role cukup diubah dari menu **Akun & Akses**; file ini terutama untuk menjadikan **admin pertama** (saat belum ada admin yang bisa mengubah role dari aplikasi).
 - **`import_ruang_rapat_2026.sql`** — impor jadwal ruang rapat 2026 dari rekap PDF (opsional, aman dijalankan ulang). Jalankan setelah skema dibuat.
 
 ## Legacy / arsip (sudah digantikan `prisma/migrations/` dan `production_schema.sql`)
