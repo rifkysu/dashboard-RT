@@ -940,10 +940,14 @@ def isi_aplikasi():
         *bullets(
             "Menonaktifkan menu Landing, Dashboard, Pemeliharaan, Pengadaan, Kendaraan, Ruang Rapat dengan "
             "pesan khusus.",
-            "Berlaku real-time lewat SSE; API menolak akses dengan HTTP 503 kecuali untuk admin."),
+            "Berlaku real-time lewat SSE; API menolak akses dengan HTTP 503 kecuali untuk admin.",
+            "Halaman Profil menampilkan kartu identitas (avatar inisial, peran) dan informasi akun: nama, email, "
+            "No. HP, unit kerja, metode login, tanggal terdaftar."),
         h2("3.8 Akun & Akses (Admin)"),
         *bullets(
-            "Daftar semua akun: peran, status, metode login, tanggal daftar, login terakhir.",
+            "Kartu ringkasan: total akun (jumlah admin/kabag/PIC), akun aktif, akun di-ban, dan permintaan "
+            "reset kata sandi.",
+            "Daftar semua akun (dengan avatar inisial): peran, status, metode login, tanggal daftar, login terakhir.",
             "Ban/aktifkan akun (kecuali akun sendiri), notifikasi permintaan reset kata sandi, kirim/salin "
             "link reset.",
             "Akun yang di-ban melihat popup *Akun Anda Diblokir* (melanggar ketentuan / spam berlebihan) saat "

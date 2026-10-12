@@ -68,11 +68,11 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
             return (
             <NavLink key={item.to} to={item.to} onClick={onMobileClose} title={collapsed ? item.label : undefined}
               className={({isActive}) => `group relative flex items-center gap-3 px-3 py-2.5 mb-0.5 rounded-lg text-sm transition-colors ${collapsed ? 'md:justify-center' : ''} ${
-                isActive ? 'bg-white/[0.12] text-white' : 'text-white/70 hover:bg-white/[0.06] hover:text-white'
+                isActive ? 'sidebar-active text-white' : 'text-white/70 hover:bg-white/[0.06] hover:text-white hover:translate-x-0.5'
               }`}>
               {({isActive}) => <>
                 {isActive && <span className="absolute left-0 top-2 bottom-2 w-[3px] rounded-r bg-kuningan" aria-hidden="true"></span>}
-                <span className={`relative w-6 h-6 flex items-center justify-center shrink-0 ${isActive ? 'text-[#e4c27f]' : 'text-white/55 group-hover:text-white/85'}`}>
+                <span className={`relative w-7 h-7 rounded-md flex items-center justify-center shrink-0 transition-colors ${isActive ? 'bg-kuningan/20 text-[#e4c27f]' : 'text-white/55 group-hover:text-white/85'}`}>
                   <span className="material-symbols-outlined text-[20px]">{item.icon}</span>
                   {down && <span className={`absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-amber-500 border-2 border-dinas-dark ${collapsed ? 'hidden md:block' : 'hidden'}`}></span>}
                   {notif > 0 && <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-red-600 text-white text-[10px] font-bold flex items-center justify-center border-2 border-dinas-dark">{notif}</span>}
@@ -106,7 +106,7 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
           )}
           <div className="border-t border-white/10 pt-3">
             <NavLink to="/profile" onClick={onMobileClose} title={collapsed ? 'Profil' : undefined} className={({isActive}) => `flex items-center gap-3 px-3 py-2 mb-1 rounded-lg text-sm transition ${collapsed ? 'md:justify-center' : ''} ${isActive ? 'bg-white/[0.12]' : 'hover:bg-white/[0.06]'}`}>
-              <span className="w-8 h-8 rounded-full bg-kuningan flex items-center justify-center shrink-0 text-white text-sm font-bold">
+              <span className="sidebar-avatar w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-white text-sm font-bold">
                 {(user?.nama_lengkap || 'U').trim().charAt(0).toUpperCase()}
               </span>
               <span className={`min-w-0 text-left ${hideWhenCollapsed}`}>

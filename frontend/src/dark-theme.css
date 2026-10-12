@@ -162,6 +162,13 @@ html[data-theme="dark"] .menu-tabel table tbody tr:nth-child(even) { background:
 html[data-theme="dark"] .menu-tabel table tbody tr:hover > td:first-child { box-shadow:inset 3px 0 0 var(--gelap-aksen); }
 html[data-theme="dark"] .menu-page thead input:not([type="radio"]):not([type="checkbox"]),
 html[data-theme="dark"] .menu-page thead select { background:var(--gelap-input) !important; }
+html[data-theme="dark"] .profile-avatar { border-color:var(--gelap-kartu); }
+html[data-theme="dark"] .profile-cover {
+  background:
+    var(--kawung-gelap),
+    radial-gradient(60% 140% at 100% 0%, rgba(184,137,59,.22), transparent 60%),
+    linear-gradient(135deg, #1b3150 0%, #13243b 60%, #0d1a2c 100%);
+}
 html[data-theme="dark"] .dash-module::before { background-image:var(--kawung-gelap); opacity:.5; }
 html[data-theme="dark"] .dash-module:hover .dash-module-cta { background:rgba(143,179,224,.22); }
 html[data-theme="dark"] .dash-module-cta { color:var(--gelap-aksen); }

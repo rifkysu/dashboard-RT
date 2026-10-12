@@ -7,12 +7,15 @@ import { readTheme, saveTheme, applyTheme } from '../theme';
 
 function MaintenanceNotice({ message }) {
   return (
-    <div className="max-w-xl mx-auto mt-16 bg-white border border-amber-200 rounded-2xl shadow-sm p-8 text-center">
-      <div className="w-16 h-16 rounded-2xl bg-amber-100 text-amber-600 flex items-center justify-center mx-auto mb-4">
-        <span className="material-symbols-outlined text-[32px]">build</span>
+    <div className="menu-page">
+      <div className="maintenance-card max-w-xl mx-auto mt-16 bg-white border border-amber-200 rounded-2xl p-8 sm:p-10 text-center">
+        <div className="maintenance-icon w-20 h-20 rounded-3xl bg-amber-100 text-amber-600 flex items-center justify-center mx-auto mb-5">
+          <span className="material-symbols-outlined text-[40px]">construction</span>
+        </div>
+        <span className="inline-flex px-3 py-1 rounded-full bg-amber-50 border border-amber-200 text-amber-700 text-[11px] font-bold mb-3">MAINTENANCE</span>
+        <h2 className="text-xl font-bold text-slate-900">Menu Sedang Diperbarui</h2>
+        <p className="text-sm text-slate-500 mt-2 leading-6">{message || 'Menu ini sedang dalam mode maintenance. Silakan coba lagi nanti.'}</p>
       </div>
-      <h2 className="text-xl font-bold text-slate-900">Sedang Dalam Mode Maintenance</h2>
-      <p className="text-sm text-slate-500 mt-2">{message || 'Menu ini sedang dalam mode maintenance. Silakan coba lagi nanti.'}</p>
     </div>
   );
 }
@@ -48,7 +51,12 @@ export default function ProtectedRoute() {
     });
   }
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center text-slate-500">Memuat...</div>;
+  if (loading) return (
+    <div className="min-h-screen flex flex-col items-center justify-center gap-3 text-slate-500 app-shell-bg">
+      <span className="w-10 h-10 rounded-full border-[3px] border-slate-200 border-t-dinas animate-spin" aria-hidden="true"></span>
+      <span className="text-sm font-medium">Memuat...</span>
+    </div>
+  );
   // Habis klik Logout -> ke landing page; sesi berakhir karena hal lain (token habis, dll.) -> ke /login.
   if (!user) return <Navigate to={loggedOut ? '/' : '/login'} replace />;
   return (

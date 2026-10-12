@@ -4,6 +4,7 @@ import api from '../api';
 import { useAuth } from '../context/AuthContext';
 import { useFeedback } from '../components/Feedback';
 import useLive from '../hooks/useLive';
+import MenuStats from '../components/MenuStats';
 
 const roleLabel = { karyawan: 'Karyawan', kabag: 'Kepala Bagian', pic: 'PIC', admin: 'Admin' };
 const roleBadge = {
@@ -12,6 +13,14 @@ const roleBadge = {
   kabag: 'bg-violet-50 text-violet-700 border border-violet-200',
   admin: 'bg-amber-50 text-amber-700 border border-amber-200',
 };
+
+const avatarTone = {
+  karyawan: 'bg-slate-200 text-slate-700',
+  pic: 'bg-blue-100 text-blue-700',
+  kabag: 'bg-violet-100 text-violet-700',
+  admin: 'bg-amber-100 text-amber-700',
+};
+const initials = (nama) => String(nama || '?').trim().split(/\s+/).slice(0, 2).map((w) => w[0]).join('').toUpperCase();
 
 function fmt(v) {
   return v ? new Date(v).toLocaleString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-';
@@ -108,6 +117,13 @@ export default function Akun() {
         <div className="menu-hero-icon"><span className="material-symbols-outlined">group</span></div>
       </div>
 
+      <MenuStats items={[
+        { key: 'total', icon: 'group', label: 'Total Akun', value: loading && !data.length ? null : data.length, hint: `${data.filter((u) => u.role === 'admin').length} admin · ${data.filter((u) => u.role === 'kabag').length} kabag · ${data.filter((u) => u.role === 'pic').length} PIC`, tone: 'dinas' },
+        { key: 'aktif', icon: 'verified_user', label: 'Akun Aktif', value: loading && !data.length ? null : data.filter((u) => u.is_active).length, hint: 'Bisa login', tone: 'emerald' },
+        { key: 'ban', icon: 'block', label: 'Di-ban', value: loading && !data.length ? null : data.filter((u) => !u.is_active).length, hint: 'Tidak bisa login', tone: 'red' },
+        { key: 'reset', icon: 'lock_reset', label: 'Minta Reset Sandi', value: loading && !data.length ? null : pendingResets.length, hint: pendingResets.length ? 'Perlu ditindaklanjuti' : 'Tidak ada permintaan', tone: 'amber' },
+      ]} />
+
       <div className="flex items-center justify-between gap-4 mb-5">
         <div className="text-sm text-slate-600">{data.length} akun terdaftar</div>
         <button onClick={load} className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-lg border border-slate-300 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-50">
@@ -144,7 +160,7 @@ export default function Akun() {
                 const isSelf = u.id === user?.id;
                 return (
                 <tr key={u.id} className="divide-x divide-slate-100 hover:bg-slate-50/50">
-                  <td className="px-4 py-3 font-semibold text-slate-800">{u.nama_lengkap}{isSelf && <span className="ml-1.5 text-[10px] font-bold text-slate-500">(Kamu)</span>}{u.reset_requested_at && u.is_active && <div className="mt-1 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 text-[10px] font-bold whitespace-nowrap"><span className="material-symbols-outlined text-[12px]">lock_reset</span>Minta reset · {fmt(u.reset_requested_at)}</div>}</td>
+                  <td className="px-4 py-3 font-semibold text-slate-800"><div className="flex items-start gap-2.5"><span className={`shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold ${u.is_active ? (avatarTone[u.role] || avatarTone.karyawan) : 'bg-red-100 text-red-700'}`}>{initials(u.nama_lengkap)}</span><div className="min-w-0"><div className="whitespace-nowrap">{u.nama_lengkap}{isSelf && <span className="ml-1.5 text-[10px] font-bold text-slate-500">(Kamu)</span>}</div>{u.reset_requested_at && u.is_active && <div className="mt-1 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 text-[10px] font-bold whitespace-nowrap"><span className="material-symbols-outlined text-[12px]">lock_reset</span>Minta reset · {fmt(u.reset_requested_at)}</div>}</div></div></td>
                   <td className="px-4 py-3 text-slate-600">{u.email}</td>
                   <td className="px-4 py-3"><span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-semibold whitespace-nowrap ${roleBadge[u.role] || roleBadge.karyawan}`}>{roleLabel[u.role] || u.role}</span></td>
                   <td className="px-4 py-3 text-slate-600 whitespace-nowrap">{u.no_hp || '-'}</td>
