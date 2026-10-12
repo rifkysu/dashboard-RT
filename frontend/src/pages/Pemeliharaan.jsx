@@ -9,6 +9,7 @@ import { verifyFileIsGenuine, readFileAsDataUrl } from '../utils/fileSignature';
 import { useFeedback } from '../components/Feedback';
 import { requireFields, positiveAmount, validatePayment } from '../utils/validation';
 import useLive from '../hooks/useLive';
+import MenuStats from '../components/MenuStats';
 
 // Batas per berkas: sama dengan label "Maks. 8MB" dan masih di bawah batas backend.
 const MAX_FILE_BYTES = 8 * 1024 * 1024;
@@ -275,11 +276,23 @@ export default function Pemeliharaan() {
   const roleLabel = user?.role === 'admin' ? 'Admin' : user?.role === 'kabag' ? 'Kabag' : user?.role === 'pic' ? 'PIC' : 'Karyawan';
 
   return (
-    <div className="menu-page menu-pemeliharaan relative">
+    <div className="menu-page menu-pemeliharaan menu-tabel relative">
       <div className="menu-hero mb-6"><div><span className="menu-kicker">Biro Umum / Pemeliharaan</span><h1 className="text-2xl font-bold">Pemeliharaan</h1><p className="text-sm mt-1">Kelola dan pantau status perbaikan fasilitas kantor.</p></div><button onClick={() => { setError(''); setShowAddForm(true); }} className="inline-flex items-center gap-2 px-4 py-2.5 bg-slate-900 text-white text-sm font-semibold rounded-xl hover:bg-slate-800"><span className="material-symbols-outlined text-[18px]">add</span>Tambah Permintaan
         </button></div>
 
-      <div className="flex flex-col sm:flex-row sm:items-end justify-end gap-3 mb-4">
+      <MenuStats items={(() => {
+        const n = (k) => (loading && !data.length ? null : data.filter((r) => r.status === k).length);
+        const pick = (k) => () => setFilters((f) => ({ ...f, status: f.status === k ? '' : k }));
+        return [
+          { key: 'all', icon: 'inventory_2', label: 'Total Permintaan', value: loading && !data.length ? null : data.length, hint: filters.status ? 'Klik untuk tampilkan semua' : 'Semua status', tone: 'dinas', onClick: () => setFilters((f) => ({ ...f, status: '' })) },
+          { key: 'pending', icon: 'pending_actions', label: 'Pending', value: n('pending'), hint: 'Menunggu diproses', tone: 'red', active: filters.status === 'pending', onClick: pick('pending') },
+          { key: 'on_progress', icon: 'autorenew', label: 'On Progress', value: n('on_progress'), hint: 'Sedang berjalan', tone: 'amber', active: filters.status === 'on_progress', onClick: pick('on_progress') },
+          { key: 'selesai', icon: 'task_alt', label: 'Selesai', value: n('selesai'), hint: 'Sudah tuntas', tone: 'emerald', active: filters.status === 'selesai', onClick: pick('selesai') },
+        ];
+      })()} />
+
+
+      <div className="menu-toolbar flex flex-col sm:flex-row sm:items-end justify-end gap-3 mb-4">
         <div>
           <label className="block text-xs font-semibold text-slate-600 mb-1">Tanggal mulai export</label>
           <input type="date" value={exportDateRange.mulai} onChange={e=>setExportDateRange(r=>({...r,mulai:e.target.value}))} className="h-11 px-3 rounded-lg border border-slate-300 bg-white text-sm text-slate-700" />

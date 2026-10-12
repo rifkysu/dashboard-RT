@@ -33,7 +33,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 LOGO = os.path.join(ROOT, "frontend", "public", "logo-kemnaker.png")
 
-TANGGAL = "5 Oktober 2026"
+TANGGAL = "12 Oktober 2026"
 SISTEM = "Sistem Layanan Biro Umum & Rumah Tangga"
 
 PW, PH = A4
@@ -454,7 +454,7 @@ def d_arsitektur(g):
         g.box(72 + 56.5 * i, 537.7, 52, 36, r, ["route"], "wIndigo", SZ_S)
     g.arrow(297, 583.7, 297, 593.7, both=True)
     g.group(62, 593.7, 470, 80, "LAPISAN DATA", "green")
-    for i, (t, s) in enumerate([("Prisma ORM 6", ["schema.prisma", "27 migration"]),
+    for i, (t, s) in enumerate([("Prisma ORM 6", ["schema.prisma", "28 migration"]),
                                 ("PostgreSQL", ["biro_umum_db", "7 tabel inti"]),
                                 ("File Storage", ["backend/uploads/", "(PDF, JPG, PNG)"])]):
         g.box(72 + 155 * i, 608.7, 140, 55, t, s, "green", SZ_L)
@@ -866,11 +866,13 @@ def isi_aplikasi():
             "layar."),
         h2("3.3 Dashboard"),
         *bullets(
+            "Panel sapaan bergradasi biru dinas berisi tanggal, jam berjalan, dan ringkasan singkat (jumlah hal "
+            "yang perlu ditindaklanjuti dan ruang rapat kosong).",
             "Kartu ringkasan hal yang perlu ditindaklanjuti: permintaan Pending dan On Progress (gabungan "
             "Pemeliharaan + Pengadaan), pajak kendaraan perlu tindakan (belum bayar + jatuh tempo H-14), dan "
             "jumlah ruang rapat kosong saat ini.",
-            "Kartu modul Pemeliharaan & Pengadaan menampilkan komposisi status (Pending / On Progress / "
-            "Selesai); kartu Kendaraan menampilkan jumlah belum bayar pajak dan peringatan pajak H-14.",
+            "Kartu modul Pemeliharaan & Pengadaan menampilkan komposisi status dalam diagram donat (Pending / "
+            "On Progress / Selesai beserta persentasenya); kartu Kendaraan menampilkan jumlah belum bayar pajak dan peringatan pajak H-14.",
             "Warna dipakai konsisten hanya untuk status: merah = Pending, kuning = On Progress, hijau = Selesai.",
             "Pilihan tampilan Terang/Gelap di sidebar, berlaku di semua menu dashboard dan disimpan per browser; "
             "landing page dan halaman login tetap terang.",
@@ -882,6 +884,8 @@ def isi_aplikasi():
         h2("3.4 Pemeliharaan & Pengadaan"),
         *bullets(
             "Pengajuan permintaan dengan dokumen pendukung (PDF/gambar/Office).",
+            "Kartu ringkasan Total / Pending / On Progress / Selesai di atas tabel; klik kartu status untuk "
+            "memfilter tabel (klik lagi atau kartu Total untuk menampilkan semua).",
             "Alur 3 tahap: (1) Analisa & HPS, (2) Invoice & Pembayaran - metode GUP (1-20), TUP (1-10) atau "
             "LS + tanggal, asal anggaran RM/PNBP, (3) Dokumentasi/BAST.",
             "Simpan Draf, Lanjut ke Tahap, Selesaikan (tanggal selesai otomatis).",
@@ -898,10 +902,13 @@ def isi_aplikasi():
             "(kabag/PIC/admin).",
             "Status Tersedia / Digunakan / Servis; riwayat service per tanggal (satu catatan per tanggal) "
             "dengan invoice PDF.",
-            "Pencarian dan filter pill: merek, status, tahun perolehan; tab Roda 2/4/6."),
+            "Pencarian dan filter pill: merek, status, tahun perolehan; tab Roda 2/4/6.",
+            "Kartu ringkasan per tab (Total, Tersedia, Digunakan, Servis); kartu status sekaligus filter cepat."),
         h2("3.6 Ruang Rapat"),
         *bullets(
             "Lima ruangan: SERBAGUNA, SETJEN II, TRI DHARMA, BIRO UMUM, GRAHA KEMNAKER.",
+            "Kartu ringkasan: booking hari ini, sedang berlangsung, ruang kosong sekarang, dan booking mendatang "
+            "yang belum ada surat (dihitung dari bulan yang sedang ditampilkan).",
             "Grid jadwal: **nama ruangan horizontal** (kolom) dan **tanggal vertikal** (baris, dikelompokkan "
             "per bulan); header ruangan & kolom tanggal menempel saat digulir; penanda hari ini, hari libur "
             "nasional, cuti bersama, dan akhir pekan.",
@@ -1032,8 +1039,8 @@ def isi_aplikasi():
 
         PageBreak(),
         h1("7. Model Data"),
-        p("Skema database didefinisikan di `backend/prisma/schema.prisma` dan diterapkan melalui 27 migration "
-          "berurutan (0001 s.d. 0027). Relasi *created_by/updated_by* ke tabel users memakai ON DELETE SET "
+        p("Skema database didefinisikan di `backend/prisma/schema.prisma` dan diterapkan melalui 28 migration "
+          "berurutan (0001 s.d. 0028). Relasi *created_by/updated_by* ke tabel users memakai ON DELETE SET "
           "NULL agar data tetap ada saat akun dihapus."),
         Diagram(137.2, 399.2, d_erd),
         caption("Gambar 5. Diagram relasi entitas (ringkas)"),
@@ -1218,9 +1225,9 @@ def isi_infra():
             ["backend/src/routes", "auth, dashboard, pemeliharaan, pengadaan, kendaraan, ruangRapat, maintenance, users"],
             ["backend/src/middleware", "auth (JWT & peran), maintenance, security (header, rate limit, batas SSE)"],
             ["backend/src", "prisma.js, validate.js, fileStorage.js, fileSignature.js, token.js, mailer.js, logger.js"],
-            ["backend/prisma", "schema.prisma dan 27 migration (sumber kebenaran skema)"],
+            ["backend/prisma", "schema.prisma dan 28 migration (sumber kebenaran skema)"],
             ["backend/scripts", "db-verify.js (cek kolom & jumlah baris), cleanup-uploads.js (berkas yatim)"],
-            ["backend/sql", "Script SQL manual untuk pgAdmin 4 (arsip pra-Prisma & sinkronisasi)"],
+            ["backend/sql", "production_schema.sql (instalasi database production baru), role_management.sql, arsip pra-Prisma"],
             ["frontend/src", "pages, components, context (AuthContext), live.js + hooks (useLive, SSE), utils"],
         ]),
 
@@ -1260,8 +1267,9 @@ def isi_infra():
         *bullets(
             "DBMS PostgreSQL 18, database `biro_umum_db`, skema `public`; 7 tabel inti + tabel riwayat "
             "migration Prisma (`_prisma_migrations`).",
-            "Perubahan struktur **hanya** melalui migration Prisma (0001 s.d. 0027) agar Prisma dan pgAdmin 4 "
-            "selalu sinkron. Cek sinkron: `npx prisma migrate status` dan `npx prisma migrate diff "
+            "Perubahan struktur **hanya** melalui migration Prisma (0001 s.d. 0028) agar Prisma dan pgAdmin 4 "
+            "selalu sinkron. Database production baru bisa dibuat sekali jalan dengan "
+            "`backend/sql/production_schema.sql` (setara 0001 s.d. 0028, sudah mengisi `_prisma_migrations`). Cek sinkron: `npx prisma migrate status` dan `npx prisma migrate diff "
             "--from-schema-datasource ... --to-schema-datamodel ...` (read-only).",
             "Integritas dijaga di level database: UNIQUE (email, kode, plate, menu_key, service per tanggal), "
             "CHECK (kategori, status surat, jam & tanggal booking), foreign key dengan SET NULL/CASCADE, trigger "

@@ -117,6 +117,125 @@ main.app-main { background: var(--kanvas) !important; min-height:100vh; }
 .menu-dashboard .menu-hero p { color:rgba(255,255,255,.78) !important; }
 .menu-dashboard .menu-kicker { color:rgba(255,255,255,.72); }
 
+/* ---- Header menu lain: garis aksen + ikon besar per menu ----------------------
+   Ikon diambil dari font Material Symbols lewat ligatur di ::after, jadi tidak perlu markup tambahan. */
+.menu-page:not(.menu-dashboard) .menu-hero {
+  padding-left:100px; min-height:104px;
+  background:
+    linear-gradient(90deg, var(--dinas) 0%, #2c5689 45%, var(--kuningan) 100%) top / 100% 3px no-repeat,
+    radial-gradient(70% 140% at 100% 0%, rgba(184,137,59,.10), transparent 60%),
+    #ffffff;
+}
+.menu-page:not(.menu-dashboard) .menu-hero::after {
+  position:absolute; left:26px; top:50%; transform:translateY(-50%);
+  width:54px; height:54px; border-radius:15px; display:flex; align-items:center; justify-content:center;
+  font-family:'Material Symbols Outlined'; font-size:28px; line-height:1; font-feature-settings:'liga'; -webkit-font-feature-settings:'liga';
+  color:#fff; background:linear-gradient(135deg, #2c5689, var(--dinas));
+  box-shadow:0 8px 18px -8px rgba(30,58,95,.65);
+}
+.menu-pemeliharaan .menu-hero::after { content:'build'; }
+.menu-pengadaan .menu-hero::after { content:'shopping_cart'; }
+.menu-kendaraan .menu-hero::after { content:'directions_car'; }
+.menu-ruang-rapat .menu-hero::after { content:'calendar_month'; }
+.menu-akun .menu-hero::after { content:'group'; }
+.menu-settings .menu-hero::after { content:'settings'; }
+.menu-profile .menu-hero::after { content:'person'; }
+/* Tombol utama di header: gradasi + bayangan + terangkat saat disorot */
+.menu-page .menu-hero > button.bg-slate-900 {
+  background:linear-gradient(135deg, #2c5689, var(--dinas)) !important;
+  box-shadow:0 8px 18px -10px rgba(30,58,95,.8); transition:transform .2s ease, box-shadow .2s ease;
+}
+.menu-page .menu-hero > button.bg-slate-900:hover { transform:translateY(-2px); box-shadow:0 12px 22px -10px rgba(30,58,95,.85); }
+
+/* Kartu ringkasan per menu (components/MenuStats.jsx) */
+.menu-stat { position:relative; overflow:hidden; }
+.menu-stat.is-active { border-color:var(--dinas) !important; box-shadow:0 0 0 3px rgba(30,58,95,.12), var(--kartu-bayang) !important; }
+
+/* Panel export: kartu putih dengan judul kecil */
+.menu-toolbar {
+  position:relative; padding:14px 16px; border:1px solid var(--garis); border-radius:12px;
+  background:#ffffff; box-shadow:var(--kartu-bayang);
+}
+.menu-toolbar::before { content:'Export data'; margin-right:auto; font-size:12px; font-weight:700; color:var(--dinas); }
+@media (min-width: 640px) { .menu-toolbar::before { align-self:center; } }
+.menu-toolbar button { display:inline-flex; align-items:center; justify-content:center; transition:transform .15s ease, box-shadow .15s ease; }
+.menu-toolbar button:hover:not(:disabled) { transform:translateY(-1px); box-shadow:0 6px 14px -8px rgba(14,30,51,.5); }
+
+/* Tabel data (bukan kalender ruang rapat): kepala lebih tegas, baris selang-seling,
+   baris yang disorot diberi garis aksen di kiri. */
+.menu-tabel table thead tr:first-child th { font-size:11px; font-weight:700 !important; letter-spacing:.05em; padding-top:13px; padding-bottom:13px; }
+.menu-tabel table tbody tr { transition:background-color .15s ease; }
+.menu-tabel table tbody tr:hover > td:first-child { box-shadow:inset 3px 0 0 var(--dinas); }
+.menu-tabel table tbody tr:nth-child(even) { background:#fbfcfd; }
+.menu-page thead input:not([type="radio"]):not([type="checkbox"]), .menu-page thead select { border-radius:7px !important; background:#f8fafc !important; }
+
+@media (max-width: 640px) {
+  .menu-page:not(.menu-dashboard) .menu-hero { padding-left:18px; }
+  .menu-page:not(.menu-dashboard) .menu-hero::after { position:static; transform:none; order:-1; width:44px; height:44px; border-radius:12px; font-size:22px; }
+}
+
+/* ---- Dashboard (pages/Dashboard.jsx) ------------------------------------- */
+/* Panel sapaan: gradasi biru dinas + cahaya kuningan, selaras landing page. */
+.menu-dashboard .dash-hero {
+  padding:26px 28px; border:0;
+  background:
+    radial-gradient(60% 120% at 100% 0%, rgba(184,137,59,.32), transparent 60%),
+    radial-gradient(50% 90% at 0% 100%, rgba(37,99,235,.25), transparent 60%),
+    linear-gradient(135deg, #1e3a5f 0%, #142a47 60%, #0e1e33 100%);
+  box-shadow:0 14px 34px -18px rgba(14,30,51,.55);
+}
+.dash-hero-chip {
+  display:inline-flex; align-items:center; gap:6px; padding:5px 11px; border-radius:999px;
+  font-size:12px; font-weight:600; color:#fff;
+  background:rgba(255,255,255,.12); border:1px solid rgba(255,255,255,.18);
+  backdrop-filter:blur(4px);
+}
+.dash-dot { width:8px; height:8px; border-radius:999px; box-shadow:0 0 0 3px rgba(255,255,255,.15); }
+.dash-clock {
+  flex-shrink:0; display:flex; align-items:center; gap:8px; padding:12px 16px; border-radius:14px; color:#fff;
+  background:rgba(255,255,255,.1); border:1px solid rgba(255,255,255,.18); backdrop-filter:blur(4px);
+}
+
+/* Kartu ringkasan & kartu menu */
+.dash-stat, .menu-stat { position:relative; overflow:hidden; }
+.dash-stat-bar { position:absolute; left:0; top:0; bottom:0; width:4px; }
+.dash-lift { transition:transform .2s ease, box-shadow .2s ease, border-color .2s ease; }
+.dash-lift:hover { transform:translateY(-3px); box-shadow:0 2px 4px rgba(14,30,51,.05), 0 16px 30px -16px rgba(14,30,51,.3) !important; border-color:rgba(30,58,95,.35) !important; }
+.dash-lift:focus-visible { outline:2px solid var(--dinas); outline-offset:2px; }
+.dash-module { position:relative; overflow:hidden; isolation:isolate; }
+.dash-module::before {
+  content:''; position:absolute; top:-30px; right:-30px; width:130px; height:130px; z-index:-1; border-radius:999px;
+  background-image:var(--kawung-terang); background-color:var(--dinas-soft); opacity:.7;
+  transition:transform .35s ease;
+}
+.dash-module:hover::before { transform:scale(1.12); }
+.dash-module-icon {
+  width:44px; height:44px; border-radius:12px; display:flex; align-items:center; justify-content:center; flex-shrink:0;
+  color:#fff; background:linear-gradient(135deg, #2c5689, var(--dinas));
+  box-shadow:0 6px 14px -6px rgba(30,58,95,.6);
+}
+.dash-module-icon-sm { width:36px; height:36px; border-radius:10px; }
+.dash-module-cta {
+  display:flex; align-items:center; justify-content:space-between; gap:4px; padding:8px 12px; border-radius:9px;
+  font-size:12px; font-weight:700; color:var(--dinas); background:var(--dinas-soft); transition:background .2s ease;
+}
+.dash-module:hover .dash-module-cta { background:#dbe4f0; }
+.dash-ring-track { stroke:#edf0f4; }
+.dash-ring-seg { transition:stroke-dasharray .6s ease, stroke-dashoffset .6s ease; }
+
+/* Muncul berurutan saat dashboard dibuka */
+@keyframes dash-rise { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:none; } }
+.dash-rise { animation:dash-rise .45s cubic-bezier(.2,.7,.2,1) backwards; animation-delay:var(--dash-delay,0ms); }
+@media (prefers-reduced-motion: reduce) {
+  .dash-rise { animation:none; }
+  .dash-lift, .dash-lift:hover, .dash-module::before { transition:none; transform:none; }
+}
+
+@media (max-width: 640px) {
+  .dash-clock { align-self:flex-start; padding:8px 12px; }
+  .menu-dashboard .dash-hero { padding:20px; }
+}
+
 @media (max-width: 640px) {
   .menu-hero { flex-direction:column; align-items:stretch; gap:14px; padding:18px; }
   .menu-hero > button, .menu-hero > a { justify-content:center; white-space:nowrap; }

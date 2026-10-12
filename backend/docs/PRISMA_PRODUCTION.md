@@ -33,6 +33,8 @@ npx prisma migrate deploy
 
 Migration `0001_init` membuat struktur tabel. Migration `0002_tanggal_selesai` membuat pengaman tanggal selesai.
 
+**Alternatif lewat pgAdmin4 (tanpa terminal):** jalankan `backend/sql/production_schema.sql` di Query Tool pada database kosong. Isinya setara migration `0001` s/d `0028` dan sudah mengisi tabel `_prisma_migrations`, sehingga `npx prisma migrate status` langsung "up to date" dan migration berikutnya cukup `npx prisma migrate deploy`. Script menolak jalan kalau tabel `users` sudah ada.
+
 ## 3. Database lama yang sudah berisi data
 
 Jangan menjalankan `0001_init` langsung ke database lama yang sudah mempunyai tabel.

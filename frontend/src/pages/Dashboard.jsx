@@ -31,37 +31,66 @@ const fmtWaktu = (v) => {
   return sameDay ? `Hari ini, ${fmtTime(d)}` : d.toLocaleString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 };
 
-// Satu sel di strip ringkasan. `value` null = data belum pernah termuat, tampil "–" (bukan 0).
-function StatCell({ value, label, hint, tone, to }) {
+const fmtJam = (d) => d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }).replace('.', ':');
+
+// Jam berjalan di panel sapaan. Komponen terpisah supaya detaknya tidak me-render ulang seluruh dashboard.
+function LiveClock() {
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => { const t = setInterval(() => setNow(new Date()), 10000); return () => clearInterval(t); }, []);
+  return (
+    <div className="dash-clock">
+      <span className="material-symbols-outlined text-[18px]">schedule</span>
+      <span className="font-display text-2xl font-extrabold tabular-nums leading-none">{fmtJam(now)}</span>
+    </div>
+  );
+}
+
+// Kartu ringkasan. `value` null = data belum pernah termuat, tampil "–" (bukan 0).
+function StatCard({ icon, value, label, hint, tone, to, delay = 0 }) {
   const navigate = useNavigate();
   const Tag = to ? 'button' : 'div';
+  const active = Boolean(value);
+  const t = TONE[active ? tone : 'slate'];
   return (
-    <Tag onClick={to ? () => navigate(to) : undefined} className={`text-left bg-white px-5 py-4 ${to ? 'hover:bg-slate-50 transition-colors' : ''}`}>
-      <div className="text-xs font-semibold text-slate-600">{label}</div>
-      <div className={`mt-2 font-display text-[32px] font-extrabold leading-none tabular-nums ${value ? TONE[tone].text : 'text-slate-900'}`}>{value ?? '–'}</div>
-      {hint && <div className="text-[11px] text-slate-500 mt-1.5">{hint}</div>}
+    <Tag onClick={to ? () => navigate(to) : undefined} style={{ '--dash-delay': `${delay}ms` }}
+      className={`dash-stat dash-rise group text-left bg-white border border-slate-200 rounded-xl p-4 flex items-start gap-3.5 ${to ? 'dash-lift' : ''}`}>
+      <span className={`dash-stat-bar ${t.bar}`}></span>
+      <span className={`shrink-0 w-11 h-11 rounded-xl flex items-center justify-center ${t.chip}`}>
+        <span className="material-symbols-outlined text-[22px]">{icon}</span>
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="flex items-center justify-between gap-2 text-xs font-semibold text-slate-600">
+          {label}
+          {to && <span className="material-symbols-outlined text-[16px] text-slate-400 transition-transform group-hover:translate-x-0.5">arrow_forward</span>}
+        </span>
+        <span className={`block mt-1 font-display text-[30px] font-extrabold leading-none tabular-nums ${active ? t.text : 'text-slate-900'}`}>{value ?? '–'}</span>
+        {hint && <span className="block text-[11px] text-slate-500 mt-1.5 leading-4">{hint}</span>}
+      </span>
     </Tag>
   );
 }
 
-function ModuleCard({ icon, title, desc, badge, badgeTone = 'slate', to, children }) {
+function ModuleCard({ icon, title, desc, badge, badgeTone = 'slate', to, delay = 0, children }) {
   const navigate = useNavigate();
   return (
-    <button onClick={() => navigate(to)} className="text-left group bg-white border border-slate-200 rounded-xl p-5 flex flex-col hover:!border-[#1e3a5f]/40 transition-colors">
-      <div className="flex justify-between items-center gap-3">
-        <h2 className="flex items-center gap-2 text-base font-bold text-slate-900 whitespace-nowrap">
-          <span className="w-8 h-8 rounded-lg bg-dinas-soft text-dinas flex items-center justify-center"><span className="material-symbols-outlined text-[19px]">{icon}</span></span>{title}
-        </h2>
-        {badge && <span className={`text-[11px] font-bold px-2 py-0.5 rounded whitespace-nowrap ${TONE[badgeTone].chip}`}>{badge}</span>}
+    <button onClick={() => navigate(to)} style={{ '--dash-delay': `${delay}ms` }}
+      className="dash-module dash-rise dash-lift text-left group bg-white border border-slate-200 rounded-xl p-5 flex flex-col">
+      <div className="flex justify-between items-start gap-3">
+        <span className="dash-module-icon"><span className="material-symbols-outlined text-[22px]">{icon}</span></span>
+        {badge && <span className={`text-[11px] font-bold px-2 py-1 rounded-md whitespace-nowrap ${TONE[badgeTone].chip}`}>{badge}</span>}
       </div>
-      <p className="text-xs text-slate-500 mt-1 leading-5">{desc}</p>
+      <h2 className="mt-3.5 text-base font-bold text-slate-900">{title}</h2>
+      <p className="text-xs text-slate-500 mt-0.5 leading-5">{desc}</p>
       {children}
-      <div className="mt-auto pt-4 flex items-center gap-1 text-xs font-bold text-dinas">Buka {title}<span className="material-symbols-outlined text-[16px] transition-transform group-hover:translate-x-0.5">arrow_forward</span></div>
+      <div className="mt-auto pt-4">
+        <div className="dash-module-cta">Buka {title}<span className="material-symbols-outlined text-[16px] transition-transform group-hover:translate-x-1">arrow_forward</span></div>
+      </div>
     </button>
   );
 }
 
-// Komposisi status permintaan: satu batang bersegmen + jumlah tiap status.
+// Komposisi status permintaan: cincin donat + jumlah & persentase tiap status.
+const RING = { red: '#ef4444', amber: '#f59e0b', emerald: '#10b981' };
 function StatusMix({ data }) {
   const parts = [
     { k: 'pending', n: data.pending, tone: 'red' },
@@ -69,19 +98,36 @@ function StatusMix({ data }) {
     { k: 'selesai', n: data.selesai, tone: 'emerald' },
   ];
   const total = parts.reduce((s, p) => s + p.n, 0);
+  const R = 30; const C = 2 * Math.PI * R;
+  let offset = 0;
   return (
-    <div className="mt-3">
-      <div className="h-2 rounded-full bg-slate-100 overflow-hidden flex">
-        {total > 0 && parts.map((p) => p.n > 0 && <div key={p.k} className={TONE[p.tone].bar} style={{ width: `${(p.n / total) * 100}%` }}></div>)}
+    <div className="mt-4 flex items-center gap-4">
+      <div className="relative w-[76px] h-[76px] shrink-0">
+        <svg viewBox="0 0 76 76" className="w-full h-full -rotate-90" aria-hidden="true">
+          <circle cx="38" cy="38" r={R} fill="none" strokeWidth="9" className="dash-ring-track" />
+          {total > 0 && parts.map((p) => {
+            if (!p.n) return null;
+            const len = (p.n / total) * C;
+            const el = <circle key={p.k} cx="38" cy="38" r={R} fill="none" stroke={RING[p.tone]} strokeWidth="9" strokeDasharray={`${len} ${C - len}`} strokeDashoffset={-offset} className="dash-ring-seg" />;
+            offset += len;
+            return el;
+          })}
+        </svg>
+        <div className="absolute inset-0 flex flex-col items-center justify-center">
+          <span className="font-display text-lg font-extrabold leading-none tabular-nums text-slate-900">{total}</span>
+          <span className="text-[9px] font-semibold text-slate-500 mt-0.5">total</span>
+        </div>
       </div>
-      <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-slate-600">
+      <ul className="flex-1 min-w-0 space-y-1.5 text-[11px]">
         {parts.map((p) => (
-          <span key={p.k} className="inline-flex items-center gap-1 whitespace-nowrap">
-            <span className={`w-2 h-2 rounded-full ${TONE[p.tone].bar}`}></span>
-            <b className="text-slate-900 tabular-nums">{p.n}</b> {statusLabel[p.k]}
-          </span>
+          <li key={p.k} className="flex items-center gap-2">
+            <span className={`w-2 h-2 rounded-full shrink-0 ${TONE[p.tone].bar}`}></span>
+            <span className="text-slate-600 flex-1 truncate">{statusLabel[p.k]}</span>
+            <b className="text-slate-900 tabular-nums">{p.n}</b>
+            <span className="w-8 text-right text-slate-400 tabular-nums">{total ? Math.round((p.n / total) * 100) : 0}%</span>
+          </li>
         ))}
-      </div>
+      </ul>
     </div>
   );
 }
@@ -167,14 +213,24 @@ export default function Dashboard() {
   const pajakTindakan = kd.belum_bayar_pajak + kd.pajak_segera;
   const v = (n) => (ready ? n : null);
 
+  const perluTindakan = totalPending + pajakTindakan;
+  const modulIcon = { Pemeliharaan: 'build', Pengadaan: 'shopping_cart' };
+
   return (
     <div className="menu-page menu-dashboard relative">
-      <div className="menu-hero mb-6">
-        <div>
+      <div className="menu-hero dash-hero mb-6">
+        <div className="min-w-0">
           <span className="menu-kicker">{new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</span>
           <h1>{sapaan()}{user?.nama_lengkap ? `, ${user.nama_lengkap.split(' ')[0]}` : ''}</h1>
           <p className="text-sm mt-1">Ringkasan permintaan, pajak kendaraan, dan ruang rapat hari ini.</p>
+          {ready && (
+            <div className="mt-4 flex flex-wrap gap-2">
+              <span className="dash-hero-chip"><span className={`dash-dot ${perluTindakan ? 'bg-amber-400' : 'bg-emerald-400'}`}></span>{perluTindakan ? `${perluTindakan} hal perlu ditindaklanjuti` : 'Semua beres, tidak ada yang tertunda'}</span>
+              {rr.total_ruang > 0 && <span className="dash-hero-chip"><span className="material-symbols-outlined text-[15px]">meeting_room</span>{rr.kosong_sekarang} dari {rr.total_ruang} ruang rapat kosong</span>}
+            </div>
+          )}
         </div>
+        <LiveClock />
       </div>
 
       {summaryError && (
@@ -190,63 +246,75 @@ export default function Dashboard() {
       )}
 
       {/* Ringkasan: hal yang perlu ditindaklanjuti lebih dulu */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-px bg-slate-200 border border-slate-200 rounded-lg overflow-hidden mb-7">
-        <StatCell tone="red" value={v(totalPending)} label="Permintaan Pending" hint={ready ? `Pemeliharaan ${pm.pending} · Pengadaan ${pg.pending}` : 'Menunggu diproses'} />
-        <StatCell tone="amber" value={v(totalProgress)} label="On Progress" hint={ready ? `Dari ${totalSemua} total permintaan` : 'Sedang berjalan'} />
-        <StatCell tone={kd.belum_bayar_pajak ? 'red' : 'amber'} value={v(pajakTindakan)} label="Pajak Kendaraan Perlu Tindakan" hint={ready ? `${kd.belum_bayar_pajak} belum bayar · ${kd.pajak_segera} jatuh tempo ≤ 14 hari` : 'Belum bayar / segera jatuh tempo'} to="/kendaraan" />
-        <StatCell tone="emerald" value={v(rr.kosong_sekarang)} label="Ruang Rapat Kosong" hint={ready && rr.total_ruang ? `Dari ${rr.total_ruang} ruang · pukul ${rr.jam}` : 'Saat ini'} to="/ruang-rapat" />
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-7">
+        <StatCard delay={0} icon="pending_actions" tone="red" value={v(totalPending)} label="Permintaan Pending" hint={ready ? `Pemeliharaan ${pm.pending} · Pengadaan ${pg.pending}` : 'Menunggu diproses'} />
+        <StatCard delay={60} icon="autorenew" tone="amber" value={v(totalProgress)} label="On Progress" hint={ready ? `Dari ${totalSemua} total permintaan` : 'Sedang berjalan'} />
+        <StatCard delay={120} icon="receipt_long" tone={kd.belum_bayar_pajak ? 'red' : 'amber'} value={v(pajakTindakan)} label="Pajak Perlu Tindakan" hint={ready ? `${kd.belum_bayar_pajak} belum bayar · ${kd.pajak_segera} jatuh tempo ≤ 14 hari` : 'Belum bayar / segera jatuh tempo'} to="/kendaraan" />
+        <StatCard delay={180} icon="meeting_room" tone="emerald" value={v(rr.kosong_sekarang)} label="Ruang Rapat Kosong" hint={ready && rr.total_ruang ? `Dari ${rr.total_ruang} ruang · pukul ${rr.jam}` : 'Saat ini'} to="/ruang-rapat" />
       </div>
 
       {/* Menu layanan */}
+      <div className="mb-3">
+        <h2 className="text-lg font-bold text-slate-900">Menu Layanan</h2>
+        <p className="text-[11px] text-slate-500">Pilih menu untuk melihat detail dan mengelola data.</p>
+      </div>
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5">
-        <ModuleCard icon="build" title="Pemeliharaan" desc="Permintaan perbaikan gedung dan fasilitas." badge={ready ? `${pm.pending} pending` : null} badgeTone={pm.pending ? 'red' : 'slate'} to="/pemeliharaan">
+        <ModuleCard delay={80} icon="build" title="Pemeliharaan" desc="Permintaan perbaikan gedung dan fasilitas." badge={ready ? `${pm.pending} pending` : null} badgeTone={pm.pending ? 'red' : 'slate'} to="/pemeliharaan">
           <StatusMix data={pm} />
         </ModuleCard>
-        <ModuleCard icon="shopping_cart" title="Pengadaan" desc="Status barang dan jasa dalam proses pengadaan." badge={ready ? `${pg.pending} pending` : null} badgeTone={pg.pending ? 'red' : 'slate'} to="/pengadaan">
+        <ModuleCard delay={140} icon="shopping_cart" title="Pengadaan" desc="Status barang dan jasa dalam proses pengadaan." badge={ready ? `${pg.pending} pending` : null} badgeTone={pg.pending ? 'red' : 'slate'} to="/pengadaan">
           <StatusMix data={pg} />
         </ModuleCard>
-        <ModuleCard icon="directions_car" title="Kendaraan" desc="Data kendaraan dinas dan jadwal pajaknya." badge={ready ? (kd.belum_bayar_pajak ? `${kd.belum_bayar_pajak} belum bayar pajak` : `${kd.total} kendaraan`) : null} badgeTone={kd.belum_bayar_pajak ? 'red' : 'slate'} to="/kendaraan">
+        <ModuleCard delay={200} icon="directions_car" title="Kendaraan" desc="Data kendaraan dinas dan jadwal pajaknya." badge={ready ? (kd.belum_bayar_pajak ? `${kd.belum_bayar_pajak} belum bayar pajak` : `${kd.total} kendaraan`) : null} badgeTone={kd.belum_bayar_pajak ? 'red' : 'slate'} to="/kendaraan">
           {ready && <PajakSegera list={kd.pajak_segera_list || []} />}
         </ModuleCard>
-        <ModuleCard icon="calendar_month" title="Ruang Rapat" desc="Jadwal dan status ruang rapat hari ini." badge={ready && rr.total_ruang ? `${rr.kosong_sekarang}/${rr.total_ruang} kosong` : null} badgeTone={ready && rr.total_ruang && !rr.kosong_sekarang ? 'red' : 'emerald'} to="/ruang-rapat">
+        <ModuleCard delay={260} icon="calendar_month" title="Ruang Rapat" desc="Jadwal dan status ruang rapat hari ini." badge={ready && rr.total_ruang ? `${rr.kosong_sekarang}/${rr.total_ruang} kosong` : null} badgeTone={ready && rr.total_ruang && !rr.kosong_sekarang ? 'red' : 'emerald'} to="/ruang-rapat">
           {ready && <RuangStatus info={rr} />}
         </ModuleCard>
       </div>
 
       {/* Aktivitas terbaru */}
-      <div className="mt-6 bg-white border border-slate-200 rounded-lg overflow-hidden">
+      <div className="mt-7 bg-white border border-slate-200 rounded-xl overflow-hidden">
         <div className="px-5 py-4 border-b border-slate-200 flex flex-wrap items-center justify-between gap-2">
-          <div>
-            <h2 className="text-lg font-bold text-slate-900">Aktivitas Terbaru</h2>
-            <p className="text-[11px] text-slate-500">20 perubahan terakhir di Pemeliharaan dan Pengadaan{loadedAt ? ` · diperbarui ${fmtTime(loadedAt)}` : ''}</p>
+          <div className="flex items-center gap-3">
+            <span className="dash-module-icon dash-module-icon-sm"><span className="material-symbols-outlined text-[19px]">history</span></span>
+            <div>
+              <h2 className="text-lg font-bold text-slate-900 leading-tight">Aktivitas Terbaru</h2>
+              <p className="text-[11px] text-slate-500">20 perubahan terakhir di Pemeliharaan dan Pengadaan{loadedAt ? ` · diperbarui ${fmtTime(loadedAt)}` : ''}</p>
+            </div>
           </div>
-          <button onClick={load} disabled={refreshing} className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-600 hover:text-slate-900 disabled:opacity-60">
+          <button onClick={load} disabled={refreshing} className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 hover:text-slate-900 disabled:opacity-60">
             <span className={`material-symbols-outlined text-[16px] ${refreshing ? 'animate-spin' : ''}`}>refresh</span>{refreshing ? 'Memuat…' : 'Refresh'}
           </button>
         </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-xs">
-            <thead className="bg-slate-50 border-b border-slate-200">
-              <tr>
-                {['Modul', 'Deskripsi', 'Status', 'Waktu'].map((x) => <th key={x} className="text-left px-5 py-3 uppercase tracking-wide text-slate-600 font-semibold">{x}</th>)}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {activities.length ? activities.map((a, i) => (
-                <tr key={`${a.kode}-${i}`} className="hover:bg-slate-50/60">
-                  <td className="px-5 py-3 font-semibold text-slate-700 whitespace-nowrap">{a.modul}</td>
-                  <td className="px-5 py-3 text-slate-600 min-w-[220px]"><span className="font-mono text-slate-400 mr-2">{a.kode}</span>{a.deskripsi}</td>
-                  <td className="px-5 py-3"><span className={`inline-flex px-2.5 py-1 rounded-full text-[11px] font-semibold whitespace-nowrap ${statusBadge[a.status] || statusBadge.pending}`}>{statusLabel[a.status] || a.status}</span></td>
-                  <td className="px-5 py-3 text-slate-500 whitespace-nowrap">{a.waktu ? fmtWaktu(a.waktu) : '-'}</td>
-                </tr>
-              )) : (
-                <tr><td colSpan={4} className="px-5 py-6 text-center text-slate-400">
-                  {activitiesState === 'loading' ? 'Memuat aktivitas…' : activitiesState === 'error' ? 'Gagal memuat aktivitas. Tekan Refresh untuk mencoba lagi.' : 'Belum ada aktivitas.'}
-                </td></tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+        {activities.length ? (
+          <ul className="divide-y divide-slate-100">
+            {activities.map((a, i) => (
+              <li key={`${a.kode}-${i}`} className="flex items-center gap-3.5 px-5 py-3 hover:bg-slate-50">
+                <span className="shrink-0 w-9 h-9 rounded-full bg-dinas-soft text-dinas flex items-center justify-center">
+                  <span className="material-symbols-outlined text-[18px]">{modulIcon[a.modul] || 'description'}</span>
+                </span>
+                <div className="min-w-0 flex-1">
+                  <div className="text-[13px] font-semibold text-slate-800 truncate">{a.deskripsi}</div>
+                  <div className="text-[11px] text-slate-500 mt-0.5 flex flex-wrap gap-x-2">
+                    <span className="font-semibold text-slate-600">{a.modul}</span>
+                    <span className="font-mono text-slate-400">{a.kode}</span>
+                    <span className="sm:hidden">· {a.waktu ? fmtWaktu(a.waktu) : '-'}</span>
+                  </div>
+                </div>
+                <span className="hidden sm:block shrink-0 text-[11px] text-slate-500 whitespace-nowrap">{a.waktu ? fmtWaktu(a.waktu) : '-'}</span>
+                <span className={`shrink-0 inline-flex px-2.5 py-1 rounded-full text-[11px] font-semibold whitespace-nowrap ${statusBadge[a.status] || statusBadge.pending}`}>{statusLabel[a.status] || a.status}</span>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <div className="px-5 py-10 text-center">
+            <span className="material-symbols-outlined text-[32px] text-slate-300">{activitiesState === 'error' ? 'cloud_off' : 'inbox'}</span>
+            <p className="mt-1 text-xs text-slate-400">
+              {activitiesState === 'loading' ? 'Memuat aktivitas…' : activitiesState === 'error' ? 'Gagal memuat aktivitas. Tekan Refresh untuk mencoba lagi.' : 'Belum ada aktivitas.'}
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );

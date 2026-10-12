@@ -121,7 +121,7 @@ biro-umum-app/
     prisma/
       schema.prisma
       migrations/  -> riwayat migration database (SUMBER KEBENARAN skema, urut 0001 s/d terbaru)
-    sql/           -> script SQL manual (role_management.sql masih dipakai; sisanya arsip pra-Prisma)
+    sql/           -> script SQL manual (production_schema.sql untuk DB production baru, role_management.sql; sisanya arsip pra-Prisma)
     scripts/       -> script bantu (db-verify.js)
     docs/          -> dokumentasi khusus backend (PRISMA_PRODUCTION.md)
   frontend/
@@ -148,10 +148,12 @@ biro-umum-app/
    Perintah ini otomatis membuat semua tabel sesuai riwayat di `backend/prisma/migrations/` (`users`, `pemeliharaan`, `pengadaan`, `kendaraan`, `ruang_rapat`, `maintenance_mode`).
 4. Cek di pgAdmin4: refresh `biro_umum_db > Schemas > public > Tables`, tabel-tabel di atas harus sudah muncul.
 
+> **Alternatif tanpa terminal (mis. server production):** buka Query Tool pgAdmin4 di database kosong tadi, lalu jalankan `backend/sql/production_schema.sql` (F5). Hasilnya sama persis dengan `npx prisma migrate deploy` (semua tabel, trigger, data awal maintenance, dan riwayat `_prisma_migrations`), jadi migration berikutnya tetap cukup `npx prisma migrate deploy`.
+
 Database sudah siap. ✅
 
 > **Punya database lama** yang sudah berisi data dari sebelum project ini pakai Prisma? Jangan langsung jalankan `prisma migrate dev`. Ikuti panduan baseline di `backend/docs/PRISMA_PRODUCTION.md` bagian "Database lama yang sudah berisi data".
-> Referensi skema versi lama (pra-Prisma) masih disimpan di `backend/sql/` untuk arsip — bukan untuk dijalankan lagi di database baru.
+> Selain `production_schema.sql`, `role_management.sql`, dan `import_ruang_rapat_2026.sql`, file di `backend/sql/` adalah arsip skema pra-Prisma — bukan untuk dijalankan lagi.
 
 ### Cara memberikan Role "Admin" / "PIC" / "Kabag" (khusus lewat pgAdmin4)
 Ketiga role ini **sengaja tidak ada** di pilihan saat mendaftar akun baru (form Register cuma bisa bikin akun Karyawan). Untuk menaikkan role seorang user, jalankan di **Query Tool** pgAdmin4 (lihat juga `backend/sql/role_management.sql`):
@@ -343,7 +345,7 @@ Hal yang paling sering terlewat:
 |---|---|
 | `ECONNREFUSED` saat backend start | PostgreSQL belum jalan / port salah. Cek pgAdmin4 & `DATABASE_URL` di `.env`. |
 | `relation "users" does not exist` | Migration belum diterapkan. Jalankan `npx prisma migrate deploy` di folder `backend` (lihat Bagian 1). |
-| Database lama sudah berisi data, mau update struktur tanpa kehilangan data | Ikuti panduan baseline di `backend/docs/PRISMA_PRODUCTION.md`, atau jalankan `backend/sql/database_repair.sql` sekali via pgAdmin4 (aman: `IF NOT EXISTS`, tidak DROP data), lalu `npm run db:verify`. |
+| Database lama sudah berisi data, mau update struktur tanpa kehilangan data | Backup dulu, lalu jalankan `npx prisma migrate deploy` (ikuti panduan baseline di `backend/docs/PRISMA_PRODUCTION.md` kalau database belum punya `_prisma_migrations`), lalu `npm run db:verify`. |
 | Login gagal padahal sudah daftar | Pastikan `VITE_API_URL` (frontend) mengarah ke backend yang aktif. |
 | CORS error di console browser | Pastikan `FRONTEND_URL` di `.env` backend sama persis dengan alamat frontend (`http://localhost:5173`). |
 | Tombol edit tetap disable padahal sudah jadi Kabag/Admin | Role sudah aktif otomatis maksimal ~30 detik; untuk instan, refresh browser (tidak perlu logout). |

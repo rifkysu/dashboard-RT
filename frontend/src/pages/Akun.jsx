@@ -98,7 +98,7 @@ export default function Akun() {
   if (user && !isAdmin) return <Navigate to="/dashboard" replace />;
 
   return (
-    <div className="menu-page menu-akun relative">
+    <div className="menu-page menu-akun menu-tabel relative">
       <div className="menu-hero mb-6">
         <div>
           <span className="menu-kicker">Biro Umum / Akun &amp; Akses</span>

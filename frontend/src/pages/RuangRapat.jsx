@@ -9,6 +9,7 @@ import { holidayLabel } from '../utils/holidays';
 import useMonthSchedule, { monthDays } from '../hooks/useMonthSchedule';
 import RoomDateGrid, { MonthFilter, monthLabel } from '../components/RoomDateGrid';
 import MultiDatePicker from '../components/MultiDatePicker';
+import MenuStats from '../components/MenuStats';
 
 const STATUS_META = {
   belum: { label: 'Belum Ada Surat', card: 'bg-red-50 border-red-300 text-red-900', badge: 'bg-red-100 text-red-700 border-red-200', dot: 'bg-red-500' },
@@ -140,12 +141,20 @@ export default function RuangRapat() {
       alert({title:e.response?.status===404?'Tidak ada surat':'Gagal export surat',message,tone:e.response?.status===404?'info':'error'});
     }finally{setExportingSurat(false);}
   };
+  // Ringkasan hari ini dari jadwal yang sudah dimuat; hanya valid kalau bulan ini ikut ditampilkan.
+  const todayStats=useMemo(()=>{const today=localDateISO();if(!months.includes(today.slice(0,7)))return null;const d=new Date();const now=`${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;const aktif=items.filter(x=>!x.cancelled);const hariIni=aktif.filter(x=>x.date<=today&&endOf(x)>=today);const berjalan=hariIni.filter(x=>x.start<=now&&x.end>now);const mendatang=aktif.filter(x=>endOf(x)>=today);return {hariIni:hariIni.length,berjalan:berjalan.length,ruangDipakai:new Set(berjalan.map(x=>x.room)).size,belumSurat:mendatang.filter(x=>x.status!=='diterima').length};},[items,months]);
   const roomRows=useMemo(()=>{const extra=[...new Set(items.map(x=>x.room).filter(r=>r&&!ROOMS.includes(r)))].sort();return [...ROOMS,...extra];},[items]);
 
   return <div className="menu-page menu-ruang-rapat relative">
     <div className="menu-hero mb-6"><div><span className="menu-kicker">Biro Umum / Ruang Rapat</span><h1 className="text-3xl font-bold">Jadwal Ruang Rapat</h1><p className="text-sm mt-1">Klik booking di kalender untuk mengubah, mengelola surat, atau membatalkannya. Jadwal diperbarui otomatis.</p></div>{canBook&&<button onClick={()=>{setError('');setForm({...emptyForm,date:localDateISO()});setShowBook(true)}} className="inline-flex items-center gap-2 px-4 py-2.5 bg-slate-900 text-white text-sm font-semibold rounded-xl hover:bg-slate-800"><span className="material-symbols-outlined text-[18px]">add</span>Booking Ruang Rapat</button>}</div>
+    <MenuStats items={[
+      {key:'hari',icon:'event',label:'Booking Hari Ini',value:loading&&!items.length?null:todayStats?.hariIni,hint:todayStats?'Semua ruangan':'Tampilkan bulan ini untuk melihat',tone:'dinas'},
+      {key:'jalan',icon:'groups',label:'Sedang Berlangsung',value:loading&&!items.length?null:todayStats?.berjalan,hint:todayStats?`${todayStats.ruangDipakai} ruang dipakai`:'—',tone:'amber'},
+      {key:'kosong',icon:'meeting_room',label:'Ruang Kosong Sekarang',value:loading&&!items.length||!todayStats?null:Math.max(0,ROOMS.length-todayStats.ruangDipakai),hint:`Dari ${ROOMS.length} ruang rapat`,tone:'emerald'},
+      {key:'surat',icon:'mail',label:'Belum Ada Surat',value:loading&&!items.length?null:todayStats?.belumSurat,hint:'Booking mendatang yang ditampilkan',tone:'red'},
+    ]}/>
     <div className="bg-white border border-slate-200 rounded-xl p-4 mb-5 shadow-sm"><div className="flex flex-wrap items-center gap-3 text-xs font-medium"><span className="font-bold text-slate-700 mr-2">Petunjuk warna surat:</span>{Object.entries(STATUS_META).map(([k,m])=><span key={k} className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full border ${m.badge}`}><span className={`w-2.5 h-2.5 rounded-full ${m.dot}`}/>{m.label}</span>)}<span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border bg-amber-100 text-amber-800 border-amber-200"><span className="w-2.5 h-2.5 rounded-full bg-amber-500"/>Cuti Bersama</span></div></div>
-    <div className="flex flex-col sm:flex-row sm:items-end justify-end gap-3 mb-4">
+    <div className="menu-toolbar flex flex-col sm:flex-row sm:items-end justify-end gap-3 mb-4">
       <div><label className="block text-xs font-semibold text-slate-600 mb-1">Tanggal mulai export</label><input type="date" value={range.mulai} onChange={e=>setExportRange({...range,mulai:e.target.value})} className="h-11 px-3 rounded-lg border border-slate-300 bg-white text-sm text-slate-700"/></div>
       <div><label className="block text-xs font-semibold text-slate-600 mb-1">Tanggal sampai export</label><input type="date" value={range.sampai} onChange={e=>setExportRange({...range,sampai:e.target.value})} className="h-11 px-3 rounded-lg border border-slate-300 bg-white text-sm text-slate-700"/></div>
       <button type="button" onClick={exportExcel} disabled={exporting} className="h-11 px-4 rounded-lg bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700 disabled:opacity-60"><span className="material-symbols-outlined text-[18px] align-middle mr-1">download</span>{exporting?'Menyiapkan...':'Export Excel'}</button>

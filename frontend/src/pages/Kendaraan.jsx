@@ -8,6 +8,7 @@ import { verifyFileIsGenuine } from '../utils/fileSignature';
 import { compressImage } from '../utils/imageCompress';
 import SlideTransition from '../components/SlideTransition';
 import useLive from '../hooks/useLive';
+import MenuStats from '../components/MenuStats';
 
 const JENIS_OPTIONS = ['Roda 2', 'Roda 4', 'Roda 6'];
 const NAMA_BARANG_OPTIONS = ['Sedan', 'Jeep', 'Station Wagon', 'Micro Bus', 'Mini Bus', 'Pick Up', 'Mobil Ambulance', 'Kendaraan Bermotor Khusus Lainnya', 'Sepeda Motor'];
@@ -286,8 +287,16 @@ export default function Kendaraan() {
   const activeFilterCount = [filterMerek, filterStatus, filterTahun, search].filter(Boolean).length;
 
   return (
-    <div className="menu-page menu-kendaraan relative">
+    <div className="menu-page menu-kendaraan menu-tabel relative">
       <div className="menu-hero mb-6"><div><span className="menu-kicker">Biro Umum / Kendaraan Dinas</span><h1 className="text-3xl font-bold">Kendaraan Dinas</h1><p className="text-sm mt-1">Kelola asset kendaraan, status operasional, dan dokumentasi foto kendaraan.</p></div>{canAdd && <button onClick={() => { setError(''); setForm(emptyForm); setShow(true); }} className="inline-flex items-center gap-2 px-4 py-2.5 bg-slate-900 text-white text-sm font-semibold rounded-xl hover:bg-slate-800"><span className="material-symbols-outlined text-[18px]">add</span>Tambah Kendaraan</button>}</div>
+
+      {/* Ringkasan per tab jenis (Roda 2/4/6); klik kartu status = filter cepat. */}
+      <MenuStats items={[
+        { key: 'all', icon: 'directions_car', label: `Total ${tab}`, value: loading && !data.length ? null : byJenis.length, hint: filterStatus ? 'Klik untuk tampilkan semua' : `${data.length} kendaraan semua jenis`, tone: 'dinas', onClick: () => setFilterStatus('') },
+        { key: 'Tersedia', icon: 'check_circle', label: 'Tersedia', value: loading && !data.length ? null : (statusCounts.Tersedia || 0), hint: 'Siap dipakai', tone: 'emerald', active: filterStatus === 'Tersedia', onClick: () => setFilterStatus((v) => (v === 'Tersedia' ? '' : 'Tersedia')) },
+        { key: 'Digunakan', icon: 'local_shipping', label: 'Digunakan', value: loading && !data.length ? null : (statusCounts.Digunakan || 0), hint: 'Sedang dipakai', tone: 'amber', active: filterStatus === 'Digunakan', onClick: () => setFilterStatus((v) => (v === 'Digunakan' ? '' : 'Digunakan')) },
+        { key: 'Servis', icon: 'build_circle', label: 'Servis', value: loading && !data.length ? null : (statusCounts.Servis || 0), hint: 'Dalam perbaikan', tone: 'red', active: filterStatus === 'Servis', onClick: () => setFilterStatus((v) => (v === 'Servis' ? '' : 'Servis')) },
+      ]} />
       {error && <div className="mb-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-xs text-red-700">{error}</div>}
 
       {/* Search bar */}
