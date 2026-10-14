@@ -32,7 +32,7 @@ const MAX_AHEAD_DAYS = 90;         // tanggal mulai maksimal 90 hari ke depan
 const GOOGLE_AUTH_URL = 'https://accounts.google.com/o/oauth2/v2/auth';
 const GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token';
 const googleConfigured = () => !!(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET && process.env.GOOGLE_CALLBACK_URL);
-const frontend = (hash) => `${process.env.FRONTEND_URL}/${hash ? `#${hash}` : ''}`;
+const frontend = (hash) => `${String(process.env.FRONTEND_URL || '').replace(/\/+$/, '')}/${hash ? `#${hash}` : ''}`;
 
 // Tanggal hari ini menurut jam server (WIB), format YYYY-MM-DD -- sama dengan dashboard.
 const todayIso = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
@@ -145,8 +145,9 @@ async function requireGuest(req, res, next) {
   try {
     const payload = jwt.verify(token, process.env.JWT_SECRET, { algorithms: ['HS256'], audience: GUEST_AUDIENCE });
     const guest = await prisma.guestAccount.findUnique({ where: { id: Number(payload.gid) } });
+    // Cek blokir lebih dulu: blokir juga menaikkan token_version, jadi tamu tetap dapat pesan yang benar.
+    if (guest?.is_blocked) return res.status(403).json({ code: 'GUEST_BLOCKED', message: 'Akun Google ini diblokir admin Biro Umum dan tidak bisa mengajukan booking.' });
     if (!guest || payload.tv !== guest.token_version) return res.status(401).json({ message: 'Sesi login Google sudah berakhir. Silakan login lagi.' });
-    if (guest.is_blocked) return res.status(403).json({ code: 'GUEST_BLOCKED', message: 'Akun Google ini diblokir admin Biro Umum dan tidak bisa mengajukan booking.' });
     req.guest = guest;
     req.guestExp = payload.exp;
     next();

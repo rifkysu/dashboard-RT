@@ -11,7 +11,10 @@ function createResetToken() {
   return { rawToken, hash: hashResetToken(rawToken), expires: new Date(Date.now() + RESET_TOKEN_TTL_MS) };
 }
 
-function signToken(user) {
+// remember=true ("Ingat saya" saat login): token berlaku lebih lama (JWT_REMEMBER_EXPIRES_IN,
+// default 30 hari) dan ditandai rm supaya token yang diterbitkan ulang (mis. promosi ke PIC)
+// tetap memakai masa berlaku yang sama. Logout/ban/ganti sandi tetap langsung mencabutnya (token_version).
+function signToken(user, { remember = false } = {}) {
   return jwt.sign(
     {
       id: user.id,
@@ -20,9 +23,10 @@ function signToken(user) {
       nama_lengkap: user.nama_lengkap,
       // Versi sesi: dicocokkan requireAuth dengan users.token_version (lihat middleware/auth.js).
       tv: user.token_version ?? 0,
+      ...(remember ? { rm: true } : {}),
     },
     process.env.JWT_SECRET,
-    { expiresIn: process.env.JWT_EXPIRES_IN || '8h', algorithm: 'HS256' }
+    { expiresIn: remember ? (process.env.JWT_REMEMBER_EXPIRES_IN || '30d') : (process.env.JWT_EXPIRES_IN || '8h'), algorithm: 'HS256' }
   );
 }
 

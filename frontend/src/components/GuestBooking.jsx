@@ -50,7 +50,7 @@ function Field({ label, children, hint }) {
 }
 const inputCls = 'w-full h-11 px-3 rounded-lg border border-slate-300 bg-white text-sm text-slate-800 outline-none focus:border-dinas focus:ring-2 focus:ring-dinas/15';
 
-// Captcha huruf+angka dari server, berlaku 5 menit (hitung mundur ditampilkan).
+// Captcha 6 angka dari server, berlaku 5 menit (hitung mundur ditampilkan).
 function Captcha({ captcha, loading, onReload, value, onChange }) {
   const [left, setLeft] = useState(0);
   useEffect(() => {
@@ -69,16 +69,16 @@ function Captcha({ captcha, loading, onReload, value, onChange }) {
       </div>
       <div className="mt-2 flex flex-wrap items-center gap-3">
         <div className={`relative w-[220px] h-[70px] rounded-lg overflow-hidden border border-slate-200 bg-slate-100 ${expired ? 'opacity-40' : ''}`}>
-          {captcha && <img src={captcha.image} alt="Kode captcha huruf dan angka" width="220" height="70" className="block select-none" draggable="false" />}
+          {captcha && <img src={captcha.image} alt="Kode captcha 6 angka" width="220" height="70" className="block select-none" draggable="false" />}
           {loading && <span className="absolute inset-0 flex items-center justify-center text-xs text-slate-500">Memuat…</span>}
         </div>
         <button type="button" onClick={onReload} disabled={loading} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-slate-300 bg-white text-xs font-semibold text-dinas hover:bg-slate-50 disabled:opacity-60">
           <span className={`material-symbols-outlined text-[16px] ${loading ? 'animate-spin' : ''}`}>refresh</span>Ganti captcha
         </button>
       </div>
-      <input value={value} onChange={(e) => onChange(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6))} disabled={expired || !captcha}
-        autoComplete="off" spellCheck="false" inputMode="text" maxLength={6} placeholder="Ketik 6 huruf/angka di gambar"
-        className={`${inputCls} mt-3 font-mono tracking-[0.3em] uppercase disabled:bg-slate-100`} aria-label="Jawaban captcha" />
+      <input value={value} onChange={(e) => onChange(e.target.value.replace(/\D/g, '').slice(0, 6))} disabled={expired || !captcha}
+        autoComplete="off" spellCheck="false" inputMode="numeric" pattern="[0-9]*" maxLength={6} placeholder="Ketik 6 angka di gambar"
+        className={`${inputCls} mt-3 font-mono tracking-[0.3em] disabled:bg-slate-100`} aria-label="Jawaban captcha" />
       {expired && <p className="text-[11px] text-red-600 mt-1.5">Captcha berlaku 5 menit. Klik "Ganti captcha" untuk memuat yang baru.</p>}
     </div>
   );
@@ -108,7 +108,8 @@ function BookingForm({ guest, onClose, onBooked, onSessionEnd }) {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { loadCaptcha(); }, [loadCaptcha]);
   useEffect(() => {
-    const onKey = (e) => { if (e.key === 'Escape' && !saving) onClose(); };
+    // Esc menutup form, kecuali sedang ada popup peringatan terbuka (Esc itu untuk menutup popupnya).
+    const onKey = (e) => { if (e.key === 'Escape' && !saving && !document.querySelector('[role="alertdialog"]')) onClose(); };
     window.addEventListener('keydown', onKey);
     document.body.style.overflow = 'hidden';
     return () => { window.removeEventListener('keydown', onKey); document.body.style.overflow = ''; };
@@ -125,7 +126,15 @@ function BookingForm({ guest, onClose, onBooked, onSessionEnd }) {
     setForm((x) => ({ ...x, surat_name: f.name, surat_file_data: data }));
   }
 
-  const captchaExpired = !captcha || new Date(captcha.expires_at) <= new Date();
+  // Render ulang tepat saat captcha kedaluwarsa, supaya tombol Kirim langsung nonaktif.
+  const [, setExpiredTick] = useState(0);
+  useEffect(() => {
+    if (!captcha) return undefined;
+    const t = setTimeout(() => setExpiredTick((n) => n + 1), Math.max(0, new Date(captcha.expires_at) - Date.now()) + 50);
+    return () => clearTimeout(t);
+  }, [captcha]);
+  const isCaptchaExpired = () => !captcha || new Date(captcha.expires_at) <= new Date();
+  const captchaExpired = isCaptchaExpired();
   // Tombol Kirim baru aktif kalau SEMUA kolom (termasuk surat & captcha) sudah diisi.
   const complete = Object.keys(emptyForm).every((k) => String(form[k] || '').trim()) && answer.length === 6;
 
@@ -134,14 +143,14 @@ function BookingForm({ guest, onClose, onBooked, onSessionEnd }) {
       ['Topik / agenda', form.title], ['Nomor surat', form.nomor_surat], ['Nama PIC', form.pic], ['No. HP PIC', form.pic_phone], ['Ruangan', form.room],
       ['Tanggal mulai', form.date], ['Sampai tanggal', form.end_date], ['Jam mulai', form.start], ['Jam selesai', form.end], ['File surat permohonan', form.surat_file_data],
     ]);
-    if (answer.length !== 6) errors.push('Captcha wajib diisi (6 karakter).');
+    if (!/^\d{6}$/.test(answer)) errors.push('Captcha wajib diisi (6 angka).');
     if (form.pic_phone && !HP_RE.test(normalizePhone(form.pic_phone))) errors.push('No. HP PIC tidak valid (contoh: 081234567890 atau +6281234567890).');
     if (form.date && form.date < today) errors.push('Tanggal mulai tidak boleh sebelum hari ini.');
     if (form.date && form.end_date && form.end_date < form.date) errors.push('Sampai tanggal tidak boleh sebelum tanggal mulai.');
     if (form.date && form.end_date && dayDiff(form.date, form.end_date) + 1 > MAX_SPAN_DAYS) errors.push(`Booking tamu maksimal ${MAX_SPAN_DAYS} hari berturut-turut.`);
     if (form.start && form.end && form.start >= form.end) errors.push('Jam selesai harus lebih besar dari jam mulai.');
     if (form.date === today && form.start && form.start < nowHm()) errors.push('Jam mulai hari ini sudah lewat.');
-    if (captchaExpired) errors.push('Captcha sudah kedaluwarsa. Klik "Ganti captcha".');
+    if (isCaptchaExpired()) errors.push('Captcha sudah kedaluwarsa. Klik "Ganti captcha".');
     return errors;
   }
 
@@ -170,7 +179,8 @@ function BookingForm({ guest, onClose, onBooked, onSessionEnd }) {
   const span = form.date && form.end_date && form.end_date >= form.date ? dayDiff(form.date, form.end_date) + 1 : 0;
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex overflow-y-auto overscroll-contain p-3 sm:p-4" onMouseDown={(e) => { if (e.target === e.currentTarget && !saving) onClose(); }} role="dialog" aria-modal="true" aria-labelledby="guest-booking-title">
+    <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex overflow-y-auto overscroll-contain p-3 sm:p-4" role="dialog" aria-modal="true" aria-labelledby="guest-booking-title">
+      {/* Klik di luar form sengaja tidak menutup form, supaya isian & file surat tidak hilang tak sengaja. */}
       <div className="m-auto w-full max-w-3xl bg-[#f7f9fb] rounded-2xl shadow-2xl overflow-hidden">
         <div className="bg-white border-b px-5 sm:px-6 py-4 flex items-center justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">

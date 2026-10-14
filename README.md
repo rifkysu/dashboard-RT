@@ -11,7 +11,7 @@ Full-stack app (React + Node.js/Express + PostgreSQL + **Prisma**) untuk mengelo
 - **Kiosk `/jadwal-rapat` berputar otomatis** — pilihan ruangan berganti sendiri tiap **30 detik** (Semua Ruangan → Serbaguna → Setjen II → … → kembali ke Semua) dan tabel selalu menggulir halus ke baris **hari ini** (kembali ke bulan berjalan), dengan bilah waktu menuju pergantian berikutnya. Disentuh/digulir/klik ruangan = jeda 30 detik (hitung mundur di tombol) lalu lanjut sendiri; tombol *Putar otomatis* bisa mematikan/menyalakan. Kalau kiosk dibuka dengan `?ruang=...` (layar untuk satu ruangan), putar otomatis mati secara default. Jadwal di landing page tidak ikut berputar.
 - **Layar per ruangan** (`/ruang/<ruang>`) — untuk tablet/monitor di depan tiap ruang rapat: status besar *Tersedia / Segera digunakan / Sedang digunakan*, rapat yang berlangsung beserta sisa waktunya, dan **agenda 7 hari** berupa slide per hari (strip tanggal yang bisa di-tap, swipe/panah, dan **hari berganti otomatis tiap 30 detik** tanpa perlu disentuh — ada bilah waktu yang terisi menuju hari berikutnya; setelah hari ke-7 kembali ke hari ini. Kalau layar disentuh, auto-geser dijeda 30 detik dengan hitung mundur di layar, lalu lanjut sendiri). Publik, read-only, real-time, layar dijaga tetap menyala, ada tombol layar penuh. Link: `/ruang/serbaguna`, `/ruang/setjen-ii`, `/ruang/tri-dharma`, `/ruang/biro-umum`, `/ruang/graha-kemnaker` (daftar lengkap di `/ruang`). Di landing page, klik nama ruangan di kartu *Ruang rapat hari ini* atau bagian *Layar per ruangan*.
 - **Booking ruang rapat untuk tamu lewat login Google** — di bagian *Jadwal Ruang Rapat* landing page ada tombol **Login dengan Google untuk booking**. Setelah login, tamu mengisi form booking (agenda, nomor surat, PIC, No. HP PIC, ruangan, tanggal mulai & sampai, jam, file surat permohonan) — **semua kolom wajib**, tombol *Kirim Booking* baru aktif kalau semua terisi. Akun tamu disimpan di tabel `guest_accounts` (terpisah dari `users`, tidak bisa masuk aplikasi internal).
-  - **Captcha huruf + angka** (gambar PNG dari server) wajib diisi saat submit, **berlaku 5 menit** dan hangus setelah sekali dicek.
+  - **Captcha 6 angka** (gambar PNG dari server, keyboard angka di HP) wajib diisi saat submit, **berlaku 5 menit** dan hangus setelah sekali dicek.
   - **Sesi login Google berlaku 7 hari**, lalu harus login lagi.
   - **Anti-spam**: jeda 60 detik antar pengajuan, maks. 3 pengajuan per 24 jam & 5 booking aktif per akun, satu pengajuan maks. 7 hari berturut-turut dan maks. 90 hari ke depan, plus rate limit per akun & IP. Booking tetap dicek bentrok seperti booking pegawai.
   - **Tamu bisa membatalkan booking miliknya sendiri** (tombol *Batalkan* di daftar *Booking Anda*, alasan opsional) selama booking belum lewat. Data tidak dihapus: `cancelled_at` + `cancel_reason` diisi dan pembatalnya dicatat di `ruang_rapat.cancelled_by_guest_id`; di menu Ruang Rapat tampil "Dibatalkan oleh <nama> (tamu)".
@@ -21,6 +21,7 @@ Full-stack app (React + Node.js/Express + PostgreSQL + **Prisma**) untuk mengelo
 
 ### 🔐 Autentikasi & Role
 - Login pegawai pakai email/password. Login Google hanya untuk **tamu** yang booking ruang rapat dari landing page (tidak memberi akses ke aplikasi internal).
+- Halaman **Masuk** punya kotak **Ingat saya (30 hari)**: kalau dicentang, sesi login berlaku 30 hari (`JWT_REMEMBER_EXPIRES_IN`) dan email terisi otomatis saat membuka halaman Masuk berikutnya (kata sandi tidak pernah disimpan). Tanpa centang, sesi tetap 8 jam. Logout, ban, atau ganti kata sandi tetap langsung memutus sesi. Jangan dicentang di komputer umum/bersama.
 - **Hanya email @kemnaker.go.id** yang bisa membuat akun baru lewat Daftar Akun. Akun lama dengan domain lain tetap bisa login dengan email + kata sandi. Domainnya diatur di `ALLOWED_EMAIL_DOMAIN` (`backend/src/middleware/security.js` dan `frontend/src/utils/validation.js` — ubah keduanya).
 - **Lupa Password** — link reset (berlaku 1 jam) **tidak pernah** ditampilkan ke peminta publik (kalau ditampilkan, siapa pun bisa mengambil alih akun orang lain hanya dengan mengetik emailnya).
   - **SMTP diisi** (lihat Bagian 2): link langsung dikirim ke email pemilik akun.
@@ -210,6 +211,7 @@ Backend selalu mengambil role terbaru langsung dari database di setiap request, 
    DATABASE_URL="postgresql://postgres:isi_password_kamu@localhost:5432/biro_umum_db?schema=public"
    JWT_SECRET="isi_string_acak_minimal_32_karakter"
    JWT_EXPIRES_IN="8h"
+   JWT_REMEMBER_EXPIRES_IN="30d"   # masa login bila "Ingat saya" dicentang
    FRONTEND_URL="http://localhost:5173"
    PORT=4000
 

@@ -94,10 +94,10 @@ function trackPointer(e) {
 }
 
 // Kata di judul hero yang berganti tiap beberapa detik (pembaca layar mendapat teks lengkap lewat sr-only).
+// Saat gerakan dikurangi, CSS mengubah pergantiannya menjadi fade saja (tanpa geser/blur).
 function RotatingWords({ words, interval = 2600 }) {
   const [i, setI] = useState(0);
   useEffect(() => {
-    if (reducedMotion()) return undefined;
     const t = setInterval(() => setI((n) => (n + 1) % words.length), interval);
     return () => clearInterval(t);
   }, [words.length, interval]);
@@ -173,8 +173,9 @@ function Magnetic({ children, strength = 0.28 }) {
 }
 
 // Partikel emas di hero; posisi & tempo tetap (bukan acak) supaya render stabil.
-const PARTIKEL = Array.from({ length: 16 }, (_, i) => ({
+const PARTIKEL = Array.from({ length: 26 }, (_, i) => ({
   left: `${(i * 37 + 11) % 100}%`,
+  y: `${(i * 53 + 7) % 92}%`,
   size: 2 + (i % 3),
   t: `${10 + ((i * 7) % 9)}s`,
   delay: `${-((i * 1.7) % 12).toFixed(1)}s`,
@@ -185,7 +186,7 @@ function HeroParticles() {
   return (
     <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
       {PARTIKEL.map((p, i) => (
-        <span key={i} className="hero-particle" style={{ left: p.left, width: p.size, height: p.size, '--t': p.t, '--delay': p.delay, '--dx': p.dx, '--o': p.o }}></span>
+        <span key={i} className="hero-particle" style={{ left: p.left, width: p.size, height: p.size, '--y': p.y, '--t': p.t, '--delay': p.delay, '--dx': p.dx, '--o': p.o }}></span>
       ))}
     </div>
   );
@@ -444,6 +445,8 @@ export default function Landing() {
         <section ref={heroRef} className="relative landing-hero text-white overflow-hidden" onMouseMove={trackPointer}>
           <div className="absolute inset-0 parallax-bg" aria-hidden="true">
             <div className="absolute inset-0 bg-kawung-gelap [mask-image:radial-gradient(ellipse_at_top_left,#000_20%,transparent_70%)]"></div>
+            <div className="absolute inset-0 landing-dots [mask-image:radial-gradient(ellipse_at_80%_40%,#000_10%,transparent_65%)]"></div>
+            <div className="absolute left-1/2 top-1/2 w-[900px] h-[900px] -translate-x-1/2 -translate-y-1/2 opacity-70"><div className="w-full h-full rounded-full landing-aurora"></div></div>
             <div className="absolute -top-32 -right-24 w-[520px] h-[520px] rounded-full bg-kuningan/20 blur-[120px] landing-glow"></div>
             <div className="absolute -bottom-40 -left-32 w-[460px] h-[460px] rounded-full bg-accent/20 blur-[120px] landing-glow [animation-delay:-3s]"></div>
           </div>
@@ -455,7 +458,7 @@ export default function Landing() {
                 <span className="px-2 py-0.5 rounded-full bg-kuningan text-[10px] font-bold uppercase tracking-wider text-white">Internal</span>
                 Aplikasi Layanan Biro Umum
               </span>
-              <h1 className="font-display mt-6 text-[2.2rem] sm:text-5xl lg:text-[3.6rem] font-extrabold leading-[1.05] tracking-[-0.03em]">
+              <h1 className="font-display mt-6 text-[2.4rem] sm:text-[3.4rem] lg:text-[4.1rem] font-extrabold leading-[1.05] tracking-[-0.03em]">
                 <span className="line-mask"><span className="line-inner" style={{ '--d': '120ms' }}>Satu pintu untuk urusan</span></span>
                 <span className="line-mask"><span className="line-inner" style={{ '--d': '260ms' }}><RotatingWords words={ROTASI} /></span></span>
                 <span className="sr-only">pemeliharaan, pengadaan, kendaraan dinas, dan ruang rapat.</span>
@@ -491,6 +494,14 @@ export default function Landing() {
                 <div className="absolute -inset-6 rounded-[2rem] bg-gradient-to-br from-kuningan/30 via-white/5 to-accent/25 blur-2xl landing-glow" aria-hidden="true"></div>
                 <div className="relative landing-float">
                   <TiltCard><div className="border-beam shadow-[0_30px_80px_-28px_rgba(0,0,0,.7)]"><RuangHariIni /></div></TiltCard>
+                </div>
+                <div className="hidden xl:flex absolute -left-20 -top-12 landing-float-b glass-chip rounded-2xl pl-2 pr-4 py-2 items-center gap-2.5 text-white" aria-hidden="true">
+                  <span className="w-9 h-9 rounded-xl bg-emerald-400/90 text-emerald-950 flex items-center justify-center"><span className="material-symbols-outlined text-[20px]">task_alt</span></span>
+                  <span><span className="block text-[11px] text-white/60 leading-tight">Status permintaan</span><span className="block text-sm font-bold leading-tight">Selesai &amp; tercatat</span></span>
+                </div>
+                <div className="hidden xl:flex absolute -right-6 -bottom-16 landing-float-b [animation-delay:-4s] glass-chip rounded-2xl pl-2 pr-4 py-2 items-center gap-2.5 text-white" aria-hidden="true">
+                  <span className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#f6e2b6] to-kuningan text-dinas-ink flex items-center justify-center"><span className="material-symbols-outlined text-[20px]">notifications_active</span></span>
+                  <span><span className="block text-[11px] text-white/60 leading-tight">Pengingat pajak</span><span className="block text-sm font-bold leading-tight">H-14 otomatis</span></span>
                 </div>
               </div>
             </div>
@@ -531,7 +542,7 @@ export default function Landing() {
         <section id="layanan" className="scroll-mt-20 max-w-[1200px] mx-auto px-4 md:px-8 pt-12 pb-16 md:pt-16 md:pb-24">
           <Reveal className="max-w-2xl">
             <Eyebrow>Layanan</Eyebrow>
-            <h2 className="font-display text-3xl md:text-[2.25rem] font-extrabold text-dinas-ink mt-3 tracking-tight">Empat layanan, satu alur kerja</h2>
+            <h2 className="font-display text-3xl md:text-[2.25rem] font-extrabold text-dinas-ink mt-3 tracking-tight">Empat layanan, <span className="text-emas-gelap">satu alur kerja</span></h2>
             <p className="text-slate-600 mt-3 leading-relaxed">Setiap permintaan tercatat dengan nomor, tahapan, dan dokumennya, sehingga mudah ditelusuri kapan saja.</p>
           </Reveal>
           <div className="grid sm:grid-cols-2 gap-5 mt-10">
@@ -539,6 +550,7 @@ export default function Landing() {
               <Reveal key={l.label} delay={idx * 90}>
                 <div onMouseMove={trackPointer} className="card-spotlight group relative h-full overflow-hidden bg-white rounded-2xl border border-slate-200 p-6 md:p-7 shadow-[0_1px_2px_rgba(14,30,51,.04),0_8px_24px_-14px_rgba(14,30,51,.18)] transition duration-300 hover:-translate-y-1 hover:border-kuningan/40 hover:shadow-[0_2px_4px_rgba(14,30,51,.04),0_24px_48px_-20px_rgba(14,30,51,.35)]">
                   <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-dinas via-kuningan to-dinas origin-left scale-x-0 transition-transform duration-500 group-hover:scale-x-100" aria-hidden="true"></div>
+                  <span className="material-symbols-outlined watermark-icon absolute -right-6 -bottom-8 text-dinas/[0.05] transition duration-500 group-hover:text-kuningan/[0.12] group-hover:-rotate-6 pointer-events-none" aria-hidden="true">{l.icon}</span>
                   <span className="absolute top-6 right-6 font-mono text-xs font-semibold text-slate-300 transition-colors group-hover:text-kuningan" aria-hidden="true">0{idx + 1}</span>
                   <div className="flex items-center gap-3">
                     <span className="pop-in"><span className="w-12 h-12 rounded-xl bg-gradient-to-br from-dinas to-dinas-ink text-white flex items-center justify-center shadow-[0_8px_20px_-8px_rgba(30,58,95,.7)] transition-transform duration-300 group-hover:scale-110 group-hover:-rotate-3"><span className="material-symbols-outlined text-[22px]">{l.icon}</span></span></span>
@@ -565,7 +577,7 @@ export default function Landing() {
             <Reveal className="flex flex-col md:flex-row md:items-end justify-between gap-4">
               <div className="max-w-2xl">
                 <Eyebrow>Jadwal</Eyebrow>
-                <h2 className="font-display text-3xl md:text-[2.25rem] font-extrabold text-dinas-ink mt-3 tracking-tight">Jadwal ruang rapat</h2>
+                <h2 className="font-display text-3xl md:text-[2.25rem] font-extrabold text-dinas-ink mt-3 tracking-tight">Jadwal <span className="text-emas-gelap">ruang rapat</span></h2>
                 <p className="text-slate-600 mt-3 leading-relaxed">Cek ruang yang masih kosong sebelum mengajukan booking. Jadwal ini terbuka tanpa login dan diperbarui otomatis.</p>
               </div>
               <Link to="/jadwal-rapat" className="self-start md:self-auto inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl border border-slate-300 text-sm font-semibold text-dinas transition hover:border-dinas hover:bg-dinas hover:text-white shrink-0">
@@ -601,19 +613,23 @@ export default function Landing() {
         </section>
 
         {/* Cara mengajukan */}
-        <section id="cara" className="scroll-mt-20 max-w-[1200px] mx-auto px-4 md:px-8 py-16 md:py-24">
+        <section id="cara" className="scroll-mt-20 relative landing-hero text-white overflow-hidden">
+          <div className="absolute inset-0 bg-kawung-gelap opacity-70 [mask-image:radial-gradient(ellipse_at_top_right,#000_15%,transparent_70%)]" aria-hidden="true"></div>
+          <div className="absolute inset-0 landing-dots [mask-image:linear-gradient(to_bottom,transparent,#000_40%,transparent)] opacity-60" aria-hidden="true"></div>
+          <div className="absolute -left-24 top-10 w-96 h-96 rounded-full bg-kuningan/20 blur-[110px] landing-glow pointer-events-none" aria-hidden="true"></div>
+          <div className="relative max-w-[1200px] mx-auto px-4 md:px-8 py-16 md:py-24">
           <Reveal>
-            <Eyebrow>Cara mengajukan</Eyebrow>
-            <h2 className="font-display text-3xl md:text-[2.25rem] font-extrabold text-dinas-ink mt-3 tracking-tight">Tiga langkah dari pengajuan sampai selesai</h2>
+            <Eyebrow light>Cara mengajukan</Eyebrow>
+            <h2 className="font-display text-3xl md:text-[2.25rem] font-extrabold mt-3 tracking-tight">Tiga langkah dari pengajuan <span className="text-emas emas-shimmer">sampai selesai</span></h2>
           </Reveal>
           <ol className="relative grid md:grid-cols-3 gap-4 md:gap-6 mt-10">
             <Reveal className="draw-x hidden md:block absolute top-[2.875rem] left-12 right-[30%] h-px bg-[repeating-linear-gradient(90deg,#b8893b_0_6px,transparent_6px_12px)]"></Reveal>
             {LANGKAH.map((s, i) => (
               <Reveal as="li" key={s.title} delay={i * 120} className="relative">
-                <div className="group h-full rounded-2xl p-6 transition duration-300 hover:bg-white hover:shadow-[0_16px_40px_-24px_rgba(14,30,51,.35)]">
-                  <span className="step-ring relative z-10 w-11 h-11 rounded-full bg-gradient-to-br from-kuningan to-kuningan-ink text-white font-display font-extrabold flex items-center justify-center ring-4 ring-[#f3f4f7] group-hover:ring-white tabular-nums shadow-[0_8px_18px_-8px_rgba(122,90,32,.8)]">{i + 1}</span>
-                  <div className="font-display font-bold text-dinas-ink text-lg mt-5">{s.title}</div>
-                  <p className="text-sm text-slate-600 mt-2 leading-relaxed max-w-[38ch]">{s.desc}</p>
+                <div className="group h-full rounded-2xl p-6 bg-white/[0.06] border border-white/10 backdrop-blur-sm transition duration-300 hover:bg-white/[0.1] hover:border-kuningan/50 hover:-translate-y-1 hover:shadow-[0_24px_50px_-26px_rgba(0,0,0,.8)]">
+                  <span className="step-ring relative z-10 w-11 h-11 rounded-full bg-gradient-to-br from-[#f6e2b6] via-kuningan to-kuningan-ink text-white font-display font-extrabold flex items-center justify-center ring-4 ring-[#142a47] tabular-nums shadow-[0_8px_24px_-6px_rgba(228,194,127,.7)]">{i + 1}</span>
+                  <div className="font-display font-bold text-white text-lg mt-5">{s.title}</div>
+                  <p className="text-sm text-white/70 mt-2 leading-relaxed max-w-[38ch]">{s.desc}</p>
                   {s.status && (
                     <div className="flex flex-wrap items-center gap-1.5 mt-4" aria-hidden="true">
                       {STATUS_CHIPS.map((c, n) => (
@@ -628,6 +644,7 @@ export default function Landing() {
               </Reveal>
             ))}
           </ol>
+          </div>
         </section>
 
         {/* FAQ */}
@@ -635,7 +652,7 @@ export default function Landing() {
           <div className="max-w-[1200px] mx-auto px-4 md:px-8 py-16 md:py-24 grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.6fr)] gap-10">
             <Reveal>
               <Eyebrow>FAQ</Eyebrow>
-              <h2 className="font-display text-3xl md:text-[2.25rem] font-extrabold text-dinas-ink mt-3 tracking-tight">Pertanyaan yang sering diajukan</h2>
+              <h2 className="font-display text-3xl md:text-[2.25rem] font-extrabold text-dinas-ink mt-3 tracking-tight">Pertanyaan yang <span className="text-emas-gelap">sering diajukan</span></h2>
               <p className="text-slate-600 mt-3 leading-relaxed">Belum menemukan jawabannya? Hubungi Biro Umum di <a href={`mailto:${EMAIL}`} className="font-semibold text-dinas hover:underline">{EMAIL}</a>.</p>
             </Reveal>
             <Reveal delay={100} className="space-y-3">

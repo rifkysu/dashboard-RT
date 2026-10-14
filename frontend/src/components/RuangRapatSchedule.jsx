@@ -75,7 +75,7 @@ export default function RuangRapatSchedule({ autoRotate = false }) {
   const last = s.months[s.months.length - 1];
 
   return (
-    <div className="bg-white rounded-lg border border-slate-200 overflow-hidden text-slate-800">
+    <div className="bg-white rounded-lg border border-slate-200 overflow-hidden text-slate-800" onPointerDown={jeda} onWheel={jeda}>
       <div className="p-4 border-b border-slate-200 flex flex-col xl:flex-row justify-between gap-3 xl:items-center">
         <div>
           <div className="font-bold text-sm text-slate-800">Jadwal Ruang Rapat{picked && ` · ${picked}`}</div>
@@ -116,7 +116,6 @@ export default function RuangRapatSchedule({ autoRotate = false }) {
         </div>
       )}
       {s.error && <div className="m-4 p-3 rounded-lg bg-red-50 border border-red-200 text-sm text-red-700">{s.error}</div>}
-      <div onPointerDown={jeda} onWheel={jeda}>
       <RoomDateGrid
         scrollToTodayKey={autoRotate ? `${picked}|${putaran}` : undefined}
         months={s.months}
@@ -134,7 +133,6 @@ export default function RuangRapatSchedule({ autoRotate = false }) {
           </div>
         )}
       />
-      </div>
     </div>
   );
 }

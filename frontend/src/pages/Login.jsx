@@ -6,6 +6,10 @@ import BrandMark from '../components/BrandMark';
 import { validateLogin } from '../utils/validation';
 import LoginSplash from '../components/LoginSplash';
 
+// "Ingat saya": email terakhir disimpan di perangkat ini supaya terisi otomatis (kata sandi TIDAK pernah disimpan).
+const REMEMBER_KEY = 'rememberEmail';
+const readRememberedEmail = () => { try { const v = localStorage.getItem(REMEMBER_KEY); return typeof v === 'string' && v.length <= 254 ? v : ''; } catch { return ''; } };
+
 const BANNED_MESSAGE =
   'Akun Anda telah diblokir oleh admin karena terdeteksi melanggar ketentuan penggunaan atau melakukan spam berlebihan. Hubungi admin Biro Umum jika menurut Anda ini sebuah kesalahan.';
 
@@ -13,7 +17,8 @@ export default function Login() {
   const location = useLocation();
   // Datang dari halaman Daftar Akun -> tampilkan pesan sukses & isi email otomatis.
   const registered = location.state?.registered === true;
-  const [email, setEmail] = useState(() => (registered && typeof location.state?.email === 'string' ? location.state.email : ''));
+  const [email, setEmail] = useState(() => (registered && typeof location.state?.email === 'string' ? location.state.email : readRememberedEmail()));
+  const [remember, setRemember] = useState(() => !!readRememberedEmail());
   const [fieldErrors, setFieldErrors] = useState({});
   const [success, setSuccess] = useState(registered ? 'Akun berhasil dibuat. Silakan masuk menggunakan email dan kata sandi Anda.' : '');
   const [password, setPassword] = useState('');
@@ -65,7 +70,9 @@ export default function Login() {
     setSuccess('');
     setLoading(true);
     try {
-      const res = await api.post('/auth/login', { email: email.trim().toLowerCase(), password });
+      const cleanEmail = email.trim().toLowerCase();
+      const res = await api.post('/auth/login', { email: cleanEmail, password, remember });
+      try { if (remember) localStorage.setItem(REMEMBER_KEY, cleanEmail); else localStorage.removeItem(REMEMBER_KEY); } catch {}
       login(res.data.token, res.data.user);
       setSplash({ name: res.data.user?.nama_lengkap || '' });
     } catch (err) {
@@ -173,7 +180,11 @@ export default function Login() {
                 {fieldErrors.password && <p className="text-[11px] text-red-600 mt-1 ml-1">{fieldErrors.password}</p>}
               </div>
 
-              <div className="text-right">
+              <div className="flex items-center justify-between gap-3">
+                <label className="inline-flex items-center gap-2 cursor-pointer select-none text-xs text-slate-600" title="Tetap masuk di perangkat ini selama 30 hari. Jangan dicentang di komputer umum/bersama.">
+                  <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} className="w-4 h-4 rounded border-slate-300 accent-[#1e3a5f]" />
+                  Ingat saya <span className="text-slate-400">(30 hari)</span>
+                </label>
                 <Link to="/forgot-password" className="text-xs font-semibold text-[#1e3a5f] hover:underline">
                   Lupa kata sandi?
                 </Link>

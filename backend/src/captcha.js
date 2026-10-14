@@ -1,16 +1,23 @@
 const crypto = require('crypto');
 const zlib = require('zlib');
 
-// Captcha huruf + angka untuk form booking tamu. Gambarnya PNG yang digambar sendiri dari font
+// Captcha angka (6 digit) untuk form booking tamu. Gambarnya PNG yang digambar sendiri dari font
 // bitmap 5x7 (tanpa dependency tambahan), jadi jawabannya tidak ada di kode sumber gambar seperti
 // kalau pakai teks SVG. Satu captcha per akun tamu, berlaku 5 menit, dan hangus setelah sekali dicek
 // (benar maupun salah) -- jadi tidak bisa ditebak berulang-ulang.
 const TTL_MS = 5 * 60 * 1000;
 const LENGTH = 6;
-// Tanpa karakter yang mudah tertukar: 0/O, 1/I, 5/S, 8/B, 2/Z.
-const CHARS = 'ACDEFGHJKLMNPQRTUVWXY34679';
+// Hanya angka 0-9 supaya mudah diketik (di HP keluar keyboard angka). Satu kali tebak per captcha
+// (langsung hangus) + rate limit, jadi peluang tebak acak 1:1.000.000 per percobaan.
+const CHARS = '0123456789';
+const ANSWER_RE = /^\d{6}$/;
 
 const GLYPHS = {
+  0: ['.###.', '#...#', '#..##', '#.#.#', '##..#', '#...#', '.###.'],
+  1: ['..#..', '.##..', '#.#..', '..#..', '..#..', '..#..', '#####'],
+  2: ['.###.', '#...#', '....#', '...#.', '..#..', '.#...', '#####'],
+  5: ['#####', '#....', '####.', '....#', '....#', '#...#', '.###.'],
+  8: ['.###.', '#...#', '#...#', '.###.', '#...#', '#...#', '.###.'],
   A: ['.###.', '#...#', '#...#', '#####', '#...#', '#...#', '#...#'],
   C: ['.###.', '#...#', '#....', '#....', '#....', '#...#', '.###.'],
   D: ['####.', '#...#', '#...#', '#...#', '#...#', '#...#', '####.'],
@@ -115,7 +122,7 @@ function render(text) {
 
 // owner -> { hash, expires }. Satu captcha aktif per akun tamu; minta baru = yang lama hangus.
 const store = new Map();
-const hashAnswer = (owner, answer) => crypto.createHash('sha256').update(`${owner}|${String(answer).trim().toUpperCase()}`).digest('hex');
+const hashAnswer = (owner, answer) => crypto.createHash('sha256').update(`${owner}|${answer}`).digest('hex');
 
 function cleanup() {
   const now = Date.now();
@@ -137,7 +144,9 @@ function verifyCaptcha(owner, answer) {
   store.delete(owner);
   if (!item) return 'Captcha belum dimuat atau sudah dipakai. Muat captcha baru.';
   if (item.expires <= Date.now()) return 'Captcha sudah kedaluwarsa (lebih dari 5 menit). Muat captcha baru.';
-  if (typeof answer !== 'string' || answer.length > 20) return 'Kode captcha salah. Captcha baru sudah dimuat, silakan coba lagi.';
+  // Hanya string tepat 6 digit yang dicek; tipe/isi lain (objek, array, simbol, teks panjang) langsung dianggap salah.
+  if (typeof answer !== 'string' || !ANSWER_RE.test(answer.trim())) return 'Kode captcha salah. Captcha baru sudah dimuat, silakan coba lagi.';
+  answer = answer.trim();
   const a = Buffer.from(item.hash, 'hex'), b = Buffer.from(hashAnswer(owner, answer), 'hex');
   return crypto.timingSafeEqual(a, b) ? null : 'Kode captcha salah. Captcha baru sudah dimuat, silakan coba lagi.';
 }

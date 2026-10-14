@@ -56,7 +56,7 @@ router.post('/',async(req,res)=>{try{
  let promotion=null;
  if(req.user.role==='karyawan'){
    const updatedUser=await prisma.user.update({where:{id:req.user.id},data:{role:'pic'}});
-   promotion={token:signToken(updatedUser),user:{id:updatedUser.id,nama_lengkap:updatedUser.nama_lengkap,email:updatedUser.email,no_hp:updatedUser.no_hp,unit_kerja:updatedUser.unit_kerja,role:updatedUser.role}};
+   promotion={token:signToken(updatedUser,{remember:req.user.remember}),user:{id:updatedUser.id,nama_lengkap:updatedUser.nama_lengkap,email:updatedUser.email,no_hp:updatedUser.no_hp,unit_kerja:updatedUser.unit_kerja,role:updatedUser.role}};
  }
  res.status(201).json({data:serialize(row),...(promotion||{})});
 }catch(err){logger.error('POST pemeliharaan gagal',{error:err,user_id:req.user?.id});res.status(500).json({message:'Gagal membuat permintaan pemeliharaan.'});}});

@@ -846,6 +846,10 @@ def isi_aplikasi():
         *bullets(
             "Halaman awal (**/**) berisi hero, ringkasan modul, dan jadwal ruang rapat (tampilan grid "
             "ruangan x tanggal per bulan, sama dengan menu Ruang Rapat) yang diperbarui real-time.",
+            "Tampilan landing: hero dengan aurora, grid titik, partikel emas, kata judul berganti, kartu live "
+            "*Ruang rapat hari ini* berbingkai cahaya + chip kaca melayang; judul bagian disorot emas; kartu layanan "
+            "berikon besar samar; bagian *Cara mengajukan* berupa pita gelap. Bila OS meminta gerakan dikurangi "
+            "(mis. Windows *Animation effects* mati), gerakan besar dimatikan tetapi efek halus (fade, kilau, kelip) tetap jalan.",
             "Halaman kiosk **/jadwal-rapat** menampilkan jadwal yang sama dalam mode baca saja untuk layar di "
             "dekat ruang rapat.",
             "Kiosk **/jadwal-rapat** berputar otomatis: ruangan berganti sendiri tiap 30 detik (Semua -> tiap ruangan) "
@@ -864,7 +868,7 @@ def isi_aplikasi():
             "di bagian Jadwal Ruang Rapat. Setelah login Google (OAuth 2.0 + PKCE), tamu mengisi form booking "
             "yang **semua kolomnya wajib** (agenda, nomor surat, PIC, No. HP PIC, ruangan, tanggal mulai & sampai, "
             "jam, file surat permohonan); tombol Kirim baru aktif bila semua terisi. Saat submit wajib mengisi "
-            "**captcha huruf + angka** (gambar PNG dari server) yang **berlaku 5 menit** dan hangus setelah sekali dicek.",
+            "**captcha 6 angka** (gambar PNG dari server) yang **berlaku 5 menit** dan hangus setelah sekali dicek.",
             "Sesi akun Google tamu **berlaku 7 hari**. Anti-spam: jeda 60 detik antar pengajuan, maks. 3 pengajuan "
             "per 24 jam dan 5 booking aktif per akun, satu pengajuan maks. 7 hari berturut-turut & maks. 90 hari "
             "ke depan, rate limit per akun & IP, serta akun bisa diblokir admin. Daftar *Booking Anda* tampil di "
@@ -875,6 +879,8 @@ def isi_aplikasi():
         h2("3.2 Autentikasi"),
         *bullets(
             "Login email & kata sandi; validasi per kolom (email wajib & berformat benar, kata sandi wajib).",
+            "Kotak **Ingat saya (30 hari)**: bila dicentang token berlaku 30 hari (`JWT_REMEMBER_EXPIRES_IN`) dan email "
+            "terisi otomatis berikutnya (kata sandi tidak disimpan); tanpa centang tetap 8 jam. Logout/ban/ganti sandi tetap langsung mencabut sesi.",
             "Setelah login berhasil muncul **popup animasi logo** selama 3 detik (\"Selamat datang, nama\") "
             "lalu masuk Dashboard; saat logout token dicabut di server, muncul popup \"Sampai jumpa\" lalu kembali ke landing page "
             "(sesi yang berakhir karena hal lain, mis. token kedaluwarsa, diarahkan ke halaman login).",
@@ -1304,6 +1310,7 @@ def isi_infra():
             ["DATABASE_URL", "Ya", "Koneksi PostgreSQL (postgresql://user:pass@host:5432/biro_umum_db)"],
             ["JWT_SECRET", "Ya", "Kunci tanda tangan token, minimal 32 karakter (server menolak start bila kurang)"],
             ["JWT_EXPIRES_IN", "Tidak", "Masa berlaku token, default 8h"],
+            ["JWT_REMEMBER_EXPIRES_IN", "Tidak", "Masa berlaku token bila \"Ingat saya\" dicentang, default 30d"],
             ["FRONTEND_URL", "Ya", "Origin yang diizinkan CORS & dasar link reset kata sandi"],
             ["PORT", "Tidak", "Port backend, default 4000"],
             ["TRUST_PROXY", "Tidak", "true bila di belakang reverse proxy agar IP klien terbaca benar"],
@@ -1367,7 +1374,7 @@ def isi_infra():
             ["Rate limit", "Global 180 request/menit per akun (per IP bila belum login); login 5/menit per "
              "IP+email dan 30/menit per IP; daftar 50/jam; lupa sandi 5/jam; reset 20/jam; koneksi SSE maks. "
              "200 per IP & 1000 total. Tamu Google: captcha 10/menit, submit booking 6/10 menit per akun & 20/10 menit per IP."],
-            ["Captcha & anti-spam tamu", "Captcha huruf+angka berupa gambar PNG yang digambar server (jawaban tidak ada di "
+            ["Captcha & anti-spam tamu", "Captcha 6 angka berupa gambar PNG yang digambar server (jawaban tidak ada di "
              "kode sumber gambar), disimpan sebagai hash, berlaku 5 menit, satu per akun dan hangus setelah sekali dicek. "
              "Jeda 60 detik, maks. 3 pengajuan/24 jam & 5 booking aktif per akun (dikunci advisory lock per akun)."],
             ["Autentikasi", "JWT HS256 berlaku 8 jam; peran & status aktif dibaca ulang dari database setiap "

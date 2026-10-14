@@ -146,6 +146,8 @@ router.post('/login', loginIpLimiter, loginLimiter, async (req, res) => {
   try {
     const email = normalizeEmail(req.body.email);
     const { password } = req.body;
+    // "Ingat saya": hanya boolean true yang dihitung (string/angka/objek = tidak diingat).
+    const remember = req.body.remember === true;
     if (typeof email !== 'string' || email.length > 254 || typeof password !== 'string' || password.length > 128) {
       return res.status(400).json({ message: 'Format login tidak valid.' });
     }
@@ -170,8 +172,8 @@ router.post('/login', loginIpLimiter, loginLimiter, async (req, res) => {
     }
 
     const updated = await prisma.user.update({ where: { id: user.id }, data: { last_login_at: new Date() } });
-    const token = signToken(updated);
-    res.json({ token, user: sanitizeUser(updated) });
+    const token = signToken(updated, { remember });
+    res.json({ token, user: sanitizeUser(updated), remember });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Terjadi kesalahan server saat login.' });

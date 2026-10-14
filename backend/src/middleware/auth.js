@@ -44,7 +44,7 @@ async function requireAuth(req, res, next) {
       return res.status(401).json({ message: 'Sesi Anda sudah berakhir. Silakan login kembali.' });
     }
 
-    req.user = { id, email: current.email, role: current.role, nama_lengkap: current.nama_lengkap };
+    req.user = { id, email: current.email, role: current.role, nama_lengkap: current.nama_lengkap, remember: payload.rm === true };
     return next();
   } catch (err) {
     return res.status(401).json({ message: 'Token tidak valid atau sudah kedaluwarsa.' });
