@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { useFeedback } from '../components/Feedback';
 import useLive from '../hooks/useLive';
 import MenuStats from '../components/MenuStats';
+import GuestAccounts from '../components/GuestAccounts';
 
 const roleLabel = { karyawan: 'Karyawan', kabag: 'Kepala Bagian', pic: 'PIC', admin: 'Admin' };
 const roleBadge = {
@@ -242,6 +243,9 @@ export default function Akun() {
           </table>
         </div>
       </div>
+
+      {/* Akun tamu dari login Google di landing page (booking ruang rapat) -- tabel guest_accounts. */}
+      <GuestAccounts className="mt-6" />
 
       {resetLink && (
         <div className="fixed inset-0 z-50 bg-slate-900/55 backdrop-blur-sm flex overflow-y-auto overscroll-contain p-4" onMouseDown={(e) => { if (e.target === e.currentTarget) setResetLink(null); }}>

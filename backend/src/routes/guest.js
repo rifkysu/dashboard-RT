@@ -123,7 +123,8 @@ googleRouter.get('/google/callback', googleStartLimiter, async (req, res) => {
 
     const token = jwt.sign({ gid: guest.id, tv: guest.token_version }, process.env.JWT_SECRET, { expiresIn: GUEST_SESSION, algorithm: 'HS256', audience: GUEST_AUDIENCE });
     logger.info('Login tamu Google', { guest_id: guest.id });
-    live.broadcast('ruang-rapat');
+    // Panel akun tamu di Dashboard & Akun & Akses langsung menampilkan login baru.
+    live.broadcast('users');
     // Token lewat fragment (#) -> tidak terkirim ke server mana pun & tidak masuk log akses.
     res.redirect(frontend(`guest_token=${encodeURIComponent(token)}`));
   } catch (err) {

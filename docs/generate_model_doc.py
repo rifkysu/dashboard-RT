@@ -903,7 +903,7 @@ def isi_aplikasi():
             "Status ruang rapat saat ini: Kosong / Dipakai s.d. jam tertentu, termasuk booking multi-hari yang "
             "sedang berjalan.",
             "Daftar aktivitas terbaru gabungan Pemeliharaan & Pengadaan.",
-            "Khusus Admin/Kabag: panel **Akun Google Tamu** berisi semua akun yang pernah login Google di landing "
+            "Khusus Admin/Kabag (di Dashboard dan menu Akun & Akses): panel **Akun Google Tamu** berisi semua akun yang pernah login Google di landing "
             "page, termasuk yang belum booking (nama, email, login terakhir, booking terakhir, total booking, jumlah dibatalkan sendiri) dengan tombol **Blokir / "
             "Buka blokir**; blokir langsung memutus sesi tamu tersebut. Detail booking di menu Ruang Rapat "
             "menampilkan label nama & email tamu pengaju."),
