@@ -848,12 +848,15 @@ def isi_aplikasi():
             "ruangan x tanggal per bulan, sama dengan menu Ruang Rapat) yang diperbarui real-time.",
             "Halaman kiosk **/jadwal-rapat** menampilkan jadwal yang sama dalam mode baca saja untuk layar di "
             "dekat ruang rapat.",
+            "Kiosk **/jadwal-rapat** berputar otomatis: ruangan berganti sendiri tiap 30 detik (Semua -> tiap ruangan) "
+            "dan tabel digulir ke baris hari ini, dengan bilah waktu; disentuh = jeda 30 detik lalu lanjut; bisa dimatikan "
+            "dengan tombol *Putar otomatis*; mati secara default bila dibuka dengan ?ruang=.",
             "Pilihan ruangan (Semua Ruangan atau satu ruangan) di landing page & kiosk, tetap real-time; "
             "tersimpan di URL, mis. **/jadwal-rapat?ruang=SERBAGUNA**.",
             "Layar per ruangan **/ruang/:ruang** (mis. **/ruang/serbaguna**, **/ruang/setjen-ii**) untuk tablet/monitor "
             "di depan tiap ruang: status besar Tersedia / Segera digunakan (<= 15 menit) / Sedang digunakan, rapat "
             "berlangsung (agenda, PIC, jam, sisa waktu), dan agenda 7 hari berupa slide per hari (strip tanggal, swipe/panah, "
-            "bergeser otomatis tiap 8 detik bila tidak disentuh). Publik & baca saja, "
+            "hari berganti otomatis tiap 30 detik dengan bilah waktu, kembali ke hari ini setelah hari ke-7; disentuh = jeda 30 detik dengan hitung mundur lalu lanjut sendiri). Publik & baca saja, "
             "real-time + muat ulang tiap menit, layar dijaga tetap menyala (Wake Lock), tombol layar penuh. **/ruang** "
             "menampilkan daftar ruangan; di landing page tiap ruangan pada kartu *Ruang rapat hari ini* dan bagian "
             "*Layar per ruangan* menautkan ke layarnya.",

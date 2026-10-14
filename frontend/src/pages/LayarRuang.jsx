@@ -95,8 +95,8 @@ function PilihRuang({ salah }) {
   );
 }
 
-const AUTO_SLIDE_MS = 8000;   // geser ke hari berikutnya tiap 8 detik
-const JEDA_SENTUH_MS = 30000; // setelah disentuh/diklik, auto-slide berhenti 30 detik
+const AUTO_SLIDE_MS = 30000;  // geser ke hari berikutnya tiap 30 detik (tanpa perlu disentuh)
+const JEDA_SENTUH_MS = 30000; // setelah disentuh/diklik, auto-slide berhenti 30 detik lalu lanjut lagi
 const geraknyaDikurangi = () => !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 
 // Agenda 7 hari sebagai slide per hari: strip tanggal (tap), geser (swipe/scroll), tombol panah,
@@ -106,7 +106,10 @@ function AgendaMingguan({ minggu, memuat, sekarang, menitSekarang, tema }) {
   const [idx, setIdx] = useState(0);
   const idxRef = useRef(0);
   idxRef.current = idx;
-  const sentuhTerakhir = useRef(0);
+  // Waktu auto-slide boleh jalan lagi setelah layar disentuh (0 = tidak sedang dijeda).
+  const [jedaSampai, setJedaSampai] = useState(0);
+  const [sisaJeda, setSisaJeda] = useState(0);
+  const sentuh = () => setJedaSampai(Date.now() + JEDA_SENTUH_MS);
 
   const keHari = (i, halus = true) => {
     const el = trackRef.current;
@@ -115,7 +118,7 @@ function AgendaMingguan({ minggu, memuat, sekarang, menitSekarang, tema }) {
     el.scrollTo({ left: n * el.clientWidth, behavior: halus && !geraknyaDikurangi() ? 'smooth' : 'auto' });
     setIdx(n);
   };
-  const pilih = (i) => { sentuhTerakhir.current = Date.now(); keHari(i); };
+  const pilih = (i) => { sentuh(); keHari(i); };
   const onScroll = () => {
     const el = trackRef.current;
     if (!el || !el.clientWidth) return;
@@ -123,13 +126,29 @@ function AgendaMingguan({ minggu, memuat, sekarang, menitSekarang, tema }) {
     if (i !== idxRef.current) setIdx(i);
   };
 
+  // Tiap hari tampil 30 detik lalu pindah ke hari berikutnya (setelah hari ke-7 kembali ke hari ini).
+  // Timer dimulai ulang setiap kali hari berganti, jadi geser manual/swipe juga dapat 30 detik penuh.
+  // Kalau layar disentuh: berhenti dulu 30 detik, lalu lanjut otomatis.
   useEffect(() => {
-    const t = setInterval(() => {
-      if (Date.now() - sentuhTerakhir.current < JEDA_SENTUH_MS) return;
-      keHari(idxRef.current + 1);
-    }, AUTO_SLIDE_MS);
+    if (minggu.length < 2) return undefined;
+    const sisa = jedaSampai - Date.now();
+    if (sisa > 0) {
+      const t = setTimeout(() => setJedaSampai(0), sisa);
+      return () => clearTimeout(t);
+    }
+    const t = setTimeout(() => keHari(idxRef.current + 1), AUTO_SLIDE_MS);
+    return () => clearTimeout(t);
+  }, [idx, jedaSampai, minggu.length]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Hitung mundur jeda yang ditampilkan di layar.
+  useEffect(() => {
+    if (!jedaSampai) { setSisaJeda(0); return undefined; }
+    const tick = () => setSisaJeda(Math.max(0, Math.ceil((jedaSampai - Date.now()) / 1000)));
+    tick();
+    const t = setInterval(tick, 1000);
     return () => clearInterval(t);
-  }, [minggu.length]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [jedaSampai]);
+  const dijeda = sisaJeda > 0;
 
   // Ukuran layar berubah (rotasi tablet) -> tetap di slide yang sama.
   useEffect(() => {
@@ -143,12 +162,16 @@ function AgendaMingguan({ minggu, memuat, sekarang, menitSekarang, tema }) {
 
   return (
     <div className="mt-6 flex-1 min-h-0 rounded-3xl bg-white/[.06] ring-1 ring-white/10 backdrop-blur-sm flex flex-col overflow-hidden"
-      onPointerDown={() => { sentuhTerakhir.current = Date.now(); }} onWheel={() => { sentuhTerakhir.current = Date.now(); }}>
+      onPointerDown={sentuh} onWheel={sentuh}>
       {/* Kepala: judul + panah */}
       <div className="px-5 pt-4 pb-3 flex items-center justify-between gap-3">
         <div className="min-w-0">
           <div className="font-display font-bold text-lg leading-tight">Agenda 7 hari</div>
           <div className="text-xs text-white/55 mt-0.5">{memuat ? 'Memuat…' : `${totalMinggu} rapat dalam seminggu`}</div>
+          <div className="mt-1.5 inline-flex items-center gap-1.5 text-[11px] font-semibold text-white/60" aria-live="polite">
+            <span className="material-symbols-outlined text-[15px]">{dijeda ? 'pause_circle' : 'autoplay'}</span>
+            {dijeda ? `Dijeda · lanjut otomatis dalam ${sisaJeda} dtk` : 'Hari berganti otomatis tiap 30 detik'}
+          </div>
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
           <button type="button" onClick={() => pilih(idx - 1)} aria-label="Hari sebelumnya" className="w-9 h-9 rounded-xl bg-white/10 hover:bg-white/15 inline-flex items-center justify-center">
@@ -176,6 +199,11 @@ function AgendaMingguan({ minggu, memuat, sekarang, menitSekarang, tema }) {
             </button>
           );
         })}
+      </div>
+
+      {/* Bilah waktu: penuh = pindah ke hari berikutnya */}
+      <div className="h-1 bg-white/5" aria-hidden="true">
+        {!dijeda && minggu.length > 1 && <div key={`${idx}-${jedaSampai}`} className="layar-progress h-full bg-[#e4c27f]" style={{ animationDuration: `${AUTO_SLIDE_MS}ms` }}></div>}
       </div>
 
       {/* Slide per hari */}

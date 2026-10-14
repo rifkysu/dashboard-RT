@@ -8,9 +8,9 @@ export default function PublicRuangRapat() {
         <div className="border-b border-slate-300 pb-4 mb-5">
           <div className="text-xs font-semibold text-slate-500">Biro Umum dan Rumah Tangga · Kementerian Ketenagakerjaan</div>
           <h1 className="text-2xl md:text-3xl font-bold text-slate-900 mt-1">Jadwal Ruang Rapat</h1>
-          <p className="text-sm text-slate-500 mt-1">Tanggal dan minggu otomatis mengikuti waktu perangkat. Data diperbarui real-time.</p>
+          <p className="text-sm text-slate-500 mt-1">Tanggal dan minggu otomatis mengikuti waktu perangkat. Ruangan berganti sendiri tiap 30 detik dan tabel selalu kembali ke hari ini. Data diperbarui real-time.</p>
         </div>
-        <RuangRapatSchedule />
+        <RuangRapatSchedule autoRotate />
         <div className="mt-4 text-xs text-slate-500">Halaman ini hanya untuk melihat jadwal. Tidak ada tombol edit, cancel, atau upload surat.</div>
       </div>
     </div>

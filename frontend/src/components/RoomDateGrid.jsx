@@ -50,7 +50,8 @@ export function MonthFilter({ months, onSelect }) {
 // saat sentinel di bawah terlihat (infinite scroll).
 // onAddBooking(date, room): kalau diisi, tiap sel punya tombol "+ Booking" (sel kosong: seluruh sel bisa diklik)
 // yang membuka form booking dengan ruangan & tanggal sel tersebut sudah terisi.
-export default function RoomDateGrid({ months, rooms, items, loading, loadingMore, hasMore, onLoadMore, renderItem, onAddBooking }) {
+// scrollToTodayKey (kiosk): setiap nilainya berubah (mis. ganti ruangan otomatis), tabel digulir halus ke baris hari ini.
+export default function RoomDateGrid({ months, rooms, items, loading, loadingMore, hasMore, onLoadMore, renderItem, onAddBooking, scrollToTodayKey }) {
   const scrollRef = useRef(null);
   const headRef = useRef(null);
   const sentinelRef = useRef(null);
@@ -98,6 +99,16 @@ export default function RoomDateGrid({ months, rooms, items, loading, loadingMor
     const row = months[0] === monthKey() ? box.querySelector(`[data-day="${today}"]`) : null;
     box.scrollTop = row ? box.scrollTop + row.getBoundingClientRect().top - box.getBoundingClientRect().top - (headRef.current?.offsetHeight || 0) : 0;
   }, [loading, months, today]);
+
+  useEffect(() => {
+    if (scrollToTodayKey === undefined || loading) return;
+    const box = scrollRef.current;
+    const row = box?.querySelector(`[data-day="${today}"]`);
+    if (!row) return;
+    const top = box.scrollTop + row.getBoundingClientRect().top - box.getBoundingClientRect().top - (headRef.current?.offsetHeight || 0);
+    const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    box.scrollTo({ top, left: 0, behavior: reduce ? 'auto' : 'smooth' });
+  }, [scrollToTodayKey, loading, today]);
 
   return (
     <div ref={scrollRef} className="relative max-h-[72vh] overflow-auto overscroll-contain">

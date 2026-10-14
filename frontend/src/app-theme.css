@@ -461,3 +461,15 @@ main.app-main { background: var(--kanvas) !important; min-height:100vh; }
   .hero-particle { display:none; }
   .parallax-slow, .parallax-fast, .parallax-bg { transform:none; opacity:1; }
 }
+
+/* Layar per ruangan (/ruang/:ruang): bilah waktu 30 detik sebelum agenda pindah ke hari berikutnya. */
+.layar-progress {
+  transform-origin: left center;
+  animation-name: layar-progress;
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
+}
+@keyframes layar-progress {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
