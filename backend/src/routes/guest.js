@@ -180,11 +180,11 @@ router.get('/bookings', requireGuest, async (req, res) => {
   try {
     const rows = await prisma.ruangRapat.findMany({
       where: { guest_id: req.guest.id, end_date: { gte: B.date(todayIso()) } },
-      select: { id: true, agenda: true, room: true, pic: true, booking_date: true, end_date: true, start_time: true, end_time: true, surat_status: true, cancelled_at: true, cancel_reason: true, created_at: true },
+      select: { id: true, agenda: true, room: true, pic: true, booking_date: true, end_date: true, start_time: true, end_time: true, surat_status: true, cancelled_at: true, cancel_reason: true, cancelled_by_guest_id: true, created_at: true },
       orderBy: [{ booking_date: 'asc' }, { start_time: 'asc' }],
       take: 50,
     });
-    res.json({ data: rows.map((r) => ({ id: r.id, title: r.agenda, room: r.room, pic: r.pic, date: r.booking_date.toISOString().slice(0, 10), end_date: r.end_date.toISOString().slice(0, 10), start: r.start_time.toISOString().slice(11, 16), end: r.end_time.toISOString().slice(11, 16), status: r.surat_status, cancelled: !!r.cancelled_at, cancel_reason: r.cancel_reason })) });
+    res.json({ data: rows.map((r) => ({ id: r.id, title: r.agenda, room: r.room, pic: r.pic, date: r.booking_date.toISOString().slice(0, 10), end_date: r.end_date.toISOString().slice(0, 10), start: r.start_time.toISOString().slice(11, 16), end: r.end_time.toISOString().slice(11, 16), status: r.surat_status, cancelled: !!r.cancelled_at, cancelled_by_self: r.cancelled_by_guest_id === req.guest.id, cancel_reason: r.cancel_reason })) });
   } catch (err) {
     logger.error('GET booking tamu gagal', { error: err });
     res.status(500).json({ message: 'Gagal mengambil booking Anda.' });
@@ -268,16 +268,43 @@ router.post('/bookings', submitIpLimiter, requireGuest, submitGuestLimiter, requ
   }
 });
 
+// Tamu membatalkan booking MILIKNYA SENDIRI (seluruh booking). Data tidak dihapus: sama seperti
+// pembatalan oleh pegawai, cancelled_at + alasan diisi, dan pembatalnya dicatat di cancelled_by_guest_id.
+// Booking yang sudah lewat tidak bisa dibatalkan.
+const cancelGuestLimiter = createRateLimiter({ windowMs: 10 * 60 * 1000, max: 10, message: 'Terlalu banyak pembatalan. Tunggu 10 menit.', keyFn: (req) => `g${req.guest.id}` });
+router.post('/bookings/:id/cancel', submitIpLimiter, requireGuest, cancelGuestLimiter, requireNotInMaintenance('ruang-rapat'), async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id)) return res.status(400).json({ message: 'ID booking tidak valid.' });
+    const reason = req.body?.reason;
+    if (reason != null && (typeof reason !== 'string' || reason.length > 500)) return res.status(400).json({ message: 'Alasan pembatalan maksimal 500 karakter.' });
+    const { count } = await prisma.ruangRapat.updateMany({
+      where: { id, guest_id: req.guest.id, cancelled_at: null, end_date: { gte: B.date(todayIso()) } },
+      data: { cancelled_at: new Date(), cancelled_by_guest_id: req.guest.id, cancel_reason: reason?.trim() || 'Dibatalkan sendiri oleh tamu pengaju.' },
+    });
+    if (!count) return res.status(404).json({ message: 'Booking tidak ditemukan, bukan milik Anda, sudah lewat, atau sudah dibatalkan.' });
+    logger.info('Booking ruang rapat dibatalkan tamu', { guest_id: req.guest.id, booking_id: id });
+    B.broadcastChange();
+    res.json({ message: 'Booking berhasil dibatalkan.' });
+  } catch (err) {
+    logger.error('Cancel booking tamu gagal', { error: err });
+    res.status(500).json({ message: 'Gagal membatalkan booking.' });
+  }
+});
+
 // ---------------------------------------------------------------------
-// Dashboard admin: daftar akun tamu yang sudah mengisi form booking.
+// Dashboard admin: semua akun Google tamu yang pernah login di landing page
+// (beserta booking terakhirnya, kalau sudah pernah mengisi form).
 // ---------------------------------------------------------------------
 router.get('/admin/accounts', requireAuth, requireRole(ADMIN_ROLES), async (req, res) => {
   try {
     const rows = await prisma.guestAccount.findMany({
-      where: { bookings: { some: {} } },
+      take: 500,
+      orderBy: { updated_at: 'desc' },
       select: {
         id: true, nama: true, email: true, foto: true, is_blocked: true, last_login_at: true, created_at: true,
         _count: { select: { bookings: true } },
+        cancelledBookings: { where: { cancelled_at: { not: null } }, select: { id: true } },
         bookings: { orderBy: { created_at: 'desc' }, take: 1, select: { id: true, agenda: true, room: true, booking_date: true, end_date: true, start_time: true, end_time: true, cancelled_at: true, created_at: true } },
       },
     });
@@ -286,9 +313,10 @@ router.get('/admin/accounts', requireAuth, requireRole(ADMIN_ROLES), async (req,
       return {
         id: g.id, nama: g.nama, email: g.email, foto: g.foto, is_blocked: g.is_blocked, last_login_at: g.last_login_at, created_at: g.created_at,
         total_booking: g._count.bookings,
+        dibatalkan_sendiri: g.cancelledBookings.length,
         last_booking: b ? { id: b.id, title: b.agenda, room: b.room, date: b.booking_date.toISOString().slice(0, 10), end_date: b.end_date.toISOString().slice(0, 10), start: b.start_time.toISOString().slice(11, 16), end: b.end_time.toISOString().slice(11, 16), cancelled: !!b.cancelled_at, created_at: b.created_at } : null,
       };
-    }).sort((a, b) => new Date(b.last_booking?.created_at || 0) - new Date(a.last_booking?.created_at || 0));
+    }).sort((a, b) => Math.max(new Date(b.last_booking?.created_at || 0), new Date(b.last_login_at || 0)) - Math.max(new Date(a.last_booking?.created_at || 0), new Date(a.last_login_at || 0)));
     res.json({ data });
   } catch (err) {
     logger.error('GET akun tamu gagal', { error: err });

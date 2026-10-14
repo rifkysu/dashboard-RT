@@ -228,12 +228,54 @@ function BookingForm({ guest, onClose, onBooked, onSessionEnd }) {
   );
 }
 
+// Popup batalkan booking milik tamu sendiri; alasan opsional (maks. 500 karakter).
+function CancelDialog({ booking, onClose, onDone, onSessionEnd }) {
+  const { alert } = useFeedback();
+  const [reason, setReason] = useState('');
+  const [saving, setSaving] = useState(false);
+  async function submit() {
+    if (saving) return;
+    setSaving(true);
+    try {
+      const r = await guestApi.post(`/guest/bookings/${booking.id}/cancel`, { reason: reason.trim() || null });
+      onDone(r.data.message);
+    } catch (e) {
+      const status = e.response?.status;
+      if (status === 401 || status === 403) { onSessionEnd(e.response?.data?.message); return; }
+      alert({ title: 'Gagal membatalkan', message: e.response?.data?.message || 'Gagal membatalkan booking.', tone: 'error' });
+    } finally { setSaving(false); }
+  }
+  return (
+    <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex overflow-y-auto p-4" onMouseDown={(e) => { if (e.target === e.currentTarget && !saving) onClose(); }} role="dialog" aria-modal="true" aria-labelledby="guest-cancel-title">
+      <div className="m-auto w-full max-w-md bg-white rounded-2xl shadow-2xl p-6">
+        <div className="flex items-start gap-3">
+          <span className="w-11 h-11 shrink-0 rounded-xl bg-red-100 text-red-600 flex items-center justify-center"><span className="material-symbols-outlined">event_busy</span></span>
+          <div className="min-w-0">
+            <div id="guest-cancel-title" className="font-display font-bold text-dinas-ink">Batalkan booking?</div>
+            <div className="text-sm text-slate-600 mt-1"><b>{booking.title}</b><br />{judulRuang(booking.room)} · {fmtTanggal(booking.date)}{booking.end_date !== booking.date ? ` s/d ${fmtTanggal(booking.end_date)}` : ''} · {booking.start}–{booking.end}</div>
+          </div>
+        </div>
+        <label className="block mt-4">
+          <span className="block text-xs font-semibold text-slate-700 mb-1.5">Alasan pembatalan (opsional)</span>
+          <textarea value={reason} onChange={(e) => setReason(e.target.value.slice(0, 500))} rows={3} className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm outline-none focus:border-dinas" placeholder="Contoh: rapat diundur" />
+        </label>
+        <p className="text-[11px] text-slate-500 mt-1">Ruangan langsung tersedia lagi untuk orang lain. Pembatalan tidak bisa diurungkan.</p>
+        <div className="flex justify-end gap-2 mt-5">
+          <button type="button" onClick={onClose} disabled={saving} className="px-4 py-2.5 rounded-lg border bg-white text-sm font-semibold text-slate-700">Tidak</button>
+          <button type="button" onClick={submit} disabled={saving} className="px-5 py-2.5 rounded-lg bg-red-600 text-white text-sm font-semibold hover:bg-red-700 disabled:opacity-60">{saving ? 'Membatalkan…' : 'Ya, batalkan'}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function GuestBooking() {
   const { alert, toast } = useFeedback();
   const [guest, setGuest] = useState(null);
   const [checking, setChecking] = useState(() => !!getGuestToken());
   const [showForm, setShowForm] = useState(false);
   const [mine, setMine] = useState([]);
+  const [cancelling, setCancelling] = useState(null);
   const panelRef = useRef(null);
 
   const loadMine = useCallback(() => {
@@ -325,7 +367,9 @@ export default function GuestBooking() {
               <li key={b.id} className={`rounded-xl border px-3 py-2.5 text-sm ${b.cancelled ? 'border-red-200 bg-red-50/60' : 'border-slate-200 bg-white'}`}>
                 <div className="flex items-start justify-between gap-2">
                   <span className="font-semibold text-dinas-ink truncate">{b.title}</span>
-                  {b.cancelled && <span className="shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded bg-red-100 text-red-700">Dibatalkan</span>}
+                  {b.cancelled
+                    ? <span className="shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded bg-red-100 text-red-700">{b.cancelled_by_self ? 'Dibatalkan oleh Anda' : 'Dibatalkan Biro Umum'}</span>
+                    : <button type="button" onClick={() => setCancelling(b)} className="shrink-0 inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-1 rounded-md border border-red-200 text-red-700 hover:bg-red-50"><span className="material-symbols-outlined text-[14px]">event_busy</span>Batalkan</button>}
                 </div>
                 <div className="text-xs text-slate-500 mt-0.5">{judulRuang(b.room)} · {fmtTanggal(b.date)}{b.end_date !== b.date ? ` s/d ${fmtTanggal(b.end_date)}` : ''} · {b.start}–{b.end}</div>
                 {b.cancelled && b.cancel_reason && <div className="text-[11px] text-red-700 mt-0.5">Alasan: {b.cancel_reason}</div>}
@@ -334,6 +378,7 @@ export default function GuestBooking() {
           </ul>
         </div>
       )}
+      {cancelling && <CancelDialog booking={cancelling} onClose={() => setCancelling(null)} onSessionEnd={(m) => { setCancelling(null); endSession(m); }} onDone={(m) => { setCancelling(null); toast(m); loadMine(); }} />}
       {showForm && guest && <BookingForm guest={guest} onClose={() => setShowForm(false)} onBooked={booked} onSessionEnd={endSession} />}
     </div>
   );

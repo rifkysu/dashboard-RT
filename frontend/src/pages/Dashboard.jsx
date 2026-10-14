@@ -173,7 +173,7 @@ function RuangStatus({ info }) {
   );
 }
 
-// Khusus admin/kabag: akun Google (tamu) yang sudah mengisi form booking ruang rapat dari landing page.
+// Khusus admin/kabag: semua akun Google (tamu) yang login di landing page untuk booking ruang rapat.
 // Akun yang spam bisa diblokir -> sesi tamu tsb langsung diputus & tidak bisa booking lagi.
 function GuestAccounts() {
   const { confirm, alert, toast } = useFeedback();
@@ -207,15 +207,15 @@ function GuestAccounts() {
       <div className="px-5 py-4 border-b border-slate-200 flex items-center gap-3">
         <span className="dash-module-icon dash-module-icon-sm"><span className="material-symbols-outlined text-[19px]">person_check</span></span>
         <div className="min-w-0">
-          <h2 className="text-lg font-bold text-slate-900 leading-tight">Akun Google Pengaju Booking</h2>
-          <p className="text-[11px] text-slate-500">Tamu yang login Google di landing page dan mengisi form booking ruang rapat{rows ? ` · ${rows.length} akun` : ''}</p>
+          <h2 className="text-lg font-bold text-slate-900 leading-tight">Akun Google Tamu (Booking Ruang Rapat)</h2>
+          <p className="text-[11px] text-slate-500">Semua akun yang login Google di landing page, tersimpan di tabel guest_accounts{rows ? ` · ${rows.length} akun` : ''}</p>
         </div>
       </div>
       {rows && rows.length ? (
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-slate-50 text-[11px] uppercase tracking-wider text-slate-500">
-              <tr><th className="text-left px-5 py-2.5 font-semibold">Akun</th><th className="text-left px-3 py-2.5 font-semibold">Booking terakhir</th><th className="text-center px-3 py-2.5 font-semibold">Total</th><th className="text-right px-5 py-2.5 font-semibold">Status</th></tr>
+              <tr><th className="text-left px-5 py-2.5 font-semibold">Akun</th><th className="text-left px-3 py-2.5 font-semibold">Booking terakhir</th><th className="text-left px-3 py-2.5 font-semibold">Login terakhir</th><th className="text-center px-3 py-2.5 font-semibold">Booking</th><th className="text-right px-5 py-2.5 font-semibold">Status</th></tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {rows.map((g) => (
@@ -235,9 +235,13 @@ function GuestAccounts() {
                         <div className="text-[13px] font-semibold text-slate-800 truncate max-w-[280px]">{g.last_booking.title}{g.last_booking.cancelled && <span className="ml-1.5 text-[10px] font-bold px-1.5 py-0.5 rounded bg-red-50 text-red-700">Batal</span>}</div>
                         <div className="text-[11px] text-slate-500">{g.last_booking.room} · {fmtShort(g.last_booking.date)}{g.last_booking.end_date !== g.last_booking.date ? `–${fmtShort(g.last_booking.end_date)}` : ''} · {g.last_booking.start}–{g.last_booking.end} · diajukan {fmtWaktu(g.last_booking.created_at)}</div>
                       </>
-                    ) : '-'}
+                    ) : <span className="text-[12px] text-slate-400">Belum mengisi form booking</span>}
                   </td>
-                  <td className="px-3 py-3 text-center font-bold tabular-nums text-slate-700">{g.total_booking}</td>
+                  <td className="px-3 py-3 text-[12px] text-slate-600 whitespace-nowrap">{g.last_login_at ? fmtWaktu(g.last_login_at) : '-'}</td>
+                  <td className="px-3 py-3 text-center whitespace-nowrap">
+                    <div className="font-bold tabular-nums text-slate-700">{g.total_booking}</div>
+                    {g.dibatalkan_sendiri > 0 && <div className="text-[10px] text-red-600">{g.dibatalkan_sendiri} dibatalkan sendiri</div>}
+                  </td>
                   <td className="px-5 py-3 text-right whitespace-nowrap">
                     <button onClick={() => toggleBlock(g)} disabled={busy === g.id} className={`inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-semibold disabled:opacity-60 ${g.is_blocked ? 'bg-red-50 text-red-700 border border-red-200 hover:bg-red-100' : 'border border-slate-200 text-slate-600 hover:bg-slate-100'}`}>
                       <span className="material-symbols-outlined text-[15px]">{g.is_blocked ? 'block' : 'shield_person'}</span>{g.is_blocked ? 'Diblokir · Buka' : 'Blokir'}
@@ -251,7 +255,7 @@ function GuestAccounts() {
       ) : (
         <div className="px-5 py-8 text-center">
           <span className="material-symbols-outlined text-[30px] text-slate-300">{failed ? 'cloud_off' : 'inbox'}</span>
-          <p className="mt-1 text-xs text-slate-400">{failed ? 'Gagal memuat akun tamu.' : rows ? 'Belum ada tamu yang mengisi form booking.' : 'Memuat…'}</p>
+          <p className="mt-1 text-xs text-slate-400">{failed ? 'Gagal memuat akun tamu.' : rows ? 'Belum ada tamu yang login Google.' : 'Memuat…'}</p>
         </div>
       )}
     </div>

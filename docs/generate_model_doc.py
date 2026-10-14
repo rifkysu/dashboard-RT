@@ -454,7 +454,7 @@ def d_arsitektur(g):
         g.box(72 + 56.5 * i, 537.7, 52, 36, r, ["route"], "wIndigo", SZ_S)
     g.arrow(297, 583.7, 297, 593.7, both=True)
     g.group(62, 593.7, 470, 80, "LAPISAN DATA", "green")
-    for i, (t, s) in enumerate([("Prisma ORM 6", ["schema.prisma", "29 migration"]),
+    for i, (t, s) in enumerate([("Prisma ORM 6", ["schema.prisma", "30 migration"]),
                                 ("PostgreSQL", ["biro_umum_db", "8 tabel inti"]),
                                 ("File Storage", ["backend/uploads/", "(PDF, JPG, PNG)"])]):
         g.box(72 + 155 * i, 608.7, 140, 55, t, s, "green", SZ_L)
@@ -866,6 +866,8 @@ def isi_aplikasi():
             "per 24 jam dan 5 booking aktif per akun, satu pengajuan maks. 7 hari berturut-turut & maks. 90 hari "
             "ke depan, rate limit per akun & IP, serta akun bisa diblokir admin. Daftar *Booking Anda* tampil di "
             "panel yang sama.",
+            "Tamu bisa **membatalkan booking miliknya sendiri** (alasan opsional) selama booking belum lewat; data "
+            "tidak dihapus, pembatal dicatat di `cancelled_by_guest_id` dan tampil \"Dibatalkan oleh nama (tamu)\" di menu Ruang Rapat.",
             "Mengikuti Mode Maintenance menu *landing*; status dibaca dari endpoint publik tanpa login."),
         h2("3.2 Autentikasi"),
         *bullets(
@@ -901,8 +903,8 @@ def isi_aplikasi():
             "Status ruang rapat saat ini: Kosong / Dipakai s.d. jam tertentu, termasuk booking multi-hari yang "
             "sedang berjalan.",
             "Daftar aktivitas terbaru gabungan Pemeliharaan & Pengadaan.",
-            "Khusus Admin/Kabag: panel **Akun Google Pengaju Booking** berisi akun tamu yang sudah mengisi form "
-            "booking dari landing page (nama, email, booking terakhir, total booking) dengan tombol **Blokir / "
+            "Khusus Admin/Kabag: panel **Akun Google Tamu** berisi semua akun yang pernah login Google di landing "
+            "page, termasuk yang belum booking (nama, email, login terakhir, booking terakhir, total booking, jumlah dibatalkan sendiri) dengan tombol **Blokir / "
             "Buka blokir**; blokir langsung memutus sesi tamu tersebut. Detail booking di menu Ruang Rapat "
             "menampilkan label nama & email tamu pengaju."),
         h2("3.4 Pemeliharaan & Pengadaan"),
@@ -1064,10 +1066,10 @@ def isi_aplikasi():
             ["", "GET / , GET /:id, POST /, PUT /:id, DELETE /:id", "Login", "Kelola booking"],
             ["", "GET /:id/group-dates; POST /:id/cancel-dates", "Login", "Tanggal satu pengajuan; batalkan tanggal tertentu"],
             ["Tamu (Google)", "GET /auth/google, GET /auth/google/callback", "Publik", "Login Google tamu (OAuth 2.0 + PKCE)"],
-            ["", "GET /guest/me, /guest/captcha, /guest/bookings; POST /guest/bookings, /guest/logout", "Tamu (token Google 7 hari)",
-             "Sesi, captcha 5 menit, booking milik sendiri, ajukan booking, keluar"],
+            ["", "GET /guest/me, /guest/captcha, /guest/bookings; POST /guest/bookings, /guest/bookings/:id/cancel, /guest/logout", "Tamu (token Google 7 hari)",
+             "Sesi, captcha 5 menit, booking milik sendiri, ajukan & batalkan booking sendiri, keluar"],
             ["", "GET /guest/admin/accounts; PUT /guest/admin/accounts/:id/block", "Admin/Kabag",
-             "Daftar akun tamu pengaju & blokir"],
+             "Daftar semua akun tamu Google & blokir"],
             ["Maintenance", "GET /landing-status, GET /stream (SSE)", "Publik", "Status landing & sinyal real-time"],
             ["", "GET / ; PUT /:menu_key", "Login; Admin/Kabag", "Baca & ubah mode maintenance"],
             ["Live", "GET /live/stream (SSE)", "Publik", "Satu sinyal real-time untuk semua modul"],
@@ -1082,8 +1084,8 @@ def isi_aplikasi():
 
         PageBreak(),
         h1("7. Model Data"),
-        p("Skema database didefinisikan di `backend/prisma/schema.prisma` dan diterapkan melalui 29 migration "
-          "berurutan (0001 s.d. 0029). Relasi *created_by/updated_by* ke tabel users memakai ON DELETE SET "
+        p("Skema database didefinisikan di `backend/prisma/schema.prisma` dan diterapkan melalui 30 migration "
+          "berurutan (0001 s.d. 0030). Relasi *created_by/updated_by* ke tabel users memakai ON DELETE SET "
           "NULL agar data tetap ada saat akun dihapus."),
         Diagram(137.2, 399.2, d_erd),
         caption("Gambar 5. Diagram relasi entitas (ringkas)"),
@@ -1098,7 +1100,7 @@ def isi_aplikasi():
              "unik (kendaraan_id, tanggal_service); ikut terhapus bersama kendaraan"],
             ["ruang_rapat", "Booking ruang rapat",
              "booking_date..end_date (CHECK end_date >= booking_date); end_time > start_time; batal = "
-             "cancelled_at terisi + cancel_reason (tidak dihapus); guest_id terisi bila diajukan tamu"],
+             "cancelled_at terisi + cancel_reason (tidak dihapus); guest_id terisi bila diajukan tamu; cancelled_by_guest_id bila dibatalkan tamu"],
             ["guest_accounts", "Akun tamu (login Google)",
              "google_sub unik; is_blocked (blokir admin); token_version untuk mencabut sesi"],
             ["maintenance_mode", "Status maintenance per menu", "menu_key unik"],
@@ -1271,7 +1273,7 @@ def isi_infra():
             ["backend/src/routes", "auth, dashboard, pemeliharaan, pengadaan, kendaraan, ruangRapat, maintenance, users"],
             ["backend/src/middleware", "auth (JWT & peran), maintenance, security (header, rate limit, batas SSE)"],
             ["backend/src", "prisma.js, validate.js, fileStorage.js, fileSignature.js, token.js, mailer.js, logger.js"],
-            ["backend/prisma", "schema.prisma dan 29 migration (sumber kebenaran skema)"],
+            ["backend/prisma", "schema.prisma dan 30 migration (sumber kebenaran skema)"],
             ["backend/scripts", "db-verify.js (cek kolom & jumlah baris), cleanup-uploads.js (berkas yatim)"],
             ["backend/sql", "production_schema.sql (instalasi database production baru), role_management.sql, arsip pra-Prisma"],
             ["frontend/src", "pages, components, context (AuthContext), live.js + hooks (useLive, SSE), utils"],
@@ -1316,9 +1318,9 @@ def isi_infra():
         *bullets(
             "DBMS PostgreSQL 18, database `biro_umum_db`, skema `public`; 8 tabel inti + tabel riwayat "
             "migration Prisma (`_prisma_migrations`).",
-            "Perubahan struktur **hanya** melalui migration Prisma (0001 s.d. 0029) agar Prisma dan pgAdmin 4 "
+            "Perubahan struktur **hanya** melalui migration Prisma (0001 s.d. 0030) agar Prisma dan pgAdmin 4 "
             "selalu sinkron. Database production baru bisa dibuat sekali jalan dengan "
-            "`backend/sql/production_schema.sql` (setara 0001 s.d. 0029, sudah mengisi `_prisma_migrations`). Cek sinkron: `npx prisma migrate status` dan `npx prisma migrate diff "
+            "`backend/sql/production_schema.sql` (setara 0001 s.d. 0030, sudah mengisi `_prisma_migrations`). Cek sinkron: `npx prisma migrate status` dan `npx prisma migrate diff "
             "--from-schema-datasource ... --to-schema-datamodel ...` (read-only).",
             "Integritas dijaga di level database: UNIQUE (email, kode, plate, menu_key, service per tanggal), "
             "CHECK (kategori, status surat, jam & tanggal booking), foreign key dengan SET NULL/CASCADE, trigger "

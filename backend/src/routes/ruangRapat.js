@@ -41,9 +41,9 @@ const conflictMessage=c=>`Ruangan sudah dibooking pada waktu tersebut: "${c.agen
 // Kunci per ruangan selama transaksi, supaya dua booking bersamaan untuk ruangan yang sama tidak lolos cek bentrok berbarengan.
 const lockRoom=(tx,room)=>tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${'ruang_rapat:'+room}))`;
 class HttpError extends Error{constructor(status,message){super(message);this.status=status;}}
-const out=r=>hideFilePaths({...r,date:fmtDate(r.booking_date),end_date:fmtDate(r.end_date||r.booking_date),start:r.start_time.toISOString().slice(11,16),end:r.end_time.toISOString().slice(11,16),title:r.agenda,status:r.surat_status,updated_by_name:r.updatedBy?.nama_lengkap||null,updatedBy:undefined,cancelled:!!r.cancelled_at,cancelled_by_name:r.cancelledBy?.nama_lengkap||null,cancelledBy:undefined,guest:undefined,...(r.guest?{guest_name:r.guest.nama,guest_email:r.guest.email}:{})});
+const out=r=>hideFilePaths({...r,date:fmtDate(r.booking_date),end_date:fmtDate(r.end_date||r.booking_date),start:r.start_time.toISOString().slice(11,16),end:r.end_time.toISOString().slice(11,16),title:r.agenda,status:r.surat_status,updated_by_name:r.updatedBy?.nama_lengkap||null,updatedBy:undefined,cancelled:!!r.cancelled_at,cancelled_by_name:r.cancelledBy?.nama_lengkap||(r.cancelledByGuest?`${r.cancelledByGuest.nama} (tamu)`:null),cancelledBy:undefined,cancelledByGuest:undefined,guest:undefined,...(r.guest?{guest_name:r.guest.nama,guest_email:r.guest.email}:{})});
 // Booking dari akun tamu (login Google di landing page) -> nama & email tamu ikut ditampilkan ke pegawai.
-const guestInclude={guest:{select:{nama:true,email:true}}};
+const guestInclude={guest:{select:{nama:true,email:true}},cancelledByGuest:{select:{nama:true}}};
 // Rentang tanggal jadwal (?from=YYYY-MM-DD&to=YYYY-MM-DD). Tanpa parameter:
 // 1 bulan ke belakang s/d 1 tahun ke depan, supaya respons tidak terus
 // membesar seiring bertambahnya riwayat booking. Maksimal 400 hari per request.

@@ -270,13 +270,16 @@ model RuangRapat {
   booking_group   String?   @db.VarChar(36)
   // Diisi kalau booking diajukan akun tamu (login Google dari landing page).
   guest_id        Int?
+  // Diisi kalau booking dibatalkan sendiri oleh tamu pengajunya (cancelled_by tetap NULL).
+  cancelled_by_guest_id Int?
   created_at      DateTime  @default(now())
   updated_at      DateTime  @default(now()) @updatedAt
 
   createdBy   User? @relation("RuangRapatCreatedBy", fields: [created_by], references: [id], onDelete: SetNull)
   updatedBy   User? @relation("RuangRapatUpdatedBy", fields: [updated_by], references: [id], onDelete: SetNull)
   cancelledBy User? @relation("RuangRapatCancelledBy", fields: [cancelled_by], references: [id], onDelete: SetNull)
-  guest       GuestAccount? @relation(fields: [guest_id], references: [id], onDelete: SetNull)
+  guest       GuestAccount? @relation("RuangRapatGuest", fields: [guest_id], references: [id], onDelete: SetNull)
+  cancelledByGuest GuestAccount? @relation("RuangRapatCancelledByGuest", fields: [cancelled_by_guest_id], references: [id], onDelete: SetNull)
 
   @@index([booking_date, room])
   @@index([room, booking_date, end_date])
@@ -302,7 +305,8 @@ model GuestAccount {
   created_at    DateTime  @default(now())
   updated_at    DateTime  @default(now()) @updatedAt
 
-  bookings RuangRapat[]
+  bookings          RuangRapat[] @relation("RuangRapatGuest")
+  cancelledBookings RuangRapat[] @relation("RuangRapatCancelledByGuest")
 
   @@map("guest_accounts")
 }
