@@ -268,17 +268,41 @@ model RuangRapat {
   // Kode pengajuan: semua baris dari satu kali booking (pilih beberapa tanggal, atau pecahan
   // hasil cancel sebagian) punya nilai sama, jadi tetap diperlakukan sebagai satu booking saat cancel.
   booking_group   String?   @db.VarChar(36)
+  // Diisi kalau booking diajukan akun tamu (login Google dari landing page).
+  guest_id        Int?
   created_at      DateTime  @default(now())
   updated_at      DateTime  @default(now()) @updatedAt
 
   createdBy   User? @relation("RuangRapatCreatedBy", fields: [created_by], references: [id], onDelete: SetNull)
   updatedBy   User? @relation("RuangRapatUpdatedBy", fields: [updated_by], references: [id], onDelete: SetNull)
   cancelledBy User? @relation("RuangRapatCancelledBy", fields: [cancelled_by], references: [id], onDelete: SetNull)
+  guest       GuestAccount? @relation(fields: [guest_id], references: [id], onDelete: SetNull)
 
   @@index([booking_date, room])
   @@index([room, booking_date, end_date])
   @@index([pic])
   @@index([cancelled_at])
   @@index([booking_group])
+  @@index([guest_id])
   @@map("ruang_rapat")
+}
+
+// Akun tamu dari login Google (SSO) di landing page -- hanya bisa booking ruang rapat,
+// tidak bisa masuk aplikasi internal. Sesi berlaku 7 hari, lalu harus login Google lagi.
+model GuestAccount {
+  id            Int       @id @default(autoincrement())
+  google_sub    String    @unique @db.VarChar(255)
+  email         String    @db.VarChar(254)
+  nama          String    @db.VarChar(150)
+  foto          String?   @db.VarChar(500)
+  // Diblokir admin (mis. spam) -> tidak bisa login/booking lagi, sesi aktif langsung diputus.
+  is_blocked    Boolean   @default(false)
+  token_version Int       @default(0)
+  last_login_at DateTime?
+  created_at    DateTime  @default(now())
+  updated_at    DateTime  @default(now()) @updatedAt
+
+  bookings RuangRapat[]
+
+  @@map("guest_accounts")
 }

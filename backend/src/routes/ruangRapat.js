@@ -41,7 +41,9 @@ const conflictMessage=c=>`Ruangan sudah dibooking pada waktu tersebut: "${c.agen
 // Kunci per ruangan selama transaksi, supaya dua booking bersamaan untuk ruangan yang sama tidak lolos cek bentrok berbarengan.
 const lockRoom=(tx,room)=>tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${'ruang_rapat:'+room}))`;
 class HttpError extends Error{constructor(status,message){super(message);this.status=status;}}
-const out=r=>hideFilePaths({...r,date:fmtDate(r.booking_date),end_date:fmtDate(r.end_date||r.booking_date),start:r.start_time.toISOString().slice(11,16),end:r.end_time.toISOString().slice(11,16),title:r.agenda,status:r.surat_status,updated_by_name:r.updatedBy?.nama_lengkap||null,updatedBy:undefined,cancelled:!!r.cancelled_at,cancelled_by_name:r.cancelledBy?.nama_lengkap||null,cancelledBy:undefined});
+const out=r=>hideFilePaths({...r,date:fmtDate(r.booking_date),end_date:fmtDate(r.end_date||r.booking_date),start:r.start_time.toISOString().slice(11,16),end:r.end_time.toISOString().slice(11,16),title:r.agenda,status:r.surat_status,updated_by_name:r.updatedBy?.nama_lengkap||null,updatedBy:undefined,cancelled:!!r.cancelled_at,cancelled_by_name:r.cancelledBy?.nama_lengkap||null,cancelledBy:undefined,guest:undefined,...(r.guest?{guest_name:r.guest.nama,guest_email:r.guest.email}:{})});
+// Booking dari akun tamu (login Google di landing page) -> nama & email tamu ikut ditampilkan ke pegawai.
+const guestInclude={guest:{select:{nama:true,email:true}}};
 // Rentang tanggal jadwal (?from=YYYY-MM-DD&to=YYYY-MM-DD). Tanpa parameter:
 // 1 bulan ke belakang s/d 1 tahun ke depan, supaya respons tidak terus
 // membesar seiring bertambahnya riwayat booking. Maksimal 400 hari per request.
@@ -67,7 +69,7 @@ router.get('/stream',createSseLimiter(),(req,res)=>{
 router.use(requireAuth);
 router.use(requireNotInMaintenance('ruang-rapat'));
 // ?include_cancelled=1 -> booking berstatus batal ikut dikirim (toggle "Tampilkan yang dibatalkan").
-router.get('/',async(req,res)=>{try{const range=dateRange(req.query);if(!range)return res.status(400).json({message:'Rentang tanggal tidak valid.'});if(req.query.include_cancelled==='1')delete range.cancelled_at;const rows=await prisma.ruangRapat.findMany({where:range,omit:{surat_file_data:true},include:{updatedBy:{select:{nama_lengkap:true}},cancelledBy:{select:{nama_lengkap:true}}},orderBy:[{booking_date:'asc'},{start_time:'asc'},{id:'asc'}]});res.json({data:rows.map(out)});}catch(err){logger.error('GET ruang rapat gagal',{error:err});res.status(500).json({message:'Gagal mengambil jadwal ruang rapat.'});}});
+router.get('/',async(req,res)=>{try{const range=dateRange(req.query);if(!range)return res.status(400).json({message:'Rentang tanggal tidak valid.'});if(req.query.include_cancelled==='1')delete range.cancelled_at;const rows=await prisma.ruangRapat.findMany({where:range,omit:{surat_file_data:true},include:{updatedBy:{select:{nama_lengkap:true}},cancelledBy:{select:{nama_lengkap:true}},...guestInclude},orderBy:[{booking_date:'asc'},{start_time:'asc'},{id:'asc'}]});res.json({data:rows.map(out)});}catch(err){logger.error('GET ruang rapat gagal',{error:err});res.status(500).json({message:'Gagal mengambil jadwal ruang rapat.'});}});
 // Export file surat booking (ZIP) untuk rentang tanggal ?from=&to=. Booking batal diabaikan.
 // Nomor surat yang sama cukup diambil satu file saja; booking tanpa nomor surat dibedakan per file
 // (salinan dari cancel sebagian memakai file yang sama sehingga juga cukup satu).
@@ -119,7 +121,7 @@ router.get('/surat-export',async(req,res)=>{try{
   res.setHeader('X-Surat-Count',String(files.length-1));
   res.send(zip);
 }catch(err){logger.error('Export surat ruang rapat gagal',{error:err});res.status(500).json({message:'Gagal export surat ruang rapat.'});}});
-router.get('/:id',async(req,res)=>{try{const id=Number(req.params.id);if(!Number.isInteger(id))return res.status(400).json({message:'ID booking tidak valid.'});const row=await prisma.ruangRapat.findFirst({where:{id,cancelled_at:null},include:{updatedBy:{select:{nama_lengkap:true}}}});if(!row)return res.status(404).json({message:'Booking tidak ditemukan.'});res.json({data:out(row)});}catch(err){logger.error('GET ruang rapat detail gagal',{error:err});res.status(500).json({message:'Gagal mengambil detail booking.'});}});
+router.get('/:id',async(req,res)=>{try{const id=Number(req.params.id);if(!Number.isInteger(id))return res.status(400).json({message:'ID booking tidak valid.'});const row=await prisma.ruangRapat.findFirst({where:{id,cancelled_at:null},include:{updatedBy:{select:{nama_lengkap:true}},...guestInclude}});if(!row)return res.status(404).json({message:'Booking tidak ditemukan.'});res.json({data:out(row)});}catch(err){logger.error('GET ruang rapat detail gagal',{error:err});res.status(500).json({message:'Gagal mengambil detail booking.'});}});
 // Semua user login (termasuk karyawan) boleh menambah, mengedit, mengelola surat/status, dan membatalkan booking.
 router.post('/',async(req,res)=>{try{
   const {title,room,pic,pic_phone,date:startDate,end_date,start,end,surat_name,surat_file_data,nomor_surat,dates}=req.body;
@@ -234,7 +236,7 @@ router.post('/:id/cancel-dates',async(req,res)=>{try{
       // Semua tanggal booking ini dibatalkan -> baris ini sendiri yang berstatus batal.
       if(!keep.length){await tx.ruangRapat.update({where:{id:m.id},data:{...batal,booking_group:group}});continue;}
       rows.push(await tx.ruangRapat.update({where:{id:m.id},data:{booking_date:date(keep[0].from),end_date:date(keep[0].to),booking_group:group,updated_by:req.user.id},include}));
-      const copy={agenda:m.agenda,nomor_surat:m.nomor_surat,room:m.room,pic:m.pic,pic_phone:m.pic_phone,start_time:m.start_time,end_time:m.end_time,surat_status:m.surat_status,surat_name:m.surat_name,surat_file_data:m.surat_file_data,surat_file_path:m.surat_file_path,booking_group:group,created_by:m.created_by,updated_by:req.user.id};
+      const copy={agenda:m.agenda,nomor_surat:m.nomor_surat,room:m.room,pic:m.pic,pic_phone:m.pic_phone,start_time:m.start_time,end_time:m.end_time,surat_status:m.surat_status,surat_name:m.surat_name,surat_file_data:m.surat_file_data,surat_file_path:m.surat_file_path,booking_group:group,created_by:m.created_by,guest_id:m.guest_id,updated_by:req.user.id};
       for(const sg of keep.slice(1))rows.push(await tx.ruangRapat.create({data:{...copy,booking_date:date(sg.from),end_date:date(sg.to)},include}));
       for(const sg of gone)await tx.ruangRapat.create({data:{...copy,...batal,booking_date:date(sg.from),end_date:date(sg.to)}});
     }
@@ -246,3 +248,5 @@ router.post('/:id/cancel-dates',async(req,res)=>{try{
 // Batalkan seluruh booking. Data tidak dihapus, hanya diberi status batal (+ alasan opsional di body.reason).
 router.delete('/:id',async(req,res)=>{try{const id=Number(req.params.id);if(!Number.isInteger(id))return res.status(400).json({message:'ID booking tidak valid.'});if(!validReason(req.body?.reason))return res.status(400).json({message:'Alasan pembatalan maksimal 500 karakter.'});const {count}=await prisma.ruangRapat.updateMany({where:{id,cancelled_at:null},data:cancelData(req)});if(!count)return res.status(404).json({message:'Booking tidak ditemukan atau sudah dibatalkan.'});broadcastChange();res.json({message:'Booking dibatalkan.'});}catch(err){logger.error('DELETE ruang rapat gagal',{error:err});res.status(500).json({message:'Gagal membatalkan booking.'});}});
 module.exports=router;module.exports.ROOMS=ROOMS;
+// Dipakai juga oleh form booking tamu (routes/guest.js) supaya aturan & cek bentroknya sama persis.
+module.exports.booking={validText,validPhone,normPhone,validDate,validTime,validFile,validNomorSurat,validSuratName,date,time,DAY,conflictWhere,conflictMessage,lockRoom,HttpError,suratStatus,out,broadcastChange};

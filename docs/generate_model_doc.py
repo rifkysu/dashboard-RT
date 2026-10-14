@@ -33,7 +33,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 LOGO = os.path.join(ROOT, "frontend", "public", "logo-kemnaker.png")
 
-TANGGAL = "12 Oktober 2026"
+TANGGAL = "14 Oktober 2026"
 SISTEM = "Sistem Layanan Biro Umum & Rumah Tangga"
 
 PW, PH = A4
@@ -454,8 +454,8 @@ def d_arsitektur(g):
         g.box(72 + 56.5 * i, 537.7, 52, 36, r, ["route"], "wIndigo", SZ_S)
     g.arrow(297, 583.7, 297, 593.7, both=True)
     g.group(62, 593.7, 470, 80, "LAPISAN DATA", "green")
-    for i, (t, s) in enumerate([("Prisma ORM 6", ["schema.prisma", "28 migration"]),
-                                ("PostgreSQL", ["biro_umum_db", "7 tabel inti"]),
+    for i, (t, s) in enumerate([("Prisma ORM 6", ["schema.prisma", "29 migration"]),
+                                ("PostgreSQL", ["biro_umum_db", "8 tabel inti"]),
                                 ("File Storage", ["backend/uploads/", "(PDF, JPG, PNG)"])]):
         g.box(72 + 155 * i, 608.7, 140, 55, t, s, "green", SZ_L)
     g.arrow(212, 636.7, 227, 636.7)
@@ -531,7 +531,8 @@ def d_erd(g):
         "PK id, menu_key (unik)", "is_active, message", "FK updated_by"], "#e11d48")
     g.entity(394, 262.2, 138, "ruang_rapat", [
         "PK id, room, agenda, pic", "booking_date .. end_date", "start_time .. end_time",
-        "surat_status, nomor_surat", "FK created_by, updated_by"], "#7c3aed")
+        "surat_status, nomor_surat", "FK created_by, updated_by, guest_id"], "#7c3aed")
+    g.entity(394, 354.2, 138, "guest_accounts", ["PK id, google_sub (unik)", "email, nama, is_blocked"], "#2563eb")
     g.arrow(204, 175.2, 239, 175.2)
     g.text(204.7, 171.2, "created_by", 6.8)
     g.arrow(394, 175.2, 357, 175.2)
@@ -542,6 +543,8 @@ def d_erd(g):
     g.text(303, 254.7, "updated_by", 6.5)
     g.arrow(117, 354.2, 117, 336.7)
     g.text(123, 347.4, "1 kendaraan : N service", 6.5)
+    g.arrow(463, 354.2, 463, 336.7)
+    g.text(469, 347.4, "1 tamu : N booking", 6.5)
 
 
 # Flowchart bab 9. Kolom: kiri 62, utama 220, kanan 400 (x lokal area isi, lebar 481).
@@ -846,7 +849,23 @@ def isi_aplikasi():
             "Halaman kiosk **/jadwal-rapat** menampilkan jadwal yang sama dalam mode baca saja untuk layar di "
             "dekat ruang rapat.",
             "Pilihan ruangan (Semua Ruangan atau satu ruangan) di landing page & kiosk, tetap real-time; "
-            "tersimpan di URL, mis. **/jadwal-rapat?ruang=SERBAGUNA** untuk layar di depan satu ruangan.",
+            "tersimpan di URL, mis. **/jadwal-rapat?ruang=SERBAGUNA**.",
+            "Layar per ruangan **/ruang/:ruang** (mis. **/ruang/serbaguna**, **/ruang/setjen-ii**) untuk tablet/monitor "
+            "di depan tiap ruang: status besar Tersedia / Segera digunakan (<= 15 menit) / Sedang digunakan, rapat "
+            "berlangsung (agenda, PIC, jam, sisa waktu), dan agenda 7 hari berupa slide per hari (strip tanggal, swipe/panah, "
+            "bergeser otomatis tiap 8 detik bila tidak disentuh). Publik & baca saja, "
+            "real-time + muat ulang tiap menit, layar dijaga tetap menyala (Wake Lock), tombol layar penuh. **/ruang** "
+            "menampilkan daftar ruangan; di landing page tiap ruangan pada kartu *Ruang rapat hari ini* dan bagian "
+            "*Layar per ruangan* menautkan ke layarnya.",
+            "**Booking ruang rapat untuk tamu** (tanpa akun pegawai): tombol *Login dengan Google untuk booking* "
+            "di bagian Jadwal Ruang Rapat. Setelah login Google (OAuth 2.0 + PKCE), tamu mengisi form booking "
+            "yang **semua kolomnya wajib** (agenda, nomor surat, PIC, No. HP PIC, ruangan, tanggal mulai & sampai, "
+            "jam, file surat permohonan); tombol Kirim baru aktif bila semua terisi. Saat submit wajib mengisi "
+            "**captcha huruf + angka** (gambar PNG dari server) yang **berlaku 5 menit** dan hangus setelah sekali dicek.",
+            "Sesi akun Google tamu **berlaku 7 hari**. Anti-spam: jeda 60 detik antar pengajuan, maks. 3 pengajuan "
+            "per 24 jam dan 5 booking aktif per akun, satu pengajuan maks. 7 hari berturut-turut & maks. 90 hari "
+            "ke depan, rate limit per akun & IP, serta akun bisa diblokir admin. Daftar *Booking Anda* tampil di "
+            "panel yang sama.",
             "Mengikuti Mode Maintenance menu *landing*; status dibaca dari endpoint publik tanpa login."),
         h2("3.2 Autentikasi"),
         *bullets(
@@ -860,8 +879,9 @@ def isi_aplikasi():
             "Lupa kata sandi: link reset berlaku 1 jam, dikirim via email (SMTP) atau diteruskan admin dari "
             "menu Akun & Akses. Kata sandi baru mengikuti aturan yang sama dengan Daftar Akun (8-128 karakter, "
             "huruf & angka), diperiksa di frontend dan backend.",
-            "Login hanya dengan email & kata sandi (tidak ada login Google/SSO). Akun lama dengan domain "
-            "lain tetap bisa login dengan email & kata sandi.",
+            "Login pegawai hanya dengan email & kata sandi. Login Google hanya untuk **tamu** yang booking ruang "
+            "rapat dari landing page (tabel `guest_accounts`, tidak bisa masuk aplikasi internal). Akun lama "
+            "dengan domain lain tetap bisa login dengan email & kata sandi.",
             "Proteksi percobaan login: 5 kali per menit per kombinasi IP + email, dengan hitung mundur di "
             "layar."),
         h2("3.3 Dashboard"),
@@ -880,7 +900,11 @@ def isi_aplikasi():
             "(tampil \"-\" sebelum data pertama termuat, atau data terakhir beserta jamnya).",
             "Status ruang rapat saat ini: Kosong / Dipakai s.d. jam tertentu, termasuk booking multi-hari yang "
             "sedang berjalan.",
-            "Daftar aktivitas terbaru gabungan Pemeliharaan & Pengadaan."),
+            "Daftar aktivitas terbaru gabungan Pemeliharaan & Pengadaan.",
+            "Khusus Admin/Kabag: panel **Akun Google Pengaju Booking** berisi akun tamu yang sudah mengisi form "
+            "booking dari landing page (nama, email, booking terakhir, total booking) dengan tombol **Blokir / "
+            "Buka blokir**; blokir langsung memutus sesi tamu tersebut. Detail booking di menu Ruang Rapat "
+            "menampilkan label nama & email tamu pengaju."),
         h2("3.4 Pemeliharaan & Pengadaan"),
         *bullets(
             "Pengajuan permintaan dengan dokumen pendukung (PDF/gambar/Office).",
@@ -983,6 +1007,7 @@ def isi_aplikasi():
             ["Rute", "Halaman", "Akses", "Keterangan"],
             ["/", "Landing", "Publik", "Ringkasan modul + jadwal rapat real-time"],
             ["/jadwal-rapat", "Jadwal Rapat (kiosk)", "Publik", "Tampilan baca saja untuk layar besar"],
+            ["/ruang, /ruang/:ruang", "Layar Ruangan", "Publik", "Status & agenda satu ruangan untuk tablet di depan ruang"],
             ["/login", "Login", "Publik", "Validasi kolom, anti-spam, popup animasi"],
             ["/register", "Daftar Akun", "Publik", "Validasi lengkap, lanjut ke Login"],
             ["/forgot-password, /reset-password", "Lupa & Reset Kata Sandi", "Publik",
@@ -1038,6 +1063,11 @@ def isi_aplikasi():
             ["Ruang Rapat", "GET /public-schedule, GET /stream (SSE)", "Publik", "Jadwal publik & sinyal real-time"],
             ["", "GET / , GET /:id, POST /, PUT /:id, DELETE /:id", "Login", "Kelola booking"],
             ["", "GET /:id/group-dates; POST /:id/cancel-dates", "Login", "Tanggal satu pengajuan; batalkan tanggal tertentu"],
+            ["Tamu (Google)", "GET /auth/google, GET /auth/google/callback", "Publik", "Login Google tamu (OAuth 2.0 + PKCE)"],
+            ["", "GET /guest/me, /guest/captcha, /guest/bookings; POST /guest/bookings, /guest/logout", "Tamu (token Google 7 hari)",
+             "Sesi, captcha 5 menit, booking milik sendiri, ajukan booking, keluar"],
+            ["", "GET /guest/admin/accounts; PUT /guest/admin/accounts/:id/block", "Admin/Kabag",
+             "Daftar akun tamu pengaju & blokir"],
             ["Maintenance", "GET /landing-status, GET /stream (SSE)", "Publik", "Status landing & sinyal real-time"],
             ["", "GET / ; PUT /:menu_key", "Login; Admin/Kabag", "Baca & ubah mode maintenance"],
             ["Live", "GET /live/stream (SSE)", "Publik", "Satu sinyal real-time untuk semua modul"],
@@ -1052,8 +1082,8 @@ def isi_aplikasi():
 
         PageBreak(),
         h1("7. Model Data"),
-        p("Skema database didefinisikan di `backend/prisma/schema.prisma` dan diterapkan melalui 28 migration "
-          "berurutan (0001 s.d. 0028). Relasi *created_by/updated_by* ke tabel users memakai ON DELETE SET "
+        p("Skema database didefinisikan di `backend/prisma/schema.prisma` dan diterapkan melalui 29 migration "
+          "berurutan (0001 s.d. 0029). Relasi *created_by/updated_by* ke tabel users memakai ON DELETE SET "
           "NULL agar data tetap ada saat akun dihapus."),
         Diagram(137.2, 399.2, d_erd),
         caption("Gambar 5. Diagram relasi entitas (ringkas)"),
@@ -1068,7 +1098,9 @@ def isi_aplikasi():
              "unik (kendaraan_id, tanggal_service); ikut terhapus bersama kendaraan"],
             ["ruang_rapat", "Booking ruang rapat",
              "booking_date..end_date (CHECK end_date >= booking_date); end_time > start_time; batal = "
-             "cancelled_at terisi + cancel_reason (tidak dihapus)"],
+             "cancelled_at terisi + cancel_reason (tidak dihapus); guest_id terisi bila diajukan tamu"],
+            ["guest_accounts", "Akun tamu (login Google)",
+             "google_sub unik; is_blocked (blokir admin); token_version untuk mencabut sesi"],
             ["maintenance_mode", "Status maintenance per menu", "menu_key unik"],
         ]),
 
@@ -1149,7 +1181,7 @@ def d_topologi(g):
     g.group(62, 142.2, 470, 76, "PENGGUNA", "blue")
     for i, (t, s) in enumerate([("Pegawai Internal", ["browser PC / HP", "(jaringan kantor)"]),
                                 ("Pengunjung Publik", ["Landing & jadwal rapat", "tanpa login"]),
-                                ("Layar Kiosk", ["/jadwal-rapat", "dekat ruang rapat"])]):
+                                ("Layar Kiosk", ["/jadwal-rapat, /ruang", "dekat ruang rapat"])]):
         g.box(72 + 155 * i, 163.2, 140, 45, t, s, "blue", SZ_L)
     g.arrow(142, 208.2, 142, 258.2)
     g.text(148, 235.2, "memuat HTML/JS", 6.8)
@@ -1239,7 +1271,7 @@ def isi_infra():
             ["backend/src/routes", "auth, dashboard, pemeliharaan, pengadaan, kendaraan, ruangRapat, maintenance, users"],
             ["backend/src/middleware", "auth (JWT & peran), maintenance, security (header, rate limit, batas SSE)"],
             ["backend/src", "prisma.js, validate.js, fileStorage.js, fileSignature.js, token.js, mailer.js, logger.js"],
-            ["backend/prisma", "schema.prisma dan 28 migration (sumber kebenaran skema)"],
+            ["backend/prisma", "schema.prisma dan 29 migration (sumber kebenaran skema)"],
             ["backend/scripts", "db-verify.js (cek kolom & jumlah baris), cleanup-uploads.js (berkas yatim)"],
             ["backend/sql", "production_schema.sql (instalasi database production baru), role_management.sql, arsip pra-Prisma"],
             ["frontend/src", "pages, components, context (AuthContext), live.js + hooks (useLive, SSE), utils"],
@@ -1273,17 +1305,20 @@ def isi_infra():
             ["PRISMA_LOG", "Tidak", "true untuk log peringatan Prisma"],
             ["SMTP_HOST / PORT / USER / PASS, MAIL_FROM", "Tidak",
              "Mengirim email reset kata sandi; bila kosong permintaan masuk ke notifikasi admin"],
+            ["GOOGLE_CLIENT_ID / CLIENT_SECRET / CALLBACK_URL", "Tidak",
+             "Login Google untuk tamu booking ruang rapat; CALLBACK_URL (…/api/auth/google/callback) harus "
+             "terdaftar di Google Cloud Console. Bila kosong tombol login Google menampilkan pesan belum dikonfigurasi"],
             ["VITE_API_URL (frontend)", "Tidak", "Alamat API untuk frontend, default http://localhost:4000/api"],
         ]),
 
         PageBreak(),
         h1("5. Database"),
         *bullets(
-            "DBMS PostgreSQL 18, database `biro_umum_db`, skema `public`; 7 tabel inti + tabel riwayat "
+            "DBMS PostgreSQL 18, database `biro_umum_db`, skema `public`; 8 tabel inti + tabel riwayat "
             "migration Prisma (`_prisma_migrations`).",
-            "Perubahan struktur **hanya** melalui migration Prisma (0001 s.d. 0028) agar Prisma dan pgAdmin 4 "
+            "Perubahan struktur **hanya** melalui migration Prisma (0001 s.d. 0029) agar Prisma dan pgAdmin 4 "
             "selalu sinkron. Database production baru bisa dibuat sekali jalan dengan "
-            "`backend/sql/production_schema.sql` (setara 0001 s.d. 0028, sudah mengisi `_prisma_migrations`). Cek sinkron: `npx prisma migrate status` dan `npx prisma migrate diff "
+            "`backend/sql/production_schema.sql` (setara 0001 s.d. 0029, sudah mengisi `_prisma_migrations`). Cek sinkron: `npx prisma migrate status` dan `npx prisma migrate diff "
             "--from-schema-datasource ... --to-schema-datamodel ...` (read-only).",
             "Integritas dijaga di level database: UNIQUE (email, kode, plate, menu_key, service per tanggal), "
             "CHECK (kategori, status surat, jam & tanggal booking), foreign key dengan SET NULL/CASCADE, trigger "
@@ -1326,12 +1361,16 @@ def isi_infra():
             ["CORS", "Hanya origin FRONTEND_URL; metode GET/POST/PUT/DELETE/OPTIONS."],
             ["Rate limit", "Global 180 request/menit per akun (per IP bila belum login); login 5/menit per "
              "IP+email dan 30/menit per IP; daftar 50/jam; lupa sandi 5/jam; reset 20/jam; koneksi SSE maks. "
-             "200 per IP & 1000 total."],
+             "200 per IP & 1000 total. Tamu Google: captcha 10/menit, submit booking 6/10 menit per akun & 20/10 menit per IP."],
+            ["Captcha & anti-spam tamu", "Captcha huruf+angka berupa gambar PNG yang digambar server (jawaban tidak ada di "
+             "kode sumber gambar), disimpan sebagai hash, berlaku 5 menit, satu per akun dan hangus setelah sekali dicek. "
+             "Jeda 60 detik, maks. 3 pengajuan/24 jam & 5 booking aktif per akun (dikunci advisory lock per akun)."],
             ["Autentikasi", "JWT HS256 berlaku 8 jam; peran & status aktif dibaca ulang dari database setiap "
              "request; akun yang di-ban langsung ditolak (kode ACCOUNT_BANNED) dan dikeluarkan dari sesi. "
              "Token membawa versi sesi (users.token_version) yang naik saat logout, reset kata sandi, atau "
              "ban, sehingga token lama langsung tidak berlaku walau belum kedaluwarsa. Login dengan email tidak "
-             "terdaftar tetap menjalankan bcrypt agar waktu respons sama."],
+             "terdaftar tetap menjalankan bcrypt agar waktu respons sama. Token tamu Google terpisah (audience "
+             "guest-booking, berlaku 7 hari, versi sesi guest_accounts.token_version) dan ditolak oleh endpoint pegawai."],
             ["Kata sandi", "bcrypt cost 12; token reset acak 32 byte, disimpan sebagai hash SHA-256, berlaku "
              "1 jam, tidak pernah ditampilkan ke peminta publik; token dikirim di #fragment link sehingga "
              "tidak tercatat di log server."],

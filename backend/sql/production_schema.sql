@@ -5,7 +5,7 @@
 --  sama persis dengan aplikasi saat ini, tanpa perlu menjalankan
 --  `npx prisma migrate deploy`.
 --
---  Isi file = hasil akhir migration Prisma 0001_init s/d 0028_updated_at_utc
+--  Isi file = hasil akhir migration Prisma 0001_init s/d 0029_guest_booking_sso
 --  (backend/prisma/migrations/), ditambah tabel riwayat `_prisma_migrations`
 --  yang sudah terisi. Jadi setelah file ini dijalankan:
 --    * `npx prisma migrate status` -> "Database schema is up to date!"
@@ -252,6 +252,21 @@ CREATE UNIQUE INDEX "kendaraan_service_kendaraan_id_tanggal_service_key" ON "ken
 -- ---------------------------------------------------------------------
 -- ruang_rapat -- booking ruang rapat (multi-hari, cancel tanpa hapus, kode pengajuan)
 -- ---------------------------------------------------------------------
+-- Akun tamu dari login Google di landing page (hanya untuk booking ruang rapat).
+CREATE TABLE "guest_accounts" (
+  "id"            SERIAL PRIMARY KEY,
+  "google_sub"    VARCHAR(255) NOT NULL,
+  "email"         VARCHAR(254) NOT NULL,
+  "nama"          VARCHAR(150) NOT NULL,
+  "foto"          VARCHAR(500),
+  "is_blocked"    BOOLEAN NOT NULL DEFAULT false,
+  "token_version" INTEGER NOT NULL DEFAULT 0,
+  "last_login_at" TIMESTAMP(3),
+  "created_at"    TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updated_at"    TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE UNIQUE INDEX "guest_accounts_google_sub_key" ON "guest_accounts"("google_sub");
+
 CREATE TABLE "ruang_rapat" (
   "id"              SERIAL NOT NULL,
   "agenda"          VARCHAR(255) NOT NULL,
@@ -273,6 +288,7 @@ CREATE TABLE "ruang_rapat" (
   "cancelled_by"    INTEGER,
   "cancel_reason"   VARCHAR(500),
   "booking_group"   VARCHAR(36),              -- kode pengajuan (satu kali booking)
+  "guest_id"        INTEGER,                  -- terisi = diajukan akun tamu (login Google)
   "created_at"      TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "updated_at"      TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT "ruang_rapat_pkey" PRIMARY KEY ("id"),
@@ -285,6 +301,7 @@ CREATE INDEX "ruang_rapat_room_booking_date_end_date_idx" ON "ruang_rapat"("room
 CREATE INDEX "ruang_rapat_pic_idx" ON "ruang_rapat"("pic");
 CREATE INDEX "ruang_rapat_cancelled_at_idx" ON "ruang_rapat"("cancelled_at");
 CREATE INDEX "ruang_rapat_booking_group_idx" ON "ruang_rapat"("booking_group");
+CREATE INDEX "ruang_rapat_guest_id_idx" ON "ruang_rapat"("guest_id");
 
 -- ---------------------------------------------------------------------
 -- Foreign key
@@ -302,6 +319,7 @@ ALTER TABLE "kendaraan_service" ADD CONSTRAINT "kendaraan_service_updated_by_fke
 ALTER TABLE "ruang_rapat"       ADD CONSTRAINT "ruang_rapat_created_by_fkey"       FOREIGN KEY ("created_by")   REFERENCES "users"("id")     ON DELETE SET NULL ON UPDATE CASCADE;
 ALTER TABLE "ruang_rapat"       ADD CONSTRAINT "ruang_rapat_updated_by_fkey"       FOREIGN KEY ("updated_by")   REFERENCES "users"("id")     ON DELETE SET NULL ON UPDATE CASCADE;
 ALTER TABLE "ruang_rapat"       ADD CONSTRAINT "ruang_rapat_cancelled_by_fkey"     FOREIGN KEY ("cancelled_by") REFERENCES "users"("id")     ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "ruang_rapat"       ADD CONSTRAINT "ruang_rapat_guest_id_fkey"         FOREIGN KEY ("guest_id")     REFERENCES "guest_accounts"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- ---------------------------------------------------------------------
 -- Function & trigger
@@ -347,7 +365,7 @@ INSERT INTO "maintenance_mode" ("menu_key", "is_active") VALUES
 ON CONFLICT ("menu_key") DO NOTHING;
 
 -- ---------------------------------------------------------------------
--- Riwayat migration Prisma -- menandai 0001 s/d 0028 sudah diterapkan,
+-- Riwayat migration Prisma -- menandai 0001 s/d 0029 sudah diterapkan,
 -- supaya `prisma migrate deploy` berikutnya hanya menjalankan migration baru.
 -- ---------------------------------------------------------------------
 CREATE TABLE "_prisma_migrations" (
@@ -391,7 +409,8 @@ FROM (VALUES
   ('0025_token_version',                    '0e37f0da4942280c5728284739995b6b728e6dbcf11776ca43d547c9a42fa27a'),
   ('0026_surat_status_otomatis',            'f1e49b6a2500c867a606874986f7f945f68016abbf0e09ff152310a96d8d1495'),
   ('0027_ruang_rapat_booking_group',        'dd3e8a98353b95b0c1e26045710133dd84f582b2d530b0c317404a6c9bac7723'),
-  ('0028_updated_at_utc',                   'c2f9591c3bcb9f82a2c3bc35b7298c4875871b10e5c8ea9db7c6c813e763e4c4')
+  ('0028_updated_at_utc',                   'c2f9591c3bcb9f82a2c3bc35b7298c4875871b10e5c8ea9db7c6c813e763e4c4'),
+  ('0029_guest_booking_sso',                '6d8f68a3ed9ab6947d70251837bea9f959d96d74fff5bbaf7eb1ba3f7aa7c00d')
 ) AS m(name, checksum)
 ORDER BY m.name;
 

@@ -12,6 +12,7 @@ const dashboardRoutes = require('./routes/dashboard');
 const ruangRapatRoutes = require('./routes/ruangRapat');
 const maintenanceRoutes = require('./routes/maintenance');
 const usersRoutes = require('./routes/users');
+const guestRoutes = require('./routes/guest');
 const live = require('./live');
 const logger = require('./logger');
 const { ensureUploadRoot } = require('./fileStorage');
@@ -42,7 +43,11 @@ app.use(cors({ origin: frontendUrl, credentials: false, methods: ['GET','POST','
 const rateKeyByUser = (req) => {
   const header = req.headers.authorization || '';
   if (!header.startsWith('Bearer ') || header.length > 4200) return '';
-  try { return `u:${jwt.verify(header.slice(7).trim(), process.env.JWT_SECRET, { algorithms: ['HS256'] }).id}`; } catch { return ''; }
+  try {
+    const p = jwt.verify(header.slice(7).trim(), process.env.JWT_SECRET, { algorithms: ['HS256'] });
+    // Token tamu (login Google di landing page) dihitung per akun tamu, terpisah dari akun pegawai.
+    return p.gid ? `g:${p.gid}` : `u:${p.id}`;
+  } catch { return ''; }
 };
 app.use(createRateLimiter({ windowMs: 60 * 1000, max: 180, message: 'Terlalu banyak permintaan. Coba lagi sebentar.', keyFn: rateKeyByUser }));
 // File upload disimpan sebagai Base64 di payload JSON; naikkan limit agar dokumen tidak ditolak 413.
@@ -70,6 +75,8 @@ app.get('/api/health', (req, res) => {
 // Satu stream live untuk semua modul (lihat src/live.js).
 app.get('/api/live/stream', createSseLimiter(), live.streamHandler);
 
+// Login Google untuk tamu (booking ruang rapat dari landing page) -- lihat routes/guest.js.
+app.use('/api/auth', guestRoutes.googleRouter);
 app.use('/api/auth', live.notifyOnWrite('users'), authRoutes);
 app.use('/api/pemeliharaan', live.notifyOnWrite('pemeliharaan'), pemeliharaanRoutes);
 app.use('/api/pengadaan', live.notifyOnWrite('pengadaan'), pengadaanRoutes);
@@ -78,6 +85,7 @@ app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/ruang-rapat', live.notifyOnWrite('ruang-rapat'), ruangRapatRoutes);
 app.use('/api/maintenance', live.notifyOnWrite('maintenance'), maintenanceRoutes);
 app.use('/api/users', live.notifyOnWrite('users'), usersRoutes);
+app.use('/api/guest', live.notifyOnWrite('ruang-rapat'), guestRoutes);
 
 // Endpoint API yang tidak dikenal -> JSON berpesan jelas (bukan halaman HTML default Express),
 // supaya frontend tidak cuma menampilkan "Gagal ..." -- biasanya karena backend belum di-restart
