@@ -212,6 +212,7 @@ Backend selalu mengambil role terbaru langsung dari database di setiap request, 
    JWT_SECRET="isi_string_acak_minimal_32_karakter"
    JWT_EXPIRES_IN="8h"
    JWT_REMEMBER_EXPIRES_IN="30d"   # masa login bila "Ingat saya" dicentang
+   APP_TIMEZONE="Asia/Jakarta"     # zona waktu kantor; server production boleh UTC
    FRONTEND_URL="http://localhost:5173"
    PORT=4000
 

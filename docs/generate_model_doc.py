@@ -1311,6 +1311,7 @@ def isi_infra():
             ["JWT_SECRET", "Ya", "Kunci tanda tangan token, minimal 32 karakter (server menolak start bila kurang)"],
             ["JWT_EXPIRES_IN", "Tidak", "Masa berlaku token, default 8h"],
             ["JWT_REMEMBER_EXPIRES_IN", "Tidak", "Masa berlaku token bila \"Ingat saya\" dicentang, default 30d"],
+            ["APP_TIMEZONE", "Tidak", "Zona waktu kantor untuk tanggal/jam hari ini (booking tamu, dashboard), default Asia/Jakarta"],
             ["FRONTEND_URL", "Ya", "Origin yang diizinkan CORS & dasar link reset kata sandi"],
             ["PORT", "Tidak", "Port backend, default 4000"],
             ["TRUST_PROXY", "Tidak", "true bila di belakang reverse proxy agar IP klien terbaca benar"],

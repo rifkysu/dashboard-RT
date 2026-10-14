@@ -25,7 +25,7 @@ export default function GuestAccounts({ className = 'mt-7' }) {
   }
   useEffect(() => { load(); }, []);
   // Tamu login Google / booking / membatalkan -> daftar langsung diperbarui.
-  useLive(['ruang-rapat', 'users'], load);
+  useLive(['ruang-rapat', 'guest-accounts'], load);
 
   async function toggleBlock(g) {
     const blocked = !g.is_blocked;

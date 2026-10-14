@@ -10,6 +10,7 @@ const { createRateLimiter } = require('../middleware/security');
 const { saveDataUrl } = require('../fileStorage');
 const { createCaptcha, verifyCaptcha } = require('../captcha');
 const { ROOMS, booking: B } = require('./ruangRapat');
+const { nowLocal } = require('../clock');
 
 // =====================================================================
 // Booking ruang rapat untuk TAMU lewat login Google (SSO) di landing page.
@@ -34,8 +35,8 @@ const GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token';
 const googleConfigured = () => !!(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET && process.env.GOOGLE_CALLBACK_URL);
 const frontend = (hash) => `${String(process.env.FRONTEND_URL || '').replace(/\/+$/, '')}/${hash ? `#${hash}` : ''}`;
 
-// Tanggal hari ini menurut jam server (WIB), format YYYY-MM-DD -- sama dengan dashboard.
-const todayIso = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+// Tanggal hari ini menurut WIB (APP_TIMEZONE), format YYYY-MM-DD -- tidak bergantung zona waktu server.
+const todayIso = () => nowLocal().date;
 
 // ---------------------------------------------------------------------
 // Login Google (dipasang di /api/auth supaya cocok dengan GOOGLE_CALLBACK_URL di .env)
@@ -76,7 +77,8 @@ function decodeIdToken(idToken) {
   try { return JSON.parse(Buffer.from(part, 'base64url').toString('utf8')); } catch { return null; }
 }
 
-googleRouter.get('/google/callback', googleStartLimiter, async (req, res) => {
+const googleCallbackLimiter = createRateLimiter({ windowMs: 10 * 60 * 1000, max: 30, message: 'Terlalu banyak percobaan login Google. Coba lagi beberapa menit lagi.' });
+googleRouter.get('/google/callback', googleCallbackLimiter, async (req, res) => {
   const { code, state, error } = req.query;
   const pending = typeof state === 'string' ? pendingStates.get(state) : null;
   if (typeof state === 'string') pendingStates.delete(state);
@@ -124,7 +126,7 @@ googleRouter.get('/google/callback', googleStartLimiter, async (req, res) => {
     const token = jwt.sign({ gid: guest.id, tv: guest.token_version }, process.env.JWT_SECRET, { expiresIn: GUEST_SESSION, algorithm: 'HS256', audience: GUEST_AUDIENCE });
     logger.info('Login tamu Google', { guest_id: guest.id });
     // Panel akun tamu di Dashboard & Akun & Akses langsung menampilkan login baru.
-    live.broadcast('users');
+    live.broadcast('guest-accounts');
     // Token lewat fragment (#) -> tidak terkirim ke server mana pun & tidak masuk log akses.
     res.redirect(frontend(`guest_token=${encodeURIComponent(token)}`));
   } catch (err) {
@@ -228,8 +230,7 @@ router.post('/bookings', submitIpLimiter, requireGuest, submitGuestLimiter, requ
     if (ed < bd) return res.status(400).json({ message: 'Sampai tanggal tidak boleh sebelum tanggal mulai.' });
     if ((ed - bd) / B.DAY + 1 > MAX_SPAN_DAYS) return res.status(400).json({ message: `Booking tamu maksimal ${MAX_SPAN_DAYS} hari berturut-turut.` });
     if (startDate === today) {
-      const n = new Date(); const nowHm = `${String(n.getHours()).padStart(2, '0')}:${String(n.getMinutes()).padStart(2, '0')}`;
-      if (start < nowHm) return res.status(400).json({ message: 'Jam mulai hari ini sudah lewat.' });
+      if (start < nowLocal().hm) return res.status(400).json({ message: 'Jam mulai hari ini sudah lewat.' });
     }
 
     const guestId = req.guest.id;
@@ -335,6 +336,7 @@ router.put('/admin/accounts/:id/block', requireAuth, requireRole(ADMIN_ROLES), a
     const blocked = req.body.blocked;
     const g = await prisma.guestAccount.update({ where: { id }, data: { is_blocked: blocked, ...(blocked ? { token_version: { increment: 1 } } : {}) }, select: { id: true, is_blocked: true } });
     logger.info(blocked ? 'Akun tamu diblokir' : 'Blokir akun tamu dibuka', { guest_id: id, by: req.user.id });
+    live.broadcast('guest-accounts');
     res.json({ message: blocked ? 'Akun tamu diblokir.' : 'Blokir akun tamu dibuka.', data: g });
   } catch (err) {
     if (err.code === 'P2025') return res.status(404).json({ message: 'Akun tamu tidak ditemukan.' });
