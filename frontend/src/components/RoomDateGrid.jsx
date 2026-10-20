@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { holidayLabel } from '../utils/holidays';
+import { RuangFotoButton, RuangThumb } from './RuangFoto';
 import { iso, monthKey, monthDays, MAX_MONTHS } from '../hooks/useMonthSchedule';
 
 const DAY_NAMES = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'];
@@ -117,7 +118,16 @@ export default function RoomDateGrid({ months, rooms, items, loading, loadingMor
           <tr>
             <th className="sticky top-0 left-0 z-30 bg-slate-100 border-b-2 border-r border-slate-200 text-left px-3 py-3 text-[11px] font-bold text-slate-700 uppercase tracking-wider w-[150px] min-w-[150px]">Tanggal</th>
             {rooms.map((room) => (
-              <th key={room} className="sticky top-0 z-20 bg-slate-100 border-b-2 border-l border-slate-200 text-left px-3 py-3 text-[11px] font-bold text-slate-700 uppercase tracking-wider min-w-[190px]">{room}</th>
+              <th key={room} className="sticky top-0 z-20 bg-slate-100 border-b-2 border-l border-slate-200 text-left px-3 py-2 text-[11px] font-bold text-slate-700 uppercase tracking-wider min-w-[190px]">
+                {/* Klik = popup foto & fasilitas ruangan (dikelola admin di menu Foto & Fasilitas Ruang) */}
+                <RuangFotoButton room={room} className="group w-full flex items-center gap-2.5 text-left rounded-lg -mx-1 px-1 py-0.5 hover:bg-white/70 focus:outline-none focus-visible:ring-2 focus-visible:ring-dinas/30">
+                  <RuangThumb room={room} className="w-9 h-9 rounded-lg ring-1 ring-black/5 transition group-hover:ring-kuningan/60" iconClass="text-[17px]" />
+                  <span className="min-w-0">
+                    <span className="block truncate">{room}</span>
+                    <span className="block text-[10px] font-semibold normal-case tracking-normal text-slate-500 group-hover:text-dinas">Lihat foto & fasilitas</span>
+                  </span>
+                </RuangFotoButton>
+              </th>
             ))}
           </tr>
         </thead>

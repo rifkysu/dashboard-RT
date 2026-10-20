@@ -54,6 +54,8 @@ model User {
   ruangRapatUpdated   RuangRapat[]   @relation("RuangRapatUpdatedBy")
   ruangRapatCancelled RuangRapat[]   @relation("RuangRapatCancelledBy")
   maintenanceModeUpdated MaintenanceMode[] @relation("MaintenanceModeUpdatedBy")
+  ruangFotoCreated    RuangFoto[]    @relation("RuangFotoCreatedBy")
+  ruangProfilUpdated  RuangProfil[]  @relation("RuangProfilUpdatedBy")
 
   @@map("users")
 }
@@ -309,4 +311,35 @@ model GuestAccount {
   cancelledBookings RuangRapat[] @relation("RuangRapatCancelledByGuest")
 
   @@map("guest_accounts")
+}
+
+// Foto ruang rapat untuk slideshow layar ruangan (/ruang/:slug), dikelola Admin/Kabag.
+model RuangFoto {
+  id         Int      @id @default(autoincrement())
+  room       String   @db.VarChar(150)
+  caption    String   @default("") @db.VarChar(200)
+  file_path  String   @db.VarChar(500)
+  file_mime  String   @db.VarChar(50)
+  sort_order Int      @default(0)
+  created_by Int?
+  created_at DateTime @default(now())
+  updated_at DateTime @default(now()) @updatedAt
+
+  createdBy User? @relation("RuangFotoCreatedBy", fields: [created_by], references: [id], onDelete: SetNull)
+
+  @@index([room, sort_order])
+  @@map("ruang_foto")
+}
+
+// Profil per ruang rapat: daftar fasilitas [{ icon, label }] yang tampil di layar ruangan.
+model RuangProfil {
+  room       String   @id @db.VarChar(150)
+  fasilitas  Json     @default("[]")
+  updated_by Int?
+  created_at DateTime @default(now())
+  updated_at DateTime @default(now()) @updatedAt
+
+  updatedBy User? @relation("RuangProfilUpdatedBy", fields: [updated_by], references: [id], onDelete: SetNull)
+
+  @@map("ruang_profil")
 }

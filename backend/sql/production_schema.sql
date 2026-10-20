@@ -5,7 +5,7 @@
 --  sama persis dengan aplikasi saat ini, tanpa perlu menjalankan
 --  `npx prisma migrate deploy`.
 --
---  Isi file = hasil akhir migration Prisma 0001_init s/d 0030_guest_cancel
+--  Isi file = hasil akhir migration Prisma 0001_init s/d 0031_ruang_foto_fasilitas
 --  (backend/prisma/migrations/), ditambah tabel riwayat `_prisma_migrations`
 --  yang sudah terisi. Jadi setelah file ini dijalankan:
 --    * `npx prisma migrate status` -> "Database schema is up to date!"
@@ -356,6 +356,39 @@ CREATE TRIGGER trg_pemeliharaan_tanggal_selesai BEFORE INSERT OR UPDATE ON pemel
 CREATE TRIGGER trg_pengadaan_tanggal_selesai    BEFORE INSERT OR UPDATE ON pengadaan    FOR EACH ROW EXECUTE FUNCTION set_tanggal_selesai();
 
 -- ---------------------------------------------------------------------
+-- Foto & fasilitas ruang rapat (migration 0031)
+-- ---------------------------------------------------------------------
+-- Foto & fasilitas per ruang rapat, dikelola Admin/Kabag di menu "Foto & Fasilitas Ruang" dan
+-- ditampilkan sebagai slideshow di layar ruangan (/ruang/:slug). File foto di uploads/ruang-foto/.
+CREATE TABLE "ruang_foto" (
+  "id"         SERIAL PRIMARY KEY,
+  "room"       VARCHAR(150) NOT NULL,
+  "caption"    VARCHAR(200) NOT NULL DEFAULT '',
+  "file_path"  VARCHAR(500) NOT NULL,
+  "file_mime"  VARCHAR(50) NOT NULL,
+  "sort_order" INTEGER NOT NULL DEFAULT 0,
+  "created_by" INTEGER,
+  "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updated_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+ALTER TABLE "ruang_foto" ADD CONSTRAINT "ruang_foto_created_by_fkey" FOREIGN KEY ("created_by") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+CREATE INDEX "ruang_foto_room_sort_order_idx" ON "ruang_foto"("room", "sort_order");
+
+-- Satu baris per ruangan; fasilitas = JSON array [{ "icon": "<material symbol>", "label": "..." }].
+CREATE TABLE "ruang_profil" (
+  "room"       VARCHAR(150) PRIMARY KEY,
+  "fasilitas"  JSONB NOT NULL DEFAULT '[]',
+  "updated_by" INTEGER,
+  "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updated_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+ALTER TABLE "ruang_profil" ADD CONSTRAINT "ruang_profil_updated_by_fkey" FOREIGN KEY ("updated_by") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- updated_at otomatis (jam UTC) juga saat diubah langsung lewat pgAdmin4.
+CREATE TRIGGER "ruang_foto_updated_at" BEFORE UPDATE ON "ruang_foto" FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+CREATE TRIGGER "ruang_profil_updated_at" BEFORE UPDATE ON "ruang_profil" FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+-- ---------------------------------------------------------------------
 -- Data awal: baris mode maintenance untuk tiap menu (semua nonaktif)
 -- ---------------------------------------------------------------------
 INSERT INTO "maintenance_mode" ("menu_key", "is_active") VALUES
@@ -368,7 +401,7 @@ INSERT INTO "maintenance_mode" ("menu_key", "is_active") VALUES
 ON CONFLICT ("menu_key") DO NOTHING;
 
 -- ---------------------------------------------------------------------
--- Riwayat migration Prisma -- menandai 0001 s/d 0030 sudah diterapkan,
+-- Riwayat migration Prisma -- menandai 0001 s/d 0031 sudah diterapkan,
 -- supaya `prisma migrate deploy` berikutnya hanya menjalankan migration baru.
 -- ---------------------------------------------------------------------
 CREATE TABLE "_prisma_migrations" (
@@ -414,7 +447,8 @@ FROM (VALUES
   ('0027_ruang_rapat_booking_group',        'dd3e8a98353b95b0c1e26045710133dd84f582b2d530b0c317404a6c9bac7723'),
   ('0028_updated_at_utc',                   'c2f9591c3bcb9f82a2c3bc35b7298c4875871b10e5c8ea9db7c6c813e763e4c4'),
   ('0029_guest_booking_sso',                '6d8f68a3ed9ab6947d70251837bea9f959d96d74fff5bbaf7eb1ba3f7aa7c00d'),
-  ('0030_guest_cancel',                     '8e03410cada48534e620951fff51362063fa37d33a81ff6179ba82bd9224489c')
+  ('0030_guest_cancel',                     '8e03410cada48534e620951fff51362063fa37d33a81ff6179ba82bd9224489c'),
+  ('0031_ruang_foto_fasilitas',             'a0ef47b20f896a125d00f3e873b4f47b4cb1844de3cabd23174fb3dc192cb754')
 ) AS m(name, checksum)
 ORDER BY m.name;
 

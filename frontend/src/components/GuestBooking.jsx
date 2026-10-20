@@ -6,6 +6,7 @@ import { iso } from '../hooks/useMonthSchedule';
 import { requireFields, HP_RE, normalizePhone } from '../utils/validation';
 import { detectFileMime, readFileAsDataUrl } from '../utils/fileSignature';
 import { RUANG, judulRuang } from '../utils/ruang';
+import { RuangPilihanInfo } from './RuangFoto';
 
 // Booking ruang rapat dari halaman kiosk /jadwal-rapat untuk TAMU (tanpa akun pegawai) lewat login Google.
 // Aturan yang sama dicek ulang di backend (backend/src/routes/guest.js).
@@ -205,7 +206,7 @@ function BookingForm({ guest, onClose, onBooked, onSessionEnd }) {
                 {RUANG.map((r) => <option key={r} value={r}>{judulRuang(r)}</option>)}
               </select>
             </Field>
-            <div className="hidden md:block"></div>
+            <RuangPilihanInfo room={form.room} />
             <Field label="Tanggal Mulai" hint={form.date ? fmtTanggal(form.date) : null}>
               <input type="date" value={form.date} min={today} onChange={(e) => { const v = e.target.value; setForm((f) => ({ ...f, date: v, end_date: !f.end_date || f.end_date < v ? v : f.end_date })); }} className={inputCls} />
             </Field>

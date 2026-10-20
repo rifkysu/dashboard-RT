@@ -10,7 +10,14 @@ Full-stack app (React + Node.js/Express + PostgreSQL + **Prisma**) untuk mengelo
 - **Pilihan ruangan** di jadwal kiosk & landing page: tombol *Semua Ruangan* atau satu nama ruangan, tetap real-time. Pilihan tersimpan di URL, jadi layar di depan satu ruangan cukup dibuka dengan link seperti `/jadwal-rapat?ruang=SERBAGUNA` (nama ruangan persis seperti di tombol; spasi ditulis `%20`, mis. `?ruang=SETJEN%20II`).
 - **Kiosk `/jadwal-rapat` berputar otomatis** — pilihan ruangan berganti sendiri tiap **30 detik** (Semua Ruangan → Serbaguna → Setjen II → … → kembali ke Semua) dan tabel selalu menggulir halus ke baris **hari ini** (kembali ke bulan berjalan), dengan bilah waktu menuju pergantian berikutnya. Disentuh/digulir/klik ruangan = jeda 30 detik (hitung mundur di tombol) lalu lanjut sendiri; tombol *Putar otomatis* bisa mematikan/menyalakan. Kalau kiosk dibuka dengan `?ruang=...` (layar untuk satu ruangan), putar otomatis mati secara default. Jadwal di landing page tidak ikut berputar.
 - **Layar per ruangan** (`/ruang/<ruang>`) — untuk tablet/monitor di depan tiap ruang rapat: status besar *Tersedia / Segera digunakan / Sedang digunakan*, rapat yang berlangsung beserta sisa waktunya, dan **agenda 7 hari** berupa slide per hari (strip tanggal yang bisa di-tap, swipe/panah, dan **hari berganti otomatis tiap 30 detik** tanpa perlu disentuh — ada bilah waktu yang terisi menuju hari berikutnya; setelah hari ke-7 kembali ke hari ini. Kalau layar disentuh, auto-geser dijeda 30 detik dengan hitung mundur di layar, lalu lanjut sendiri). Publik, read-only, real-time, layar dijaga tetap menyala, ada tombol layar penuh. Link: `/ruang/serbaguna`, `/ruang/setjen-ii`, `/ruang/tri-dharma`, `/ruang/biro-umum`, `/ruang/graha-kemnaker` (daftar lengkap di `/ruang`). Di landing page, klik nama ruangan di kartu *Ruang rapat hari ini* atau bagian *Layar per ruangan*.
-  - **Slideshow foto & fasilitas ruangan** — ruangan yang punya foto (saat ini **Serbaguna**, **Setjen II**, dan **Biro Umum**) menampilkan kartu foto di samping status: crossfade + zoom pelan, ganti otomatis tiap 5 detik tanpa perlu disentuh (bilah progres per foto; disentuh = jeda 10 detik lalu lanjut sendiri), bisa swipe/panah, dan **ketuk untuk tampilan penuh** (tertutup sendiri setelah 45 detik agar layar kembali ke jadwal). Di bawahnya daftar fasilitas ruangan (mis. Setjen II: mikrofon, monitor tiap kursi, kamera video conference; Serbaguna: panggung, sound system, AC standing). Menambah ruangan lain: taruh foto di `frontend/src/assets/ruang/` (potong dulu watermark tanggal/alamat kamera di bagian bawah foto; foto asli disimpan di folder `foto ruang rapat/`), lalu daftarkan foto + fasilitas di `frontend/src/utils/fotoRuang.js` (kunci = nama ruangan persis seperti di `utils/ruang.js`).
+  - **Slideshow foto & fasilitas ruangan** — ruangan yang punya foto (saat ini **Serbaguna**, **Setjen II**, dan **Biro Umum**) menampilkan kartu foto di samping status: crossfade + zoom pelan, ganti otomatis tiap 5 detik tanpa perlu disentuh (bilah progres per foto; disentuh = jeda 10 detik lalu lanjut sendiri), bisa swipe/panah, dan **ketuk untuk tampilan penuh** (tertutup sendiri setelah 45 detik agar layar kembali ke jadwal). Di bawahnya daftar fasilitas ruangan (mis. Setjen II: mikrofon, monitor tiap kursi, kamera video conference; Serbaguna: panggung, sound system, AC standing). Foto & fasilitas disimpan di database (tabel `ruang_foto` & `ruang_profil`, file di `backend/uploads/ruang-foto/`) dan berubah live di layar begitu admin mengubahnya.
+  - **Menu Foto & Fasilitas Ruang** (`/foto-ruang`, khusus Admin/Kabag, ada di sidebar) — pilih ruangan, lalu:
+    - **Tambah foto** (klik atau seret, bisa beberapa sekaligus, maks. 12 per ruangan). Sebelum upload, tiap foto bisa diberi keterangan dan **dipotong bagian bawahnya** untuk membuang watermark tanggal/alamat dari aplikasi kamera (ada pratinjau area yang dibuang + tombol cepat *Watermark (foto tegak/mendatar)*). Foto otomatis dikecilkan ke maks. 1920px dan data lokasi GPS-nya dibuang.
+    - Ubah **keterangan** langsung di kartu foto, **geser urutan**, **Jadikan sampul** (foto pertama), atau **Hapus**.
+    - **Fasilitas**: klik pilihan cepat (mikrofon, monitor, kamera, layar, proyektor, sound system, AC, Wi-Fi, dll.) atau tambah fasilitas lain dengan ikon pilihan, atur urutan, lalu *Simpan fasilitas*.
+    - Tombol *Lihat layar ruangan* membuka `/ruang/<ruang>` di tab baru untuk mengecek hasilnya.
+  - **Foto yang sama tampil di semua tempat yang menampilkan ruang rapat** (`components/RuangFoto.jsx`): header kolom tabel jadwal (kiosk `/jadwal-rapat`, landing, menu Jadwal Ruang Rapat) & tombol filter ruangan, kartu *Ruang rapat hari ini* dan *Layar per ruangan* di landing page, daftar ruang di Dashboard, form booking pegawai (baru & edit) dan form booking tamu Google (pratinjau foto + fasilitas ruangan yang dipilih), serta detail booking. Klik foto/nama ruangan = popup slideshow foto & fasilitas. Ruangan tanpa foto menampilkan ikon ruangan.
+  - Isi awal (Serbaguna, Setjen II, Biro Umum) ada di `backend/seed/ruang-foto/`; dimasukkan ke database dengan `npm run ruang:seed-foto` (lihat langkah update di bawah).
 - **Booking ruang rapat untuk tamu lewat login Google** — di halaman kiosk **`/jadwal-rapat`** (di atas jadwal) ada tombol **Login dengan Google untuk booking**; landing page tidak lagi memuat panel ini, hanya tombol *Kiosk & booking tamu* menuju kiosk. Setelah login Google, tamu diarahkan kembali ke `/jadwal-rapat`. Setelah login, tamu mengisi form booking (agenda, nomor surat, PIC, No. HP PIC, ruangan, tanggal mulai & sampai, jam, file surat permohonan) — **semua kolom wajib**, tombol *Kirim Booking* baru aktif kalau semua terisi. Akun tamu disimpan di tabel `guest_accounts` (terpisah dari `users`, tidak bisa masuk aplikasi internal).
   - **Captcha 6 angka** (gambar PNG dari server, keyboard angka di HP) wajib diisi saat submit, **berlaku 5 menit** dan hangus setelah sekali dicek.
   - **Sesi login Google berlaku 7 hari**, lalu harus login lagi.
@@ -156,8 +163,9 @@ biro-umum-app/
    ```bash
    npm install
    npx prisma migrate deploy
+   npm run ruang:seed-foto
    ```
-   Perintah ini otomatis membuat semua tabel sesuai riwayat di `backend/prisma/migrations/` (`users`, `pemeliharaan`, `pengadaan`, `kendaraan`, `ruang_rapat`, `maintenance_mode`).
+   Perintah ini otomatis membuat semua tabel sesuai riwayat di `backend/prisma/migrations/` (`users`, `pemeliharaan`, `pengadaan`, `kendaraan`, `ruang_rapat`, `maintenance_mode`, `ruang_foto`, `ruang_profil`, dll.). `npm run ruang:seed-foto` mengisi foto & fasilitas awal ruang rapat (sekali saja; aman diulang, ruangan yang sudah punya data dilewati).
 4. Cek di pgAdmin4: refresh `biro_umum_db > Schemas > public > Tables`, tabel-tabel di atas harus sudah muncul.
 
 > **Alternatif tanpa terminal (mis. server production):** buka Query Tool pgAdmin4 di database kosong tadi, lalu jalankan `backend/sql/production_schema.sql` (F5). Hasilnya sama persis dengan `npx prisma migrate deploy` (semua tabel, trigger, data awal maintenance, dan riwayat `_prisma_migrations`), jadi migration berikutnya tetap cukup `npx prisma migrate deploy`.
@@ -235,9 +243,10 @@ Backend selalu mengambil role terbaru langsung dari database di setiap request, 
    ```bash
    npm install
    ```
-5. Terapkan skema database (lihat Bagian 1):
+5. Terapkan skema database & isi foto awal ruang rapat (lihat Bagian 1):
    ```bash
    npx prisma migrate deploy
+   npm run ruang:seed-foto
    ```
 6. Jalankan server:
    ```bash
@@ -333,6 +342,7 @@ Urutan di server:
    npm ci --omit=dev
    npx prisma migrate deploy
    npx prisma generate
+   npm run ruang:seed-foto                      # sekali saja: foto & fasilitas awal ruang rapat
    pm2 start src/index.js --name biro-umum-api   # SATU proses saja, jangan mode cluster (-i)
    ```
 3. Frontend:

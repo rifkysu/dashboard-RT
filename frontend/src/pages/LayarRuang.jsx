@@ -6,7 +6,7 @@ import FotoRuangSlideshow from '../components/FotoRuangSlideshow';
 import useRuangRapatLive from '../hooks/useRuangRapatLive';
 import { iso } from '../hooks/useMonthSchedule';
 import { RUANG, judulRuang, slugRuang, ruangDariSlug } from '../utils/ruang';
-import { fotoRuang } from '../utils/fotoRuang';
+import useRuangInfo, { fotoRuangDari } from '../hooks/useRuangInfo';
 
 // Layar per ruangan (/ruang/:slug): dipasang di tablet/monitor depan tiap ruang rapat.
 // Publik (tanpa login), hanya-lihat, memakai jadwal publik + sinyal live yang sama dengan landing/kiosk.
@@ -68,6 +68,7 @@ const TEMA = {
 
 // Halaman pilih ruangan (/ruang, atau slug tidak dikenal).
 function PilihRuang({ salah }) {
+  const { info } = useRuangInfo();
   useEffect(() => { document.title = 'Layar Ruang Rapat · Biro Umum'; }, []);
   return (
     <div className="min-h-screen landing-hero text-white flex items-center justify-center px-4 py-12">
@@ -82,13 +83,13 @@ function PilihRuang({ salah }) {
           {RUANG.map((r) => (
             <Link key={r} to={`/ruang/${slugRuang(r)}`} className="group flex items-center justify-between gap-3 rounded-2xl bg-white/5 ring-1 ring-white/15 px-5 py-4 transition hover:bg-white/10 hover:ring-kuningan/60">
               <span className="flex items-center gap-4 min-w-0">
-                {fotoRuang(r)
-                  ? <img src={fotoRuang(r).foto[0].src} alt="" style={{ objectPosition: fotoRuang(r).foto[0].pos || 'center 30%' }} className="w-14 h-14 shrink-0 rounded-xl object-cover ring-1 ring-white/20 transition duration-500 group-hover:scale-105" />
+                {fotoRuangDari(info, r)
+                  ? <img src={info[r].foto[0].src} alt="" className="w-14 h-14 shrink-0 rounded-xl object-cover ring-1 ring-white/20 transition duration-500 group-hover:scale-105" />
                   : <span className="w-14 h-14 shrink-0 rounded-xl bg-white/5 ring-1 ring-white/10 inline-flex items-center justify-center"><span className="material-symbols-outlined text-white/40">meeting_room</span></span>}
                 <span className="min-w-0">
                 <span className="block font-display text-lg font-bold">{judulRuang(r)}</span>
                 <span className="block text-xs text-white/50 font-mono mt-0.5">/ruang/{slugRuang(r)}</span>
-                {fotoRuang(r) && <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#e4c27f] mt-1"><span className="material-symbols-outlined text-[14px]">photo_library</span>{fotoRuang(r).foto.length} foto & fasilitas</span>}
+                {fotoRuangDari(info, r) && <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#e4c27f] mt-1"><span className="material-symbols-outlined text-[14px]">photo_library</span>{info[r].foto.length} foto{info[r].fasilitas.length ? ' & fasilitas' : ''}</span>}
                 </span>
               </span>
               <span className="material-symbols-outlined text-white/50 transition group-hover:text-[#e4c27f] group-hover:translate-x-1">arrow_forward</span>
@@ -320,7 +321,8 @@ function Layar({ room }) {
   const status = sekarang ? 'dipakai' : berikut && sisaKeBerikut <= SEGERA_MENIT ? 'segera' : 'kosong';
   const tema = TEMA[status];
   const memuat = items === null;
-  const foto = fotoRuang(room);
+  const { info } = useRuangInfo();
+  const foto = fotoRuangDari(info, room);
 
   const tanggalPanjang = now.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 

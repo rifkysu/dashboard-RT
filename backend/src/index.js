@@ -13,6 +13,7 @@ const ruangRapatRoutes = require('./routes/ruangRapat');
 const maintenanceRoutes = require('./routes/maintenance');
 const usersRoutes = require('./routes/users');
 const guestRoutes = require('./routes/guest');
+const ruangInfoRoutes = require('./routes/ruangInfo');
 const live = require('./live');
 const logger = require('./logger');
 const { ensureUploadRoot } = require('./fileStorage');
@@ -86,6 +87,8 @@ app.use('/api/ruang-rapat', live.notifyOnWrite('ruang-rapat'), ruangRapatRoutes)
 app.use('/api/maintenance', live.notifyOnWrite('maintenance'), maintenanceRoutes);
 app.use('/api/users', live.notifyOnWrite('users'), usersRoutes);
 app.use('/api/guest', live.notifyOnWrite('ruang-rapat'), guestRoutes);
+// Foto & fasilitas ruang rapat (layar /ruang/:slug); diubah Admin/Kabag -> layar ruangan ikut update live.
+app.use('/api/ruang-info', live.notifyOnWrite('ruang-info'), ruangInfoRoutes);
 
 // Endpoint API yang tidak dikenal -> JSON berpesan jelas (bukan halaman HTML default Express),
 // supaya frontend tidak cuma menampilkan "Gagal ..." -- biasanya karena backend belum di-restart

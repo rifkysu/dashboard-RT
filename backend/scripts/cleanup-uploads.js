@@ -21,6 +21,7 @@ const PATH_COLUMNS = {
   kendaraan: ['bpkb_document_file_path', 'stnk_document_file_path'],
   kendaraanService: ['invoice_document_file_path'],
   ruangRapat: ['surat_file_path'],
+  ruangFoto: ['file_path'],
 };
 // Kolom berisi JSON array [{ name, path }]
 const JSON_PATH_COLUMNS = {

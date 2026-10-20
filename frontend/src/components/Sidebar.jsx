@@ -11,6 +11,7 @@ const menu = [
   { to: '/kendaraan', icon: 'directions_car', label: 'Kendaraan', menuKey: 'kendaraan' },
   { to: '/ruang-rapat', icon: 'calendar_month', label: 'Jadwal Ruang Rapat', menuKey: 'ruang-rapat' },
   { to: '/akun', icon: 'group', label: 'Akun & Akses', adminOnly: true },
+  { to: '/foto-ruang', icon: 'photo_library', label: 'Foto & Fasilitas Ruang', adminOnly: true },
 ];
 
 // `collapsed` cuma berlaku di layar md ke atas (mode rail ikon-saja di desktop).

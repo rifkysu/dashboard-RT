@@ -8,6 +8,8 @@ import { iso } from '../hooks/useMonthSchedule';
 import api from '../api';
 import { subscribeLive } from '../live';
 import { RUANG, judulRuang, slugRuang } from '../utils/ruang';
+import useRuangInfo from '../hooks/useRuangInfo';
+import { RuangThumb } from '../components/RuangFoto';
 
 const LAYANAN = [
   { icon: 'build', label: 'Pemeliharaan', desc: 'Pengajuan perbaikan gedung, sarana, dan prasarana kantor, dengan dokumen pendukung dari awal.', tags: ['Analisa & HPS', 'Pembayaran', 'Dokumentasi/BAST'], sep: '→' },
@@ -244,9 +246,12 @@ function RuangHariIni() {
         {rooms.map((r) => (
           <li key={r.room}>
            <Link to={`/ruang/${slugRuang(r.room)}`} title={`Buka layar ${judulRuang(r.room)}`} className="group px-5 py-3 flex items-center gap-3 transition-colors hover:bg-slate-50">
-            <span className="relative flex w-2 h-2 shrink-0">
-              {items && r.now && <span className="absolute inset-0 rounded-full bg-red-400 opacity-75 motion-safe:animate-ping"></span>}
-              <span className={`relative w-2 h-2 rounded-full ${!items ? 'bg-slate-300' : r.now ? 'bg-red-500' : 'bg-emerald-500'}`}></span>
+            <span className="relative shrink-0">
+              <RuangThumb room={r.room} className="w-11 h-11 rounded-xl ring-1 ring-black/5 transition group-hover:ring-kuningan/60" />
+              <span className="absolute -right-0.5 -bottom-0.5 flex w-3 h-3 rounded-full bg-white items-center justify-center">
+                {items && r.now && <span className="absolute inset-0.5 rounded-full bg-red-400 opacity-75 motion-safe:animate-ping"></span>}
+                <span className={`relative w-2 h-2 rounded-full ${!items ? 'bg-slate-300' : r.now ? 'bg-red-500' : 'bg-emerald-500'}`}></span>
+              </span>
             </span>
             <div className="min-w-0 flex-1">
               <div className="text-sm font-semibold text-dinas-ink">{judulRuang(r.room)}</div>
@@ -275,6 +280,30 @@ function RuangHariIni() {
         Lihat jadwal lengkap<span className="material-symbols-outlined text-[16px] transition-transform group-hover:translate-y-0.5">arrow_downward</span>
       </a>
     </div>
+  );
+}
+
+// Kartu "Layar per ruangan": foto sampul ruangan (dari menu admin Foto & Fasilitas Ruang) jadi latar.
+function LayarTile({ room }) {
+  const { info } = useRuangInfo();
+  const sampul = info?.[room]?.foto?.[0];
+  const nFoto = info?.[room]?.foto?.length || 0;
+  return (
+    <Link to={`/ruang/${slugRuang(room)}`} onMouseMove={trackPointer}
+      className="card-spotlight group relative overflow-hidden rounded-2xl bg-gradient-to-br from-dinas to-dinas-ink text-white p-4 min-h-[9.5rem] flex flex-col shadow-[0_12px_30px_-18px_rgba(14,30,51,.7)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_20px_40px_-18px_rgba(14,30,51,.8)]">
+      {sampul
+        ? <img src={sampul.src} alt="" loading="lazy" className="absolute inset-0 w-full h-full object-cover transition duration-700 group-hover:scale-110" />
+        : <div className="absolute inset-0 bg-kawung-gelap opacity-60" aria-hidden="true"></div>}
+      {sampul && <div className="absolute inset-0 bg-gradient-to-t from-dinas-ink via-dinas-ink/55 to-dinas-ink/10" aria-hidden="true"></div>}
+      <span className="relative material-symbols-outlined text-[22px] text-[#e4c27f] drop-shadow">meeting_room</span>
+      <div className="relative mt-auto pt-6">
+        <div className="font-display font-bold leading-tight drop-shadow-[0_1px_4px_rgba(0,0,0,.5)]">{judulRuang(room)}</div>
+        {nFoto > 0 && <div className="text-[11px] text-white/70 mt-0.5 flex items-center gap-1"><span className="material-symbols-outlined text-[13px]">photo_library</span>{nFoto} foto</div>}
+        <div className="mt-2 flex items-center gap-1 text-xs font-semibold text-white/80 group-hover:text-white">
+          Buka layar<span className="material-symbols-outlined text-[15px] transition-transform group-hover:translate-x-1">arrow_forward</span>
+        </div>
+      </div>
+    </Link>
   );
 }
 
@@ -595,19 +624,9 @@ export default function Landing() {
               <div className="flex items-center gap-2 font-display font-bold text-dinas-ink">
                 <span className="material-symbols-outlined text-[20px] text-kuningan">tablet_mac</span>Layar per ruangan
               </div>
-              <p className="text-sm text-slate-600 mt-1">Buka di tablet atau monitor depan ruangan: status Tersedia/Digunakan, rapat berlangsung, dan agenda hari ini, diperbarui otomatis.</p>
+              <p className="text-sm text-slate-600 mt-1">Buka di tablet atau monitor depan ruangan: status Tersedia/Digunakan, rapat berlangsung, agenda hari ini, serta foto & fasilitas ruangan, diperbarui otomatis.</p>
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mt-4">
-                {RUANG.map((r) => (
-                  <Link key={r} to={`/ruang/${slugRuang(r)}`} onMouseMove={trackPointer}
-                    className="card-spotlight group relative overflow-hidden rounded-2xl bg-gradient-to-br from-dinas to-dinas-ink text-white p-4 shadow-[0_12px_30px_-18px_rgba(14,30,51,.7)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_20px_40px_-18px_rgba(14,30,51,.8)]">
-                    <div className="absolute inset-0 bg-kawung-gelap opacity-60" aria-hidden="true"></div>
-                    <span className="relative material-symbols-outlined text-[22px] text-[#e4c27f]">meeting_room</span>
-                    <div className="relative font-display font-bold mt-2 leading-tight">{judulRuang(r)}</div>
-                    <div className="relative mt-3 inline-flex items-center gap-1 text-xs font-semibold text-white/70 group-hover:text-white">
-                      Buka layar<span className="material-symbols-outlined text-[15px] transition-transform group-hover:translate-x-1">arrow_forward</span>
-                    </div>
-                  </Link>
-                ))}
+                {RUANG.map((r) => <LayarTile key={r} room={r} />)}
               </div>
             </Reveal>
           </div>

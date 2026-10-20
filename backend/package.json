@@ -13,7 +13,8 @@
     "db:test": "node -e \"require('dotenv').config(); const p=require('./src/prisma'); p.$queryRawUnsafe('SELECT now() AS now').then(r=>{console.log(r); return p.$disconnect()}).catch(e=>{console.error(e); process.exit(1)})\"",
     "postinstall": "prisma generate",
     "db:verify": "node scripts/db-verify.js",
-    "uploads:cleanup": "node scripts/cleanup-uploads.js"
+    "uploads:cleanup": "node scripts/cleanup-uploads.js",
+    "ruang:seed-foto": "node scripts/seed-foto-ruang.js"
   },
   "dependencies": {
     "@prisma/client": "^6.16.2",

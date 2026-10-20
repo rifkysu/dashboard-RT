@@ -5,6 +5,7 @@ import useRuangRapatLive from '../hooks/useRuangRapatLive';
 import { useAuth, isAdminRole } from '../context/AuthContext';
 import GuestAccounts from '../components/GuestAccounts';
 import useLive from '../hooks/useLive';
+import { RuangFotoButton, RuangThumb } from '../components/RuangFoto';
 
 const fallback = { pemeliharaan: { pending: 0, on_progress: 0, selesai: 0 }, pengadaan: { pending: 0, on_progress: 0, selesai: 0 }, kendaraan: { total: 0, belum_bayar_pajak: 0, pajak_segera: 0, pajak_segera_list: [] }, ruang_rapat: { jam: '', kosong_sekarang: 0, total_ruang: 0, rooms: [] } };
 
@@ -163,7 +164,10 @@ function RuangStatus({ info }) {
     <ul className="mt-3 rounded-lg border border-slate-200 divide-y divide-slate-100">
       {info.rooms.map((r) => (
         <li key={r.room} className="flex items-center justify-between gap-2 text-[11px] px-2.5 py-1.5" title={r.dipakai ? `Dipakai: ${r.agenda}` : r.berikutnya ? `Booking berikutnya jam ${r.berikutnya}` : 'Tidak ada booking lagi hari ini'}>
-          <span className="font-semibold text-slate-700 truncate">{r.room}</span>
+          <RuangFotoButton room={r.room} className="group min-w-0 flex items-center gap-2 text-left">
+            <RuangThumb room={r.room} className="w-7 h-7 rounded-md ring-1 ring-black/5 transition group-hover:ring-kuningan/60" iconClass="text-[14px]" />
+            <span className="font-semibold text-slate-700 truncate group-hover:text-dinas group-hover:underline">{r.room}</span>
+          </RuangFotoButton>
           {r.dipakai
             ? <span className="shrink-0 font-bold text-red-600">Dipakai s/d {r.sampai}</span>
             : <span className="shrink-0 font-bold text-emerald-700">Kosong{r.berikutnya ? ` s/d ${r.berikutnya}` : ''}</span>}

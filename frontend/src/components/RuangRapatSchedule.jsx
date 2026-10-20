@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import useMonthSchedule, { monthKey } from '../hooks/useMonthSchedule';
+import { RuangThumb } from './RuangFoto';
 import RoomDateGrid, { MonthFilter, monthLabel } from './RoomDateGrid';
 
 const ROOMS = ['SERBAGUNA', 'SETJEN II', 'TRI DHARMA', 'BIRO UMUM', 'GRAHA KEMNAKER'];
@@ -95,8 +96,9 @@ export default function RuangRapatSchedule({ autoRotate = false }) {
               type="button"
               onClick={() => pickRoom(room)}
               aria-pressed={picked === room}
-              className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold border transition ${picked === room ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}`}
+              className={`shrink-0 inline-flex items-center gap-1.5 ${room ? 'pl-1 pr-3 py-1' : 'px-3 py-[0.4375rem]'} rounded-full text-xs font-semibold border transition ${picked === room ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}`}
             >
+              {room && <RuangThumb room={room} className="w-6 h-6 rounded-full" iconClass="text-[13px]" />}
               {room || 'Semua Ruangan'}
             </button>
           ))}

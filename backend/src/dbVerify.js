@@ -8,6 +8,8 @@ const required = {
   kendaraan: ['id','name','plate','type','status','photo_file_path'],
   ruang_rapat: ['id','agenda','room','pic','booking_date','end_date','start_time','end_time','surat_status','surat_file_path','cancelled_at','cancel_reason','guest_id'],
   guest_accounts: ['id','google_sub','email','nama','is_blocked','token_version'],
+  ruang_foto: ['id','room','caption','file_path','file_mime','sort_order'],
+  ruang_profil: ['room','fasilitas'],
 };
 
 (async () => {

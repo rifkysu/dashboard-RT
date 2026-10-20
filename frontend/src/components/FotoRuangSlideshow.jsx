@@ -28,13 +28,15 @@ function Lightbox({ foto, idx, setIdx, onClose }) {
   const n = foto.length;
   const ke = (d) => setIdx((i) => (i + d + n) % n);
   useEffect(() => {
+    // Fase capture + stopPropagation: Esc/panah di sini tidak ikut menutup popup/form di belakangnya.
     const onKey = (e) => {
+      if (['Escape', 'ArrowRight', 'ArrowLeft'].includes(e.key)) e.stopPropagation();
       if (e.key === 'Escape') onClose();
       else if (e.key === 'ArrowRight') ke(1);
       else if (e.key === 'ArrowLeft') ke(-1);
     };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    window.addEventListener('keydown', onKey, true);
+    return () => window.removeEventListener('keydown', onKey, true);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { const t = setTimeout(onClose, TUTUP_LIGHTBOX_MS); return () => clearTimeout(t); }, [idx]); // eslint-disable-line react-hooks/exhaustive-deps
   const geser = useGeser(() => ke(-1), () => ke(1));
@@ -42,7 +44,7 @@ function Lightbox({ foto, idx, setIdx, onClose }) {
 
   // Portal ke body: kartu slideshow memakai backdrop-filter yang membuat position:fixed terkurung di dalamnya.
   return createPortal(
-    <div className="fixed inset-0 z-50 bg-black/90 backdrop-blur-sm flex flex-col feedback-fade" role="dialog" aria-modal="true" aria-label="Foto ruangan">
+    <div className="fixed inset-0 z-[70] bg-black/90 backdrop-blur-sm flex flex-col feedback-fade" role="dialog" aria-modal="true" aria-label="Foto ruangan">
       <div className="flex items-center justify-between gap-3 px-5 py-4 text-white">
         <div className="min-w-0">
           <div className="text-xs font-bold uppercase tracking-[0.2em] text-[#e4c27f]">Foto {idx + 1} / {n}</div>
@@ -70,7 +72,7 @@ function Lightbox({ foto, idx, setIdx, onClose }) {
         {foto.map((x, i) => (
           <button key={x.src} type="button" onClick={() => setIdx(i)} aria-label={`Foto ${i + 1}`}
             className={`h-14 w-20 rounded-lg overflow-hidden ring-2 transition ${i === idx ? 'ring-[#e4c27f] opacity-100' : 'ring-transparent opacity-50 hover:opacity-80'}`}>
-            <img src={x.src} alt="" className="w-full h-full object-cover" style={{ objectPosition: x.pos || 'center 30%' }} />
+            <img src={x.src} alt="" className="w-full h-full object-cover" />
           </button>
         ))}
       </div>
@@ -82,7 +84,9 @@ function Lightbox({ foto, idx, setIdx, onClose }) {
 export default function FotoRuangSlideshow({ data, className = '', style }) {
   const { foto, fasilitas = [] } = data;
   const n = foto.length;
-  const [idx, setIdx] = useState(0);
+  const [idxState, setIdx] = useState(0);
+  // Foto bisa berkurang saat admin menghapusnya (data live) -> jangan menunjuk foto yang sudah tidak ada.
+  const idx = idxState < n ? idxState : 0;
   const [jedaSampai, setJedaSampai] = useState(0);
   const [penuh, setPenuh] = useState(false);
   // Tiap kali foto aktif, kuncinya naik agar animasi zoom mulai ulang; foto yang sedang memudar
@@ -92,7 +96,7 @@ export default function FotoRuangSlideshow({ data, className = '', style }) {
   if (kunciRef.current !== idx) { kunciRef.current = idx; putaran.current[idx] = (putaran.current[idx] || 0) + 1; }
 
   const sentuh = () => setJedaSampai(Date.now() + JEDA_SENTUH_MS);
-  const ke = (d) => { sentuh(); setIdx((i) => (i + d + n) % n); };
+  const ke = (d) => { sentuh(); setIdx((i) => ((i < n ? i : 0) + d + n) % n); };
   const geser = useGeser(() => ke(-1), () => ke(1), () => { sentuh(); setPenuh(true); });
 
   // Ganti foto otomatis; berhenti selama dijeda (disentuh) atau saat tampilan penuh terbuka.
@@ -100,7 +104,7 @@ export default function FotoRuangSlideshow({ data, className = '', style }) {
     if (n < 2 || penuh) return undefined;
     const sisa = jedaSampai - Date.now();
     if (sisa > 0) { const t = setTimeout(() => setJedaSampai(0), sisa); return () => clearTimeout(t); }
-    const t = setTimeout(() => setIdx((i) => (i + 1) % n), GANTI_MS);
+    const t = setTimeout(() => setIdx((i) => ((i < n ? i : 0) + 1) % n), GANTI_MS);
     return () => clearTimeout(t);
   }, [idx, jedaSampai, penuh, n]);
 
@@ -117,7 +121,7 @@ export default function FotoRuangSlideshow({ data, className = '', style }) {
             <img src={f.src} alt={f.caption} draggable={false}
               key={putaran.current[i] || 0}
               className={`w-full h-full object-cover ${putaran.current[i] ? 'foto-kenburns' : ''}`}
-              style={{ objectPosition: f.pos || 'center 30%', '--kb-x': i % 2 ? '-3%' : '3%', animationDuration: `${GANTI_MS + 1500}ms` }} />
+              style={{ objectPosition: 'center 40%', '--kb-x': i % 2 ? '-3%' : '3%', animationDuration: `${GANTI_MS + 1500}ms` }} />
           </div>
         ))}
         {/* Gradasi agar teks terbaca */}

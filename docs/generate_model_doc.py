@@ -865,8 +865,9 @@ def isi_aplikasi():
             "menampilkan daftar ruangan; di landing page tiap ruangan pada kartu *Ruang rapat hari ini* dan bagian "
             "*Layar per ruangan* menautkan ke layarnya. Ruangan yang punya foto (saat ini **Serbaguna**, **Setjen II**, dan **Biro Umum**) menampilkan "
             "**slideshow foto ruangan** (crossfade + zoom pelan, ganti otomatis tiap 5 detik (disentuh = jeda 10 detik), swipe/panah, ketuk = tampilan penuh "
-            "yang tertutup sendiri setelah 45 detik) beserta daftar **fasilitas**; data di `frontend/src/utils/fotoRuang.js`, "
-            "foto di `frontend/src/assets/ruang/`.",
+            "yang tertutup sendiri setelah 45 detik) beserta daftar **fasilitas**. Foto & fasilitas diambil dari database "
+            "(`GET /ruang-info`) dan dikelola Admin/Kabag di menu **Foto & Fasilitas Ruang** (lihat 3.9); "
+            "perubahan langsung tampil di layar lewat SSE (topik ruang-info).",
             "**Booking ruang rapat untuk tamu** (tanpa akun pegawai): tombol *Login dengan Google untuk booking* "
             "di halaman kiosk **/jadwal-rapat** (di atas jadwal; landing page hanya menautkan ke sana). Setelah login Google (OAuth 2.0 + PKCE), tamu mengisi form booking "
             "yang **semua kolomnya wajib** (agenda, nomor surat, PIC, No. HP PIC, ruangan, tanggal mulai & sampai, "
@@ -999,6 +1000,25 @@ def isi_aplikasi():
             "Akun yang di-ban melihat popup *Akun Anda Diblokir* (melanggar ketentuan / spam berlebihan) saat "
             "login dengan kata sandi yang benar, atau langsung dikeluarkan bila sedang login. "
             "Link reset kata sandi yang masih berlaku ikut dihapus saat akun di-ban."),
+        h2("3.9 Foto & Fasilitas Ruang (Admin)"),
+        *bullets(
+            "Menu **/foto-ruang** (Admin/Kabag) untuk mengatur slideshow foto & daftar fasilitas yang tampil di "
+            "layar depan tiap ruang rapat (/ruang/:ruang). Kartu pilih ruangan menampilkan sampul serta jumlah foto & fasilitas.",
+            "Foto: tambah beberapa sekaligus (klik atau seret), maks. 12 per ruangan. Sebelum upload tiap foto "
+            "bisa diberi keterangan dan **dipotong bagian bawahnya** (pratinjau area merah) untuk membuang "
+            "watermark tanggal/alamat kamera. Browser mengecilkan foto ke maks. 1920px & menyimpan ulang sebagai "
+            "JPEG (metadata EXIF/GPS terbuang); server memeriksa magic number & batas 5MB.",
+            "Ubah keterangan langsung di kartu foto, geser urutan kiri/kanan, *Jadikan sampul* (foto pertama), "
+            "dan hapus (file ikut dihapus dari server).",
+            "Fasilitas: pilihan cepat (mikrofon, monitor, kamera, layar, proyektor, sound system, AC, Wi-Fi, dll.) "
+            "atau fasilitas lain dengan ikon pilihan, urutan bisa diatur, lalu *Simpan fasilitas*. Fasilitas "
+            "tampil di layar bila ruangan punya minimal 1 foto.",
+            "Foto & fasilitas yang sama tampil di semua tempat yang menampilkan ruang rapat: header kolom tabel "
+            "jadwal (kiosk, landing, menu Jadwal Ruang Rapat) & filter ruangan, kartu landing *Ruang rapat hari ini* "
+            "dan *Layar per ruangan*, Dashboard, form booking pegawai & tamu (pratinjau ruangan yang dipilih), dan "
+            "detail booking. Klik foto/nama ruangan = popup slideshow foto & fasilitas.",
+            "Isi awal (Serbaguna, Setjen II, Biro Umum) dari `backend/seed/ruang-foto/` lewat "
+            "`npm run ruang:seed-foto` (sekali setelah migration 0031; ruangan yang sudah punya data dilewati)."),
 
         PageBreak(),
         h1("4. Alur Proses Bisnis"),
@@ -1034,6 +1054,7 @@ def isi_aplikasi():
             ["/profile", "Profil", "Login", "Data pengguna yang sedang masuk"],
             ["/akun", "Akun & Akses", "Admin", "Manajemen akun"],
             ["/settings", "Settings", "Admin", "Mode Maintenance per menu"],
+            ["/foto-ruang", "Foto & Fasilitas Ruang", "Admin", "Foto slideshow & fasilitas layar ruangan"],
         ]),
         h2("Komponen bersama"),
         *bullets(
@@ -1082,6 +1103,9 @@ def isi_aplikasi():
              "Sesi, captcha 5 menit, booking milik sendiri, ajukan & batalkan booking sendiri, keluar"],
             ["", "GET /guest/admin/accounts; PUT /guest/admin/accounts/:id/block", "Admin/Kabag",
              "Daftar semua akun tamu Google & blokir"],
+            ["Foto ruang", "GET /ruang-info, GET /ruang-info/foto/:id/file", "Publik", "Foto & fasilitas tiap ruang rapat (layar ruangan)"],
+            ["", "POST /ruang-info/foto; PUT /ruang-info/foto/:id, /ruang-info/urutan, /ruang-info/fasilitas; DELETE /ruang-info/foto/:id", "Admin/Kabag",
+             "Tambah/ubah keterangan/urutkan/hapus foto & simpan fasilitas"],
             ["Maintenance", "GET /landing-status, GET /stream (SSE)", "Publik", "Status landing & sinyal real-time"],
             ["", "GET / ; PUT /:menu_key", "Login; Admin/Kabag", "Baca & ubah mode maintenance"],
             ["Live", "GET /live/stream (SSE)", "Publik", "Satu sinyal real-time untuk semua modul"],
@@ -1115,6 +1139,8 @@ def isi_aplikasi():
              "cancelled_at terisi + cancel_reason (tidak dihapus); guest_id terisi bila diajukan tamu; cancelled_by_guest_id bila dibatalkan tamu"],
             ["guest_accounts", "Akun tamu (login Google)",
              "google_sub unik; is_blocked (blokir admin); token_version untuk mencabut sesi"],
+            ["ruang_foto", "Foto slideshow ruang rapat", "room + sort_order (urutan, 0 = sampul); file di uploads/ruang-foto/"],
+            ["ruang_profil", "Fasilitas per ruang rapat", "room = PK; fasilitas JSONB [{ icon, label }]"],
             ["maintenance_mode", "Status maintenance per menu", "menu_key unik"],
         ]),
 
