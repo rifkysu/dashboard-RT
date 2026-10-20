@@ -19,6 +19,11 @@ const IMAGE_MIME = ['image/jpeg', 'image/png', 'image/webp'];
 const MAX_FASILITAS = 16;
 const ICON_RE = /^[a-z0-9_]{1,40}$/;  // nama ikon Material Symbols
 
+// Kunci per ruangan (sampai transaksi selesai): upload/urutan bersamaan dari dua admin tidak bisa
+// melewati batas MAX_FOTO atau menghasilkan sort_order kembar.
+const lockRuang = (tx, room) => tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${'ruang_foto:' + room}))`;
+class PenuhError extends Error {}
+
 const validRoom = (r) => typeof r === 'string' && ROOMS.includes(r);
 const validCaption = (c) => c === undefined || (typeof c === 'string' && c.trim().length <= 200);
 const fotoOut = (f) => ({ id: f.id, room: f.room, caption: f.caption, sort_order: f.sort_order, updated_at: f.updated_at });
@@ -61,9 +66,11 @@ router.get('/foto/:id/file', async (req, res) => {
     if (!foto) return res.status(404).json({ message: 'Foto tidak ditemukan.' });
     const abs = path.resolve(BACKEND_ROOT, foto.file_path);
     if (!abs.startsWith(path.join(BACKEND_ROOT, 'uploads') + path.sep) || !fs.existsSync(abs)) return res.status(404).json({ message: 'File foto tidak ditemukan.' });
-    // Foto dimuat <img> dari frontend (beda port saat development) -> izinkan lintas origin dalam satu situs.
-    res.setHeader('Cross-Origin-Resource-Policy', 'same-site');
-    res.setHeader('Cache-Control', 'public, max-age=86400');
+    // Foto ini memang publik (layar ruangan tanpa login) dan dimuat <img> dari frontend yang bisa beda
+    // port/domain dengan API (development, atau production bila API di domain lain) -> izinkan lintas origin.
+    res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+    // Isi file per ID tidak pernah berubah (ganti foto = hapus + upload baru dengan ID baru) -> cache lama aman.
+    res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
     res.type(foto.file_mime);
     res.sendFile(abs);
   } catch (err) {
@@ -88,10 +95,23 @@ router.post('/foto', async (req, res) => {
     if (count >= MAX_FOTO) return res.status(400).json({ message: `Maksimal ${MAX_FOTO} foto per ruangan. Hapus foto lama dulu.` });
     const file_path = await saveDataUrl(file_data, `ruang-${room}`, 'ruang-foto');
     if (!file_path) return res.status(400).json({ message: 'File foto tidak valid.' });
-    const last = await prisma.ruangFoto.aggregate({ where: { room }, _max: { sort_order: true } });
-    const foto = await prisma.ruangFoto.create({
-      data: { room, caption: caption.trim(), file_path, file_mime: mime, sort_order: (last._max.sort_order ?? -1) + 1, created_by: req.user.id },
-    });
+    let foto;
+    try {
+      foto = await prisma.$transaction(async (tx) => {
+        await lockRuang(tx, room);
+        // Cek ulang di dalam kunci: cek di atas hanya supaya tidak menulis file bila jelas sudah penuh.
+        if (await tx.ruangFoto.count({ where: { room } }) >= MAX_FOTO) throw new PenuhError();
+        const last = await tx.ruangFoto.aggregate({ where: { room }, _max: { sort_order: true } });
+        return tx.ruangFoto.create({
+          data: { room, caption: caption.trim(), file_path, file_mime: mime, sort_order: (last._max.sort_order ?? -1) + 1, created_by: req.user.id },
+        });
+      });
+    } catch (err) {
+      // Gagal simpan ke DB -> jangan tinggalkan file yatim di folder uploads.
+      fs.promises.unlink(path.resolve(BACKEND_ROOT, file_path)).catch(() => {});
+      if (err instanceof PenuhError) return res.status(400).json({ message: `Maksimal ${MAX_FOTO} foto per ruangan. Hapus foto lama dulu.` });
+      throw err;
+    }
     res.status(201).json({ data: fotoOut(foto), message: 'Foto ditambahkan.' });
   } catch (err) {
     logger.error('POST foto ruang gagal', { error: err });
@@ -122,10 +142,14 @@ router.put('/urutan', async (req, res) => {
     if (!validRoom(room) || !Array.isArray(ids) || ids.length > MAX_FOTO || !ids.every(Number.isInteger)) {
       return res.status(400).json({ message: 'Urutan foto tidak valid.' });
     }
-    const current = await prisma.ruangFoto.findMany({ where: { room }, select: { id: true } });
-    const sama = current.length === ids.length && new Set(ids).size === ids.length && current.every((f) => ids.includes(f.id));
+    const sama = await prisma.$transaction(async (tx) => {
+      await lockRuang(tx, room);
+      const current = await tx.ruangFoto.findMany({ where: { room }, select: { id: true } });
+      const ok = current.length === ids.length && new Set(ids).size === ids.length && current.every((f) => ids.includes(f.id));
+      if (ok) for (const [i, id] of ids.entries()) await tx.ruangFoto.update({ where: { id }, data: { sort_order: i } });
+      return ok;
+    });
     if (!sama) return res.status(409).json({ message: 'Daftar foto sudah berubah. Muat ulang halaman lalu coba lagi.' });
-    await prisma.$transaction(ids.map((id, i) => prisma.ruangFoto.update({ where: { id }, data: { sort_order: i } })));
     res.json({ message: 'Urutan foto disimpan.' });
   } catch (err) {
     logger.error('PUT urutan foto ruang gagal', { error: err });

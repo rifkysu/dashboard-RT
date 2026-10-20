@@ -30,6 +30,9 @@ export async function prosesFoto(file, { potongBawah = 0 } = {}) {
   canvas.height = Math.round(h0 * skala);
   const ctx = canvas.getContext('2d');
   ctx.imageSmoothingQuality = 'high';
+  // JPEG tidak punya transparansi: tanpa latar putih, bagian transparan PNG/WEBP jadi hitam.
+  ctx.fillStyle = '#fff';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
   ctx.drawImage(img, 0, 0, w0, h0, 0, 0, canvas.width, canvas.height);
   img.close?.();
   return canvas.toDataURL('image/jpeg', KUALITAS);

@@ -38,8 +38,12 @@ const samaFasilitas = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 
 export default function FotoRuang() {
   const { user, isAdmin } = useAuth();
-  const { info, error, reload } = useRuangInfo();
+  const { info, error, loaded, reload } = useRuangInfo();
   const [room, setRoom] = useState(RUANG[0]);
+  const [mencoba, setMencoba] = useState(false);
+  // Belum pernah berhasil dimuat (gagal sejak awal): jangan tampilkan ruangan seolah kosong & bisa diisi.
+  const gagalMuat = error && !loaded;
+  const memuat = !loaded;
 
   if (user && !isAdmin) return <Navigate to="/dashboard" replace />;
 
@@ -55,7 +59,17 @@ export default function FotoRuang() {
         </div>
       </div>
 
-      {error && <div className="mb-4 px-4 py-3 rounded-xl bg-red-50 border border-red-200 text-sm text-red-700">Gagal memuat data foto ruangan. Pastikan backend sudah di-restart setelah update aplikasi, lalu muat ulang halaman.</div>}
+      {error && (
+        <div className="mb-4 px-4 py-3 rounded-xl bg-red-50 border border-red-200 text-sm text-red-700 flex flex-wrap items-center justify-between gap-3">
+          <span>{gagalMuat
+            ? 'Gagal memuat data foto ruangan, jadi foto & fasilitas belum bisa diubah. Periksa koneksi lalu coba lagi.'
+            : 'Gagal memperbarui data foto ruangan. Yang tampil mungkin bukan data terbaru.'}</span>
+          <button type="button" disabled={mencoba} onClick={async () => { setMencoba(true); await reload(); setMencoba(false); }}
+            className="px-3 py-1.5 rounded-lg border border-red-300 bg-white text-xs font-semibold text-red-700 hover:bg-red-100 disabled:opacity-50">
+            {mencoba ? 'Memuat…' : 'Coba lagi'}
+          </button>
+        </div>
+      )}
 
       {/* Pilih ruangan */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3" role="tablist" aria-label="Pilih ruangan">
@@ -74,7 +88,7 @@ export default function FotoRuang() {
               </div>
               <div className="px-3 py-2.5">
                 <div className="font-bold text-sm text-slate-900 truncate">{judulRuang(r)}</div>
-                <div className="text-[11px] text-slate-500">{info ? `${d?.foto?.length || 0} foto · ${d?.fasilitas?.length || 0} fasilitas` : 'Memuat…'}</div>
+                <div className="text-[11px] text-slate-500">{loaded ? `${d?.foto?.length || 0} foto · ${d?.fasilitas?.length || 0} fasilitas` : gagalMuat ? 'Gagal dimuat' : 'Memuat…'}</div>
               </div>
             </button>
           );
@@ -90,14 +104,14 @@ export default function FotoRuang() {
       </div>
 
       <div className="mt-3 grid lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)] gap-5 items-start">
-        <FotoPanel key={`foto-${room}`} room={room} foto={data.foto} memuat={!info} reload={reload} />
-        <FasilitasPanel key={`fas-${room}`} room={room} fasilitas={data.fasilitas} adaFoto={data.foto.length > 0} memuat={!info} reload={reload} />
+        <FotoPanel key={`foto-${room}`} room={room} foto={data.foto} memuat={memuat} gagalMuat={gagalMuat} reload={reload} />
+        <FasilitasPanel key={`fas-${room}`} room={room} fasilitas={data.fasilitas} adaFoto={data.foto.length > 0} memuat={memuat} reload={reload} />
       </div>
     </div>
   );
 }
 
-function FotoPanel({ room, foto, memuat, reload }) {
+function FotoPanel({ room, foto, memuat, gagalMuat, reload }) {
   const { confirm, toast, alert } = useFeedback();
   const [urutan, setUrutan] = useState(null); // urutan sementara saat menyimpan (optimistis)
   const [captions, setCaptions] = useState({});
@@ -187,7 +201,7 @@ function FotoPanel({ room, foto, memuat, reload }) {
         <input ref={inputRef} type="file" accept="image/jpeg,image/png,image/webp" multiple hidden onChange={(e) => { pilihFile(e.target.files); e.target.value = ''; }} />
       </div>
 
-      {memuat ? <div className="py-10 text-center text-sm text-slate-500">Memuat foto…</div> : (
+      {memuat ? <div className="py-10 text-center text-sm text-slate-500">{gagalMuat ? 'Foto belum bisa dimuat.' : 'Memuat foto…'}</div> : (
         <div className="mt-4 grid sm:grid-cols-2 gap-4">
           {list.map((f, i) => {
             const draft = captions[f.id] ?? f.caption;
@@ -208,7 +222,7 @@ function FotoPanel({ room, foto, memuat, reload }) {
                     <IconBtn icon="chevron_left" label="Geser ke kiri" onClick={() => geser(i, -1)} disabled={i === 0 || !!urutan} />
                     <IconBtn icon="chevron_right" label="Geser ke kanan" onClick={() => geser(i, 1)} disabled={i === list.length - 1 || !!urutan} />
                     {i > 0 && <button type="button" onClick={() => jadikanSampul(i)} disabled={!!urutan} className="h-8 px-2.5 rounded-lg border border-slate-300 bg-white text-xs font-semibold text-slate-700 hover:border-kuningan hover:text-kuningan disabled:opacity-50 inline-flex items-center gap-1"><span className="material-symbols-outlined text-[15px]">star</span>Jadikan sampul</button>}
-                    <button type="button" onClick={() => hapus(f)} disabled={busy === f.id} className="ml-auto h-8 px-2.5 rounded-lg border border-red-200 bg-white text-xs font-semibold text-red-700 hover:bg-red-50 inline-flex items-center gap-1 disabled:opacity-50"><span className="material-symbols-outlined text-[15px]">delete</span>Hapus</button>
+                    <button type="button" onMouseDown={(e) => e.preventDefault() /* jangan blur keterangan: simpan keterangan membuat tombol ini disabled sebelum klik terjadi */} onClick={() => hapus(f)} disabled={busy === f.id} className="ml-auto h-8 px-2.5 rounded-lg border border-red-200 bg-white text-xs font-semibold text-red-700 hover:bg-red-50 inline-flex items-center gap-1 disabled:opacity-50"><span className="material-symbols-outlined text-[15px]">delete</span>Hapus</button>
                   </div>
                 </div>
               </div>
@@ -229,7 +243,7 @@ function FotoPanel({ room, foto, memuat, reload }) {
       )}
       {!memuat && !foto.length && <p className="mt-3 text-xs text-slate-500">Belum ada foto: layar ruangan tampil tanpa slideshow dan tanpa daftar fasilitas.</p>}
 
-      {pilihan && <UploadDialog room={room} files={pilihan} onClose={() => setPilihan(null)} onDone={async (n) => { setPilihan(null); await reload(); toast(`${n} foto ditambahkan.`); }} />}
+      {pilihan && <UploadDialog room={room} files={pilihan} reload={reload} onClose={() => setPilihan(null)} onDone={async (n) => { setPilihan(null); await reload(); toast(`${n} foto ditambahkan.`); }} />}
     </section>
   );
 }
@@ -244,7 +258,7 @@ function IconBtn({ icon, label, ...rest }) {
 }
 
 // Dialog sebelum upload: pratinjau, keterangan, dan potong bawah (watermark) per foto.
-function UploadDialog({ room, files, onClose, onDone }) {
+function UploadDialog({ room, files, reload, onClose, onDone }) {
   const { alert } = useFeedback();
   const [items, setItems] = useState(() => files.map((file, i) => ({ key: `${i}-${file.name}`, file, caption: '', potong: 0 })));
   const [proses, setProses] = useState(null); // { ke, total }
@@ -274,9 +288,16 @@ function UploadDialog({ room, files, onClose, onDone }) {
         await api.post('/ruang-info/foto', { room, caption: it.caption.trim(), file_data });
         berhasil += 1;
       } catch (e) {
+        // Foto yang sudah terunggah dikeluarkan dari daftar; sisanya tetap di dialog agar bisa dicoba lagi
+        // (sebelumnya semua foto setelah foto yang gagal ikut terbuang dan harus dipilih ulang).
         setProses(null);
-        await alert({ title: `Gagal mengunggah "${it.file.name}"`, message: e.response?.data?.message || 'Foto tidak bisa dibaca. Coba foto lain.', tone: 'error' });
-        if (berhasil) onDone(berhasil); else onClose();
+        setItems(items.slice(i));
+        if (berhasil) reload();
+        alert({
+          title: `Gagal mengunggah "${it.file.name}"`,
+          message: `${e.response?.data?.message || 'Foto tidak bisa dibaca. Coba foto lain.'}${berhasil ? ` ${berhasil} foto sebelumnya sudah terunggah.` : ''} Foto yang belum terunggah masih ada di daftar: klik "Batal pilih" pada foto ini lalu upload lagi.`,
+          tone: 'error',
+        });
         return;
       }
     }
@@ -457,7 +478,7 @@ function FasilitasPanel({ room, fasilitas, adaFoto, memuat, reload }) {
         <span className={`text-xs ${dirty ? 'text-amber-700 font-semibold' : 'text-slate-500'}`}>{dirty ? 'Ada perubahan belum disimpan' : 'Semua perubahan tersimpan'}</span>
         <div className="flex gap-2">
           {dirty && <button type="button" onClick={() => setDraft(fasilitas)} disabled={saving} className="px-3 py-2 rounded-lg border border-slate-300 text-sm font-semibold text-slate-700 hover:bg-slate-50">Batal</button>}
-          <button type="button" onClick={simpan} disabled={!dirty || saving} className="px-4 py-2 rounded-lg bg-dinas text-white text-sm font-bold hover:bg-dinas-dark disabled:opacity-50">{saving ? 'Menyimpan…' : 'Simpan fasilitas'}</button>
+          <button type="button" onClick={simpan} disabled={!dirty || saving || memuat} className="px-4 py-2 rounded-lg bg-dinas text-white text-sm font-bold hover:bg-dinas-dark disabled:opacity-50">{saving ? 'Menyimpan…' : 'Simpan fasilitas'}</button>
         </div>
       </div>
     </section>
