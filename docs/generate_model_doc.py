@@ -33,7 +33,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 LOGO = os.path.join(ROOT, "frontend", "public", "logo-kemnaker.png")
 
-TANGGAL = "14 Oktober 2026"
+TANGGAL = "20 Oktober 2026"
 SISTEM = "Sistem Layanan Biro Umum & Rumah Tangga"
 
 PW, PH = A4
@@ -865,7 +865,7 @@ def isi_aplikasi():
             "menampilkan daftar ruangan; di landing page tiap ruangan pada kartu *Ruang rapat hari ini* dan bagian "
             "*Layar per ruangan* menautkan ke layarnya.",
             "**Booking ruang rapat untuk tamu** (tanpa akun pegawai): tombol *Login dengan Google untuk booking* "
-            "di bagian Jadwal Ruang Rapat. Setelah login Google (OAuth 2.0 + PKCE), tamu mengisi form booking "
+            "di halaman kiosk **/jadwal-rapat** (di atas jadwal; landing page hanya menautkan ke sana). Setelah login Google (OAuth 2.0 + PKCE), tamu mengisi form booking "
             "yang **semua kolomnya wajib** (agenda, nomor surat, PIC, No. HP PIC, ruangan, tanggal mulai & sampai, "
             "jam, file surat permohonan); tombol Kirim baru aktif bila semua terisi. Saat submit wajib mengisi "
             "**captcha 6 angka** (gambar PNG dari server) yang **berlaku 5 menit** dan hangus setelah sekali dicek.",
@@ -891,7 +891,7 @@ def isi_aplikasi():
             "menu Akun & Akses. Kata sandi baru mengikuti aturan yang sama dengan Daftar Akun (8-128 karakter, "
             "huruf & angka), diperiksa di frontend dan backend.",
             "Login pegawai hanya dengan email & kata sandi. Login Google hanya untuk **tamu** yang booking ruang "
-            "rapat dari landing page (tabel `guest_accounts`, tidak bisa masuk aplikasi internal). Akun lama "
+            "rapat dari halaman kiosk /jadwal-rapat (tabel `guest_accounts`, tidak bisa masuk aplikasi internal). Akun lama "
             "dengan domain lain tetap bisa login dengan email & kata sandi.",
             "Proteksi percobaan login: 5 kali per menit per kombinasi IP + email, dengan hitung mundur di "
             "layar."),
@@ -912,8 +912,8 @@ def isi_aplikasi():
             "Status ruang rapat saat ini: Kosong / Dipakai s.d. jam tertentu, termasuk booking multi-hari yang "
             "sedang berjalan.",
             "Daftar aktivitas terbaru gabungan Pemeliharaan & Pengadaan.",
-            "Khusus Admin/Kabag (di Dashboard dan menu Akun & Akses): panel **Akun Google Tamu** berisi semua akun yang pernah login Google di landing "
-            "page, termasuk yang belum booking (nama, email, login terakhir, booking terakhir, total booking, jumlah dibatalkan sendiri) dengan tombol **Blokir / "
+            "Khusus Admin/Kabag (di Dashboard dan menu Akun & Akses): panel **Akun Google Tamu** berisi semua akun yang pernah login Google di kiosk "
+            "/jadwal-rapat, termasuk yang belum booking (nama, email, login terakhir, booking terakhir, total booking, jumlah dibatalkan sendiri) dengan tombol **Blokir / "
             "Buka blokir**; blokir langsung memutus sesi tamu tersebut. Detail booking di menu Ruang Rapat "
             "menampilkan label nama & email tamu pengaju."),
         h2("3.4 Pemeliharaan & Pengadaan"),
@@ -1017,7 +1017,7 @@ def isi_aplikasi():
         table([42, 38, 18, 76], [
             ["Rute", "Halaman", "Akses", "Keterangan"],
             ["/", "Landing", "Publik", "Ringkasan modul + jadwal rapat real-time"],
-            ["/jadwal-rapat", "Jadwal Rapat (kiosk)", "Publik", "Tampilan baca saja untuk layar besar"],
+            ["/jadwal-rapat", "Jadwal Rapat (kiosk)", "Publik", "Jadwal baca saja untuk layar besar + panel booking tamu (Google)"],
             ["/ruang, /ruang/:ruang", "Layar Ruangan", "Publik", "Status & agenda satu ruangan untuk tablet di depan ruang"],
             ["/login", "Login", "Publik", "Validasi kolom, anti-spam, popup animasi"],
             ["/register", "Daftar Akun", "Publik", "Validasi lengkap, lanjut ke Login"],

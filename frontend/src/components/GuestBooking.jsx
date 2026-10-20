@@ -7,7 +7,7 @@ import { requireFields, HP_RE, normalizePhone } from '../utils/validation';
 import { detectFileMime, readFileAsDataUrl } from '../utils/fileSignature';
 import { RUANG, judulRuang } from '../utils/ruang';
 
-// Booking ruang rapat dari landing page untuk TAMU (tanpa akun pegawai) lewat login Google.
+// Booking ruang rapat dari halaman kiosk /jadwal-rapat untuk TAMU (tanpa akun pegawai) lewat login Google.
 // Aturan yang sama dicek ulang di backend (backend/src/routes/guest.js).
 const MAX_FILE = 8 * 1024 * 1024;
 const ALLOWED = ['application/pdf', 'image/jpeg', 'image/png'];

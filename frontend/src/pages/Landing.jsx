@@ -3,7 +3,6 @@ import { Link, Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import BrandMark from '../components/BrandMark';
 import RuangRapatSchedule from '../components/RuangRapatSchedule';
-import GuestBooking from '../components/GuestBooking';
 import useRuangRapatLive from '../hooks/useRuangRapatLive';
 import { iso } from '../hooks/useMonthSchedule';
 import api from '../api';
@@ -52,7 +51,7 @@ const KEUNGGULAN = [
 
 const FAQ = [
   { q: 'Siapa yang bisa memakai aplikasi ini?', a: 'Pegawai yang memiliki email kedinasan @kemnaker.go.id. Daftar lewat halaman Daftar Akun; akun baru otomatis berperan Karyawan, dan peran lain diatur oleh Admin.' },
-  { q: 'Apakah jadwal ruang rapat bisa dilihat tanpa login?', a: 'Bisa. Jadwal di halaman ini dan tampilan layar penuh (kiosk) terbuka untuk umum dan diperbarui otomatis. Untuk booking, masuk dengan akun pegawai, atau klik "Login dengan Google untuk booking" di bagian Jadwal Ruang Rapat bila belum punya akun pegawai.' },
+  { q: 'Apakah jadwal ruang rapat bisa dilihat tanpa login?', a: 'Bisa. Jadwal di halaman ini dan tampilan layar penuh (kiosk) terbuka untuk umum dan diperbarui otomatis. Untuk booking, masuk dengan akun pegawai, atau buka halaman kiosk (tombol "Kiosk & booking tamu") lalu klik "Login dengan Google untuk booking" bila belum punya akun pegawai.' },
   { q: 'Bagaimana cara booking ruang rapat?', a: 'Masuk, buka menu Jadwal Ruang Rapat, lalu klik sel ruangan dan tanggal yang masih kosong (atau tombol Booking Ruang Rapat). Surat permohonan bisa diunggah saat itu juga atau menyusul; status surat berubah hijau setelah surat diunggah.' },
   { q: 'Bagaimana memantau permintaan pemeliharaan atau pengadaan?', a: 'Setiap permintaan punya nomor dan status Pending, On Progress, hingga Selesai. Perubahannya tampil langsung di menu terkait dan di Dashboard.' },
   { q: 'Saya lupa kata sandi, apa yang harus dilakukan?', a: 'Klik "Lupa kata sandi" di halaman Masuk. Link reset dikirim ke email Anda bila layanan email aktif; jika tidak, permintaan diteruskan ke Admin yang akan mengirimkan link reset (berlaku 1 jam).' },
@@ -349,6 +348,10 @@ export default function Landing() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [active, setActive] = useState('');
 
+  // Tautan login Google lama (/#guest_token=...) diteruskan ke kiosk, tempat panel booking tamu kini berada.
+  const hash = typeof window !== 'undefined' ? window.location.hash : '';
+  const guestRedirect = /[#&](guest_token|guest_error)=/.test(hash) ? `/jadwal-rapat${hash}` : null;
+
   useEffect(() => {
     function refresh() {
       api.get('/maintenance/landing-status').then((res) => {
@@ -399,6 +402,7 @@ export default function Landing() {
     return () => { cancelAnimationFrame(frame); window.removeEventListener('scroll', onScroll); };
   }, [ready]);
 
+  if (guestRedirect) return <Navigate to={guestRedirect} replace />;
   if (loading || landingDown === null) return <div className="min-h-screen flex items-center justify-center bg-dinas-dark text-white/60 text-sm">Memuat…</div>;
   if (user) return <Navigate to="/dashboard" replace />;
   if (landingDown) return <LandingMaintenanceNotice message={landingDown.message} />;
@@ -578,14 +582,11 @@ export default function Landing() {
               <div className="max-w-2xl">
                 <Eyebrow>Jadwal</Eyebrow>
                 <h2 className="font-display text-3xl md:text-[2.25rem] font-extrabold text-dinas-ink mt-3 tracking-tight">Jadwal <span className="text-emas-gelap">ruang rapat</span></h2>
-                <p className="text-slate-600 mt-3 leading-relaxed">Cek ruang yang masih kosong sebelum mengajukan booking. Jadwal ini terbuka tanpa login dan diperbarui otomatis.</p>
+                <p className="text-slate-600 mt-3 leading-relaxed">Cek ruang yang masih kosong sebelum mengajukan booking. Jadwal ini terbuka tanpa login dan diperbarui otomatis. Belum punya akun pegawai? Booking sebagai tamu dengan akun Google di halaman kiosk.</p>
               </div>
               <Link to="/jadwal-rapat" className="self-start md:self-auto inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl border border-slate-300 text-sm font-semibold text-dinas transition hover:border-dinas hover:bg-dinas hover:text-white shrink-0">
-                <span className="material-symbols-outlined text-[18px]">tv</span>Tampilan layar penuh (kiosk)
+                <span className="material-symbols-outlined text-[18px]">tv</span>Kiosk & booking tamu
               </Link>
-            </Reveal>
-            <Reveal delay={60} className="mt-8">
-              <GuestBooking />
             </Reveal>
             <Reveal delay={100} className="mt-8">
               <RuangRapatSchedule />

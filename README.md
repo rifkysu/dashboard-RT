@@ -6,11 +6,11 @@ Full-stack app (React + Node.js/Express + PostgreSQL + **Prisma**) untuk mengelo
 
 ### 🌐 Landing page & akses publik (tanpa login)
 - **Landing page** (`/`) — hero + ringkasan modul + jadwal ketersediaan ruang rapat secara **real-time**, plus ajakan Masuk/Daftar akun. Ini yang muncul pertama kali dibuka, bukan halaman login.
-- **Halaman kiosk read-only** (`/jadwal-rapat`) — versi tampilan layar besar (mis. dipasang di layar dekat ruang rapat), read-only, data sama dengan landing page.
+- **Halaman kiosk read-only** (`/jadwal-rapat`) — versi tampilan layar besar (mis. dipasang di layar dekat ruang rapat); jadwalnya read-only, data sama dengan landing page, plus panel booking tamu lewat Google.
 - **Pilihan ruangan** di jadwal kiosk & landing page: tombol *Semua Ruangan* atau satu nama ruangan, tetap real-time. Pilihan tersimpan di URL, jadi layar di depan satu ruangan cukup dibuka dengan link seperti `/jadwal-rapat?ruang=SERBAGUNA` (nama ruangan persis seperti di tombol; spasi ditulis `%20`, mis. `?ruang=SETJEN%20II`).
 - **Kiosk `/jadwal-rapat` berputar otomatis** — pilihan ruangan berganti sendiri tiap **30 detik** (Semua Ruangan → Serbaguna → Setjen II → … → kembali ke Semua) dan tabel selalu menggulir halus ke baris **hari ini** (kembali ke bulan berjalan), dengan bilah waktu menuju pergantian berikutnya. Disentuh/digulir/klik ruangan = jeda 30 detik (hitung mundur di tombol) lalu lanjut sendiri; tombol *Putar otomatis* bisa mematikan/menyalakan. Kalau kiosk dibuka dengan `?ruang=...` (layar untuk satu ruangan), putar otomatis mati secara default. Jadwal di landing page tidak ikut berputar.
 - **Layar per ruangan** (`/ruang/<ruang>`) — untuk tablet/monitor di depan tiap ruang rapat: status besar *Tersedia / Segera digunakan / Sedang digunakan*, rapat yang berlangsung beserta sisa waktunya, dan **agenda 7 hari** berupa slide per hari (strip tanggal yang bisa di-tap, swipe/panah, dan **hari berganti otomatis tiap 30 detik** tanpa perlu disentuh — ada bilah waktu yang terisi menuju hari berikutnya; setelah hari ke-7 kembali ke hari ini. Kalau layar disentuh, auto-geser dijeda 30 detik dengan hitung mundur di layar, lalu lanjut sendiri). Publik, read-only, real-time, layar dijaga tetap menyala, ada tombol layar penuh. Link: `/ruang/serbaguna`, `/ruang/setjen-ii`, `/ruang/tri-dharma`, `/ruang/biro-umum`, `/ruang/graha-kemnaker` (daftar lengkap di `/ruang`). Di landing page, klik nama ruangan di kartu *Ruang rapat hari ini* atau bagian *Layar per ruangan*.
-- **Booking ruang rapat untuk tamu lewat login Google** — di bagian *Jadwal Ruang Rapat* landing page ada tombol **Login dengan Google untuk booking**. Setelah login, tamu mengisi form booking (agenda, nomor surat, PIC, No. HP PIC, ruangan, tanggal mulai & sampai, jam, file surat permohonan) — **semua kolom wajib**, tombol *Kirim Booking* baru aktif kalau semua terisi. Akun tamu disimpan di tabel `guest_accounts` (terpisah dari `users`, tidak bisa masuk aplikasi internal).
+- **Booking ruang rapat untuk tamu lewat login Google** — di halaman kiosk **`/jadwal-rapat`** (di atas jadwal) ada tombol **Login dengan Google untuk booking**; landing page tidak lagi memuat panel ini, hanya tombol *Kiosk & booking tamu* menuju kiosk. Setelah login Google, tamu diarahkan kembali ke `/jadwal-rapat`. Setelah login, tamu mengisi form booking (agenda, nomor surat, PIC, No. HP PIC, ruangan, tanggal mulai & sampai, jam, file surat permohonan) — **semua kolom wajib**, tombol *Kirim Booking* baru aktif kalau semua terisi. Akun tamu disimpan di tabel `guest_accounts` (terpisah dari `users`, tidak bisa masuk aplikasi internal).
   - **Captcha 6 angka** (gambar PNG dari server, keyboard angka di HP) wajib diisi saat submit, **berlaku 5 menit** dan hangus setelah sekali dicek.
   - **Sesi login Google berlaku 7 hari**, lalu harus login lagi.
   - **Anti-spam**: jeda 60 detik antar pengajuan, maks. 3 pengajuan per 24 jam & 5 booking aktif per akun, satu pengajuan maks. 7 hari berturut-turut dan maks. 90 hari ke depan, plus rate limit per akun & IP. Booking tetap dicek bentrok seperti booking pegawai.
@@ -20,7 +20,7 @@ Full-stack app (React + Node.js/Express + PostgreSQL + **Prisma**) untuk mengelo
 - **Landing page ikut Mode Maintenance** — admin bisa menonaktifkan landing page juga (menu `landing` di panel Mode Maintenance), dicek lewat endpoint publik `GET /api/maintenance/landing-status` (tanpa perlu login) supaya pengunjung yang belum punya akun tetap melihat notifikasi maintenance yang benar.
 
 ### 🔐 Autentikasi & Role
-- Login pegawai pakai email/password. Login Google hanya untuk **tamu** yang booking ruang rapat dari landing page (tidak memberi akses ke aplikasi internal).
+- Login pegawai pakai email/password. Login Google hanya untuk **tamu** yang booking ruang rapat dari halaman kiosk `/jadwal-rapat` (tidak memberi akses ke aplikasi internal).
 - Halaman **Masuk** punya kotak **Ingat saya (30 hari)**: kalau dicentang, sesi login berlaku 30 hari (`JWT_REMEMBER_EXPIRES_IN`) dan email terisi otomatis saat membuka halaman Masuk berikutnya (kata sandi tidak pernah disimpan). Tanpa centang, sesi tetap 8 jam. Logout, ban, atau ganti kata sandi tetap langsung memutus sesi. Jangan dicentang di komputer umum/bersama.
 - **Hanya email @kemnaker.go.id** yang bisa membuat akun baru lewat Daftar Akun. Akun lama dengan domain lain tetap bisa login dengan email + kata sandi. Domainnya diatur di `ALLOWED_EMAIL_DOMAIN` (`backend/src/middleware/security.js` dan `frontend/src/utils/validation.js` — ubah keduanya).
 - **Lupa Password** — link reset (berlaku 1 jam) **tidak pernah** ditampilkan ke peminta publik (kalau ditampilkan, siapa pun bisa mengambil alih akun orang lain hanya dengan mengetik emailnya).
@@ -222,12 +222,12 @@ Backend selalu mengambil role terbaru langsung dari database di setiap request, 
    SMTP_USER="alamat@gmail.com"
    SMTP_PASS="app password 16 karakter"
 
-   # Login Google untuk tamu yang booking ruang rapat dari landing page:
+   # Login Google untuk tamu yang booking ruang rapat dari halaman kiosk /jadwal-rapat:
    GOOGLE_CLIENT_ID="xxxx.apps.googleusercontent.com"
    GOOGLE_CLIENT_SECRET="xxxx"
    GOOGLE_CALLBACK_URL="http://localhost:4000/api/auth/google/callback"
    ```
-   > Google OAuth Client (tipe *Web application*) dibuat di https://console.cloud.google.com/apis/credentials. Isi **Authorized redirect URIs** persis sama dengan `GOOGLE_CALLBACK_URL`. Kalau tiga baris GOOGLE dikosongkan, tombol login Google di landing page menampilkan pesan "belum dikonfigurasi".
+   > Google OAuth Client (tipe *Web application*) dibuat di https://console.cloud.google.com/apis/credentials. Isi **Authorized redirect URIs** persis sama dengan `GOOGLE_CALLBACK_URL`. Kalau tiga baris GOOGLE dikosongkan, tombol login Google di halaman kiosk menampilkan pesan "belum dikonfigurasi".
    > App Password Gmail dibuat di https://myaccount.google.com/apppasswords (Verifikasi 2 Langkah harus aktif). Nama pengirim otomatis "Biro Umum". Kalau baris SMTP dikosongkan, permintaan reset kata sandi otomatis masuk ke notifikasi admin.
    > Tips generate `JWT_SECRET` acak: `openssl rand -hex 32` di terminal (Mac/Linux/Git Bash), atau isi manual string acak panjang.
 4. Install dependency (otomatis menjalankan `prisma generate`):

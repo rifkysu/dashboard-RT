@@ -13,7 +13,7 @@ const { ROOMS, booking: B } = require('./ruangRapat');
 const { nowLocal } = require('../clock');
 
 // =====================================================================
-// Booking ruang rapat untuk TAMU lewat login Google (SSO) di landing page.
+// Booking ruang rapat untuk TAMU lewat login Google (SSO) di halaman kiosk /jadwal-rapat.
 // - Akun tamu disimpan di tabel guest_accounts (terpisah dari users), jadi
 //   tidak bisa masuk ke aplikasi internal -- hanya bisa mengisi form booking.
 // - Sesi tamu berlaku 7 hari, lalu harus login Google lagi.
@@ -33,7 +33,7 @@ const MAX_AHEAD_DAYS = 90;         // tanggal mulai maksimal 90 hari ke depan
 const GOOGLE_AUTH_URL = 'https://accounts.google.com/o/oauth2/v2/auth';
 const GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token';
 const googleConfigured = () => !!(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET && process.env.GOOGLE_CALLBACK_URL);
-const frontend = (hash) => `${String(process.env.FRONTEND_URL || '').replace(/\/+$/, '')}/${hash ? `#${hash}` : ''}`;
+const frontend = (hash) => `${String(process.env.FRONTEND_URL || '').replace(/\/+$/, '')}/jadwal-rapat${hash ? `#${hash}` : ''}`;
 
 // Tanggal hari ini menurut WIB (APP_TIMEZONE), format YYYY-MM-DD -- tidak bergantung zona waktu server.
 const todayIso = () => nowLocal().date;
