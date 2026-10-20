@@ -501,3 +501,16 @@ main.app-main { background: var(--kanvas) !important; min-height:100vh; }
   from { transform: scaleX(0); }
   to { transform: scaleX(1); }
 }
+
+/* Slideshow foto ruangan (layar /ruang/:slug): zoom & geser pelan (Ken Burns) */
+.foto-kenburns {
+  animation-name: foto-kenburns;
+  animation-timing-function: ease-out;
+  animation-fill-mode: both;
+  will-change: transform;
+}
+@keyframes foto-kenburns {
+  from { transform: scale(1.02) translateX(0); }
+  to { transform: scale(1.14) translateX(var(--kb-x, 0)); }
+}
+@media (prefers-reduced-motion: reduce) { .foto-kenburns { animation: none; } }

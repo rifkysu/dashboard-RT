@@ -2,9 +2,11 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import api from '../api';
 import BrandMark from '../components/BrandMark';
+import FotoRuangSlideshow from '../components/FotoRuangSlideshow';
 import useRuangRapatLive from '../hooks/useRuangRapatLive';
 import { iso } from '../hooks/useMonthSchedule';
 import { RUANG, judulRuang, slugRuang, ruangDariSlug } from '../utils/ruang';
+import { fotoRuang } from '../utils/fotoRuang';
 
 // Layar per ruangan (/ruang/:slug): dipasang di tablet/monitor depan tiap ruang rapat.
 // Publik (tanpa login), hanya-lihat, memakai jadwal publik + sinyal live yang sama dengan landing/kiosk.
@@ -79,9 +81,15 @@ function PilihRuang({ salah }) {
         <div className="grid sm:grid-cols-2 gap-3 mt-8">
           {RUANG.map((r) => (
             <Link key={r} to={`/ruang/${slugRuang(r)}`} className="group flex items-center justify-between gap-3 rounded-2xl bg-white/5 ring-1 ring-white/15 px-5 py-4 transition hover:bg-white/10 hover:ring-kuningan/60">
-              <span>
+              <span className="flex items-center gap-4 min-w-0">
+                {fotoRuang(r)
+                  ? <img src={fotoRuang(r).foto[0].src} alt="" style={{ objectPosition: fotoRuang(r).foto[0].pos || 'center 30%' }} className="w-14 h-14 shrink-0 rounded-xl object-cover ring-1 ring-white/20 transition duration-500 group-hover:scale-105" />
+                  : <span className="w-14 h-14 shrink-0 rounded-xl bg-white/5 ring-1 ring-white/10 inline-flex items-center justify-center"><span className="material-symbols-outlined text-white/40">meeting_room</span></span>}
+                <span className="min-w-0">
                 <span className="block font-display text-lg font-bold">{judulRuang(r)}</span>
                 <span className="block text-xs text-white/50 font-mono mt-0.5">/ruang/{slugRuang(r)}</span>
+                {fotoRuang(r) && <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#e4c27f] mt-1"><span className="material-symbols-outlined text-[14px]">photo_library</span>{fotoRuang(r).foto.length} foto & fasilitas</span>}
+                </span>
               </span>
               <span className="material-symbols-outlined text-white/50 transition group-hover:text-[#e4c27f] group-hover:translate-x-1">arrow_forward</span>
             </Link>
@@ -312,6 +320,7 @@ function Layar({ room }) {
   const status = sekarang ? 'dipakai' : berikut && sisaKeBerikut <= SEGERA_MENIT ? 'segera' : 'kosong';
   const tema = TEMA[status];
   const memuat = items === null;
+  const foto = fotoRuang(room);
 
   const tanggalPanjang = now.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 
@@ -357,8 +366,10 @@ function Layar({ room }) {
             )}
           </div>
 
+          {/* Status rapat + (bila ada) slideshow foto & fasilitas ruangan: bertumpuk, berdampingan di layar lebar */}
+          <div className={`mt-6 md:mt-8 flex-1 min-h-0 flex flex-col gap-5 ${foto ? 'xl:flex-row' : ''}`}>
           {!memuat && (
-            <div key={`${status}-${sekarang?.id ?? berikut?.id ?? 'x'}`} className="hero-in mt-6 md:mt-8 flex-1 min-h-0 flex flex-col justify-center rounded-3xl bg-white/[.06] ring-1 ring-white/10 backdrop-blur-sm p-6 md:p-9" style={{ '--d': '120ms' }}>
+            <div key={`${status}-${sekarang?.id ?? berikut?.id ?? 'x'}`} className={`hero-in min-h-0 flex flex-col justify-center rounded-3xl bg-white/[.06] ring-1 ring-white/10 backdrop-blur-sm p-6 ${foto ? 'shrink-0 xl:shrink xl:flex-1 xl:basis-0 xl:p-7' : 'flex-1 md:p-9'}`} style={{ '--d': '120ms' }}>
               {sekarang ? (
                 <>
                   <div className="text-sm md:text-base text-white/60 font-semibold">Rapat berlangsung</div>
@@ -400,6 +411,8 @@ function Layar({ room }) {
               )}
             </div>
           )}
+          {foto && <FotoRuangSlideshow data={foto} className="hero-in flex-1 min-h-[24rem] lg:min-h-0 xl:flex-[1.6] xl:basis-0" style={{ '--d': '180ms' }} />}
+          </div>
         </section>
 
         {/* Kanan: jam + agenda */}

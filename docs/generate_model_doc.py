@@ -863,7 +863,10 @@ def isi_aplikasi():
             "hari berganti otomatis tiap 30 detik dengan bilah waktu, kembali ke hari ini setelah hari ke-7; disentuh = jeda 30 detik dengan hitung mundur lalu lanjut sendiri). Publik & baca saja, "
             "real-time + muat ulang tiap menit, layar dijaga tetap menyala (Wake Lock), tombol layar penuh. **/ruang** "
             "menampilkan daftar ruangan; di landing page tiap ruangan pada kartu *Ruang rapat hari ini* dan bagian "
-            "*Layar per ruangan* menautkan ke layarnya.",
+            "*Layar per ruangan* menautkan ke layarnya. Ruangan yang punya foto (saat ini **Serbaguna**, **Setjen II**, dan **Biro Umum**) menampilkan "
+            "**slideshow foto ruangan** (crossfade + zoom pelan, ganti otomatis tiap 5 detik (disentuh = jeda 10 detik), swipe/panah, ketuk = tampilan penuh "
+            "yang tertutup sendiri setelah 45 detik) beserta daftar **fasilitas**; data di `frontend/src/utils/fotoRuang.js`, "
+            "foto di `frontend/src/assets/ruang/`.",
             "**Booking ruang rapat untuk tamu** (tanpa akun pegawai): tombol *Login dengan Google untuk booking* "
             "di halaman kiosk **/jadwal-rapat** (di atas jadwal; landing page hanya menautkan ke sana). Setelah login Google (OAuth 2.0 + PKCE), tamu mengisi form booking "
             "yang **semua kolomnya wajib** (agenda, nomor surat, PIC, No. HP PIC, ruangan, tanggal mulai & sampai, "
