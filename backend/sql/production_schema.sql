@@ -5,7 +5,7 @@
 --  sama persis dengan aplikasi saat ini, tanpa perlu menjalankan
 --  `npx prisma migrate deploy`.
 --
---  Isi file = hasil akhir migration Prisma 0001_init s/d 0031_ruang_foto_fasilitas
+--  Isi file = hasil akhir migration Prisma 0001_init s/d 0032_kiosk_maintenance
 --  (backend/prisma/migrations/), ditambah tabel riwayat `_prisma_migrations`
 --  yang sudah terisi. Jadi setelah file ini dijalankan:
 --    * `npx prisma migrate status` -> "Database schema is up to date!"
@@ -397,11 +397,12 @@ INSERT INTO "maintenance_mode" ("menu_key", "is_active") VALUES
   ('pengadaan', false),
   ('kendaraan', false),
   ('ruang-rapat', false),
-  ('landing', false)
+  ('landing', false),
+  ('kiosk', false)
 ON CONFLICT ("menu_key") DO NOTHING;
 
 -- ---------------------------------------------------------------------
--- Riwayat migration Prisma -- menandai 0001 s/d 0031 sudah diterapkan,
+-- Riwayat migration Prisma -- menandai 0001 s/d 0032 sudah diterapkan,
 -- supaya `prisma migrate deploy` berikutnya hanya menjalankan migration baru.
 -- ---------------------------------------------------------------------
 CREATE TABLE "_prisma_migrations" (
@@ -448,7 +449,8 @@ FROM (VALUES
   ('0028_updated_at_utc',                   'c2f9591c3bcb9f82a2c3bc35b7298c4875871b10e5c8ea9db7c6c813e763e4c4'),
   ('0029_guest_booking_sso',                '6d8f68a3ed9ab6947d70251837bea9f959d96d74fff5bbaf7eb1ba3f7aa7c00d'),
   ('0030_guest_cancel',                     '8e03410cada48534e620951fff51362063fa37d33a81ff6179ba82bd9224489c'),
-  ('0031_ruang_foto_fasilitas',             'a0ef47b20f896a125d00f3e873b4f47b4cb1844de3cabd23174fb3dc192cb754')
+  ('0031_ruang_foto_fasilitas',             'a0ef47b20f896a125d00f3e873b4f47b4cb1844de3cabd23174fb3dc192cb754'),
+  ('0032_kiosk_maintenance',                '65d3195e25c49d352a29b142c4c8aeda8898b79495a5673efc7967384c1c6529')
 ) AS m(name, checksum)
 ORDER BY m.name;
 

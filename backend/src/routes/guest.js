@@ -199,7 +199,7 @@ const submitIpLimiter = createRateLimiter({ windowMs: 10 * 60 * 1000, max: 20, m
 const submitGuestLimiter = createRateLimiter({ windowMs: 10 * 60 * 1000, max: 6, message: 'Terlalu banyak percobaan pengajuan. Tunggu 10 menit.', keyFn: (req) => `g${req.guest.id}` });
 
 // Semua kolom WAJIB diisi (termasuk nomor surat & file surat), lalu captcha dicek.
-router.post('/bookings', submitIpLimiter, requireGuest, submitGuestLimiter, requireNotInMaintenance('ruang-rapat'), async (req, res) => {
+router.post('/bookings', submitIpLimiter, requireGuest, submitGuestLimiter, requireNotInMaintenance('ruang-rapat'), requireNotInMaintenance('kiosk'), async (req, res) => {
   try {
     const { title, nomor_surat, room, pic, pic_phone, date: startDate, end_date, start, end, surat_name, surat_file_data, captcha } = req.body || {};
 
@@ -275,7 +275,7 @@ router.post('/bookings', submitIpLimiter, requireGuest, submitGuestLimiter, requ
 // pembatalan oleh pegawai, cancelled_at + alasan diisi, dan pembatalnya dicatat di cancelled_by_guest_id.
 // Booking yang sudah lewat tidak bisa dibatalkan.
 const cancelGuestLimiter = createRateLimiter({ windowMs: 10 * 60 * 1000, max: 10, message: 'Terlalu banyak pembatalan. Tunggu 10 menit.', keyFn: (req) => `g${req.guest.id}` });
-router.post('/bookings/:id/cancel', submitIpLimiter, requireGuest, cancelGuestLimiter, requireNotInMaintenance('ruang-rapat'), async (req, res) => {
+router.post('/bookings/:id/cancel', submitIpLimiter, requireGuest, cancelGuestLimiter, requireNotInMaintenance('ruang-rapat'), requireNotInMaintenance('kiosk'), async (req, res) => {
   try {
     const id = Number(req.params.id);
     if (!Number.isInteger(id)) return res.status(400).json({ message: 'ID booking tidak valid.' });

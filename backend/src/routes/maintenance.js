@@ -6,7 +6,9 @@ const logger = require('../logger');
 const { createSseLimiter } = require('../middleware/security');
 
 const router = express.Router();
-const MENU_KEYS = ['dashboard', 'pemeliharaan', 'pengadaan', 'kendaraan', 'ruang-rapat', 'landing'];
+const MENU_KEYS = ['dashboard', 'pemeliharaan', 'pengadaan', 'kendaraan', 'ruang-rapat', 'landing', 'kiosk'];
+// Halaman publik (tanpa login) yang status maintenance-nya boleh dibaca siapa saja.
+const PUBLIC_KEYS = ['landing', 'kiosk'];
 
 // Bus internal untuk broadcast SSE tiap admin toggle maintenance, supaya
 // semua user yang sedang buka web langsung ke-update real-time tanpa perlu
@@ -30,14 +32,20 @@ router.get('/stream', createSseLimiter(), (req, res) => {
 // Status maintenance landing page ('/') harus bisa dibaca pengunjung yang
 // belum login, jadi endpoint ini sengaja publik (tanpa requireAuth) dan cuma
 // mengembalikan baris 'landing' saja -- bukan status menu lain yang sensitif.
-router.get('/landing-status', async (req, res) => {
+async function publicStatus(key, res) {
   try {
-    const row = await prisma.maintenanceMode.findUnique({ where: { menu_key: 'landing' } });
+    const row = await prisma.maintenanceMode.findUnique({ where: { menu_key: key } });
     res.json({ data: { is_active: !!row?.is_active, message: row?.message || null } });
   } catch (err) {
-    logger.error('GET landing maintenance status gagal', { error: err });
+    logger.error('GET status maintenance publik gagal', { error: err, menu_key: key });
     res.json({ data: { is_active: false, message: null } });
   }
+}
+router.get('/landing-status', (req, res) => publicStatus('landing', res));
+// Sama untuk halaman publik lain: GET /maintenance/public-status/kiosk (kiosk /jadwal-rapat).
+router.get('/public-status/:key', (req, res) => {
+  if (!PUBLIC_KEYS.includes(req.params.key)) return res.status(404).json({ message: 'Halaman tidak dikenal.' });
+  return publicStatus(req.params.key, res);
 });
 
 router.use(requireAuth);

@@ -6,14 +6,17 @@ import { useFeedback } from '../components/Feedback';
 
 const MENU_LABELS = {
   landing: 'Landing Page',
+  kiosk: 'Kiosk Jadwal Rapat',
   dashboard: 'Dashboard',
   pemeliharaan: 'Pemeliharaan',
   pengadaan: 'Pengadaan',
   kendaraan: 'Kendaraan',
   'ruang-rapat': 'Jadwal Ruang Rapat',
 };
-const MENU_ORDER = ['landing', 'dashboard', 'pemeliharaan', 'pengadaan', 'kendaraan', 'ruang-rapat'];
-const MENU_ICONS = { landing: 'public', dashboard: 'dashboard', pemeliharaan: 'build', pengadaan: 'shopping_cart', kendaraan: 'directions_car', 'ruang-rapat': 'calendar_month' };
+const MENU_ORDER = ['landing', 'kiosk', 'dashboard', 'pemeliharaan', 'pengadaan', 'kendaraan', 'ruang-rapat'];
+// Halaman publik (tanpa login): maintenance juga berlaku untuk pengunjung yang belum login.
+const PUBLIK = ['landing', 'kiosk'];
+const MENU_ICONS = { landing: 'public', kiosk: 'tv', dashboard: 'dashboard', pemeliharaan: 'build', pengadaan: 'shopping_cart', kendaraan: 'directions_car', 'ruang-rapat': 'calendar_month' };
 
 export default function Settings() {
   const { user, isAdmin, maintenance, refreshMaintenance } = useAuth();
@@ -37,7 +40,7 @@ function MaintenancePanel({ maintenance, refreshMaintenance }) {
   const { confirm, toast } = useFeedback();
 
   async function toggle(menuKey, nextActive) {
-    if (nextActive && !(await confirm({ title: `Aktifkan maintenance ${MENU_LABELS[menuKey]}?`, message: `Menu ${MENU_LABELS[menuKey]} langsung tidak bisa diakses semua pengguna selain Admin & Kepala Bagian${menuKey === 'landing' ? ', termasuk pengunjung publik' : ''}.`, confirmText: 'Ya, Aktifkan Maintenance', tone: 'warning', icon: 'build' }))) return;
+    if (nextActive && !(await confirm({ title: `Aktifkan maintenance ${MENU_LABELS[menuKey]}?`, message: `Menu ${MENU_LABELS[menuKey]} langsung tidak bisa diakses semua pengguna selain Admin & Kepala Bagian${PUBLIK.includes(menuKey) ? ', termasuk pengunjung publik' : ''}${menuKey === 'kiosk' ? '. Booking tamu lewat Google ikut ditutup' : ''}.`, confirmText: 'Ya, Aktifkan Maintenance', tone: 'warning', icon: 'build' }))) return;
     setSaving(menuKey); setError('');
     try {
       await api.put(`/maintenance/${menuKey}`, { is_active: nextActive });
@@ -80,7 +83,7 @@ function MaintenancePanel({ maintenance, refreshMaintenance }) {
           {activeCount ? `${activeCount} menu maintenance` : 'Semua menu aktif'}
         </span>
       </div>
-      <p className="text-xs text-slate-500 mt-3 mb-4 leading-5">Nonaktifkan menu tertentu untuk role selain Admin &amp; Kepala Bagian. Admin dan Kepala Bagian selalu bisa akses semua menu, kapan pun. Khusus "Landing Page", ini juga berlaku untuk pengunjung publik yang belum login.</p>
+      <p className="text-xs text-slate-500 mt-3 mb-4 leading-5">Nonaktifkan menu tertentu untuk role selain Admin &amp; Kepala Bagian. Admin dan Kepala Bagian selalu bisa akses semua menu, kapan pun. Khusus "Landing Page" dan "Kiosk Jadwal Rapat" (/jadwal-rapat, termasuk booking tamu lewat Google), ini juga berlaku untuk pengunjung publik yang belum login.</p>
       {error && <div className="mb-3 px-3 py-2 rounded-lg bg-red-50 border border-red-200 text-xs text-red-700">{error}</div>}
       <div className="grid md:grid-cols-2 gap-3">
         {MENU_ORDER.map((key) => {
@@ -95,7 +98,7 @@ function MaintenancePanel({ maintenance, refreshMaintenance }) {
                   <span className={`shrink-0 w-9 h-9 rounded-lg flex items-center justify-center ${active ? 'bg-amber-100 text-amber-700' : 'bg-dinas-soft text-dinas'}`}><span className="material-symbols-outlined text-[19px]">{MENU_ICONS[key]}</span></span>
                   <div className="min-w-0">
                     <div className="font-semibold text-sm text-slate-800 truncate">{MENU_LABELS[key]}</div>
-                    <div className={`text-[10px] font-bold ${active ? 'text-amber-700' : 'text-emerald-700'}`}>{active ? 'MAINTENANCE' : 'AKTIF'}</div>
+                    <div className={`text-[10px] font-bold ${active ? 'text-amber-700' : 'text-emerald-700'}`}>{active ? 'MAINTENANCE' : 'AKTIF'}{key === 'kiosk' && <span className="ml-1 font-mono font-semibold text-slate-400">/jadwal-rapat</span>}</div>
                   </div>
                 </div>
                 <button

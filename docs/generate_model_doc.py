@@ -980,8 +980,11 @@ def isi_aplikasi():
             "(`GET /ruang-rapat/surat-export`)."),
         h2("3.7 Settings - Mode Maintenance (Admin)"),
         *bullets(
-            "Menonaktifkan menu Landing, Dashboard, Pemeliharaan, Pengadaan, Kendaraan, Ruang Rapat dengan "
+            "Menonaktifkan menu Landing, Kiosk Jadwal Rapat, Dashboard, Pemeliharaan, Pengadaan, Kendaraan, Ruang Rapat dengan "
             "pesan khusus.",
+            "Kiosk Jadwal Rapat (`kiosk`) menutup halaman publik /jadwal-rapat bagi pengunjung (halaman pemeliharaan "
+            "+ pesan admin) dan menolak booking/pembatalan tamu Google (503); Admin/Kabag yang login tetap bisa "
+            "membuka kiosk dengan banner pemberitahuan. Layar per ruangan /ruang tidak terpengaruh.",
             "Berlaku real-time lewat SSE; API menolak akses dengan HTTP 503 kecuali untuk admin.",
             "Halaman Profil menampilkan kartu identitas (avatar inisial, peran) dan informasi akun: nama, email, "
             "No. HP, unit kerja, metode login, tanggal terdaftar. Tombol **Edit** mengubah nama lengkap & No. HP "
@@ -1106,7 +1109,7 @@ def isi_aplikasi():
             ["Foto ruang", "GET /ruang-info, GET /ruang-info/foto/:id/file", "Publik", "Foto & fasilitas tiap ruang rapat (layar ruangan)"],
             ["", "POST /ruang-info/foto; PUT /ruang-info/foto/:id, /ruang-info/urutan, /ruang-info/fasilitas; DELETE /ruang-info/foto/:id", "Admin/Kabag",
              "Tambah/ubah keterangan/urutkan/hapus foto & simpan fasilitas"],
-            ["Maintenance", "GET /landing-status, GET /stream (SSE)", "Publik", "Status landing & sinyal real-time"],
+            ["Maintenance", "GET /landing-status, GET /public-status/kiosk, GET /stream (SSE)", "Publik", "Status landing & kiosk, sinyal real-time"],
             ["", "GET / ; PUT /:menu_key", "Login; Admin/Kabag", "Baca & ubah mode maintenance"],
             ["Live", "GET /live/stream (SSE)", "Publik", "Satu sinyal real-time untuk semua modul"],
             ["Users", "GET /, GET /reset-requests/count, PUT /:id/status, PUT /:id/role, POST /:id/reset-link", "Admin/Kabag",

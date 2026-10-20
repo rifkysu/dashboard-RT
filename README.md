@@ -96,7 +96,8 @@ Full-stack app (React + Node.js/Express + PostgreSQL + **Prisma**) untuk mengelo
 - Teknis: atribut `data-theme="dark"` di `<html>` (dipasang layout dashboard, lihat `src/theme.js` & `ProtectedRoute.jsx`); semua warna gelap ada di satu file `src/dark-theme.css`, jadi mode terang tidak tersentuh.
 
 ### ⚙️ Mode Maintenance (Settings, khusus Admin & Kabag)
-- Admin bisa menonaktifkan menu tertentu (Landing Page/Dashboard/Pemeliharaan/Pengadaan/Kendaraan/Ruang Rapat) untuk semua role selain admin, lengkap dengan pesan custom per menu.
+- Admin bisa menonaktifkan menu tertentu (Landing Page/Kiosk Jadwal Rapat/Dashboard/Pemeliharaan/Pengadaan/Kendaraan/Ruang Rapat) untuk semua role selain admin, lengkap dengan pesan custom per menu.
+- **Kiosk Jadwal Rapat** (`kiosk`) menutup halaman publik `/jadwal-rapat`: pengunjung melihat halaman pemeliharaan berisi pesan dari admin, booking tamu lewat Google ikut ditolak API (503), dan halaman otomatis kembali normal begitu maintenance dimatikan. Admin/Kabag yang sedang login tetap bisa membuka kiosk (ada banner *Mode maintenance kiosk aktif*). Status dibaca lewat endpoint publik `GET /api/maintenance/public-status/kiosk`. Layar per ruangan `/ruang/...` tidak terpengaruh.
 - Perubahan **real-time lewat SSE** — begitu admin toggle, semua user yang sedang online langsung melihat menu terkunci/terbuka tanpa refresh.
 - Diterapkan **dua lapis**: disable tampilan di sidebar/halaman (frontend) **dan** ditolak di API dengan status 503 (backend) — jadi tetap aman walau ada yang mencoba akses API langsung.
 - Halaman **Settings khusus admin & kabag** — link-nya otomatis hilang dari sidebar untuk role lain, dan redirect ke Dashboard kalau karyawan/PIC coba akses `/settings` langsung lewat URL. Info profil pengguna (nama, email, role) dipindah ke halaman terpisah **`/profile`** yang bisa diakses semua role lewat blok profil di sidebar (di atas Settings).
