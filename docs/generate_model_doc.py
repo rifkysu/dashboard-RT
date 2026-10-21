@@ -851,7 +851,13 @@ def isi_aplikasi():
             "berikon besar samar; bagian *Cara mengajukan* berupa pita gelap. Bila OS meminta gerakan dikurangi "
             "(mis. Windows *Animation effects* mati), gerakan besar dimatikan tetapi efek halus (fade, kilau, kelip) tetap jalan.",
             "Halaman kiosk **/jadwal-rapat** menampilkan jadwal yang sama dalam mode baca saja untuk layar di "
-            "dekat ruang rapat.",
+            "dekat ruang rapat. Bagian atasnya berupa hero gelap bermotif kawung: jam & tanggal live, ringkasan hari ini "
+            "(rapat hari ini, sedang berlangsung, ruangan tersedia), tombol layar penuh & tautan layar per ruangan, serta "
+            "papan *Status ruangan saat ini* berisi kartu tiap ruangan (foto sampul, status Tersedia / Segera dipakai "
+            "(<= 15 menit) / Sedang dipakai, agenda berjalan atau berikutnya + progres & sisa waktu rapat berjalan, timeline mini 07-19 berisi blok rapat "
+            "dan penanda waktu sekarang; klik = foto & fasilitas), sapaan sesuai jam, dan pita bergeser *Agenda hari ini* "
+            "(rapat yang sedang/akan berlangsung di semua ruangan). Layar dijaga tetap menyala (Screen Wake Lock). "
+            "Di bawahnya panel booking tamu, *Kalender booking* dengan keterangan warna status surat, dan footer.",
             "Kiosk **/jadwal-rapat** berputar otomatis: ruangan berganti sendiri tiap 30 detik (Semua -> tiap ruangan) "
             "dan tabel digulir ke baris hari ini, dengan bilah waktu; disentuh = jeda 30 detik lalu lanjut; bisa dimatikan "
             "dengan tombol *Putar otomatis*; mati secara default bila dibuka dengan ?ruang=.",

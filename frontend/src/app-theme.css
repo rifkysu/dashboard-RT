@@ -502,6 +502,12 @@ main.app-main { background: var(--kanvas) !important; min-height:100vh; }
   to { transform: scaleX(1); }
 }
 
+/* Kiosk /jadwal-rapat: pita "Agenda hari ini" bergeser terus (isi digandakan, geser -50% = satu putaran). */
+.kiosk-marquee { animation: kiosk-marquee linear infinite; }
+.kiosk-marquee:hover { animation-play-state: paused; }
+@keyframes kiosk-marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+@media (prefers-reduced-motion: reduce) { .kiosk-marquee { animation: none; } }
+
 /* Slideshow foto ruangan (layar /ruang/:slug): zoom & geser pelan (Ken Burns) */
 .foto-kenburns {
   animation-name: foto-kenburns;
