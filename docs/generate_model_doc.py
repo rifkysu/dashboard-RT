@@ -856,7 +856,8 @@ def isi_aplikasi():
             "papan *Status ruangan saat ini* berisi kartu tiap ruangan (foto sampul, status Tersedia / Segera dipakai "
             "(<= 15 menit) / Sedang dipakai, agenda berjalan atau berikutnya + progres & sisa waktu rapat berjalan, timeline mini 07-19 berisi blok rapat "
             "dan penanda waktu sekarang; klik = foto & fasilitas), sapaan sesuai jam, dan pita bergeser *Agenda hari ini* "
-            "(rapat yang sedang/akan berlangsung di semua ruangan). Layar dijaga tetap menyala (Screen Wake Lock). "
+            "(rapat yang sedang/akan berlangsung di semua ruangan). Layar dijaga tetap menyala (Screen Wake Lock). Bila jadwal gagal dimuat, indikator Live berganti *Offline* (jam data terakhir), "
+            "kartu menampilkan *Status tidak diketahui* (tidak pernah ditebak Tersedia), dan dicoba ulang tiap 15 detik. "
             "Di bawahnya panel booking tamu, *Kalender booking* dengan keterangan warna status surat, dan footer.",
             "Kiosk **/jadwal-rapat** berputar otomatis: ruangan berganti sendiri tiap 30 detik (Semua -> tiap ruangan) "
             "dan tabel digulir ke baris hari ini, dengan bilah waktu; disentuh = jeda 30 detik lalu lanjut; bisa dimatikan "
@@ -878,7 +879,11 @@ def isi_aplikasi():
             "di halaman kiosk **/jadwal-rapat** (di atas jadwal; landing page hanya menautkan ke sana). Setelah login Google (OAuth 2.0 + PKCE), tamu mengisi form booking "
             "yang **semua kolomnya wajib** (agenda, nomor surat, PIC, No. HP PIC, ruangan, tanggal mulai & sampai, "
             "jam, file surat permohonan); tombol Kirim baru aktif bila semua terisi. Saat submit wajib mengisi "
-            "**captcha 6 angka** (gambar PNG dari server) yang **berlaku 5 menit** dan hangus setelah sekali dicek.",
+            "**captcha 6 angka** (gambar PNG dari server) yang **berlaku 5 menit** dan hangus setelah sekali dicek. "
+            "Begitu ruangan, tanggal & jam dipilih, form langsung **mengecek ketersediaan** (jadwal publik, ikut real-time): "
+            "daftar *Jam terisi* di ruangan itu ditampilkan, jam yang bentrok ditandai merah dan tombol Kirim dikunci; "
+            "bila tersedia muncul tanda *Ruangan tersedia*. Server tetap mengecek ulang bentrok di dalam transaksi dengan kunci "
+            "per ruangan (dua pengajuan bersamaan tidak bisa sama-sama lolos); bila keduluan (409), daftar jam terisi di form diperbarui.",
             "Sesi akun Google tamu **berlaku 7 hari**. Anti-spam: jeda 60 detik antar pengajuan, maks. 3 pengajuan "
             "per 24 jam dan 5 booking aktif per akun, satu pengajuan maks. 7 hari berturut-turut & maks. 90 hari "
             "ke depan, rate limit per akun & IP, serta akun bisa diblokir admin. Daftar *Booking Anda* tampil di "

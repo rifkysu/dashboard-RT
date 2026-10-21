@@ -58,7 +58,10 @@ const TEMA = {
   kosong: { label: 'Tersedia', dot: 'bg-emerald-400', pill: 'bg-emerald-400/15 text-emerald-300 ring-emerald-400/40', bar: 'from-emerald-400/80', kartu: 'ring-white/10' },
   segera: { label: 'Segera dipakai', dot: 'bg-amber-400', pill: 'bg-amber-400/15 text-amber-300 ring-amber-400/40', bar: 'from-amber-400/80', kartu: 'ring-amber-400/40 shadow-[0_0_44px_-14px_rgba(245,158,11,.65)]' },
   dipakai: { label: 'Sedang dipakai', dot: 'bg-rose-500', pill: 'bg-rose-500/15 text-rose-300 ring-rose-500/40', bar: 'from-rose-500/80', kartu: 'ring-rose-500/40 shadow-[0_0_44px_-14px_rgba(244,63,94,.7)]' },
+  // Jadwal belum bisa dimuat (server/koneksi bermasalah): status tidak boleh ditebak "Tersedia".
+  galat: { label: 'Status tidak diketahui', dot: 'bg-slate-400', pill: 'bg-white/10 text-white/60 ring-white/20', bar: 'from-slate-400/60', kartu: 'ring-white/10' },
 };
+const LEGENDA = ['kosong', 'segera', 'dipakai'];
 
 const sapaan = (jam) => (jam < 11 ? { teks: 'Selamat pagi', icon: 'wb_twilight' } : jam < 15 ? { teks: 'Selamat siang', icon: 'light_mode' } : jam < 18 ? { teks: 'Selamat sore', icon: 'wb_sunny' } : { teks: 'Selamat malam', icon: 'dark_mode' });
 const fmtSisa = (min) => { const h = Math.floor(min / 60), m = min % 60; return h ? `${h}j ${m}m` : `${m} mnt`; };
@@ -91,19 +94,33 @@ function useJam() {
 }
 
 // Booking hari ini (semua ruangan): ikut sinyal live, dimuat ulang tiap menit & saat tanggal berganti.
+// Gagal memuat -> `gagal` true dan data terakhir (kalau ada) tetap dipakai; jangan pernah dianggap "kosong",
+// supaya kiosk tidak menampilkan semua ruangan "Tersedia" saat server/koneksi bermasalah. Dicoba ulang tiap 15 detik.
 function useJadwalHariIni(today) {
   const [items, setItems] = useState(null);
+  const [gagal, setGagal] = useState(false);
+  const [dimuatPada, setDimuatPada] = useState(null);
   const reqRef = useRef(0);
   function load() {
     const id = ++reqRef.current;
     const d = iso();
     api.get('/ruang-rapat/public-schedule', { params: { from: d, to: d } })
-      .then((r) => { if (id === reqRef.current) setItems((r.data.data || []).filter((x) => !x.cancelled)); })
-      .catch(() => { if (id === reqRef.current) setItems((prev) => prev || []); });
+      .then((r) => {
+        if (id !== reqRef.current) return;
+        setItems((r.data.data || []).filter((x) => !x.cancelled && (x.end_date || x.date) >= d && x.date <= d));
+        setGagal(false);
+        setDimuatPada(new Date());
+      })
+      .catch(() => { if (id === reqRef.current) setGagal(true); });
   }
-  useEffect(() => { load(); const t = setInterval(load, 60000); return () => clearInterval(t); }, [today]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    // Tanggal berganti: data kemarin tidak berlaku lagi untuk status hari ini.
+    setItems((prev) => (prev && dimuatPada && iso(dimuatPada) !== today ? null : prev));
+    load();
+  }, [today]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { const t = setInterval(load, gagal ? 15000 : 60000); return () => clearInterval(t); }, [gagal]); // eslint-disable-line react-hooks/exhaustive-deps
   useRuangRapatLive(load);
-  return items;
+  return { items, gagal, dimuatPada };
 }
 
 function statusRuang(list, menit) {
@@ -137,9 +154,10 @@ function TimelineHari({ list, menit, rentang }) {
 }
 
 // Kartu status satu ruangan; klik = popup foto & fasilitas.
-function KartuRuang({ room, list, menit, memuat, foto, delay, rentang }) {
+function KartuRuang({ room, list, menit, memuat, galat, foto, delay, rentang }) {
   const st = statusRuang(list, menit);
-  const tema = TEMA[memuat ? 'kosong' : st.status];
+  const kunci = galat ? 'galat' : memuat ? 'kosong' : st.status;
+  const tema = TEMA[kunci];
   const sisaRapat = list.filter((x) => menitDari(x.end) > menit).length;
   const progres = st.sekarang ? (menit - menitDari(st.sekarang.start)) / Math.max(1, menitDari(st.sekarang.end) - menitDari(st.sekarang.start)) : 0;
   return (
@@ -158,14 +176,16 @@ function KartuRuang({ room, list, menit, memuat, foto, delay, rentang }) {
           ) : (
             <span className={`mt-3 self-start inline-flex items-center gap-2 px-2.5 py-1 rounded-full ring-1 text-[11px] font-bold uppercase tracking-wider ${tema.pill}`}>
               <span className="relative flex w-2 h-2">
-                {st.status !== 'kosong' && <span className={`absolute inset-0 rounded-full ${tema.dot} motion-safe:animate-ping`}></span>}
+                {(kunci === 'segera' || kunci === 'dipakai') && <span className={`absolute inset-0 rounded-full ${tema.dot} motion-safe:animate-ping`}></span>}
                 <span className={`relative w-2 h-2 rounded-full ${tema.dot}`}></span>
               </span>
               {tema.label}
             </span>
           )}
           <span className="mt-3 flex-1 min-h-[3.25rem] text-sm">
-            {memuat ? null : st.sekarang ? (
+            {memuat ? null : galat ? (
+              <span className="block text-white/55">Jadwal belum dapat dimuat. Mencoba lagi otomatis…</span>
+            ) : st.sekarang ? (
               <>
                 <span className="block font-semibold leading-snug line-clamp-2">{st.sekarang.title}</span>
                 <span className="mt-1.5 flex flex-wrap items-center justify-between gap-x-2 text-[11px] text-white/55 whitespace-nowrap">
@@ -186,9 +206,9 @@ function KartuRuang({ room, list, menit, memuat, foto, delay, rentang }) {
             )}
           </span>
           <span className="mt-3 pt-3 border-t border-white/10">
-            {!memuat && <TimelineHari list={list} menit={menit} rentang={rentang} />}
+            {!memuat && !galat && <TimelineHari list={list} menit={menit} rentang={rentang} />}
             <span className="mt-1.5 block text-[11px] font-semibold text-white/50">
-              {memuat ? 'Memuat…' : sisaRapat ? `${sisaRapat} rapat tersisa hari ini` : 'Tidak ada rapat lagi hari ini'}
+              {memuat ? 'Memuat…' : galat ? 'Menunggu koneksi ke server…' : sisaRapat ? `${sisaRapat} rapat tersisa hari ini` : 'Tidak ada rapat lagi hari ini'}
             </span>
           </span>
         </span>
@@ -199,12 +219,14 @@ function KartuRuang({ room, list, menit, memuat, foto, delay, rentang }) {
 
 // Pita agenda berjalan: rapat yang sedang/akan berlangsung hari ini di semua ruangan.
 // Isi digandakan supaya geser (marquee) menyambung tanpa jeda; berhenti saat disentuh/hover.
-function TickerAgenda({ list, menit, memuat }) {
+function TickerAgenda({ list, menit, memuat, galat }) {
   const sisa = list.filter((x) => menitDari(x.end) > menit).sort((a, b) => a.start.localeCompare(b.start) || a.room.localeCompare(b.room));
-  const isi = (salinan) => sisa.map((x) => {
+  // Agenda sedikit -> diulang dalam tiap separuh pita supaya pita tetap penuh (tidak ada celah kosong saat bergeser).
+  const ulang = sisa.length ? Math.ceil(6 / sisa.length) : 0;
+  const isi = (salinan) => Array.from({ length: ulang }, () => sisa).flat().map((x, i) => {
     const jalan = menitDari(x.start) <= menit;
     return (
-      <span key={`${salinan}-${x.id}`} className="shrink-0 inline-flex items-center gap-2.5 pr-8" aria-hidden={salinan ? 'true' : undefined}>
+      <span key={`${salinan}-${i}-${x.id}`} className="shrink-0 inline-flex items-center gap-2.5 pr-8" aria-hidden={salinan || i >= sisa.length ? 'true' : undefined}>
         <span className={`w-1.5 h-1.5 rounded-full ${jalan ? 'bg-rose-400' : 'bg-[#e4c27f]'}`}></span>
         <span className="font-mono tabular-nums text-white/80">{x.start}–{x.end}</span>
         <span className="font-bold text-[#e4c27f]">{judulRuang(x.room)}</span>
@@ -220,9 +242,10 @@ function TickerAgenda({ list, menit, memuat }) {
       </div>
       <div className="relative flex-1 min-w-0 flex items-center text-sm [mask-image:linear-gradient(90deg,transparent,#000_4%,#000_96%,transparent)]">
         {memuat ? <span className="px-4 text-white/50">Memuat agenda…</span>
+          : galat ? <span className="px-4 text-amber-200/80">Agenda belum dapat dimuat — periksa koneksi. Mencoba lagi otomatis…</span>
           : !sisa.length ? <span className="px-4 text-white/60">Tidak ada agenda tersisa hari ini — semua ruangan dapat dibooking.</span>
           : (
-            <div className="kiosk-marquee flex w-max pl-4 py-2.5" style={{ animationDuration: `${Math.max(25, sisa.length * 9)}s` }}>
+            <div className="kiosk-marquee flex w-max pl-4 py-2.5" style={{ animationDuration: `${Math.max(25, sisa.length * ulang * 7)}s` }}>
               {isi(0)}{isi(1)}
             </div>
           )}
@@ -234,7 +257,7 @@ function TickerAgenda({ list, menit, memuat }) {
 function KioskHero() {
   const now = useJam();
   useLayarTetapMenyala();
-  const items = useJadwalHariIni(iso(now));
+  const { items, gagal, dimuatPada } = useJadwalHariIni(iso(now));
   const { info } = useRuangInfo();
   const [penuh, setPenuh] = useState(false);
   useEffect(() => {
@@ -248,15 +271,17 @@ function KioskHero() {
   };
 
   const menit = now.getHours() * 60 + now.getMinutes() + now.getSeconds() / 60;
-  const memuat = items === null;
+  const galat = items === null && gagal; // belum pernah berhasil dimuat
+  const memuat = items === null && !gagal;
+  const tanpaAngka = memuat || galat;
   const list = items || [];
   const rooms = [...RUANG, ...[...new Set(list.map((x) => x.room).filter((r) => r && !RUANG.includes(r)))].sort()];
   const perRuang = Object.fromEntries(rooms.map((r) => [r, list.filter((x) => x.room === r).sort((a, b) => a.start.localeCompare(b.start))]));
   const status = rooms.map((r) => statusRuang(perRuang[r], menit).status);
   const ringkas = [
-    { label: 'Rapat hari ini', value: memuat ? '–' : list.length, icon: 'event' },
-    { label: 'Sedang berlangsung', value: memuat ? '–' : status.filter((x) => x === 'dipakai').length, icon: 'groups' },
-    { label: 'Ruangan tersedia', value: memuat ? '–' : `${status.filter((x) => x !== 'dipakai').length}/${rooms.length}`, icon: 'meeting_room' },
+    { label: 'Rapat hari ini', value: tanpaAngka ? '–' : list.length, icon: 'event' },
+    { label: 'Sedang berlangsung', value: tanpaAngka ? '–' : status.filter((x) => x === 'dipakai').length, icon: 'groups' },
+    { label: 'Ruangan tersedia', value: tanpaAngka ? '–' : `${status.filter((x) => x !== 'dipakai').length}/${rooms.length}`, icon: 'meeting_room' },
   ];
   const tanggal = now.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
   const salam = sapaan(now.getHours());
@@ -282,9 +307,16 @@ function KioskHero() {
             </span>
           </Link>
           <div className="flex items-center gap-2 shrink-0">
-            <span className="hidden sm:inline-flex items-center gap-2 h-10 px-3 rounded-xl bg-white/10 ring-1 ring-white/15 text-xs font-bold uppercase tracking-wider">
-              <span className="relative flex w-2 h-2"><span className="absolute inset-0 rounded-full bg-emerald-400 motion-safe:animate-ping"></span><span className="relative w-2 h-2 rounded-full bg-emerald-400"></span></span>Live
-            </span>
+            {gagal ? (
+              <span className="inline-flex items-center gap-2 h-10 px-3 rounded-xl bg-amber-400/15 ring-1 ring-amber-400/40 text-amber-200 text-xs font-bold" title="Koneksi ke server terputus; mencoba lagi otomatis">
+                <span className="material-symbols-outlined text-[18px]">cloud_off</span>
+                <span className="hidden sm:inline">{dimuatPada ? `Offline · data ${pad(dimuatPada.getHours())}:${pad(dimuatPada.getMinutes())}` : 'Offline'}</span>
+              </span>
+            ) : (
+              <span className="hidden sm:inline-flex items-center gap-2 h-10 px-3 rounded-xl bg-white/10 ring-1 ring-white/15 text-xs font-bold uppercase tracking-wider">
+                <span className="relative flex w-2 h-2"><span className="absolute inset-0 rounded-full bg-emerald-400 motion-safe:animate-ping"></span><span className="relative w-2 h-2 rounded-full bg-emerald-400"></span></span>Live
+              </span>
+            )}
             <Link to="/ruang" className="h-10 px-3 rounded-xl bg-white/10 ring-1 ring-white/15 text-sm font-semibold inline-flex items-center gap-1.5 hover:bg-white/15">
               <span className="material-symbols-outlined text-[18px]">tv</span><span className="hidden md:inline">Layar per ruangan</span>
             </Link>
@@ -330,15 +362,15 @@ function KioskHero() {
           <div className="flex items-center justify-between gap-3 mb-3">
             <div className="text-xs font-bold uppercase tracking-wider text-white/60">Status ruangan saat ini</div>
             <div className="hidden sm:flex items-center gap-3 text-[11px] text-white/55">
-              {Object.values(TEMA).map((t) => <span key={t.label} className="inline-flex items-center gap-1.5"><span className={`w-2 h-2 rounded-full ${t.dot}`}></span>{t.label}</span>)}
+              {LEGENDA.map((k) => TEMA[k]).map((t) => <span key={t.label} className="inline-flex items-center gap-1.5"><span className={`w-2 h-2 rounded-full ${t.dot}`}></span>{t.label}</span>)}
             </div>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3">
             {rooms.map((r, i) => (
-              <KartuRuang key={r} room={r} list={perRuang[r]} menit={menit} memuat={memuat} foto={info?.[r]?.foto?.[0]?.src} delay={300 + i * 70} rentang={rentang} />
+              <KartuRuang key={r} room={r} list={perRuang[r]} menit={menit} memuat={memuat} galat={galat} foto={info?.[r]?.foto?.[0]?.src} delay={300 + i * 70} rentang={rentang} />
             ))}
           </div>
-          <TickerAgenda list={list} menit={menit} memuat={memuat} />
+          <TickerAgenda list={list} menit={menit} memuat={memuat} galat={galat} />
         </div>
       </div>
     </header>
