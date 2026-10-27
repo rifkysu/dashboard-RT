@@ -6,7 +6,9 @@ import useRuangRapatLive from '../hooks/useRuangRapatLive';
 import { iso } from '../hooks/useMonthSchedule';
 import { requireFields, HP_RE, normalizePhone } from '../utils/validation';
 import { detectFileMime, readFileAsDataUrl } from '../utils/fileSignature';
-import { RUANG, judulRuang } from '../utils/ruang';
+import { judulRuang } from '../utils/ruang';
+import { useDaftarRuang } from '../hooks/useRuangInfo';
+import { RuangOptions } from './BagianTabs';
 import { RuangPilihanInfo } from './RuangFoto';
 
 // Booking ruang rapat dari halaman kiosk /jadwal-rapat untuk TAMU (tanpa akun pegawai) lewat login Google.
@@ -164,6 +166,7 @@ function PanelKetersediaan({ form, cek, bentrok }) {
 }
 
 function BookingForm({ guest, onClose, onBooked, onSessionEnd }) {
+  const { grup } = useDaftarRuang();
   const { alert } = useFeedback();
   const [form, setForm] = useState({ ...emptyForm, pic: guest.nama || '' });
   const [captcha, setCaptcha] = useState(null);
@@ -286,7 +289,7 @@ function BookingForm({ guest, onClose, onBooked, onSessionEnd }) {
             <Field label="Ruangan">
               <select value={form.room} onChange={set('room')} className={inputCls}>
                 <option value="">Pilih ruangan…</option>
-                {RUANG.map((r) => <option key={r} value={r}>{judulRuang(r)}</option>)}
+                <RuangOptions grup={grup} value={form.room} />
               </select>
             </Field>
             <RuangPilihanInfo room={form.room} />

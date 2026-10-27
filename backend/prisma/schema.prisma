@@ -331,15 +331,23 @@ model RuangFoto {
   @@map("ruang_foto")
 }
 
-// Profil per ruang rapat: daftar fasilitas [{ icon, label }] yang tampil di layar ruangan.
+// Daftar ruang rapat (satu baris = satu ruangan yang bisa dibooking), dikelola Admin/Kabag:
+// satuan kerja (bagian) pengelola, kapasitas, link dokumentasi foto, dan fasilitas [{ icon, label }].
 model RuangProfil {
-  room       String   @id @db.VarChar(150)
-  fasilitas  Json     @default("[]")
-  updated_by Int?
-  created_at DateTime @default(now())
-  updated_at DateTime @default(now()) @updatedAt
+  room         String   @id @db.VarChar(150)
+  satuan_kerja String   @default("") @db.VarChar(150)
+  kapasitas    Int?
+  link_foto    String?  @db.VarChar(500)
+  sort_order   Int      @default(0)
+  // Tema layar ruangan "<palet>/<motif>" (lihat migration 0034); NULL = otomatis dari nama.
+  tema         String?  @db.VarChar(40)
+  fasilitas    Json     @default("[]")
+  updated_by   Int?
+  created_at   DateTime @default(now())
+  updated_at   DateTime @default(now()) @updatedAt
 
   updatedBy User? @relation("RuangProfilUpdatedBy", fields: [updated_by], references: [id], onDelete: SetNull)
 
+  @@index([sort_order])
   @@map("ruang_profil")
 }

@@ -33,7 +33,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 LOGO = os.path.join(ROOT, "frontend", "public", "logo-kemnaker.png")
 
-TANGGAL = "20 Oktober 2026"
+TANGGAL = "27 Oktober 2026"
 SISTEM = "Sistem Layanan Biro Umum & Rumah Tangga"
 
 PW, PH = A4
@@ -844,7 +844,7 @@ def isi_aplikasi():
         h1("3. Modul & Fitur"),
         h2("3.1 Landing Page & Layar Kiosk"),
         *bullets(
-            "Halaman awal (**/**) berisi hero, ringkasan modul, dan jadwal ruang rapat (tampilan grid "
+            "Halaman awal (**/**) memakai lebar layar penuh (maks. 1800px, tanpa ruang kosong kiri-kanan di monitor lebar) dan berisi hero, ringkasan modul, dan jadwal ruang rapat (tampilan grid "
             "ruangan x tanggal per bulan, sama dengan menu Ruang Rapat) yang diperbarui real-time.",
             "Tampilan landing: hero dengan aurora, grid titik, partikel emas, kata judul berganti, kartu live "
             "*Ruang rapat hari ini* berbingkai cahaya + chip kaca melayang; judul bagian disorot emas; kartu layanan "
@@ -862,15 +862,18 @@ def isi_aplikasi():
             "Kiosk **/jadwal-rapat** berputar otomatis: ruangan berganti sendiri tiap 30 detik (Semua -> tiap ruangan) "
             "dan tabel digulir ke baris hari ini, dengan bilah waktu; disentuh = jeda 30 detik lalu lanjut; bisa dimatikan "
             "dengan tombol *Putar otomatis*; mati secara default bila dibuka dengan ?ruang=.",
-            "Pilihan ruangan (Semua Ruangan atau satu ruangan) di landing page & kiosk, tetap real-time; "
-            "tersimpan di URL, mis. **/jadwal-rapat?ruang=SERBAGUNA**.",
+            "**Menu per bagian** (satuan kerja, mis. Biro Umum, Biro Keuangan dan BMN, PPSDM Ketenagakerjaan) di "
+            "landing page, kiosk, dan menu Ruang Rapat: hanya ruangan bagian itu yang tampil di kartu status, ringkasan, "
+            "pita agenda, dan tabel jadwal; ada pilihan *Semua bagian*. Putar otomatis kiosk berputar di dalam bagian terpilih.",
+            "Pilihan bagian & ruangan di landing page & kiosk tetap real-time dan tersimpan di URL, mis. "
+            "**/jadwal-rapat?bagian=Biro%20Umum** atau **/jadwal-rapat?ruang=SERBAGUNA** (kiosk tiap satuan kerja bisa dibuka dengan link bagiannya).",
             "Layar per ruangan **/ruang/:ruang** (mis. **/ruang/serbaguna**, **/ruang/setjen-ii**) untuk tablet/monitor "
             "di depan tiap ruang: status besar Tersedia / Segera digunakan (<= 15 menit) / Sedang digunakan, rapat "
             "berlangsung (agenda, PIC, jam, sisa waktu), dan agenda 7 hari berupa slide per hari (strip tanggal, swipe/panah, "
             "hari berganti otomatis tiap 30 detik dengan bilah waktu, kembali ke hari ini setelah hari ke-7; disentuh = jeda 30 detik dengan hitung mundur lalu lanjut sendiri). Publik & baca saja, "
             "real-time + muat ulang tiap menit, layar dijaga tetap menyala (Wake Lock), tombol layar penuh. **/ruang** "
             "menampilkan daftar ruangan; di landing page tiap ruangan pada kartu *Ruang rapat hari ini* dan bagian "
-            "*Layar per ruangan* menautkan ke layarnya. Ruangan yang punya foto (saat ini **Serbaguna**, **Setjen II**, dan **Biro Umum**) menampilkan "
+            "*Layar per ruangan* (dikelompokkan per bagian) menautkan ke layarnya. Layar menampilkan satuan kerja & kapasitas ruangan, dan **tiap ruangan punya tema layar sendiri** (14 warna x 4 motif latar: Kawung, Garis, Titik, Kotak; isi awal 28 ruangan semuanya beda, migration 0034); warna status tetap hijau/kuning/merah di semua layar. Ruangan yang punya foto (Serbaguna, Setjen II, Biro Umum, serta 11 ruangan satuan kerja lain dari link dokumentasi spreadsheet) menampilkan "
             "**slideshow foto ruangan** (crossfade + zoom pelan, ganti otomatis tiap 5 detik (disentuh = jeda 10 detik), swipe/panah, ketuk = tampilan penuh "
             "yang tertutup sendiri setelah 45 detik) beserta daftar **fasilitas**. Foto & fasilitas diambil dari database "
             "(`GET /ruang-info`) dan dikelola Admin/Kabag di menu **Foto & Fasilitas Ruang** (lihat 3.9); "
@@ -956,7 +959,13 @@ def isi_aplikasi():
             "Kartu ringkasan per tab (Total, Tersedia, Digunakan, Servis); kartu status sekaligus filter cepat."),
         h2("3.6 Ruang Rapat"),
         *bullets(
-            "Lima ruangan: SERBAGUNA, SETJEN II, TRI DHARMA, BIRO UMUM, GRAHA KEMNAKER.",
+            "Daftar ruangan diambil dari database (tabel `ruang_profil`, dikelola Admin/Kabag di menu Foto & Fasilitas Ruang), "
+            "isi awal 28 ruangan dari spreadsheet *Data Ruang Rapat di Sekretariat Jenderal Kemnaker* (migration 0033), "
+            "dikelompokkan per **bagian / satuan kerja**: Biro Umum (Biro Umum, Setjen II, Tri Dharma, Serbaguna, Graha Kemnaker), "
+            "Biro Keuangan dan BMN, Biro Perencanaan, Politeknik Ketenagakerjaan, Biro Hubungan Masyarakat, Biro Kerja Sama, "
+            "Biro Organisasi dan SDM Aparatur, PPSDM Ketenagakerjaan, dan Pusat Pasar Kerja.",
+            "Tombol **Bagian** di atas kalender memilih bagian yang ditampilkan (default bagian pertama, ada *Semua bagian*); "
+            "pilihan ruangan di form booking pegawai & tamu dikelompokkan per bagian. Backend menolak booking ke ruangan yang tidak ada di daftar.",
             "Kartu ringkasan: booking hari ini, sedang berlangsung, ruang kosong sekarang, dan booking mendatang "
             "yang belum ada surat (dihitung dari bulan yang sedang ditampilkan).",
             "Grid jadwal: **nama ruangan horizontal** (kolom) dan **tanggal vertikal** (baris, dikelompokkan "
@@ -1016,8 +1025,16 @@ def isi_aplikasi():
             "Link reset kata sandi yang masih berlaku ikut dihapus saat akun di-ban."),
         h2("3.9 Foto & Fasilitas Ruang (Admin)"),
         *bullets(
-            "Menu **/foto-ruang** (Admin/Kabag) untuk mengatur slideshow foto & daftar fasilitas yang tampil di "
-            "layar depan tiap ruang rapat (/ruang/:ruang). Kartu pilih ruangan menampilkan sampul serta jumlah foto & fasilitas.",
+            "Menu **/foto-ruang** (Admin/Kabag) untuk mengelola **daftar ruang rapat per bagian** serta slideshow foto & daftar fasilitas yang tampil di "
+            "layar depan tiap ruang rapat (/ruang/:ruang). Ruangan dipilih lewat tombol bagian lalu kartu ruangan (sampul serta jumlah foto & fasilitas).",
+            "**Tambah Ruangan**: nama, satuan kerja / bagian (pilih yang ada atau ketik baru), kapasitas kursi, link dokumentasi foto "
+            "(mis. folder Google Drive), dan fasilitas (satu per baris, ikon dipilih otomatis). Ruangan baru langsung bisa dibooking dan "
+            "tampil di jadwal, kiosk, landing, & layar ruangan.",
+            "**Detail ruangan**: ubah nama (semua booking & foto ikut pindah ke nama baru), satuan kerja, kapasitas, dan link foto. "
+            "**Hapus ruangan** ditolak bila masih ada booking aktif hari ini/ke depan; riwayat booking lama tetap tersimpan (dan tetap bisa diedit selama ruangannya tidak diganti), foto ikut dihapus.",
+            "Kapasitas & link dokumentasi foto tampil di popup foto ruangan, kartu ruangan di form booking, dan kartu status kiosk.",
+            "**Tema layar ruangan** di panel Detail ruangan: pilih warna & motif latar dengan pratinjau; tema yang sudah dipakai ruangan lain "
+            "ditandai supaya tiap layar tetap beda. Ruangan baru otomatis mendapat tema yang belum dipakai.",
             "Foto: tambah beberapa sekaligus (klik atau seret), maks. 12 per ruangan. Sebelum upload tiap foto "
             "bisa diberi keterangan dan **dipotong bagian bawahnya** (pratinjau area merah) untuk membuang "
             "watermark tanggal/alamat kamera. Browser mengecilkan foto ke maks. 1920px & menyimpan ulang sebagai "
@@ -1031,8 +1048,10 @@ def isi_aplikasi():
             "jadwal (kiosk, landing, menu Jadwal Ruang Rapat) & filter ruangan, kartu landing *Ruang rapat hari ini* "
             "dan *Layar per ruangan*, Dashboard, form booking pegawai & tamu (pratinjau ruangan yang dipilih), dan "
             "detail booking. Klik foto/nama ruangan = popup slideshow foto & fasilitas.",
-            "Isi awal (Serbaguna, Setjen II, Biro Umum) dari `backend/seed/ruang-foto/` lewat "
-            "`npm run ruang:seed-foto` (sekali setelah migration 0031; ruangan yang sudah punya data dilewati)."),
+            "Isi awal foto (Serbaguna, Setjen II, Biro Umum, dan 11 ruangan satuan kerja lain yang fotonya diunduh dari link "
+            "dokumentasi Google Drive di spreadsheet) dari `backend/seed/ruang-foto/` lewat "
+            "`npm run ruang:seed-foto` (sekali setelah migration 0033; ruangan yang sudah punya foto dilewati). Daftar ruangan, "
+            "kapasitas, link foto, & fasilitas diisi migration 0033 dari spreadsheet data ruang rapat."),
 
         PageBreak(),
         h1("4. Alur Proses Bisnis"),
@@ -1068,7 +1087,7 @@ def isi_aplikasi():
             ["/profile", "Profil", "Login", "Data pengguna yang sedang masuk"],
             ["/akun", "Akun & Akses", "Admin", "Manajemen akun"],
             ["/settings", "Settings", "Admin", "Mode Maintenance per menu"],
-            ["/foto-ruang", "Foto & Fasilitas Ruang", "Admin", "Foto slideshow & fasilitas layar ruangan"],
+            ["/foto-ruang", "Foto & Fasilitas Ruang", "Admin", "Daftar ruang rapat per bagian, foto slideshow & fasilitas"],
         ]),
         h2("Komponen bersama"),
         *bullets(
@@ -1077,7 +1096,9 @@ def isi_aplikasi():
             "**PageTransition** & **SlideTransition**: animasi masuk halaman dan animasi geser antar-tahap, "
             "dan antar-tab kendaraan.",
             "**RoomDateGrid** + **MonthFilter** + hook **useMonthSchedule**: grid jadwal ruang rapat per bulan "
-            "dengan infinite scroll, dipakai menu Ruang Rapat, landing page, dan kiosk.",
+            "dengan infinite scroll, dipakai menu Ruang Rapat, landing page, dan kiosk. Lebar kolom ruangan tetap (nama panjang "
+            "maks. 2 baris); bila ruangan tidak muat, muncul tombol panah kiri/kanan + bayangan tepi; tabel juga bisa digeser dengan "
+            "jari (layar sentuh) atau klik-tahan-seret mouse (klik di akhir seretan tidak membuka booking).",
             "**AuthContext**: sesi, peran, status maintenance, sinkronisasi berkala (30 detik) + sinyal live.",
             "**live.js** + hook **useLive**: satu koneksi SSE bersama per tab; halaman berlangganan topik "
             "modulnya dan memuat ulang data tanpa kedip saat ada perubahan dari pengguna lain.",
@@ -1117,9 +1138,11 @@ def isi_aplikasi():
              "Sesi, captcha 5 menit, booking milik sendiri, ajukan & batalkan booking sendiri, keluar"],
             ["", "GET /guest/admin/accounts; PUT /guest/admin/accounts/:id/block", "Admin/Kabag",
              "Daftar semua akun tamu Google & blokir"],
-            ["Foto ruang", "GET /ruang-info, GET /ruang-info/foto/:id/file", "Publik", "Foto & fasilitas tiap ruang rapat (layar ruangan)"],
+            ["Foto ruang", "GET /ruang-info, GET /ruang-info/foto/:id/file", "Publik", "Daftar ruang rapat per bagian + kapasitas, link foto, foto & fasilitas"],
             ["", "POST /ruang-info/foto; PUT /ruang-info/foto/:id, /ruang-info/urutan, /ruang-info/fasilitas; DELETE /ruang-info/foto/:id", "Admin/Kabag",
              "Tambah/ubah keterangan/urutkan/hapus foto & simpan fasilitas"],
+            ["", "POST, PUT, DELETE /ruang-info/ruangan", "Admin/Kabag",
+             "Tambah ruangan, ubah detail/nama (booking & foto ikut pindah), hapus ruangan"],
             ["Maintenance", "GET /landing-status, GET /public-status/kiosk, GET /stream (SSE)", "Publik", "Status landing & kiosk, sinyal real-time"],
             ["", "GET / ; PUT /:menu_key", "Login; Admin/Kabag", "Baca & ubah mode maintenance"],
             ["Live", "GET /live/stream (SSE)", "Publik", "Satu sinyal real-time untuk semua modul"],
@@ -1154,7 +1177,7 @@ def isi_aplikasi():
             ["guest_accounts", "Akun tamu (login Google)",
              "google_sub unik; is_blocked (blokir admin); token_version untuk mencabut sesi"],
             ["ruang_foto", "Foto slideshow ruang rapat", "room + sort_order (urutan, 0 = sampul); file di uploads/ruang-foto/"],
-            ["ruang_profil", "Fasilitas per ruang rapat", "room = PK; fasilitas JSONB [{ icon, label }]"],
+            ["ruang_profil", "Daftar ruang rapat (yang bisa dibooking)", "room = PK; satuan_kerja (bagian), kapasitas, link_foto, sort_order, tema (\"palet/motif\" layar ruangan); fasilitas JSONB [{ icon, label }]"],
             ["maintenance_mode", "Status maintenance per menu", "menu_key unik"],
         ]),
 

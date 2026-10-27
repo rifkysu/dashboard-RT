@@ -9,7 +9,8 @@ const { requireNotInMaintenance } = require('../middleware/maintenance');
 const { createRateLimiter } = require('../middleware/security');
 const { saveDataUrl } = require('../fileStorage');
 const { createCaptcha, verifyCaptcha } = require('../captcha');
-const { ROOMS, booking: B } = require('./ruangRapat');
+const { booking: B } = require('./ruangRapat');
+const { ruangValid } = require('../ruangList');
 const { nowLocal } = require('../clock');
 
 // =====================================================================
@@ -217,7 +218,7 @@ router.post('/bookings', submitIpLimiter, requireGuest, submitGuestLimiter, requ
     if (!B.validNomorSurat(nomor_surat)) return res.status(400).json({ message: 'Nomor surat maksimal 100 karakter.' });
     if (!B.validText(pic, 150)) return res.status(400).json({ message: 'Nama PIC maksimal 150 karakter.' });
     if (!B.validPhone(pic_phone)) return res.status(400).json({ message: 'No. HP PIC tidak valid (contoh: 081234567890 atau +6281234567890).' });
-    if (!ROOMS.includes(room)) return res.status(400).json({ message: 'Ruangan tidak valid.' });
+    if (!(await ruangValid(room))) return res.status(400).json({ message: 'Ruangan tidak valid.' });
     if (!B.validDate(startDate) || !B.validDate(end_date)) return res.status(400).json({ message: 'Tanggal tidak valid.' });
     if (!B.validTime(start) || !B.validTime(end)) return res.status(400).json({ message: 'Jam tidak valid.' });
     if (start >= end) return res.status(400).json({ message: 'Jam selesai harus lebih besar dari jam mulai.' });

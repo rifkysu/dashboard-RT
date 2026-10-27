@@ -7,15 +7,16 @@ import useRuangRapatLive from '../hooks/useRuangRapatLive';
 import { iso } from '../hooks/useMonthSchedule';
 import api from '../api';
 import { subscribeLive } from '../live';
-import { RUANG, judulRuang, slugRuang } from '../utils/ruang';
-import useRuangInfo from '../hooks/useRuangInfo';
+import { judulRuang, slugRuang } from '../utils/ruang';
+import useRuangInfo, { useDaftarRuang } from '../hooks/useRuangInfo';
+import { useBagian } from '../components/BagianTabs';
 import { RuangThumb } from '../components/RuangFoto';
 
 const LAYANAN = [
   { icon: 'build', label: 'Pemeliharaan', desc: 'Pengajuan perbaikan gedung, sarana, dan prasarana kantor, dengan dokumen pendukung dari awal.', tags: ['Analisa & HPS', 'Pembayaran', 'Dokumentasi/BAST'], sep: '→' },
   { icon: 'shopping_cart', label: 'Pengadaan', desc: 'Pengadaan barang dan jasa dengan tahapan yang sama seperti pemeliharaan, sampai serah terima.', tags: ['Lelang', 'E-Purchasing', 'Pengadaan Langsung'] },
   { icon: 'directions_car', label: 'Kendaraan Dinas', desc: 'Data kendaraan dinas, dokumen BPKB/STNK, riwayat service, dan pengingat pajak H-14.', tags: ['Roda 2', 'Roda 4', 'Roda 6'] },
-  { icon: 'calendar_month', label: 'Ruang Rapat', desc: 'Booking ruang rapat lengkap dengan surat permohonan. Jadwalnya terbuka untuk dilihat tanpa login.', tags: ['5 ruang', 'Surat permohonan', 'Multi-hari'] },
+  { icon: 'calendar_month', label: 'Ruang Rapat', desc: 'Booking ruang rapat lengkap dengan surat permohonan. Jadwalnya terbuka untuk dilihat tanpa login.', tags: ['{ruang} ruang', 'Surat permohonan', 'Multi-hari'] },
 ];
 
 
@@ -61,7 +62,7 @@ const FAQ = [
 
 const STATS = [
   { value: 4, label: 'layanan terpadu' },
-  { value: RUANG.length, label: 'ruang rapat' },
+  { value: 'ruang', label: 'ruang rapat' }, // diganti jumlah ruangan dari server saat render
   { value: 'Live', label: 'status realtime' },
 ];
 
@@ -202,6 +203,8 @@ const posJam = (hhmm) => {
 
 // Status tiap ruang rapat hari ini dari jadwal publik: Dipakai s/d jam X, atau Kosong (+ booking berikutnya).
 function RuangHariIni() {
+  const { grup } = useDaftarRuang();
+  const [bagian, setBagian, roomsBagian] = useBagian(grup);
   const [items, setItems] = useState(null);
   const [jam, setJam] = useState(jamSekarang);
   const today = iso();
@@ -218,7 +221,7 @@ function RuangHariIni() {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
   useRuangRapatLive(load);
 
-  const rooms = RUANG.map((room) => {
+  const rooms = roomsBagian.map((room) => {
     const list = (items || [])
       .filter((x) => x.room === room && !x.cancelled && x.date <= today && (x.end_date || x.date) >= today)
       .sort((a, b) => a.start.localeCompare(b.start));
@@ -240,9 +243,16 @@ function RuangHariIni() {
           </div>
           <div className="text-xs text-slate-500 mt-0.5">{tanggal} · pukul {jam}</div>
         </div>
-        {items && <span className="shrink-0 text-[11px] font-bold px-2 py-1 rounded-md bg-emerald-50 text-emerald-700">{kosong}/{RUANG.length} kosong</span>}
+        {items && <span className="shrink-0 text-[11px] font-bold px-2 py-1 rounded-md bg-emerald-50 text-emerald-700">{kosong}/{rooms.length} kosong</span>}
       </div>
-      <ul className="border-t border-slate-100 divide-y divide-slate-100">
+      <div className="px-5 pb-3">
+        <select value={bagian} onChange={(e) => setBagian(e.target.value)} aria-label="Pilih bagian / satuan kerja"
+          className="w-full h-9 px-2.5 rounded-lg border border-slate-200 bg-slate-50 text-xs font-semibold text-slate-700 outline-none focus:border-dinas">
+          <option value="">Semua bagian ({grup.reduce((n, g) => n + g.rooms.length, 0)} ruangan)</option>
+          {grup.map((g) => <option key={g.bagian} value={g.bagian}>{g.bagian} ({g.rooms.length})</option>)}
+        </select>
+      </div>
+      <ul className="border-t border-slate-100 divide-y divide-slate-100 max-h-[26rem] overflow-y-auto">
         {rooms.map((r) => (
           <li key={r.room}>
            <Link to={`/ruang/${slugRuang(r.room)}`} title={`Buka layar ${judulRuang(r.room)}`} className="group px-5 py-3 flex items-center gap-3 transition-colors hover:bg-slate-50">
@@ -372,6 +382,7 @@ function LandingMaintenanceNotice({ message }) {
 
 export default function Landing() {
   const { user, loading } = useAuth();
+  const { rooms: semuaRuang, grup } = useDaftarRuang();
   const [landingDown, setLandingDown] = useState(null);
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -439,7 +450,7 @@ export default function Landing() {
   return (
     <div className="min-h-screen flex flex-col bg-[#f3f4f7] text-slate-800">
       <header className={`sticky top-0 z-40 backdrop-blur-md border-b text-white transition-[background-color,box-shadow,border-color] duration-300 ${scrolled ? 'bg-dinas-ink/90 border-white/10 shadow-[0_8px_30px_-12px_rgba(0,0,0,.5)]' : 'bg-dinas-dark border-transparent'}`}>
-        <div className="max-w-[1200px] mx-auto px-4 md:px-8 py-3 flex items-center justify-between gap-4">
+        <div className="w-full max-w-[1800px] mx-auto px-4 md:px-8 xl:px-14 py-3 flex items-center justify-between gap-4">
           <Link to="/" className="flex items-center gap-3 min-w-0">
             <BrandMark size="sm" className="!border-white/20" />
             <div className="min-w-0">
@@ -485,7 +496,7 @@ export default function Landing() {
           </div>
           <HeroParticles />
           <div className="absolute inset-0 landing-spotlight pointer-events-none" aria-hidden="true"></div>
-          <div className="relative max-w-[1200px] mx-auto px-4 md:px-8 pt-14 pb-20 md:pt-20 md:pb-28 grid lg:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)] gap-12 lg:gap-16 items-center">
+          <div className="relative w-full max-w-[1800px] mx-auto px-4 md:px-8 xl:px-14 pt-14 pb-20 md:pt-20 md:pb-28 grid lg:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)] gap-12 lg:gap-16 items-center">
             <div className="parallax-slow">
               <span className="hero-in inline-flex items-center gap-2 pl-1.5 pr-3 py-1 rounded-full bg-white/10 ring-1 ring-white/15 text-xs font-semibold text-white/85 backdrop-blur" style={{ '--d': '0ms' }}>
                 <span className="px-2 py-0.5 rounded-full bg-kuningan text-[10px] font-bold uppercase tracking-wider text-white">Internal</span>
@@ -514,7 +525,7 @@ export default function Landing() {
                   <div key={st.label} className="hero-in border-l-2 border-kuningan/70 pl-4 flex flex-col-reverse" style={{ '--d': `${700 + i * 110}ms` }}>
                     <dt className="text-xs text-white/60 mt-0.5">{st.label}</dt>
                     <dd className="font-display text-2xl md:text-3xl font-extrabold tracking-tight tabular-nums inline-flex items-center gap-2">
-                      {typeof st.value === 'number' ? <CountUp to={st.value} /> : (
+                      {st.value === 'ruang' ? <CountUp key={semuaRuang.length} to={semuaRuang.length} /> : typeof st.value === 'number' ? <CountUp to={st.value} /> : (
                         <><span className="relative flex w-2.5 h-2.5"><span className="absolute inset-0 rounded-full bg-emerald-400 motion-safe:animate-ping"></span><span className="relative w-2.5 h-2.5 rounded-full bg-emerald-400"></span></span>{st.value}</>
                       )}
                     </dd>
@@ -543,7 +554,7 @@ export default function Landing() {
         </section>
 
         {/* Keunggulan: menumpang di batas bawah hero */}
-        <section className="relative z-10 max-w-[1200px] mx-auto px-4 md:px-8 -mt-10 md:-mt-14">
+        <section className="relative z-10 w-full max-w-[1800px] mx-auto px-4 md:px-8 xl:px-14 -mt-10 md:-mt-14">
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
             {KEUNGGULAN.map((k, i) => (
               <Reveal key={k.title} delay={i * 80}>
@@ -572,7 +583,7 @@ export default function Landing() {
         </section>
 
         {/* Layanan */}
-        <section id="layanan" className="scroll-mt-20 max-w-[1200px] mx-auto px-4 md:px-8 pt-12 pb-16 md:pt-16 md:pb-24">
+        <section id="layanan" className="scroll-mt-20 w-full max-w-[1800px] mx-auto px-4 md:px-8 xl:px-14 pt-12 pb-16 md:pt-16 md:pb-24">
           <Reveal className="max-w-2xl">
             <Eyebrow>Layanan</Eyebrow>
             <h2 className="font-display text-3xl md:text-[2.25rem] font-extrabold text-dinas-ink mt-3 tracking-tight">Empat layanan, <span className="text-emas-gelap">satu alur kerja</span></h2>
@@ -591,7 +602,7 @@ export default function Landing() {
                   </div>
                   <p className="text-sm text-slate-600 mt-4 leading-relaxed">{l.desc}</p>
                   <div className="flex flex-wrap items-center gap-1.5 mt-5">
-                    {l.tags.map((t, i) => (
+                    {l.tags.map((t) => t.replace('{ruang}', semuaRuang.length)).map((t, i) => (
                       <React.Fragment key={t}>
                         {i > 0 && l.sep && <span className="text-slate-400 text-xs">{l.sep}</span>}
                         <span className="text-[11px] font-semibold px-2 py-1 rounded-md bg-[#f7efe0] text-kuningan-ink">{t}</span>
@@ -606,7 +617,7 @@ export default function Landing() {
 
         {/* Jadwal */}
         <section id="jadwal" className="scroll-mt-20 bg-white border-y border-slate-200">
-          <div className="max-w-[1200px] mx-auto px-4 md:px-8 py-16 md:py-24">
+          <div className="w-full max-w-[1800px] mx-auto px-4 md:px-8 xl:px-14 py-16 md:py-24">
             <Reveal className="flex flex-col md:flex-row md:items-end justify-between gap-4">
               <div className="max-w-2xl">
                 <Eyebrow>Jadwal</Eyebrow>
@@ -625,9 +636,14 @@ export default function Landing() {
                 <span className="material-symbols-outlined text-[20px] text-kuningan">tablet_mac</span>Layar per ruangan
               </div>
               <p className="text-sm text-slate-600 mt-1">Buka di tablet atau monitor depan ruangan: status Tersedia/Digunakan, rapat berlangsung, agenda hari ini, serta foto & fasilitas ruangan, diperbarui otomatis.</p>
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mt-4">
-                {RUANG.map((r) => <LayarTile key={r} room={r} />)}
-              </div>
+              {grup.map((g) => (
+                <div key={g.bagian} className="mt-5">
+                  <div className="text-xs font-bold uppercase tracking-wider text-slate-500">{g.bagian} <span className="text-slate-400">· {g.rooms.length} ruangan</span></div>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 2xl:grid-cols-6 gap-3 mt-2">
+                    {g.rooms.map((r) => <LayarTile key={r} room={r} />)}
+                  </div>
+                </div>
+              ))}
             </Reveal>
           </div>
         </section>
@@ -637,7 +653,7 @@ export default function Landing() {
           <div className="absolute inset-0 bg-kawung-gelap opacity-70 [mask-image:radial-gradient(ellipse_at_top_right,#000_15%,transparent_70%)]" aria-hidden="true"></div>
           <div className="absolute inset-0 landing-dots [mask-image:linear-gradient(to_bottom,transparent,#000_40%,transparent)] opacity-60" aria-hidden="true"></div>
           <div className="absolute -left-24 top-10 w-96 h-96 rounded-full bg-kuningan/20 blur-[110px] landing-glow pointer-events-none" aria-hidden="true"></div>
-          <div className="relative max-w-[1200px] mx-auto px-4 md:px-8 py-16 md:py-24">
+          <div className="relative w-full max-w-[1800px] mx-auto px-4 md:px-8 xl:px-14 py-16 md:py-24">
           <Reveal>
             <Eyebrow light>Cara mengajukan</Eyebrow>
             <h2 className="font-display text-3xl md:text-[2.25rem] font-extrabold mt-3 tracking-tight">Tiga langkah dari pengajuan <span className="text-emas emas-shimmer">sampai selesai</span></h2>
@@ -669,7 +685,7 @@ export default function Landing() {
 
         {/* FAQ */}
         <section id="faq" className="scroll-mt-20 bg-white border-y border-slate-200">
-          <div className="max-w-[1200px] mx-auto px-4 md:px-8 py-16 md:py-24 grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.6fr)] gap-10">
+          <div className="w-full max-w-[1800px] mx-auto px-4 md:px-8 xl:px-14 py-16 md:py-24 grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.6fr)] gap-10">
             <Reveal>
               <Eyebrow>FAQ</Eyebrow>
               <h2 className="font-display text-3xl md:text-[2.25rem] font-extrabold text-dinas-ink mt-3 tracking-tight">Pertanyaan yang <span className="text-emas-gelap">sering diajukan</span></h2>
@@ -692,7 +708,7 @@ export default function Landing() {
         </section>
 
         {/* Penutup */}
-        <section className="max-w-[1200px] mx-auto px-4 md:px-8 py-16 md:py-20">
+        <section className="w-full max-w-[1800px] mx-auto px-4 md:px-8 xl:px-14 py-16 md:py-20">
           <Reveal className="relative overflow-hidden rounded-3xl landing-hero text-white px-6 py-10 md:px-12 md:py-14 flex flex-col md:flex-row md:items-center justify-between gap-6 shadow-[0_30px_60px_-30px_rgba(14,30,51,.7)]">
             <div className="absolute inset-0 bg-kawung-gelap" aria-hidden="true"></div>
             <div className="absolute -right-20 -bottom-24 w-80 h-80 rounded-full bg-kuningan/30 blur-[90px] landing-glow pointer-events-none" aria-hidden="true"></div>
@@ -713,7 +729,7 @@ export default function Landing() {
       <footer className="relative bg-dinas-ink text-white/65 overflow-hidden">
         <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-kuningan/50 to-transparent" aria-hidden="true"></div>
         <div className="absolute inset-0 bg-kawung-gelap opacity-60 [mask-image:linear-gradient(to_top,#000,transparent)]" aria-hidden="true"></div>
-        <div className="relative max-w-[1200px] mx-auto px-4 md:px-8 py-12 grid gap-10 md:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)]">
+        <div className="relative w-full max-w-[1800px] mx-auto px-4 md:px-8 xl:px-14 py-12 grid gap-10 md:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)]">
           <div>
             <div className="flex items-center gap-3">
               <BrandMark size="sm" className="!border-white/20" />

@@ -8,9 +8,10 @@ import RuangRapatSchedule from '../components/RuangRapatSchedule';
 import GuestBooking from '../components/GuestBooking';
 import { RuangFotoButton } from '../components/RuangFoto';
 import useRuangRapatLive from '../hooks/useRuangRapatLive';
-import useRuangInfo from '../hooks/useRuangInfo';
+import { useDaftarRuang } from '../hooks/useRuangInfo';
+import BagianTabs, { useBagian } from '../components/BagianTabs';
 import { iso } from '../hooks/useMonthSchedule';
-import { RUANG, judulRuang } from '../utils/ruang';
+import { judulRuang } from '../utils/ruang';
 
 // Kiosk /jadwal-rapat bisa dinonaktifkan admin lewat Settings > Mode Maintenance ("Kiosk Jadwal Rapat").
 // Admin & Kabag yang sedang login tetap bisa membuka halaman ini (dengan banner pemberitahuan).
@@ -154,7 +155,7 @@ function TimelineHari({ list, menit, rentang }) {
 }
 
 // Kartu status satu ruangan; klik = popup foto & fasilitas.
-function KartuRuang({ room, list, menit, memuat, galat, foto, delay, rentang }) {
+function KartuRuang({ room, list, menit, memuat, galat, foto, kapasitas, delay, rentang }) {
   const st = statusRuang(list, menit);
   const kunci = galat ? 'galat' : memuat ? 'kosong' : st.status;
   const tema = TEMA[kunci];
@@ -171,6 +172,7 @@ function KartuRuang({ room, list, menit, memuat, galat, foto, delay, rentang }) 
             <span className="font-display font-extrabold text-base leading-tight">{judulRuang(room)}</span>
             <span className="material-symbols-outlined text-[18px] text-white/40 transition group-hover:text-[#e4c27f]">photo_library</span>
           </span>
+          {kapasitas && <span className="mt-1 inline-flex items-center gap-1 text-[11px] text-white/50"><span className="material-symbols-outlined text-[14px]">chair</span>{kapasitas} kursi</span>}
           {memuat ? (
             <span className="mt-3 h-6 w-28 rounded-full bg-white/10 animate-pulse"></span>
           ) : (
@@ -258,7 +260,8 @@ function KioskHero() {
   const now = useJam();
   useLayarTetapMenyala();
   const { items, gagal, dimuatPada } = useJadwalHariIni(iso(now));
-  const { info } = useRuangInfo();
+  const { rooms: semua, grup, info } = useDaftarRuang();
+  const [bagian, setBagian, roomsBagian] = useBagian(grup);
   const [penuh, setPenuh] = useState(false);
   useEffect(() => {
     const onFs = () => setPenuh(!!document.fullscreenElement);
@@ -274,8 +277,9 @@ function KioskHero() {
   const galat = items === null && gagal; // belum pernah berhasil dimuat
   const memuat = items === null && !gagal;
   const tanpaAngka = memuat || galat;
-  const list = items || [];
-  const rooms = [...RUANG, ...[...new Set(list.map((x) => x.room).filter((r) => r && !RUANG.includes(r)))].sort()];
+  // Status, ringkasan, & pita agenda hanya untuk bagian (satuan kerja) yang dipilih.
+  const rooms = bagian ? roomsBagian : [...semua, ...[...new Set((items || []).map((x) => x.room).filter((r) => r && !semua.includes(r)))].sort()];
+  const list = (items || []).filter((x) => rooms.includes(x.room));
   const perRuang = Object.fromEntries(rooms.map((r) => [r, list.filter((x) => x.room === r).sort((a, b) => a.start.localeCompare(b.start))]));
   const status = rooms.map((r) => statusRuang(perRuang[r], menit).status);
   const ringkas = [
@@ -360,14 +364,15 @@ function KioskHero() {
 
         <div className="mt-8">
           <div className="flex items-center justify-between gap-3 mb-3">
-            <div className="text-xs font-bold uppercase tracking-wider text-white/60">Status ruangan saat ini</div>
+            <div className="text-xs font-bold uppercase tracking-wider text-white/60">Status ruangan saat ini{bagian && <span className="text-[#e4c27f]"> · {bagian}</span>}</div>
             <div className="hidden sm:flex items-center gap-3 text-[11px] text-white/55">
               {LEGENDA.map((k) => TEMA[k]).map((t) => <span key={t.label} className="inline-flex items-center gap-1.5"><span className={`w-2 h-2 rounded-full ${t.dot}`}></span>{t.label}</span>)}
             </div>
           </div>
+          <BagianTabs grup={grup} value={bagian} onChange={setBagian} dark className="mb-3" />
           <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3">
             {rooms.map((r, i) => (
-              <KartuRuang key={r} room={r} list={perRuang[r]} menit={menit} memuat={memuat} galat={galat} foto={info?.[r]?.foto?.[0]?.src} delay={300 + i * 70} rentang={rentang} />
+              <KartuRuang key={r} room={r} list={perRuang[r]} menit={menit} memuat={memuat} galat={galat} foto={info?.[r]?.foto?.[0]?.src} kapasitas={info?.[r]?.kapasitas} delay={300 + Math.min(i, 10) * 70} rentang={rentang} />
             ))}
           </div>
           <TickerAgenda list={list} menit={menit} memuat={memuat} galat={galat} />

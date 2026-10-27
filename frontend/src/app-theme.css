@@ -520,3 +520,16 @@ main.app-main { background: var(--kanvas) !important; min-height:100vh; }
   to { transform: scale(1.14) translateX(var(--kb-x, 0)); }
 }
 @media (prefers-reduced-motion: reduce) { .foto-kenburns { animation: none; } }
+
+/* ---- Tema layar per ruangan (utils/temaRuang.js) ------------------------------------------------
+   --aksen & --latar dipasang di pembungkus layar/popup ruangan; tanpa itu jatuh ke emas & navy bawaan. */
+.text-aksen { color: var(--aksen, #e4c27f); }
+.bg-aksen { background-color: var(--aksen, #e4c27f); }
+.bg-aksen-70 { background-color: color-mix(in srgb, var(--aksen, #e4c27f) 70%, transparent); }
+.ring-aksen { --tw-ring-color: var(--aksen, #e4c27f); }
+.shadow-aksen { box-shadow: 0 8px 20px -10px color-mix(in srgb, var(--aksen, #e4c27f) 80%, transparent); }
+.bg-latar { background-color: var(--latar, #0b1626); }
+.motif-kawung { background-image: var(--kawung-gelap); }
+.motif-garis { background-image: repeating-linear-gradient(135deg, rgba(255,255,255,.07) 0 1px, transparent 1px 22px); }
+.motif-titik { background-image: radial-gradient(rgba(255,255,255,.14) 1.3px, transparent 1.7px); background-size: 22px 22px; }
+.motif-kotak { background-image: linear-gradient(rgba(255,255,255,.06) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.06) 1px, transparent 1px); background-size: 44px 44px; }

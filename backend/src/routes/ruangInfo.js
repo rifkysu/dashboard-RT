@@ -6,9 +6,13 @@ const logger = require('../logger');
 const { saveDataUrl } = require('../fileStorage');
 const { isGenuineDocumentDataUrl, maxDataUrlLength } = require('../fileSignature');
 const { requireAuth, requireRole, ADMIN_ROLES } = require('../middleware/auth');
-const { ROOMS } = require('./ruangRapat');
+const { booking: B } = require('./ruangRapat');
+const { ruangValid, resetDaftarRuang } = require('../ruangList');
+const live = require('../live');
+const { nowLocal } = require('../clock');
 
-// Foto & fasilitas tiap ruang rapat untuk slideshow layar ruangan (/ruang/:slug).
+// Daftar ruang rapat (per satuan kerja) + foto & fasilitas tiap ruangan untuk jadwal, kiosk, form booking,
+// dan slideshow layar ruangan (/ruang/:slug).
 // Baca: publik (layar ruangan tanpa login). Ubah: hanya Admin/Kabag (menu "Foto & Fasilitas Ruang").
 const router = express.Router();
 
@@ -24,7 +28,63 @@ const ICON_RE = /^[a-z0-9_]{1,40}$/;  // nama ikon Material Symbols
 const lockRuang = (tx, room) => tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${'ruang_foto:' + room}))`;
 class PenuhError extends Error {}
 
-const validRoom = (r) => typeof r === 'string' && ROOMS.includes(r);
+const validRoom = ruangValid; // async
+// Nama ruangan dipakai sebagai kunci booking & di URL layar (/ruang/<slug>) -> karakter dibatasi.
+const NAMA_RE = /^[\p{L}\p{N} .,()&'-]+$/u;
+const slugOf = (r) => r.toLowerCase().trim().replace(/\s+/g, '-');
+const MAX_KAPASITAS = 10000;
+// Tema layar ruangan "<palet>/<motif>" -- sama dengan frontend/src/utils/temaRuang.js.
+const TEMA_PALET = ['emas', 'zamrud', 'safir', 'marun', 'ungu', 'jingga', 'limau', 'toska', 'mawar', 'perak', 'tembaga', 'nila', 'kuning', 'hutan'];
+const TEMA_MOTIF = ['kawung', 'garis', 'titik', 'kotak'];
+const validTema = (t) => typeof t === 'string' && TEMA_PALET.includes(t.split('/')[0]) && TEMA_MOTIF.includes(t.split('/')[1]) && t.split('/').length === 2;
+// Tema pertama yang belum dipakai ruangan lain (ruangan baru otomatis tampil beda).
+async function temaBebas(db) {
+  const dipakai = new Set((await db.ruangProfil.findMany({ select: { tema: true } })).map((p) => p.tema));
+  for (const m of TEMA_MOTIF) for (const p of TEMA_PALET) if (!dipakai.has(`${p}/${m}`)) return `${p}/${m}`;
+  return null;
+}
+const profilOut = (p) => ({ satuan_kerja: p.satuan_kerja, kapasitas: p.kapasitas, link_foto: p.link_foto, tema: p.tema, fasilitas: Array.isArray(p.fasilitas) ? p.fasilitas : [] });
+
+// Detail ruangan dari body -> { data } atau { error }. `wajib`: satuan kerja harus ada (tambah ruangan).
+function validDetail(b, wajib) {
+  const data = {};
+  if (wajib || b.satuan_kerja !== undefined) {
+    const v = typeof b.satuan_kerja === 'string' ? b.satuan_kerja.trim().replace(/\s+/g, ' ') : '';
+    if (!v || v.length > 150) return { error: 'Satuan kerja wajib diisi (maksimal 150 karakter).' };
+    data.satuan_kerja = v;
+  }
+  if (b.kapasitas !== undefined) {
+    const n = Number(b.kapasitas);
+    if (b.kapasitas === null || b.kapasitas === '') data.kapasitas = null;
+    else if (Number.isInteger(n) && n >= 1 && n <= MAX_KAPASITAS) data.kapasitas = n;
+    else return { error: `Kapasitas harus angka 1–${MAX_KAPASITAS}.` };
+  }
+  if (b.link_foto !== undefined) {
+    const v = typeof b.link_foto === 'string' ? b.link_foto.trim() : b.link_foto;
+    if (v === null || v === '') data.link_foto = null;
+    else {
+      let ok = false;
+      try { ok = typeof v === 'string' && v.length <= 500 && ['http:', 'https:'].includes(new URL(v).protocol); } catch { /* bukan URL */ }
+      if (!ok) return { error: 'Link foto harus alamat web lengkap (https://...), maksimal 500 karakter.' };
+      data.link_foto = v;
+    }
+  }
+  if (b.tema !== undefined) {
+    if (b.tema === null || b.tema === '') data.tema = null;
+    else if (validTema(b.tema)) data.tema = b.tema;
+    else return { error: 'Tema layar tidak valid.' };
+  }
+  return { data };
+}
+
+// Nama ruangan baru -> { nama } atau { error }. Tidak boleh sama (atau sama slug-nya) dengan ruangan lain.
+async function validNamaBaru(nama, kecuali) {
+  const v = typeof nama === 'string' ? nama.trim().replace(/\s+/g, ' ') : '';
+  if (v.length < 2 || v.length > 150 || !NAMA_RE.test(v)) return { error: "Nama ruangan 2–150 karakter (huruf, angka, spasi, dan . , ( ) & ' -)." };
+  const semua = await prisma.ruangProfil.findMany({ select: { room: true } });
+  if (semua.some((p) => p.room !== kecuali && slugOf(p.room) === slugOf(v))) return { error: `Ruangan "${v}" sudah ada.` };
+  return { nama: v };
+}
 const validCaption = (c) => c === undefined || (typeof c === 'string' && c.trim().length <= 200);
 const fotoOut = (f) => ({ id: f.id, room: f.room, caption: f.caption, sort_order: f.sort_order, updated_at: f.updated_at });
 
@@ -40,17 +100,17 @@ function validFasilitas(list) {
   return out;
 }
 
-// Semua ruangan sekaligus: { data: { "SETJEN II": { fasilitas: [...], foto: [...] }, ... } }.
+// Semua ruangan sekaligus, sesuai urutan tampil:
+// { urutan: ["BIRO UMUM", ...], data: { "SETJEN II": { satuan_kerja, kapasitas, link_foto, fasilitas: [...], foto: [...] }, ... } }.
 router.get('/', async (req, res) => {
   try {
     const [fotos, profil] = await Promise.all([
       prisma.ruangFoto.findMany({ orderBy: [{ room: 'asc' }, { sort_order: 'asc' }, { id: 'asc' }] }),
-      prisma.ruangProfil.findMany(),
+      prisma.ruangProfil.findMany({ orderBy: [{ sort_order: 'asc' }, { room: 'asc' }] }),
     ]);
-    const data = Object.fromEntries(ROOMS.map((r) => [r, { fasilitas: [], foto: [] }]));
-    for (const p of profil) if (data[p.room]) data[p.room].fasilitas = Array.isArray(p.fasilitas) ? p.fasilitas : [];
+    const data = Object.fromEntries(profil.map((p) => [p.room, { ...profilOut(p), foto: [] }]));
     for (const f of fotos) if (data[f.room]) data[f.room].foto.push(fotoOut(f));
-    res.json({ data });
+    res.json({ urutan: profil.map((p) => p.room), data });
   } catch (err) {
     logger.error('GET ruang info gagal', { error: err });
     res.status(500).json({ message: 'Gagal memuat foto ruangan.' });
@@ -85,7 +145,7 @@ router.use(requireAuth, requireRole(ADMIN_ROLES));
 router.post('/foto', async (req, res) => {
   try {
     const { room, caption = '', file_data } = req.body || {};
-    if (!validRoom(room)) return res.status(400).json({ message: 'Ruangan tidak valid.' });
+    if (!(await validRoom(room))) return res.status(400).json({ message: 'Ruangan tidak valid.' });
     if (!validCaption(caption)) return res.status(400).json({ message: 'Keterangan foto maksimal 200 karakter.' });
     const mime = typeof file_data === 'string' ? (file_data.match(/^data:([^;,]+);base64,/) || [])[1] : null;
     if (!IMAGE_MIME.includes(mime) || !isGenuineDocumentDataUrl(file_data, maxDataUrlLength(MAX_FILE))) {
@@ -139,7 +199,7 @@ router.put('/foto/:id', async (req, res) => {
 router.put('/urutan', async (req, res) => {
   try {
     const { room, ids } = req.body || {};
-    if (!validRoom(room) || !Array.isArray(ids) || ids.length > MAX_FOTO || !ids.every(Number.isInteger)) {
+    if (!(await validRoom(room)) || !Array.isArray(ids) || ids.length > MAX_FOTO || !ids.every(Number.isInteger)) {
       return res.status(400).json({ message: 'Urutan foto tidak valid.' });
     }
     const sama = await prisma.$transaction(async (tx) => {
@@ -179,17 +239,110 @@ router.put('/fasilitas', async (req, res) => {
   try {
     const { room } = req.body || {};
     const fasilitas = validFasilitas(req.body?.fasilitas);
-    if (!validRoom(room)) return res.status(400).json({ message: 'Ruangan tidak valid.' });
+    if (!(await validRoom(room))) return res.status(400).json({ message: 'Ruangan tidak valid.' });
     if (!fasilitas) return res.status(400).json({ message: `Fasilitas tidak valid (maksimal ${MAX_FASILITAS}, nama maksimal 60 karakter).` });
-    await prisma.ruangProfil.upsert({
-      where: { room },
-      create: { room, fasilitas, updated_by: req.user.id },
-      update: { fasilitas, updated_by: req.user.id },
-    });
+    await prisma.ruangProfil.update({ where: { room }, data: { fasilitas, updated_by: req.user.id } });
     res.json({ data: fasilitas, message: 'Fasilitas disimpan.' });
   } catch (err) {
     logger.error('PUT fasilitas ruang gagal', { error: err });
     res.status(500).json({ message: 'Gagal menyimpan fasilitas.' });
+  }
+});
+
+// Tambah ruangan: { room, satuan_kerja, kapasitas?, link_foto?, tema?, fasilitas? } -> langsung bisa dibooking.
+// Tanpa tema -> otomatis tema yang belum dipakai ruangan lain.
+router.post('/ruangan', async (req, res) => {
+  try {
+    const b = req.body || {};
+    const nama = await validNamaBaru(b.room);
+    if (nama.error) return res.status(400).json({ message: nama.error });
+    const detail = validDetail(b, true);
+    if (detail.error) return res.status(400).json({ message: detail.error });
+    const fasilitas = validFasilitas(b.fasilitas ?? []);
+    if (!fasilitas) return res.status(400).json({ message: `Fasilitas tidak valid (maksimal ${MAX_FASILITAS}, nama maksimal 60 karakter).` });
+    const profil = await prisma.$transaction(async (tx) => {
+      // Urutan: tepat di belakang ruangan lain dengan satuan kerja yang sama, atau paling akhir bila satuan kerja baru.
+      const [akhirSatker, akhir] = await Promise.all([
+        tx.ruangProfil.aggregate({ where: { satuan_kerja: detail.data.satuan_kerja }, _max: { sort_order: true } }),
+        tx.ruangProfil.aggregate({ _max: { sort_order: true } }),
+      ]);
+      const sesudah = akhirSatker._max.sort_order ?? akhir._max.sort_order ?? -1;
+      await tx.ruangProfil.updateMany({ where: { sort_order: { gt: sesudah } }, data: { sort_order: { increment: 1 } } });
+      const tema = detail.data.tema ?? await temaBebas(tx);
+      return tx.ruangProfil.create({ data: { room: nama.nama, ...detail.data, tema, fasilitas, sort_order: sesudah + 1, updated_by: req.user.id } });
+    });
+    resetDaftarRuang();
+    res.status(201).json({ data: { room: profil.room, ...profilOut(profil) }, message: 'Ruangan ditambahkan.' });
+  } catch (err) {
+    if (err.code === 'P2002') return res.status(400).json({ message: 'Ruangan dengan nama itu sudah ada.' });
+    logger.error('POST ruangan gagal', { error: err });
+    res.status(500).json({ message: 'Gagal menambah ruangan.' });
+  }
+});
+
+// Ubah detail ruangan: { room, nama_baru?, satuan_kerja?, kapasitas?, link_foto?, tema? }.
+// Ganti nama ikut memindahkan semua booking & foto ruangan itu ke nama baru.
+router.put('/ruangan', async (req, res) => {
+  try {
+    const b = req.body || {};
+    if (!(await validRoom(b.room))) return res.status(404).json({ message: 'Ruangan tidak ditemukan.' });
+    const detail = validDetail(b, false);
+    if (detail.error) return res.status(400).json({ message: detail.error });
+    let baru = b.room;
+    if (typeof b.nama_baru === 'string' && b.nama_baru.trim() !== b.room) {
+      const nama = await validNamaBaru(b.nama_baru, b.room);
+      if (nama.error) return res.status(400).json({ message: nama.error });
+      baru = nama.nama;
+    }
+    await prisma.$transaction(async (tx) => {
+      if (baru !== b.room) {
+        // Kunci booking & foto kedua nama (urut abjad, sama seperti edit booking) supaya booking/upload
+        // yang berjalan bersamaan tidak tertinggal di nama lama.
+        for (const r of [b.room, baru].sort()) { await B.lockRoom(tx, r); await lockRuang(tx, r); }
+        await tx.ruangProfil.update({ where: { room: b.room }, data: { room: baru } });
+        await tx.ruangRapat.updateMany({ where: { room: b.room }, data: { room: baru } });
+        await tx.ruangFoto.updateMany({ where: { room: b.room }, data: { room: baru } });
+      }
+      await tx.ruangProfil.update({ where: { room: baru }, data: { ...detail.data, updated_by: req.user.id } });
+    });
+    resetDaftarRuang();
+    // Nama ruangan juga tersimpan di data booking -> kalender di semua tab ikut dimuat ulang.
+    if (baru !== b.room) { live.broadcast('ruang-rapat'); B.broadcastChange(); }
+    res.json({ data: { room: baru }, message: 'Detail ruangan disimpan.' });
+  } catch (err) {
+    if (err.code === 'P2002') return res.status(400).json({ message: 'Ruangan dengan nama itu sudah ada.' });
+    logger.error('PUT ruangan gagal', { error: err });
+    res.status(500).json({ message: 'Gagal menyimpan detail ruangan.' });
+  }
+});
+
+// Hapus ruangan: { room }. Ditolak bila masih ada booking aktif hari ini/ke depan. Booking lama tetap
+// tersimpan (nama ruangan tetap tampil di riwayat), foto ruangan ikut dihapus.
+router.delete('/ruangan', async (req, res) => {
+  try {
+    const { room } = req.body || {};
+    if (!(await validRoom(room))) return res.status(404).json({ message: 'Ruangan tidak ditemukan.' });
+    const today = new Date(`${nowLocal().date}T00:00:00Z`);
+    const fotos = await prisma.$transaction(async (tx) => {
+      await B.lockRoom(tx, room);
+      await lockRuang(tx, room);
+      const aktif = await tx.ruangRapat.count({ where: { room, cancelled_at: null, end_date: { gte: today } } });
+      if (aktif) throw new B.HttpError(409, `Masih ada ${aktif} booking aktif di ruangan ini. Batalkan atau pindahkan dulu bookingnya.`);
+      const list = await tx.ruangFoto.findMany({ where: { room }, select: { file_path: true } });
+      await tx.ruangFoto.deleteMany({ where: { room } });
+      await tx.ruangProfil.delete({ where: { room } });
+      return list;
+    });
+    resetDaftarRuang();
+    for (const f of fotos) {
+      const abs = path.resolve(BACKEND_ROOT, f.file_path);
+      if (abs.startsWith(path.join(BACKEND_ROOT, 'uploads') + path.sep)) fs.promises.unlink(abs).catch(() => {});
+    }
+    res.json({ message: 'Ruangan dihapus.' });
+  } catch (err) {
+    if (err instanceof B.HttpError) return res.status(err.status).json({ message: err.message });
+    logger.error('DELETE ruangan gagal', { error: err });
+    res.status(500).json({ message: 'Gagal menghapus ruangan.' });
   }
 });
 

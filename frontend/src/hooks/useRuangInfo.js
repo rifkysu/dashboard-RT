@@ -1,10 +1,12 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import api from '../api';
 import { subscribeLive } from '../live';
+import { RUANG_AWAL, grupRuang } from '../utils/ruang';
 
-// Foto & fasilitas semua ruang rapat dari backend (GET /ruang-info), dikelola Admin/Kabag di menu
+// Daftar ruang rapat + foto & fasilitasnya dari backend (GET /ruang-info), dikelola Admin/Kabag di menu
 // "Foto & Fasilitas Ruang". Ikut diperbarui live begitu admin mengubahnya (topik "ruang-info").
-// info = { "SETJEN II": { foto: [{ id, caption, src, ... }], fasilitas: [{ icon, label }] }, ... } | null (memuat).
+// info = { "SETJEN II": { satuan_kerja, kapasitas, link_foto, foto: [{ id, caption, src, ... }], fasilitas: [{ icon, label }] }, ... } | null (memuat).
+// urutan = nama semua ruangan sesuai urutan tampil | null (memuat).
 //
 // Satu data bersama untuk seluruh tab: banyak komponen (thumbnail di tabel jadwal, landing, form
 // booking, dll.) memakai hook ini sekaligus tanpa masing-masing mengambil ulang ke server.
@@ -13,7 +15,7 @@ export const fotoSrc = (id) => `${api.defaults.baseURL}/ruang-info/foto/${id}/fi
 
 // loaded: data pernah berhasil dimuat. Bila gagal sejak awal, info = {} (agar tampilan publik tidak
 // "memuat" terus) -- jangan dianggap "semua ruangan belum punya foto" saat mengelola foto.
-let shared = { info: null, error: false, loaded: false };
+let shared = { info: null, urutan: null, error: false, loaded: false };
 const listeners = new Set();
 let inflight = null;
 let lagi = null;
@@ -31,9 +33,9 @@ function reload() {
       .then((r) => {
         const data = r.data.data || {};
         for (const room of Object.keys(data)) data[room].foto = data[room].foto.map((f) => ({ ...f, src: fotoSrc(f.id) }));
-        publish({ info: data, error: false, loaded: true });
+        publish({ info: data, urutan: r.data.urutan || Object.keys(data), error: false, loaded: true });
       })
-      .catch(() => publish({ info: shared.info || {}, error: true, loaded: shared.loaded }))
+      .catch(() => publish({ ...shared, info: shared.info || {}, error: true }))
       .finally(() => { inflight = null; });
     return inflight;
   }
@@ -63,7 +65,16 @@ export default function useRuangInfo() {
       if (!listeners.size && unsubscribeLive) { unsubscribeLive(); unsubscribeLive = null; clearTimeout(liveTimer); }
     };
   }, []);
-  return { info: state.info, error: state.error, loaded: state.loaded, reload };
+  return { info: state.info, urutan: state.urutan, error: state.error, loaded: state.loaded, reload };
+}
+
+// Daftar ruangan yang bisa dibooking + pengelompokannya per satuan kerja (bagian).
+// rooms = ['BIRO UMUM', ...]; grup = [{ bagian, rooms }]. Sebelum dimuat: daftar cadangan RUANG_AWAL.
+export function useDaftarRuang() {
+  const { info, urutan, loaded, error } = useRuangInfo();
+  const rooms = urutan?.length ? urutan : RUANG_AWAL;
+  const grup = useMemo(() => grupRuang(rooms, info), [rooms, info]);
+  return { rooms, grup, info, loaded, error };
 }
 
 // Data slideshow satu ruangan, atau null bila ruangan itu belum punya foto.

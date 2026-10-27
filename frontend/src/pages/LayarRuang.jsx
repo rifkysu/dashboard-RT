@@ -5,8 +5,9 @@ import BrandMark from '../components/BrandMark';
 import FotoRuangSlideshow from '../components/FotoRuangSlideshow';
 import useRuangRapatLive from '../hooks/useRuangRapatLive';
 import { iso } from '../hooks/useMonthSchedule';
-import { RUANG, judulRuang, slugRuang, ruangDariSlug } from '../utils/ruang';
-import useRuangInfo, { fotoRuangDari } from '../hooks/useRuangInfo';
+import { judulRuang, slugRuang, ruangDariSlug } from '../utils/ruang';
+import useRuangInfo, { fotoRuangDari, useDaftarRuang } from '../hooks/useRuangInfo';
+import { temaRuang } from '../utils/temaRuang';
 
 // Layar per ruangan (/ruang/:slug): dipasang di tablet/monitor depan tiap ruang rapat.
 // Publik (tanpa login), hanya-lihat, memakai jadwal publik + sinyal live yang sama dengan landing/kiosk.
@@ -68,7 +69,7 @@ const TEMA = {
 
 // Halaman pilih ruangan (/ruang, atau slug tidak dikenal).
 function PilihRuang({ salah }) {
-  const { info } = useRuangInfo();
+  const { grup, info } = useDaftarRuang();
   useEffect(() => { document.title = 'Layar Ruang Rapat · Biro Umum'; }, []);
   return (
     <div className="min-h-screen landing-hero text-white flex items-center justify-center px-4 py-12">
@@ -79,23 +80,28 @@ function PilihRuang({ salah }) {
         </div>
         <h1 className="font-display text-3xl md:text-4xl font-extrabold mt-6 tracking-tight">Pilih layar ruang rapat</h1>
         <p className="text-white/70 mt-2">{salah ? 'Ruangan tidak ditemukan. ' : ''}Buka halaman ruangan di tablet/monitor depan ruang tersebut. Tampilan diperbarui otomatis.</p>
-        <div className="grid sm:grid-cols-2 gap-3 mt-8">
-          {RUANG.map((r) => (
-            <Link key={r} to={`/ruang/${slugRuang(r)}`} className="group flex items-center justify-between gap-3 rounded-2xl bg-white/5 ring-1 ring-white/15 px-5 py-4 transition hover:bg-white/10 hover:ring-kuningan/60">
+        {grup.map((g) => (
+        <div key={g.bagian} className="mt-8">
+        <div className="text-xs font-bold uppercase tracking-[0.2em] text-[#e4c27f]">{g.bagian}</div>
+        <div className="grid sm:grid-cols-2 gap-3 mt-3">
+          {g.rooms.map((r) => (
+            <Link key={r} to={`/ruang/${slugRuang(r)}`} style={{ ...temaRuang(r, info).style, borderLeftColor: 'var(--aksen)' }} className="group flex items-center justify-between gap-3 rounded-2xl border-l-4 bg-white/5 ring-1 ring-white/15 px-5 py-4 transition hover:bg-white/10 hover:ring-kuningan/60">
               <span className="flex items-center gap-4 min-w-0">
                 {fotoRuangDari(info, r)
                   ? <img src={info[r].foto[0].src} alt="" className="w-14 h-14 shrink-0 rounded-xl object-cover ring-1 ring-white/20 transition duration-500 group-hover:scale-105" />
-                  : <span className="w-14 h-14 shrink-0 rounded-xl bg-white/5 ring-1 ring-white/10 inline-flex items-center justify-center"><span className="material-symbols-outlined text-white/40">meeting_room</span></span>}
+                  : <span className="w-14 h-14 shrink-0 rounded-xl bg-white/5 ring-1 ring-white/10 inline-flex items-center justify-center"><span className="material-symbols-outlined text-aksen">meeting_room</span></span>}
                 <span className="min-w-0">
                 <span className="block font-display text-lg font-bold">{judulRuang(r)}</span>
                 <span className="block text-xs text-white/50 font-mono mt-0.5">/ruang/{slugRuang(r)}</span>
-                {fotoRuangDari(info, r) && <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#e4c27f] mt-1"><span className="material-symbols-outlined text-[14px]">photo_library</span>{info[r].foto.length} foto{info[r].fasilitas.length ? ' & fasilitas' : ''}</span>}
+                {fotoRuangDari(info, r) && <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-aksen mt-1"><span className="material-symbols-outlined text-[14px]">photo_library</span>{info[r].foto.length} foto{info[r].fasilitas.length ? ' & fasilitas' : ''}</span>}
                 </span>
               </span>
-              <span className="material-symbols-outlined text-white/50 transition group-hover:text-[#e4c27f] group-hover:translate-x-1">arrow_forward</span>
+              <span className="material-symbols-outlined text-white/50 transition group-hover:text-aksen group-hover:translate-x-1">arrow_forward</span>
             </Link>
           ))}
         </div>
+        </div>
+        ))}
         <Link to="/" className="inline-flex items-center gap-1.5 mt-8 text-sm text-white/60 hover:text-white">
           <span className="material-symbols-outlined text-[18px]">arrow_back</span>Kembali ke beranda
         </Link>
@@ -199,11 +205,11 @@ function AgendaMingguan({ minggu, memuat, sekarang, menitSekarang, tema }) {
           const aktif = i === idx;
           return (
             <button key={h.d} type="button" role="tab" aria-selected={aktif} onClick={() => pilih(i)}
-              className={`relative rounded-xl py-2 flex flex-col items-center transition duration-300 ${aktif ? 'bg-[#e4c27f] text-dinas-ink shadow-[0_8px_20px_-10px_rgba(228,194,127,.8)] scale-105' : 'bg-white/5 hover:bg-white/10 text-white/80'}`}>
+              className={`relative rounded-xl py-2 flex flex-col items-center transition duration-300 ${aktif ? 'bg-aksen text-dinas-ink shadow-aksen scale-105' : 'bg-white/5 hover:bg-white/10 text-white/80'}`}>
               <span className={`text-[10px] md:text-[11px] font-bold uppercase ${aktif ? 'text-dinas-ink/70' : 'text-white/50'}`}>{i === 0 ? 'Hari ini' : tgl.toLocaleDateString('id-ID', { weekday: 'short' })}</span>
               <span className="font-display text-lg md:text-xl font-extrabold leading-tight tabular-nums">{tgl.getDate()}</span>
               <span className={`mt-0.5 h-1.5 flex items-center gap-0.5`}>
-                {h.list.slice(0, 3).map((x) => <span key={x.id} className={`w-1.5 h-1.5 rounded-full ${aktif ? 'bg-dinas-ink/70' : 'bg-[#e4c27f]'}`}></span>)}
+                {h.list.slice(0, 3).map((x) => <span key={x.id} className={`w-1.5 h-1.5 rounded-full ${aktif ? 'bg-dinas-ink/70' : 'bg-aksen'}`}></span>)}
               </span>
             </button>
           );
@@ -212,7 +218,7 @@ function AgendaMingguan({ minggu, memuat, sekarang, menitSekarang, tema }) {
 
       {/* Bilah waktu: penuh = pindah ke hari berikutnya */}
       <div className="h-1 bg-white/5" aria-hidden="true">
-        {!dijeda && minggu.length > 1 && <div key={`${idx}-${jedaSampai}`} className="layar-progress h-full bg-[#e4c27f]" style={{ animationDuration: `${AUTO_SLIDE_MS}ms` }}></div>}
+        {!dijeda && minggu.length > 1 && <div key={`${idx}-${jedaSampai}`} className="layar-progress h-full bg-aksen" style={{ animationDuration: `${AUTO_SLIDE_MS}ms` }}></div>}
       </div>
 
       {/* Slide per hari */}
@@ -221,7 +227,7 @@ function AgendaMingguan({ minggu, memuat, sekarang, menitSekarang, tema }) {
         {minggu.map((h, i) => (
           <div key={h.d} className="w-full shrink-0 snap-start overflow-y-auto px-3 py-3" aria-hidden={i !== idx}>
             <div className="px-2 pb-2 flex items-baseline justify-between gap-2">
-              <span className="font-semibold text-[#e4c27f] capitalize">{judulHari(i, h.d)}<span className="text-white/50 font-normal normal-case"> · {labelHari(h.d)}</span></span>
+              <span className="font-semibold text-aksen capitalize">{judulHari(i, h.d)}<span className="text-white/50 font-normal normal-case"> · {labelHari(h.d)}</span></span>
               <span className="text-xs font-bold px-2 py-1 rounded-md bg-white/10 text-white/70 shrink-0">{h.list.length} rapat</span>
             </div>
             {memuat && <div className="px-2 py-3 text-white/50">Memuat…</div>}
@@ -255,7 +261,7 @@ function AgendaMingguan({ minggu, memuat, sekarang, menitSekarang, tema }) {
 
       {/* Titik posisi slide */}
       <div className="flex justify-center gap-1.5 py-2.5 border-t border-white/10" aria-hidden="true">
-        {minggu.map((h, i) => <span key={h.d} className={`h-1.5 rounded-full transition-all duration-300 ${i === idx ? 'w-5 bg-[#e4c27f]' : 'w-1.5 bg-white/25'}`}></span>)}
+        {minggu.map((h, i) => <span key={h.d} className={`h-1.5 rounded-full transition-all duration-300 ${i === idx ? 'w-5 bg-aksen' : 'w-1.5 bg-white/25'}`}></span>)}
       </div>
     </div>
   );
@@ -263,7 +269,10 @@ function AgendaMingguan({ minggu, memuat, sekarang, menitSekarang, tema }) {
 
 export default function LayarRuang() {
   const { slug } = useParams();
-  const room = ruangDariSlug(slug);
+  const { rooms, loaded, error } = useDaftarRuang();
+  const room = ruangDariSlug(slug, rooms);
+  // Daftar ruangan belum dimuat: jangan langsung bilang "ruangan tidak ditemukan".
+  if (!room && slug && !loaded && !error) return <div className="min-h-screen landing-hero flex items-center justify-center text-white/60 text-sm">Memuat…</div>;
   if (!room) return <PilihRuang salah={!!slug} />;
   return <Layar key={room} room={room} />;
 }
@@ -323,14 +332,16 @@ function Layar({ room }) {
   const memuat = items === null;
   const { info } = useRuangInfo();
   const foto = fotoRuangDari(info, room);
+  // Tema layar ruangan ini (warna aksen, latar, motif) -- tiap ruangan dibuat beda, diatur admin.
+  const tr = temaRuang(room, info);
 
   const tanggalPanjang = now.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 
   return (
-    <div className={`relative min-h-screen lg:h-screen flex flex-col overflow-hidden bg-[#0b1626] text-white ${idle ? 'cursor-none' : ''}`}>
-      {/* Latar: cahaya warna status + motif kawung */}
-      <div className="absolute inset-0 bg-kawung-gelap opacity-60 [mask-image:radial-gradient(ellipse_at_top_left,#000_10%,transparent_65%)]" aria-hidden="true"></div>
-      <div className="absolute inset-0 transition-[background] duration-1000" style={{ background: `radial-gradient(60% 70% at 15% 20%, ${memuat ? 'transparent' : tema.glow}, transparent 70%), radial-gradient(50% 60% at 100% 100%, rgba(184,137,59,.18), transparent 70%)` }} aria-hidden="true"></div>
+    <div className={`relative min-h-screen lg:h-screen flex flex-col overflow-hidden bg-latar text-white transition-colors duration-700 ${idle ? 'cursor-none' : ''}`} style={tr.style}>
+      {/* Latar: cahaya warna status + warna aksen ruangan + motif tema ruangan */}
+      <div className={`absolute inset-0 motif-${tr.motif.key} opacity-60 [mask-image:radial-gradient(ellipse_at_top_left,#000_10%,transparent_65%)]`} aria-hidden="true"></div>
+      <div className="absolute inset-0 transition-[background] duration-1000" style={{ background: `radial-gradient(60% 70% at 15% 20%, ${memuat ? 'transparent' : tema.glow}, transparent 70%), radial-gradient(50% 60% at 100% 100%, color-mix(in srgb, var(--aksen) 22%, transparent), transparent 70%)` }} aria-hidden="true"></div>
 
       {/* Kepala */}
       <header className="relative flex items-center justify-between gap-4 px-5 md:px-10 pt-5 md:pt-7">
@@ -354,7 +365,7 @@ function Layar({ room }) {
       <main className="relative flex-1 min-h-0 grid lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)] gap-6 lg:gap-10 px-5 md:px-10 py-6 md:py-8">
         {/* Kiri: nama ruang + status besar */}
         <section className="flex flex-col min-h-0 hero-in">
-          <div className="text-sm md:text-base font-semibold uppercase tracking-[0.2em] text-[#e4c27f]">Ruang rapat</div>
+          <div className="text-sm md:text-base font-semibold uppercase tracking-[0.2em] text-aksen">{info?.[room]?.satuan_kerja || 'Ruang rapat'}{info?.[room]?.kapasitas ? <span className="text-white/50"> · {info[room].kapasitas} kursi</span> : null}</div>
           <h1 className="font-display font-extrabold tracking-tight leading-[1.02] text-[clamp(2.4rem,6vw,5.5rem)] mt-1">{judulRuang(room)}</h1>
 
           <div className="mt-5">

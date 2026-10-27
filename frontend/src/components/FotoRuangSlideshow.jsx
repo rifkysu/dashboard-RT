@@ -47,7 +47,7 @@ function Lightbox({ foto, idx, setIdx, onClose }) {
     <div className="fixed inset-0 z-[70] bg-black/90 backdrop-blur-sm flex flex-col feedback-fade" role="dialog" aria-modal="true" aria-label="Foto ruangan">
       <div className="flex items-center justify-between gap-3 px-5 py-4 text-white">
         <div className="min-w-0">
-          <div className="text-xs font-bold uppercase tracking-[0.2em] text-[#e4c27f]">Foto {idx + 1} / {n}</div>
+          <div className="text-xs font-bold uppercase tracking-[0.2em] text-aksen">Foto {idx + 1} / {n}</div>
           <div className="font-semibold md:text-lg truncate mt-0.5">{f.caption}</div>
         </div>
         <button type="button" onClick={onClose} aria-label="Tutup" className="w-11 h-11 shrink-0 rounded-xl bg-white/10 ring-1 ring-white/15 inline-flex items-center justify-center hover:bg-white/20">
@@ -71,7 +71,7 @@ function Lightbox({ foto, idx, setIdx, onClose }) {
       <div className="flex justify-center gap-2 pb-5">
         {foto.map((x, i) => (
           <button key={x.src} type="button" onClick={() => setIdx(i)} aria-label={`Foto ${i + 1}`}
-            className={`h-14 w-20 rounded-lg overflow-hidden ring-2 transition ${i === idx ? 'ring-[#e4c27f] opacity-100' : 'ring-transparent opacity-50 hover:opacity-80'}`}>
+            className={`h-14 w-20 rounded-lg overflow-hidden ring-2 transition ${i === idx ? 'ring-aksen opacity-100' : 'ring-transparent opacity-50 hover:opacity-80'}`}>
             <img src={x.src} alt="" className="w-full h-full object-cover" />
           </button>
         ))}
@@ -129,7 +129,7 @@ export default function FotoRuangSlideshow({ data, className = '', style }) {
 
         <div className="absolute top-4 left-4 right-4 flex items-center justify-between gap-2 pointer-events-none">
           <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/35 backdrop-blur-md ring-1 ring-white/15 text-xs font-bold uppercase tracking-wider">
-            <span className="material-symbols-outlined text-[16px] text-[#e4c27f]">photo_library</span>Foto ruangan
+            <span className="material-symbols-outlined text-[16px] text-aksen">photo_library</span>Foto ruangan
           </span>
           <span className="px-2.5 py-1 rounded-full bg-black/35 backdrop-blur-md ring-1 ring-white/15 text-xs font-bold tabular-nums">{idx + 1} / {n}</span>
         </div>
@@ -152,10 +152,10 @@ export default function FotoRuangSlideshow({ data, className = '', style }) {
           <div className="mt-3 flex items-center gap-1.5" aria-hidden="true">
             {foto.map((f, i) => (
               <span key={f.src} className="relative h-1 flex-1 max-w-16 rounded-full bg-white/25 overflow-hidden">
-                {i < idx && <span className="absolute inset-0 bg-[#e4c27f]"></span>}
+                {i < idx && <span className="absolute inset-0 bg-aksen"></span>}
                 {i === idx && (berjalan
-                  ? <span key={`${idx}-${jedaSampai}`} className="absolute inset-0 layar-progress bg-[#e4c27f]" style={{ animationDuration: `${GANTI_MS}ms` }}></span>
-                  : <span className="absolute inset-0 bg-[#e4c27f]/70"></span>)}
+                  ? <span key={`${idx}-${jedaSampai}`} className="absolute inset-0 layar-progress bg-aksen" style={{ animationDuration: `${GANTI_MS}ms` }}></span>
+                  : <span className="absolute inset-0 bg-aksen-70"></span>)}
               </span>
             ))}
             <span className="ml-auto inline-flex items-center gap-1 text-[11px] font-semibold text-white/70">
@@ -171,7 +171,7 @@ export default function FotoRuangSlideshow({ data, className = '', style }) {
           <ul className="flex flex-wrap gap-1.5 lg:flex-nowrap lg:overflow-x-auto xl:flex-wrap xl:overflow-visible [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {fasilitas.map((f, i) => (
               <li key={f.label} className="hero-in shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white/[.07] ring-1 ring-white/10 text-xs md:text-sm font-semibold text-white/85" style={{ '--d': `${300 + i * 70}ms` }}>
-                <span className="material-symbols-outlined text-[17px] text-[#e4c27f]">{f.icon}</span>{f.label}
+                <span className="material-symbols-outlined text-[17px] text-aksen">{f.icon}</span>{f.label}
               </li>
             ))}
           </ul>

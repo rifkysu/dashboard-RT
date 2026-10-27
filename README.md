@@ -17,7 +17,7 @@ Full-stack app (React + Node.js/Express + PostgreSQL + **Prisma**) untuk mengelo
     - **Fasilitas**: klik pilihan cepat (mikrofon, monitor, kamera, layar, proyektor, sound system, AC, Wi-Fi, dll.) atau tambah fasilitas lain dengan ikon pilihan, atur urutan, lalu *Simpan fasilitas*.
     - Tombol *Lihat layar ruangan* membuka `/ruang/<ruang>` di tab baru untuk mengecek hasilnya.
   - **Foto yang sama tampil di semua tempat yang menampilkan ruang rapat** (`components/RuangFoto.jsx`): header kolom tabel jadwal (kiosk `/jadwal-rapat`, landing, menu Jadwal Ruang Rapat) & tombol filter ruangan, kartu *Ruang rapat hari ini* dan *Layar per ruangan* di landing page, daftar ruang di Dashboard, form booking pegawai (baru & edit) dan form booking tamu Google (pratinjau foto + fasilitas ruangan yang dipilih), serta detail booking. Klik foto/nama ruangan = popup slideshow foto & fasilitas. Ruangan tanpa foto menampilkan ikon ruangan.
-  - Isi awal (Serbaguna, Setjen II, Biro Umum) ada di `backend/seed/ruang-foto/`; dimasukkan ke database dengan `npm run ruang:seed-foto` (lihat langkah update di bawah).
+  - Isi awal foto (Serbaguna, Setjen II, Biro Umum, plus 11 ruangan satuan kerja lain dari link dokumentasi Google Drive di spreadsheet data ruang rapat) ada di `backend/seed/ruang-foto/`; dimasukkan ke database dengan `npm run ruang:seed-foto` (lihat langkah update di bawah). Fasilitas, kapasitas, & link foto tiap ruangan diisi migration 0033 dari spreadsheet data ruang rapat.
 - **Booking ruang rapat untuk tamu lewat login Google** — di halaman kiosk **`/jadwal-rapat`** (di atas jadwal) ada tombol **Login dengan Google untuk booking**; landing page tidak lagi memuat panel ini, hanya tombol *Kiosk & booking tamu* menuju kiosk. Setelah login Google, tamu diarahkan kembali ke `/jadwal-rapat`. Setelah login, tamu mengisi form booking (agenda, nomor surat, PIC, No. HP PIC, ruangan, tanggal mulai & sampai, jam, file surat permohonan) — **semua kolom wajib**, tombol *Kirim Booking* baru aktif kalau semua terisi. Akun tamu disimpan di tabel `guest_accounts` (terpisah dari `users`, tidak bisa masuk aplikasi internal).
   - **Captcha 6 angka** (gambar PNG dari server, keyboard angka di HP) wajib diisi saat submit, **berlaku 5 menit** dan hangus setelah sekali dicek.
   - **Sesi login Google berlaku 7 hari**, lalu harus login lagi.
@@ -70,7 +70,10 @@ Full-stack app (React + Node.js/Express + PostgreSQL + **Prisma**) untuk mengelo
 - Kartu di Dashboard menampilkan jumlah kendaraan yang **belum bayar pajak** dan peringatan **pajak jatuh tempo ≤ 2 minggu (H-14)** (lihat bagian Dashboard).
 
 ### 📅 Ruang Rapat
-- **5 ruangan tetap**: SERBAGUNA, SETJEN II, TRI DHARMA, BIRO UMUM, GRAHA KEMNAKER.
+- **Daftar ruangan per bagian (satuan kerja)** dari database (tabel `ruang_profil`), isi awal 28 ruangan dari spreadsheet *Data Ruang Rapat di Sekretariat Jenderal Kemnaker* (migration `0033_ruang_rapat_per_bagian`): Biro Umum (SERBAGUNA, SETJEN II, TRI DHARMA, BIRO UMUM, GRAHA KEMNAKER), Biro Keuangan dan BMN, Biro Perencanaan, Politeknik Ketenagakerjaan, Biro Humas, Biro Kerja Sama, Biro OSDMA, PPSDM Ketenagakerjaan, dan Pusat Pasar Kerja.
+- **Menu per bagian** di kalender menu Ruang Rapat, kiosk `/jadwal-rapat` (`?bagian=Biro%20Umum`), dan landing page; form booking pegawai & tamu mengelompokkan ruangan per bagian.
+- Admin/Kabag menambah, mengubah (nama, satuan kerja, kapasitas, link dokumentasi foto), dan menghapus ruangan di menu **Foto & Fasilitas Ruang** (`/foto-ruang`); ruangan baru langsung bisa dibooking.
+- **Tema layar per ruangan** (`/ruang/<ruang>`): tiap ruangan punya warna & motif latar sendiri (14 warna x 4 motif, isi awal semuanya beda lewat migration `0034_ruang_tema_layar`), diatur di panel *Detail ruangan* menu Foto & Fasilitas Ruang.
 - Kalender **matriks** (baris = ruangan, kolom = tanggal Senin–Minggu), navigasi minggu **bebas tanpa batas** (bisa maju/mundur ke tahun berapa pun) + tombol "Hari Ini".
 - **Real-time lewat Server-Sent Events (SSE)** — begitu ada booking baru/diedit/dibatalkan oleh siapa pun, semua orang yang sedang membuka halaman (admin maupun landing page publik) langsung melihat perubahannya tanpa refresh.
 - **Pilih beberapa tanggal (loncat-loncat)** — di form Book Ruangan, pilih *Pilih beberapa tanggal* lalu klik tanggal mana saja di kalender (maks. 60 tanggal, jam sama). Tanggal yang berurutan otomatis digabung jadi satu booking multi-hari, sisanya jadi booking terpisah. Semua tanggal dicek bentrok sekaligus: kalau ada satu yang bentrok, tidak ada yang disimpan. API: `POST /api/ruang-rapat` dengan `dates: ["YYYY-MM-DD", ...]` sebagai pengganti `date`/`end_date`.
@@ -343,7 +346,7 @@ Urutan di server:
    npm ci --omit=dev
    npx prisma migrate deploy
    npx prisma generate
-   npm run ruang:seed-foto                      # sekali saja: foto & fasilitas awal ruang rapat
+   npm run ruang:seed-foto                      # sekali saja: foto awal ruang rapat
    pm2 start src/index.js --name biro-umum-api   # SATU proses saja, jangan mode cluster (-i)
    ```
 3. Frontend:

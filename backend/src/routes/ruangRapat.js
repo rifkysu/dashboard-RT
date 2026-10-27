@@ -7,7 +7,8 @@ const broadcastChange=()=>bus.emit('change');
 // Status surat OTOMATIS: ada file surat -> 'diterima' (hijau), tidak ada -> 'belum' (merah).
 // Status yang dikirim klien diabaikan.
 const suratStatus=fileData=>fileData?'diterima':'belum';
-const ROOMS=['SERBAGUNA','SETJEN II','TRI DHARMA','BIRO UMUM','GRAHA KEMNAKER'];
+// Daftar ruangan dari tabel ruang_profil (dikelola admin), bukan konstanta.
+const {ruangValid}=require('../ruangList');
 const PREFIX=['data:application/pdf;base64,','data:image/jpeg;base64,','data:image/png;base64,'];
 // Selain prefix MIME, cek juga magic number isi file (sama seperti modul lain) supaya file palsu yang cuma diganti nama/tipe ditolak.
 const validFile=v=>v==null||v===''||(typeof v==='string'&&PREFIX.some(p=>v.startsWith(p))&&isGenuineDocumentDataUrl(v,maxDataUrlLength(8*1024*1024)));
@@ -129,7 +130,7 @@ router.post('/',async(req,res)=>{try{
   if(picked&&(!Array.isArray(dates)||!dates.length||dates.length>MAX_PICKED||!dates.every(validDate)))return res.status(400).json({message:`Pilih 1-${MAX_PICKED} tanggal yang valid.`});
   if(!validNomorSurat(nomor_surat))return res.status(400).json({message:'Nomor surat maksimal 100 karakter.'});
   if(!validText(title,255)||!validText(room,150)||!validText(pic,150)||!validPhone(pic_phone)||(!picked&&(!validDate(startDate)||(end_date!=null&&end_date!==''&&!validDate(end_date))))||!validTime(start)||!validTime(end))return res.status(400).json({message:'Data booking tidak lengkap atau No. HP PIC tidak valid (contoh: 081234567890 atau +6281234567890).'});
-  if(!ROOMS.includes(room)||!validFile(surat_file_data)||!validSuratName(surat_name))return res.status(400).json({message:'Ruangan, status, atau surat tidak valid.'});
+  if(!(await ruangValid(room))||!validFile(surat_file_data)||!validSuratName(surat_name))return res.status(400).json({message:'Ruangan, status, atau surat tidak valid.'});
   if(start>=end)return res.status(400).json({message:'Jam selesai harus lebih besar dari jam mulai.'});
   let ranges;
   if(picked)ranges=dateRuns(dates);
@@ -156,7 +157,11 @@ router.put('/:id',async(req,res)=>{try{
   const data={};
   if(b.title!==undefined){if(!validText(b.title,255))return res.status(400).json({message:'Agenda tidak valid.'});data.agenda=b.title.trim();}
   if(b.nomor_surat!==undefined){if(!validNomorSurat(b.nomor_surat))return res.status(400).json({message:'Nomor surat maksimal 100 karakter.'});data.nomor_surat=b.nomor_surat?.trim()||null;}
-  if(b.room!==undefined){if(!ROOMS.includes(b.room))return res.status(400).json({message:'Ruangan tidak valid.'});data.room=b.room;}
+  if(b.room!==undefined){
+    // Booking lama di ruangan yang sudah dihapus tetap bisa diedit selama ruangannya tidak diganti.
+    if(!(await ruangValid(b.room))){const cur=await prisma.ruangRapat.findUnique({where:{id},select:{room:true}});if(!cur||b.room!==cur.room)return res.status(400).json({message:'Ruangan tidak valid.'});}
+    else data.room=b.room;
+  }
   if(b.pic!==undefined){if(!validText(b.pic,150))return res.status(400).json({message:'Nama PIC tidak valid.'});data.pic=b.pic.trim();}
   if(b.pic_phone!==undefined){
     // Booking lama banyak berisi '-' / nomor format lama: nilai yang tidak diubah tetap diterima apa adanya.
@@ -247,6 +252,6 @@ router.post('/:id/cancel-dates',async(req,res)=>{try{
 }catch(err){if(err instanceof HttpError)return res.status(err.status).json({message:err.message});logger.error('Cancel tanggal ruang rapat gagal',{error:err});res.status(500).json({message:'Gagal membatalkan tanggal booking.'});}});
 // Batalkan seluruh booking. Data tidak dihapus, hanya diberi status batal (+ alasan opsional di body.reason).
 router.delete('/:id',async(req,res)=>{try{const id=Number(req.params.id);if(!Number.isInteger(id))return res.status(400).json({message:'ID booking tidak valid.'});if(!validReason(req.body?.reason))return res.status(400).json({message:'Alasan pembatalan maksimal 500 karakter.'});const {count}=await prisma.ruangRapat.updateMany({where:{id,cancelled_at:null},data:cancelData(req)});if(!count)return res.status(404).json({message:'Booking tidak ditemukan atau sudah dibatalkan.'});broadcastChange();res.json({message:'Booking dibatalkan.'});}catch(err){logger.error('DELETE ruang rapat gagal',{error:err});res.status(500).json({message:'Gagal membatalkan booking.'});}});
-module.exports=router;module.exports.ROOMS=ROOMS;
+module.exports=router;
 // Dipakai juga oleh form booking tamu (routes/guest.js) supaya aturan & cek bentroknya sama persis.
 module.exports.booking={validText,validPhone,normPhone,validDate,validTime,validFile,validNomorSurat,validSuratName,date,time,DAY,conflictWhere,conflictMessage,lockRoom,HttpError,suratStatus,out,broadcastChange};

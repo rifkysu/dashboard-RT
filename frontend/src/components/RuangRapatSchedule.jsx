@@ -3,8 +3,10 @@ import { useSearchParams } from 'react-router-dom';
 import useMonthSchedule, { monthKey } from '../hooks/useMonthSchedule';
 import { RuangThumb } from './RuangFoto';
 import RoomDateGrid, { MonthFilter, monthLabel } from './RoomDateGrid';
+import BagianTabs, { useBagian } from './BagianTabs';
+import { useDaftarRuang } from '../hooks/useRuangInfo';
+import { judulRuang } from '../utils/ruang';
 
-const ROOMS = ['SERBAGUNA', 'SETJEN II', 'TRI DHARMA', 'BIRO UMUM', 'GRAHA KEMNAKER'];
 const STATUS = { belum: 'bg-red-50 border-red-300 text-red-900', ditinjau: 'bg-blue-50 border-blue-300 text-blue-900', diterima: 'bg-green-50 border-green-300 text-green-900' };
 // Booking multi-hari: tampil di setiap hari dari `date` s/d `end_date`.
 const endOf = (x) => x.end_date || x.date;
@@ -12,9 +14,10 @@ const dayCount = (a, b) => Math.round((new Date(`${b}T00:00:00`) - new Date(`${a
 
 // Jadwal ruang rapat read-only (data publik, tanpa login). Dipakai bersama
 // oleh halaman kiosk /jadwal-rapat dan landing page di /.
-// Pilihan ruangan disimpan di URL (?ruang=SERBAGUNA), jadi layar kiosk di depan satu ruangan
-// bisa langsung dibuka dengan link itu. Filter hanya di tampilan: data & realtime tetap sama.
-// autoRotate (kiosk): pilihan ruangan berputar sendiri (Semua -> tiap ruangan -> Semua ...) tiap
+// Ruangan dikelompokkan per bagian (satuan kerja, ?bagian=...). Pilihan ruangan disimpan di URL
+// (?ruang=SERBAGUNA), jadi layar kiosk di depan satu ruangan bisa langsung dibuka dengan link itu.
+// Filter hanya di tampilan: data & realtime tetap sama.
+// autoRotate (kiosk): pilihan ruangan berputar sendiri di dalam bagian terpilih (Semua -> tiap ruangan -> Semua ...) tiap
 // 30 detik dan tabel digulir ke hari ini, jadi layar tidak perlu disentuh. Dibuka dengan ?ruang=...
 // = layar untuk satu ruangan -> putar otomatis mati (bisa dinyalakan dengan tombolnya).
 const AUTO_MS = 30000; // kiosk: ganti ruangan tiap 30 detik
@@ -22,7 +25,10 @@ const JEDA_MS = 30000; // disentuh/digulir -> putar otomatis berhenti 30 detik l
 
 export default function RuangRapatSchedule({ autoRotate = false }) {
   const s = useMonthSchedule('/ruang-rapat/public-schedule');
-  const rooms = useMemo(() => [...ROOMS, ...[...new Set(s.items.map((x) => x.room).filter((r) => r && !ROOMS.includes(r)))].sort()], [s.items]);
+  const { rooms: semua, grup } = useDaftarRuang();
+  const [bagian, setBagian, roomsBagian] = useBagian(grup);
+  // "Semua bagian" juga menampilkan ruangan lama yang sudah dihapus dari daftar tapi masih ada bookingnya.
+  const rooms = useMemo(() => (bagian ? roomsBagian : [...semua, ...[...new Set(s.items.map((x) => x.room).filter((r) => r && !semua.includes(r)))].sort()]), [s.items, bagian, roomsBagian, semua]);
   const [params, setParams] = useSearchParams();
   const urlRoom = rooms.includes(params.get('ruang')) ? params.get('ruang') : '';
   // Putaran otomatis memakai state lokal (bukan URL), supaya reload kiosk tidak "terkunci" di satu ruangan.
@@ -79,7 +85,7 @@ export default function RuangRapatSchedule({ autoRotate = false }) {
     <div className="bg-white rounded-lg border border-slate-200 overflow-hidden text-slate-800" onPointerDown={jeda} onWheel={jeda}>
       <div className="p-4 border-b border-slate-200 flex flex-col xl:flex-row justify-between gap-3 xl:items-center">
         <div>
-          <div className="font-bold text-sm text-slate-800">Jadwal Ruang Rapat{picked && ` · ${picked}`}</div>
+          <div className="font-bold text-sm text-slate-800">Jadwal Ruang Rapat{bagian && ` · ${bagian}`}{picked && ` · ${judulRuang(picked)}`}</div>
           <div className="text-xs text-slate-500 mt-1 inline-flex flex-wrap items-center gap-1.5">
             {monthLabel(s.months[0])}{last !== s.months[0] && ` – ${monthLabel(last)}`} &middot; gulir ke bawah untuk bulan berikutnya &middot;
             <span>diperbarui otomatis</span>
@@ -87,8 +93,12 @@ export default function RuangRapatSchedule({ autoRotate = false }) {
         </div>
         <MonthFilter months={s.months} onSelect={s.selectMonth} />
       </div>
+      <div className="px-4 pt-3 pb-2 border-b border-slate-100 flex flex-wrap items-center gap-2">
+        <span className="shrink-0 text-xs font-semibold text-slate-500 w-16">Bagian</span>
+        <BagianTabs grup={grup} value={bagian} onChange={(b) => { setBagian(b); setAutoRoom(''); jeda(); }} className="flex-1" />
+      </div>
       <div className="px-4 py-3 border-b border-slate-200 flex flex-wrap items-center gap-2">
-        <span className="shrink-0 text-xs font-semibold text-slate-500">Ruangan</span>
+        <span className="shrink-0 text-xs font-semibold text-slate-500 w-16">Ruangan</span>
         <div className="flex gap-1.5 overflow-x-auto pb-1 sm:pb-0 -mx-1 px-1 min-w-0 flex-1" role="group" aria-label="Pilih ruangan">
           {['', ...rooms].map((room) => (
             <button
@@ -99,7 +109,7 @@ export default function RuangRapatSchedule({ autoRotate = false }) {
               className={`shrink-0 inline-flex items-center gap-1.5 ${room ? 'pl-1 pr-3 py-1' : 'px-3 py-[0.4375rem]'} rounded-full text-xs font-semibold border transition ${picked === room ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}`}
             >
               {room && <RuangThumb room={room} className="w-6 h-6 rounded-full" iconClass="text-[13px]" />}
-              {room || 'Semua Ruangan'}
+              {room ? judulRuang(room) : bagian ? `Semua ruangan ${bagian}` : 'Semua Ruangan'}
             </button>
           ))}
         </div>
