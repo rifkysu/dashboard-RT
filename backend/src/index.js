@@ -14,6 +14,7 @@ const maintenanceRoutes = require('./routes/maintenance');
 const usersRoutes = require('./routes/users');
 const guestRoutes = require('./routes/guest');
 const ruangInfoRoutes = require('./routes/ruangInfo');
+const riwayatRoutes = require('./routes/riwayat');
 const live = require('./live');
 const logger = require('./logger');
 const { ensureUploadRoot } = require('./fileStorage');
@@ -37,7 +38,7 @@ app.use((req, res, next) => {
   res.setHeader('X-Request-ID', req.requestId);
   next();
 });
-app.use(cors({ origin: frontendUrl, credentials: false, methods: ['GET','POST','PUT','DELETE','OPTIONS'], allowedHeaders: ['Content-Type','Authorization','X-Request-ID'], exposedHeaders: ['Retry-After','X-RateLimit-Limit','X-RateLimit-Remaining'] }));
+app.use(cors({ origin: frontendUrl, credentials: false, methods: ['GET','POST','PUT','DELETE','OPTIONS'], allowedHeaders: ['Content-Type','Authorization','X-Request-ID'], exposedHeaders: ['Retry-After','X-RateLimit-Limit','X-RateLimit-Remaining','X-Total-Rows'] }));
 // Request dengan token valid dihitung per akun (bukan per IP saja): satu kantor biasanya keluar
 // lewat satu IP (NAT/proxy), dan tiap tab yang terbuka polling beberapa kali per menit -- tanpa
 // ini puluhan pegawai sekaligus bisa kena 429. Tanpa token / token tidak valid tetap per IP.
@@ -89,6 +90,7 @@ app.use('/api/users', live.notifyOnWrite('users'), usersRoutes);
 app.use('/api/guest', live.notifyOnWrite('ruang-rapat'), guestRoutes);
 // Foto & fasilitas ruang rapat (layar /ruang/:slug); diubah Admin/Kabag -> layar ruangan ikut update live.
 app.use('/api/ruang-info', live.notifyOnWrite('ruang-info'), ruangInfoRoutes);
+app.use('/api/riwayat', riwayatRoutes);
 
 // Endpoint API yang tidak dikenal -> JSON berpesan jelas (bukan halaman HTML default Express),
 // supaya frontend tidak cuma menampilkan "Gagal ..." -- biasanya karena backend belum di-restart

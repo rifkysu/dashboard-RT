@@ -43,13 +43,21 @@ export const HP_RE = /^(\+?62|0)8\d{7,12}$/;
 export const normalizePhone = (v) => String(v || '').replace(/[\s-]/g, '');
 export const UNIT_KERJA = ['rt', 'perlengkapan', 'kendaraan', 'protokol', 'lainnya'];
 
-// Kata sandi: 8-128 karakter, minimal satu huruf dan satu angka. Mengembalikan pesan error atau ''.
+// Syarat kata sandi baru (Daftar Akun & Reset Kata Sandi), ditampilkan sebagai daftar centang di bawah kolomnya
+// (components/SyaratSandi.jsx). Sama dengan passwordIssue di backend/src/routes/auth.js -- ubah keduanya.
+// Hanya untuk sandi baru: login dengan sandi lama yang tidak memenuhi syarat ini tetap bisa.
+export const PASSWORD_MIN = 7;
+export const PASSWORD_RULES = [
+  { key: 'awal', label: 'Diawali huruf besar (A-Z)', pesan: 'Kata sandi harus diawali huruf besar (A-Z).', test: (pw) => /^[A-Z]/.test(pw) },
+  { key: 'angka', label: 'Berisi minimal 1 angka (0-9)', pesan: 'Kata sandi harus berisi minimal 1 angka.', test: (pw) => /\d/.test(pw) },
+  { key: 'panjang', label: `Minimal ${PASSWORD_MIN} karakter`, pesan: `Kata sandi minimal ${PASSWORD_MIN} karakter.`, test: (pw) => pw.length >= PASSWORD_MIN },
+];
+
+// Mengembalikan pesan error pertama atau ''.
 export function passwordIssue(pw) {
   if (!pw) return 'Kata sandi wajib diisi.';
-  if (pw.length < 8) return 'Kata sandi minimal 8 karakter.';
   if (pw.length > 128) return 'Kata sandi maksimal 128 karakter.';
-  if (!/[A-Za-z]/.test(pw) || !/\d/.test(pw)) return 'Kata sandi harus berisi huruf dan angka.';
-  return '';
+  return PASSWORD_RULES.find((r) => !r.test(pw))?.pesan || '';
 }
 
 // Validasi form Daftar Akun -> { field: pesan } (objek kosong = valid).

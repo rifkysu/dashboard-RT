@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
 import api from '../api';
-import { validateRegister, normalizePhone } from '../utils/validation';
+import { validateRegister, normalizePhone, PASSWORD_MIN } from '../utils/validation';
 import BrandMark from '../components/BrandMark';
+import SyaratSandi from '../components/SyaratSandi';
 import { useAuth } from '../context/AuthContext';
 
 export default function Register() {
@@ -207,13 +208,14 @@ export default function Register() {
                 <input
                   type="password"
                   required
-                  minLength={8}
+                  minLength={PASSWORD_MIN}
                   value={form.password}
                   onChange={(e) => update('password', e.target.value)}
-                  placeholder="Min. 8 karakter, huruf & angka"
+                  placeholder="Contoh: Biroumum2026"
                   className={inputCls('password', "w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]/15 focus:border-[#1e3a5f] focus:bg-white transition")}
                 />
                 {fieldErrors.password && <p className="text-[11px] text-red-600 mt-1">{fieldErrors.password}</p>}
+                <SyaratSandi value={form.password} />
               </div>
               <div>
                 <label className="block text-sm font-semibold text-slate-700 mb-1.5">

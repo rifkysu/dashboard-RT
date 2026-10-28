@@ -608,7 +608,7 @@ def fc_login(f):
     f.node("mail", "proc", 400, 452, "Link reset (1 jam)", "dikirim ke email pemilik", w=120)
     f.node("notif", "info", 62, 452, "Notifikasi ke admin", "menu Akun & Akses", w=114)
     f.node("kirim", "info", 62, 504, "Admin klik Kirim Link", "email / salin / WhatsApp", w=114)
-    f.node("reset", "proc", 220, 552, "/reset-password", "sandi baru 8-128, huruf + angka", w=150)
+    f.node("reset", "proc", 220, 552, "/reset-password", "sandi baru: awal huruf besar + angka, min. 7", w=150)
     f.link("login", "b", "lim", "t")
     f.link("lim", "l", "lock", "r", "Ya")
     f.link("lim", "b", "cek", "t", "Tidak")
@@ -905,7 +905,7 @@ def isi_aplikasi():
             "lalu masuk Dashboard; saat logout token dicabut di server, muncul popup \"Sampai jumpa\" lalu kembali ke landing page "
             "(sesi yang berakhir karena hal lain, mis. token kedaluwarsa, diarahkan ke halaman login).",
             "Daftar Akun: nama (min. 3 huruf, boleh gelar), email kedinasan @kemnaker.go.id, nomor HP Indonesia, unit kerja, kata sandi "
-            "min. 8 karakter berisi huruf & angka. Setelah daftar, pengguna diarahkan ke halaman Login (tidak "
+            "diawali huruf besar, berisi angka, min. 7 karakter (maks. 128; daftar syarat tercentang otomatis di bawah kolom sandi). Setelah daftar, pengguna diarahkan ke halaman Login (tidak "
             "otomatis masuk). **Verifikasi email**: akun baru belum bisa login sampai pemilik email mengklik link verifikasi "
             "(berlaku 24 jam) yang dikirim ke alamat @kemnaker.go.id-nya, jadi orang lain tidak bisa membuat akun memakai email "
             "pegawai lain. Login sebelum verifikasi ditolak (kode EMAIL_UNVERIFIED) dengan tombol *Kirim ulang link verifikasi*. "
@@ -914,8 +914,8 @@ def isi_aplikasi():
             "memverifikasi manual (tombol *Verifikasi* di menu Akun & Akses). Akun yang ada sebelum fitur ini dianggap sudah "
             "terverifikasi (migration 0036).",
             "Lupa kata sandi: link reset berlaku 1 jam, dikirim via email (SMTP) atau diteruskan admin dari "
-            "menu Akun & Akses. Kata sandi baru mengikuti aturan yang sama dengan Daftar Akun (8-128 karakter, "
-            "huruf & angka), diperiksa di frontend dan backend.",
+            "menu Akun & Akses. Kata sandi baru mengikuti aturan yang sama dengan Daftar Akun (diawali huruf besar, ada angka, "
+            "7-128 karakter), diperiksa di frontend dan backend.",
             "Login pegawai hanya dengan email & kata sandi. Login Google hanya untuk **tamu** yang booking ruang "
             "rapat dari halaman kiosk /jadwal-rapat (tabel `guest_accounts`, tidak bisa masuk aplikasi internal). Akun lama "
             "dengan domain lain tetap bisa login dengan email & kata sandi.",
@@ -1060,6 +1060,21 @@ def isi_aplikasi():
             "dokumentasi Google Drive di spreadsheet) dari `backend/seed/ruang-foto/` lewat "
             "`npm run ruang:seed-foto` (sekali setelah migration 0033; ruangan yang sudah punya foto dilewati). Daftar ruangan, "
             "kapasitas, link foto, & fasilitas diisi migration 0033 dari spreadsheet data ruang rapat."),
+        h2("3.10 Riwayat Aktivitas (Admin)"),
+        *bullets(
+            "Menu **/riwayat** (Admin/Kabag) = *audit trail*: siapa menambah, mengubah, menghapus, atau membatalkan data, kapan, "
+            "di data mana, dan apa yang berubah. Mencakup Pemeliharaan, Pengadaan, Kendaraan (termasuk riwayat service), "
+            "Ruang Rapat (booking pegawai & tamu Google, ubah jadwal, batal sebagian/seluruhnya + alasan), dan Akun "
+            "(daftar & verifikasi email, ubah role, ban/aktifkan, link reset sandi, blokir tamu).",
+            "Tiap perubahan dicatat per kolom **sebelum -> sesudah** (mis. Status: Pending -> On Progress; Nilai HPS; Jam mulai), "
+            "unggahan dokumen dicatat nama filenya (isi file tidak ikut disalin). Data yang **dihapus tetap ada jejaknya**: "
+            "isi terakhirnya disimpan di riwayat. Simpan tanpa perubahan tidak dicatat.",
+            "Tampilan garis waktu per hari; filter modul, jenis aksi, pelaku, rentang tanggal, dan pencarian (kode, nama data, "
+            "nomor polisi, nama pelaku); tombol *Riwayat data ini* menampilkan seluruh riwayat satu data. Filter tersimpan di URL. "
+            "Kartu ringkasan: aktivitas hari ini, 7 hari, hapus & batal 30 hari. **Unduh CSV** (maks. 20.000 baris) sesuai filter. Real-time (SSE).",
+            "Tabel `riwayat_aktivitas` (migration 0037) hanya bisa ditambah: trigger database menolak UPDATE/DELETE, termasuk "
+            "oleh admin. Nama, role, & email pelaku serta label data disimpan sebagai salinan saat kejadian. Pencatatan "
+            "lewat `backend/src/audit.js`; gagal mencatat tidak menggagalkan aksi pengguna. Riwayat baru tercatat sejak fitur dipasang."),
 
         PageBreak(),
         h1("4. Alur Proses Bisnis"),
@@ -1095,6 +1110,7 @@ def isi_aplikasi():
             ["/ruang-rapat", "Jadwal Ruang Rapat", "Login", "Kalender, booking, surat, export"],
             ["/profile", "Profil", "Login", "Data pengguna yang sedang masuk"],
             ["/akun", "Akun & Akses", "Admin", "Manajemen akun"],
+            ["/riwayat", "Riwayat Aktivitas", "Admin/Kabag", "Audit trail semua modul: filter, riwayat per data, unduh CSV"],
             ["/settings", "Settings", "Admin", "Mode Maintenance per menu"],
             ["/foto-ruang", "Foto & Fasilitas Ruang", "Admin", "Daftar ruang rapat per bagian, foto slideshow & fasilitas"],
         ]),
@@ -1158,6 +1174,8 @@ def isi_aplikasi():
             ["Live", "GET /live/stream (SSE)", "Publik", "Satu sinyal real-time untuk semua modul"],
             ["Users", "GET /, GET /reset-requests/count, PUT /:id/status, PUT /:id/role, POST /:id/reset-link", "Admin/Kabag",
              "Akun & Akses"],
+            ["Riwayat", "GET /riwayat, /riwayat/ringkasan, /riwayat/aktor, /riwayat/export", "Admin/Kabag",
+             "Riwayat aktivitas (baca saja), ringkasan, daftar pelaku, unduh CSV"],
             ["Health", "GET /health", "Publik", "Cek backend hidup"],
         ]),
         note("Kode respons umum: 200/201 berhasil, 400 input tidak valid (dengan pesan jelas), 401 belum/sesi "
@@ -1196,10 +1214,10 @@ def isi_aplikasi():
         table([36, 138], [
             ["Area", "Aturan"],
             ["Daftar akun", "Nama 3-150 karakter (huruf, spasi, . , ' -); email valid berdomain @kemnaker.go.id; HP 08/62/+62 10-15 digit; "
-             "unit kerja wajib; kata sandi 8-128 karakter berisi huruf & angka; email tidak boleh ganda (kecuali akun tertunda yang belum diverifikasi); "
+             "unit kerja wajib; kata sandi 7-128 karakter, diawali huruf besar (A-Z) & berisi angka; email tidak boleh ganda (kecuali akun tertunda yang belum diverifikasi); "
              "akun baru harus verifikasi email (link 24 jam) sebelum bisa login."],
             ["Reset kata sandi", "Token reset 32-256 karakter dan belum kedaluwarsa (1 jam); kata sandi baru "
-             "8-128 karakter berisi huruf & angka (sama dengan daftar akun)."],
+             "7-128 karakter, diawali huruf besar & berisi angka (sama dengan daftar akun)."],
             ["Login", "Email berformat benar; kunci 1 menit setelah 5 percobaan gagal per IP+email; akun "
              "yang di-ban ditolak dengan pesan ban hanya bila kata sandi benar (selain itu pesan umum "
              "\"Email atau kata sandi salah\")."],

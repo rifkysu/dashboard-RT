@@ -5,6 +5,7 @@ const { isGenuineDocumentDataUrl, maxDataUrlLength } = require('../fileSignature
 const { requireAuth, requireRole, EDITOR_ROLES } = require('../middleware/auth');
 const { requireNotInMaintenance } = require('../middleware/maintenance');
 const logger = require('../logger');
+const { catat, ringkas, pilihKolom } = require('../audit');
 
 const router = express.Router();
 router.use(requireAuth);
@@ -40,6 +41,8 @@ function dateOrderError(perolehan, stnk, pajak) {
   if (pajak && pajak < perolehan) return 'Waktu pajak tidak boleh sebelum tanggal perolehan.';
   return null;
 }
+// Data kendaraan di riwayat aktivitas: kode = nomor polisi, label = merk & tipe.
+const refKendaraan = (k) => ({ id: k.id, kode: k.plate, label: [k.merk, k.tipe].filter(Boolean).join(' ') || k.nama_barang });
 const parseId = (v) => { const n = Number(v); return Number.isInteger(n) && n > 0 && n <= 2147483647 ? n : null; };
 
 function parsePhotos(row) {
@@ -196,6 +199,7 @@ router.post('/', async (req, res) => {
         updated_by: req.user.id,
       },
     });
+    await catat(req, { modul: 'kendaraan', aksi: 'tambah', ref: refKendaraan(row), perubahan: ringkas('kendaraan', row) });
     res.status(201).json({ data: serialize(row) });
   } catch (err) {
     if (err.code === 'P2002') return res.status(409).json({ message: 'Nomor polisi sudah terdaftar.' });
@@ -270,7 +274,9 @@ router.put('/:id', requireRole(EDITOR_ROLES), async (req, res) => {
 
     if (!Object.keys(data).length) return res.status(400).json({ message: 'Tidak ada field yang diubah.' });
     data.updated_by = req.user.id;
+    const sebelum = await prisma.kendaraan.findUnique({ where: { id }, select: pilihKolom('kendaraan') });
     const row = await prisma.kendaraan.update({ where: { id }, data, include: WITH_SERVICE_SUMMARY });
+    await catat(req, { modul: 'kendaraan', aksi: 'ubah', ref: refKendaraan(row), bandingkanDengan: { modul: 'kendaraan', sebelum, sesudah: row } });
     res.json({ data: serialize(row) });
   } catch (err) {
     if (err.code === 'P2025') return res.status(404).json({ message: 'Kendaraan tidak ditemukan.' });
@@ -284,7 +290,12 @@ router.delete('/:id', requireRole(EDITOR_ROLES), async (req, res) => {
   try {
     const id = parseId(req.params.id);
     if (!id) return res.status(400).json({ message: 'ID kendaraan tidak valid.' });
+    // Isi terakhir (+ jumlah riwayat service yang ikut terhapus) disimpan di riwayat aktivitas.
+    const sebelum = await prisma.kendaraan.findUnique({ where: { id }, select: { ...pilihKolom('kendaraan', { id: true }), _count: { select: { services: true } } } });
+    if (!sebelum) return res.status(404).json({ message: 'Kendaraan tidak ditemukan.' });
     await prisma.kendaraan.delete({ where: { id } });
+    const nService = sebelum._count.services;
+    await catat(req, { modul: 'kendaraan', aksi: 'hapus', ref: refKendaraan(sebelum), perubahan: ringkas('kendaraan', sebelum, 'dari'), keterangan: nService ? `${nService} riwayat service ikut terhapus.` : undefined });
     res.json({ message: 'Kendaraan berhasil dihapus.' });
   } catch (err) {
     if (err.code === 'P2025') return res.status(404).json({ message: 'Kendaraan tidak ditemukan.' });
@@ -348,7 +359,7 @@ router.post('/:id/services', requireRole(EDITOR_ROLES), async (req, res) => {
       const bad = invoiceError(body.invoice_document_name, body.invoice_document_file_data);
       if (bad) return res.status(400).json({ message: bad });
     }
-    const vehicle = await prisma.kendaraan.findUnique({ where: { id }, select: { id: true } });
+    const vehicle = await prisma.kendaraan.findUnique({ where: { id }, select: { id: true, plate: true, merk: true, tipe: true, nama_barang: true } });
     if (!vehicle) return res.status(404).json({ message: 'Kendaraan tidak ditemukan.' });
     const duplicate = await prisma.kendaraanService.findFirst({ where: { kendaraan_id: id, tanggal_service: toDate(tanggal) }, select: { id: true } });
     if (duplicate) return res.status(409).json({ message: 'Service pada tanggal tersebut sudah tercatat.' });
@@ -363,6 +374,7 @@ router.post('/:id/services', requireRole(EDITOR_ROLES), async (req, res) => {
       ...SERVICE_RESPONSE,
     });
     await touchVehicle(id, req.user.id);
+    await catat(req, { modul: 'kendaraan', aksi: 'service-tambah', ref: refKendaraan(vehicle), perubahan: ringkas('kendaraan-service', { ...row, invoice_document_file_path: invoice.invoice_document_file_path }) });
     res.status(201).json({ data: serializeService(row) });
   } catch (err) {
     // Kendaraan dihapus di antara pengecekan & insert -> FK gagal.
@@ -403,7 +415,7 @@ router.put('/:id/services/:serviceId/invoice', requireRole(EDITOR_ROLES), async 
     const { invoice_document_name: name, invoice_document_file_data: data } = req.body || {};
     const bad = invoiceError(name, data);
     if (bad) return res.status(400).json({ message: bad });
-    const existing = await prisma.kendaraanService.findFirst({ where: { id: serviceId, kendaraan_id: id }, select: { id: true } });
+    const existing = await prisma.kendaraanService.findFirst({ where: { id: serviceId, kendaraan_id: id }, select: { ...pilihKolom('kendaraan-service', { id: true }), kendaraan: { select: { id: true, plate: true, merk: true, tipe: true, nama_barang: true } } } });
     if (!existing) return res.status(404).json({ message: 'Riwayat service tidak ditemukan.' });
 
     const row = await prisma.kendaraanService.update({
@@ -417,6 +429,8 @@ router.put('/:id/services/:serviceId/invoice', requireRole(EDITOR_ROLES), async 
       ...SERVICE_RESPONSE,
     });
     await touchVehicle(id, req.user.id);
+    const sesudah = await prisma.kendaraanService.findUnique({ where: { id: serviceId }, select: pilihKolom('kendaraan-service') });
+    await catat(req, { modul: 'kendaraan', aksi: 'service-ubah', ref: refKendaraan(existing.kendaraan), bandingkanDengan: { modul: 'kendaraan-service', sebelum: existing, sesudah }, keterangan: `Invoice service tanggal ${row.tanggal_service.toISOString().slice(0, 10)}.` });
     res.json({ data: serializeService(row) });
   } catch (err) {
     if (err.code === 'P2025') return res.status(404).json({ message: 'Riwayat service tidak ditemukan.' });
@@ -430,9 +444,11 @@ router.delete('/:id/services/:serviceId', requireRole(EDITOR_ROLES), async (req,
     const id = parseId(req.params.id);
     const serviceId = parseId(req.params.serviceId);
     if (!id || !serviceId) return res.status(400).json({ message: 'ID tidak valid.' });
+    const sebelum = await prisma.kendaraanService.findFirst({ where: { id: serviceId, kendaraan_id: id }, select: { ...pilihKolom('kendaraan-service'), kendaraan: { select: { id: true, plate: true, merk: true, tipe: true, nama_barang: true } } } });
     const { count } = await prisma.kendaraanService.deleteMany({ where: { id: serviceId, kendaraan_id: id } });
     if (!count) return res.status(404).json({ message: 'Riwayat service tidak ditemukan.' });
     await touchVehicle(id, req.user.id);
+    if (sebelum) await catat(req, { modul: 'kendaraan', aksi: 'service-hapus', ref: refKendaraan(sebelum.kendaraan), perubahan: ringkas('kendaraan-service', sebelum, 'dari') });
     res.json({ message: 'Riwayat service berhasil dihapus.' });
   } catch (err) {
     logger.error('DELETE riwayat service gagal', { error: err });

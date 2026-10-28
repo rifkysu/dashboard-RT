@@ -11,7 +11,7 @@ const { EventEmitter } = require('events');
 const bus = new EventEmitter();
 bus.setMaxListeners(0);
 
-const TOPICS = ['pemeliharaan', 'pengadaan', 'kendaraan', 'ruang-rapat', 'maintenance', 'users', 'guest-accounts', 'ruang-info'];
+const TOPICS = ['pemeliharaan', 'pengadaan', 'kendaraan', 'ruang-rapat', 'maintenance', 'users', 'guest-accounts', 'ruang-info', 'riwayat'];
 
 function broadcast(topic) {
   if (TOPICS.includes(topic)) bus.emit('change', topic);

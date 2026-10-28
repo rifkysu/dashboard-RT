@@ -9,6 +9,11 @@ const broadcastChange=()=>bus.emit('change');
 const suratStatus=fileData=>fileData?'diterima':'belum';
 // Daftar ruangan dari tabel ruang_profil (dikelola admin), bukan konstanta.
 const {ruangValid}=require('../ruangList');
+const {catat,ringkas,pilihKolom,tampil}=require('../audit');
+// Riwayat aktivitas: kode = ruangan, label = agenda. Daftar tanggal ditulis "3 Nov 2026" / "3 Nov 2026 - 5 Nov 2026".
+const refBooking=(b,id)=>({id:id??b.id,kode:b.room,label:b.agenda});
+const teksRentang=(bd,ed)=>{const a=tampil(bd,'tanggal'),z=tampil(ed,'tanggal');return a===z?a:`${a} - ${z}`;};
+const teksAlasan=req=>typeof req.body?.reason==='string'&&req.body.reason.trim()?` Alasan: ${req.body.reason.trim()}`:'';
 const PREFIX=['data:application/pdf;base64,','data:image/jpeg;base64,','data:image/png;base64,'];
 // Selain prefix MIME, cek juga magic number isi file (sama seperti modul lain) supaya file palsu yang cuma diganti nama/tipe ditolak.
 const validFile=v=>v==null||v===''||(typeof v==='string'&&PREFIX.some(p=>v.startsWith(p))&&isGenuineDocumentDataUrl(v,maxDataUrlLength(8*1024*1024)));
@@ -148,6 +153,7 @@ router.post('/',async(req,res)=>{try{
     return created;
   },{timeout:20000});
   // Booking biasa tetap membalas satu objek (kompatibel); tanggal pilihan membalas array.
+  await catat(req,{modul:'ruang-rapat',aksi:'tambah',ref:refBooking(rows[0]),perubahan:ringkas('ruang-rapat',rows[0]),keterangan:rows.length>1?`${rows.length} rentang tanggal: ${rows.map(r=>teksRentang(r.booking_date,r.end_date)).join(', ')}.`:undefined});
   broadcastChange();res.status(201).json({data:picked?rows.map(out):out(rows[0])});
 }catch(err){if(err instanceof HttpError)return res.status(err.status).json({message:err.message});logger.error('POST ruang rapat gagal',{error:err});res.status(500).json({message:'Gagal menyimpan booking ruang rapat.'});}});
 router.put('/:id',async(req,res)=>{try{
@@ -170,6 +176,7 @@ router.put('/:id',async(req,res)=>{try{
   }
   if(b.surat_name!==undefined){if(!validSuratName(b.surat_name))return res.status(400).json({message:'Nama file surat maksimal 255 karakter.'});data.surat_name=b.surat_name||null;}
   if(b.surat_file_data!==undefined&&!validFile(b.surat_file_data))return res.status(400).json({message:'Dokumen surat tidak valid.'});
+  const sebelum=await prisma.ruangRapat.findUnique({where:{id},select:pilihKolom('ruang-rapat')});
   const row=await prisma.$transaction(async tx=>{
     const pre=await tx.ruangRapat.findFirst({where:{id,cancelled_at:null},select:{room:true}});
     if(!pre)throw new HttpError(404,'Booking tidak ditemukan atau sudah dibatalkan.');
@@ -196,6 +203,7 @@ router.put('/:id',async(req,res)=>{try{
     data.updated_by=req.user.id;
     return tx.ruangRapat.update({where:{id},data,include:{updatedBy:{select:{nama_lengkap:true}}}});
   },{timeout:20000});
+  await catat(req,{modul:'ruang-rapat',aksi:'ubah',ref:refBooking(row),bandingkanDengan:{modul:'ruang-rapat',sebelum,sesudah:row}});
   broadcastChange();res.json({data:out(row)});
 }catch(err){if(err instanceof HttpError)return res.status(err.status).json({message:err.message});if(err.code==='P2025')return res.status(404).json({message:'Booking tidak ditemukan.'});logger.error('PUT ruang rapat gagal',{error:err});res.status(500).json({message:'Gagal memperbarui booking.'});}});
 // Semua tanggal aktif dalam satu pengajuan (booking_group) -> daftar centang di popup Cancel.
@@ -219,6 +227,7 @@ router.post('/:id/cancel-dates',async(req,res)=>{try{
   if(!validReason(req.body?.reason))return res.status(400).json({message:'Alasan pembatalan maksimal 500 karakter.'});
   const cancel=new Set(dates);
   const include={updatedBy:{select:{nama_lengkap:true}}};
+  const info=await prisma.ruangRapat.findUnique({where:{id},select:{room:true,agenda:true}});
   const result=await prisma.$transaction(async tx=>{
     const pre=await tx.ruangRapat.findFirst({where:{id,cancelled_at:null},select:{room:true,booking_group:true}});
     if(!pre)throw new HttpError(404,'Booking tidak ditemukan atau sudah dibatalkan.');
@@ -248,10 +257,14 @@ router.post('/:id/cancel-dates',async(req,res)=>{try{
     return {cancelled:!rows.length,bookings:rows,ids:members.map(m=>m.id)};
   },{timeout:20000});
   // ids = semua booking lama di pengajuan ini; bookings = booking aktif yang tersisa (pengganti ids).
+  if(info)await catat(req,{modul:'ruang-rapat',aksi:result.cancelled?'batal':'batal-sebagian',ref:refBooking(info,id),keterangan:`Tanggal dibatalkan (${cancel.size}): ${[...cancel].sort().map(d=>tampil(d,'tanggal')).join(', ')}.${teksAlasan(req)}`});
   broadcastChange();res.json({data:{cancelled:result.cancelled,bookings:result.bookings.map(out),ids:result.ids},message:result.cancelled?'Booking dibatalkan.':`${cancel.size} tanggal berhasil dibatalkan.`});
 }catch(err){if(err instanceof HttpError)return res.status(err.status).json({message:err.message});logger.error('Cancel tanggal ruang rapat gagal',{error:err});res.status(500).json({message:'Gagal membatalkan tanggal booking.'});}});
 // Batalkan seluruh booking. Data tidak dihapus, hanya diberi status batal (+ alasan opsional di body.reason).
-router.delete('/:id',async(req,res)=>{try{const id=Number(req.params.id);if(!Number.isInteger(id))return res.status(400).json({message:'ID booking tidak valid.'});if(!validReason(req.body?.reason))return res.status(400).json({message:'Alasan pembatalan maksimal 500 karakter.'});const {count}=await prisma.ruangRapat.updateMany({where:{id,cancelled_at:null},data:cancelData(req)});if(!count)return res.status(404).json({message:'Booking tidak ditemukan atau sudah dibatalkan.'});broadcastChange();res.json({message:'Booking dibatalkan.'});}catch(err){logger.error('DELETE ruang rapat gagal',{error:err});res.status(500).json({message:'Gagal membatalkan booking.'});}});
+router.delete('/:id',async(req,res)=>{try{const id=Number(req.params.id);if(!Number.isInteger(id))return res.status(400).json({message:'ID booking tidak valid.'});if(!validReason(req.body?.reason))return res.status(400).json({message:'Alasan pembatalan maksimal 500 karakter.'});const {count}=await prisma.ruangRapat.updateMany({where:{id,cancelled_at:null},data:cancelData(req)});if(!count)return res.status(404).json({message:'Booking tidak ditemukan atau sudah dibatalkan.'});
+  const info=await prisma.ruangRapat.findUnique({where:{id},select:{room:true,agenda:true,booking_date:true,end_date:true}});
+  if(info)await catat(req,{modul:'ruang-rapat',aksi:'batal',ref:refBooking(info,id),keterangan:`Seluruh booking dibatalkan (${teksRentang(info.booking_date,info.end_date)}).${teksAlasan(req)}`});
+  broadcastChange();res.json({message:'Booking dibatalkan.'});}catch(err){logger.error('DELETE ruang rapat gagal',{error:err});res.status(500).json({message:'Gagal membatalkan booking.'});}});
 module.exports=router;
 // Dipakai juga oleh form booking tamu (routes/guest.js) supaya aturan & cek bentroknya sama persis.
 module.exports.booking={validText,validPhone,normPhone,validDate,validTime,validFile,validNomorSurat,validSuratName,date,time,DAY,conflictWhere,conflictMessage,lockRoom,HttpError,suratStatus,out,broadcastChange};

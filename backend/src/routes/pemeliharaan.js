@@ -8,6 +8,7 @@ const { requireNotInMaintenance } = require('../middleware/maintenance');
 const { signToken } = require('../token');
 const logger = require('../logger');
 const { checkFields, validStatusFilter } = require('../validate');
+const { catat, ringkas, pilihKolom } = require('../audit');
 
 const router = express.Router();
 router.use(requireAuth);
@@ -58,6 +59,7 @@ router.post('/',async(req,res)=>{try{
    const updatedUser=await prisma.user.update({where:{id:req.user.id},data:{role:'pic'}});
    promotion={token:signToken(updatedUser,{remember:req.user.remember}),user:{id:updatedUser.id,nama_lengkap:updatedUser.nama_lengkap,email:updatedUser.email,no_hp:updatedUser.no_hp,unit_kerja:updatedUser.unit_kerja,role:updatedUser.role}};
  }
+ await catat(req,{modul:'pemeliharaan',aksi:'tambah',ref:{id:row.id,kode:row.kode,label:row.judul},perubahan:ringkas('pemeliharaan',row),keterangan:promotion?'Pengaju otomatis menjadi PIC atas permintaan ini.':undefined});
  res.status(201).json({data:serialize(row),...(promotion||{})});
 }catch(err){logger.error('POST pemeliharaan gagal',{error:err,user_id:req.user?.id});res.status(500).json({message:'Gagal membuat permintaan pemeliharaan.'});}});
 
@@ -86,7 +88,10 @@ router.put('/:id',requireRole(EDITOR_ROLES),async(req,res)=>{try{
  const DATE_FIELDS=['tanggal','tanggal_selesai','stage2_invoice_date','stage2_ls_date'];
  const data={};for(const f of allowed){if(body[f]===undefined)continue;if(DATE_FIELDS.includes(f))data[f]=body[f]?new Date(`${String(body[f]).slice(0,10)}T00:00:00Z`):null;else if(f==='stage2_payment_number')data[f]=body[f]===''||body[f]==null?null:Number(body[f]);else data[f]=body[f];}
  data.updated_by=req.user.id;
- const row=await prisma.pemeliharaan.update({where:{id},data,include:{createdBy:{select:{nama_lengkap:true}}}});res.json({data:serialize(row)});
+ const sebelum=await prisma.pemeliharaan.findUnique({where:{id},select:pilihKolom('pemeliharaan')});
+ const row=await prisma.pemeliharaan.update({where:{id},data,include:{createdBy:{select:{nama_lengkap:true}}}});
+ await catat(req,{modul:'pemeliharaan',aksi:'ubah',ref:{id,kode:row.kode,label:row.judul},bandingkanDengan:{modul:'pemeliharaan',sebelum,sesudah:row}});
+ res.json({data:serialize(row)});
 }catch(err){if(err.code==='P2025')return res.status(404).json({message:'Data tidak ditemukan.'});logger.error('PUT pemeliharaan gagal',{error:err,user_id:req.user?.id});res.status(500).json({message:'Gagal memperbarui data pemeliharaan.'});}});
 
 router.delete('/:id',requireRole(EDITOR_ROLES),async(req,res)=>{try{
@@ -96,6 +101,11 @@ router.delete('/:id',requireRole(EDITOR_ROLES),async(req,res)=>{try{
    if(!existing)return res.status(404).json({message:'Data tidak ditemukan.'});
    if(existing.created_by!==req.user.id)return res.status(403).json({message:'Anda hanya dapat menghapus data pemeliharaan yang Anda tambahkan sendiri.'});
  }
- await prisma.pemeliharaan.delete({where:{id}});res.json({message:'Data berhasil dihapus.'});
+ // Isi terakhir disimpan di riwayat supaya data yang dihapus tetap ada jejaknya.
+ const sebelum=await prisma.pemeliharaan.findUnique({where:{id},select:pilihKolom('pemeliharaan',{kode:true})});
+ if(!sebelum)return res.status(404).json({message:'Data tidak ditemukan.'});
+ await prisma.pemeliharaan.delete({where:{id}});
+ await catat(req,{modul:'pemeliharaan',aksi:'hapus',ref:{id,kode:sebelum.kode,label:sebelum.judul},perubahan:ringkas('pemeliharaan',sebelum,'dari')});
+ res.json({message:'Data berhasil dihapus.'});
 }catch(err){if(err.code==='P2025')return res.status(404).json({message:'Data tidak ditemukan.'});logger.error('DELETE pemeliharaan gagal',{error:err});res.status(500).json({message:'Gagal menghapus data.'});}});
 module.exports=router;

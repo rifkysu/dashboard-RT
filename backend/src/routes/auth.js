@@ -8,6 +8,7 @@ const { createRateLimiter, normalizeEmail, isSafeText, ALLOWED_EMAIL_DOMAIN, isA
 const { signToken, hashResetToken, createResetToken, createVerifyToken } = require('../token');
 const { isMailConfigured, sendResetPasswordEmail, sendVerifyEmail } = require('../mailer');
 const logger = require('../logger');
+const { catat, aktorAkun } = require('../audit');
 
 const router = express.Router();
 
@@ -26,11 +27,14 @@ const UNIT_KERJA = ['rt', 'perlengkapan', 'kendaraan', 'protokol', 'lainnya'];
 const EMAIL_MAX = 150;
 // Cari akun tanpa membedakan huruf besar/kecil: akun yang dibuat/diubah lewat pgAdmin bisa saja tersimpan dengan huruf besar.
 const emailWhere = (email) => ({ email: { equals: email, mode: 'insensitive' } });
+// Syarat sandi baru (daftar & reset): diawali huruf besar, ada angka, minimal 7 karakter.
+// Sama dengan PASSWORD_RULES di frontend/src/utils/validation.js. Login tidak memakai aturan ini (sandi lama tetap sah).
 function passwordIssue(pw) {
   if (typeof pw !== 'string' || !pw) return 'Kata sandi wajib diisi.';
-  if (pw.length < 8) return 'Kata sandi minimal 8 karakter.';
   if (pw.length > 128) return 'Kata sandi maksimal 128 karakter.';
-  if (!/[A-Za-z]/.test(pw) || !/\d/.test(pw)) return 'Kata sandi harus berisi huruf dan angka.';
+  if (!/^[A-Z]/.test(pw)) return 'Kata sandi harus diawali huruf besar (A-Z).';
+  if (!/\d/.test(pw)) return 'Kata sandi harus berisi minimal 1 angka.';
+  if (pw.length < 7) return 'Kata sandi minimal 7 karakter.';
   return null;
 }
 
@@ -171,6 +175,8 @@ router.post('/register', registerLimiter, async (req, res) => {
 
     // Sengaja TIDAK mengembalikan token: akun baru bisa login setelah email diverifikasi.
     const terkirim = await kirimLinkVerifikasi(user);
+    await catat(req, { modul: 'akun', aksi: timpa ? 'daftar-ulang' : 'daftar', ref: { id: user.id, kode: user.email, label: user.nama_lengkap }, aktor: aktorAkun(user),
+      keterangan: `${timpa ? 'Mendaftar ulang email yang belum diverifikasi (data akun tertunda diganti). ' : ''}${terkirim ? 'Link verifikasi dikirim ke email.' : 'Email verifikasi belum terkirim; menunggu verifikasi admin.'}` });
     res.status(201).json({
       verify: terkirim ? 'email' : 'admin',
       email: user.email,
@@ -245,12 +251,13 @@ router.post('/verify-email', verifyEmailLimiter, async (req, res) => {
     }
     const user = await prisma.user.findFirst({
       where: { verify_token: hashResetToken(token), verify_token_expires: { gt: new Date() } },
-      select: { id: true, email: true },
+      select: { id: true, email: true, nama_lengkap: true, role: true },
     });
     if (!user) {
       return res.status(400).json({ message: 'Link verifikasi tidak valid atau sudah kedaluwarsa. Login untuk mengirim ulang link-nya.' });
     }
     await prisma.user.update({ where: { id: user.id }, data: { email_verified_at: new Date(), verify_token: null, verify_token_expires: null } });
+    await catat(req, { modul: 'akun', aksi: 'verifikasi-email', ref: { id: user.id, kode: user.email, label: user.nama_lengkap }, aktor: aktorAkun(user), keterangan: 'Email diverifikasi lewat link di email.' });
     res.json({ message: 'Email berhasil diverifikasi. Silakan login.', email: user.email });
   } catch (err) {
     console.error(err);
@@ -335,7 +342,7 @@ router.post('/reset-password', resetPasswordLimiter, async (req, res) => {
     if (typeof token !== 'string' || token.length < 32 || token.length > 256) {
       return res.status(400).json({ message: 'Token reset tidak valid.' });
     }
-    // Aturan kata sandi sama dengan saat daftar akun (8-128 karakter, huruf & angka).
+    // Aturan kata sandi sama dengan saat daftar akun (diawali huruf besar, ada angka, 7-128 karakter).
     const pwIssue = passwordIssue(password);
     if (pwIssue) return res.status(400).json({ message: pwIssue });
 

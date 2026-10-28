@@ -138,6 +138,7 @@ main.app-main { background: var(--kanvas) !important; min-height:100vh; }
 .menu-kendaraan .menu-hero::after { content:'directions_car'; }
 .menu-ruang-rapat .menu-hero::after { content:'calendar_month'; }
 .menu-akun .menu-hero::after { content:'group'; }
+.menu-riwayat .menu-hero::after { content:'history'; }
 .menu-settings .menu-hero::after { content:'settings'; }
 .menu-profile .menu-hero::after { content:'person'; }
 /* Tombol utama di header: gradasi + bayangan + terangkat saat disorot */

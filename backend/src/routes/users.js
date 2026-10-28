@@ -2,6 +2,10 @@ const express = require('express');
 const prisma = require('../prisma');
 const { requireAuth, requireRole, ADMIN_ROLES } = require('../middleware/auth');
 const logger = require('../logger');
+const { catat } = require('../audit');
+// Akun di riwayat aktivitas: kode = email, label = nama.
+const refAkun = (u) => ({ id: u.id, kode: u.email, label: u.nama_lengkap });
+const ROLE_LABEL = { karyawan: 'Karyawan', pic: 'PIC', kabag: 'Kabag', admin: 'Admin' };
 const { createResetToken } = require('../token');
 const { isMailConfigured, sendResetPasswordEmail } = require('../mailer');
 
@@ -64,7 +68,11 @@ router.put('/:id/status', async (req, res) => {
 
     // Saat di-ban, token_version naik supaya token lama tidak hidup lagi kalau akun nanti diaktifkan ulang.
     const data = is_active ? { is_active } : { is_active, reset_token: null, reset_token_expires: null, reset_requested_at: null, token_version: { increment: 1 } };
+    const before = await prisma.user.findUnique({ where: { id }, select: { is_active: true } });
     const user = await prisma.user.update({ where: { id }, data });
+    if (before && before.is_active !== is_active) {
+      await catat(req, { modul: 'akun', aksi: is_active ? 'aktifkan' : 'ban', ref: refAkun(user), perubahan: [{ label: 'Status akun', dari: before.is_active ? 'Aktif' : 'Di-ban', ke: is_active ? 'Aktif' : 'Di-ban' }] });
+    }
     res.json({ data: { id: user.id, is_active: user.is_active } });
   } catch (err) {
     if (err.code === 'P2025') return res.status(404).json({ message: 'Akun tidak ditemukan.' });
@@ -96,6 +104,7 @@ router.put('/:id/role', async (req, res) => {
 
     const user = await prisma.user.update({ where: { id }, data: { role } });
     logger.info('Role akun diubah', { by: req.user.id, user_id: id, from: target.role, to: role });
+    await catat(req, { modul: 'akun', aksi: 'role', ref: refAkun(user), perubahan: [{ label: 'Role', dari: ROLE_LABEL[target.role] || target.role, ke: ROLE_LABEL[role] || role }] });
     res.json({ data: { id: user.id, role: user.role } });
   } catch (err) {
     if (err.code === 'P2025') return res.status(404).json({ message: 'Akun tidak ditemukan.' });
@@ -134,6 +143,7 @@ router.post('/:id/reset-link', async (req, res) => {
         email_error = 'Email gagal dikirim. Kirim link secara manual (Salin / WhatsApp).';
       }
     }
+    await catat(req, { modul: 'akun', aksi: 'link-reset', ref: refAkun(target), keterangan: emailed ? 'Link reset kata sandi dibuat & dikirim ke email pemilik akun.' : 'Link reset kata sandi dibuat (dikirim manual oleh admin).' });
     res.json({ resetUrl, expires_at: expires, nama_lengkap: target.nama_lengkap, no_hp: target.no_hp, email: target.email, emailed, email_error });
   } catch (err) {
     logger.error('POST user reset-link gagal', { error: err });
@@ -147,11 +157,12 @@ router.post('/:id/verify-email', async (req, res) => {
   try {
     const id = Number(req.params.id);
     if (!Number.isInteger(id)) return res.status(400).json({ message: 'ID akun tidak valid.' });
-    const target = await prisma.user.findUnique({ where: { id }, select: { id: true, email_verified_at: true } });
+    const target = await prisma.user.findUnique({ where: { id }, select: { id: true, email_verified_at: true, email: true, nama_lengkap: true } });
     if (!target) return res.status(404).json({ message: 'Akun tidak ditemukan.' });
     if (target.email_verified_at) return res.json({ email_verified_at: target.email_verified_at, message: 'Email akun ini sudah terverifikasi.' });
     const updated = await prisma.user.update({ where: { id }, data: { email_verified_at: new Date(), verify_token: null, verify_token_expires: null }, select: { email_verified_at: true } });
     logger.info('Email akun diverifikasi manual', { user_id: id, by: req.user.id });
+    await catat(req, { modul: 'akun', aksi: 'verifikasi-email', ref: refAkun(target), keterangan: 'Email diverifikasi manual oleh admin (tanpa link email).' });
     res.json({ email_verified_at: updated.email_verified_at, message: 'Email akun berhasil diverifikasi.' });
   } catch (err) {
     logger.error('POST user verify-email gagal', { error: err });

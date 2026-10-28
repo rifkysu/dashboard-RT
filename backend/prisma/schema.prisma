@@ -355,3 +355,29 @@ model RuangProfil {
   @@index([sort_order])
   @@map("ruang_profil")
 }
+
+// Riwayat aktivitas (audit trail) -- ditulis lewat src/audit.js, dibaca menu "Riwayat Aktivitas" (Admin/Kabag).
+// Hanya bisa ditambah: trigger database menolak UPDATE/DELETE (migration 0037).
+model RiwayatAktivitas {
+  id          Int      @id @default(autoincrement())
+  waktu       DateTime @default(now())
+  modul       String   @db.VarChar(30)  // pemeliharaan | pengadaan | kendaraan | ruang-rapat | akun
+  aksi        String   @db.VarChar(30)  // tambah | ubah | hapus | batal | batal-sebagian | ... (lihat src/audit.js)
+  ref_id      Int?
+  ref_kode    String?  @db.VarChar(150)
+  ref_label   String?  @db.VarChar(300)
+  aktor_tipe  String   @db.VarChar(10)  // pegawai | tamu | sistem
+  aktor_id    Int?
+  aktor_nama  String?  @db.VarChar(150)
+  aktor_role  String?  @db.VarChar(30)
+  aktor_email String?  @db.VarChar(254)
+  perubahan   Json?    // [{ label, dari, ke }]
+  keterangan  String?  @db.VarChar(1000)
+  ip          String?  @db.VarChar(64)
+
+  @@index([waktu])
+  @@index([modul, waktu])
+  @@index([aktor_tipe, aktor_id], map: "riwayat_aktivitas_aktor_idx")
+  @@index([modul, ref_id], map: "riwayat_aktivitas_ref_idx")
+  @@map("riwayat_aktivitas")
+}

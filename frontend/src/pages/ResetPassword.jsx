@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import api from '../api';
 import BrandMark from '../components/BrandMark';
 import { passwordIssue } from '../utils/validation';
+import SyaratSandi from '../components/SyaratSandi';
 
 export default function ResetPassword() {
   // Token ada di #fragment (tidak terkirim ke server/log). ?token= tetap dibaca untuk link lama.
@@ -95,7 +96,7 @@ export default function ResetPassword() {
                     type={showPassword ? 'text' : 'password'}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Minimal 8 karakter"
+                    placeholder="Contoh: Biroumum2026"
                     className="w-full pl-11 pr-11 py-3 bg-white border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]/15 focus:border-[#1e3a5f] focus:bg-white transition"
                     required
                   />
@@ -103,6 +104,7 @@ export default function ResetPassword() {
                     <span className="material-symbols-outlined text-[20px]">{showPassword ? 'visibility_off' : 'visibility'}</span>
                   </button>
                 </div>
+                <SyaratSandi value={password} />
               </div>
 
               <div>
