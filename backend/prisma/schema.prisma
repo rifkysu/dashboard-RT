@@ -36,6 +36,10 @@ model User {
   reset_token         String?   @unique @db.VarChar(128)
   reset_token_expires DateTime?
   reset_requested_at  DateTime? // diisi saat user minta reset lewat Lupa Password, jadi notifikasi di menu Akun
+  // Verifikasi email Daftar Akun: null = belum diverifikasi -> belum bisa login (lihat routes/auth.js).
+  email_verified_at    DateTime?
+  verify_token         String?   @unique @db.VarChar(128)
+  verify_token_expires DateTime?
   last_login_at   DateTime?
   // Naik setiap logout / reset sandi / ban -> semua token JWT lama otomatis tidak berlaku.
   token_version   Int       @default(0)

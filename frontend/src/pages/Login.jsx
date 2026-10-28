@@ -20,7 +20,11 @@ export default function Login() {
   const [email, setEmail] = useState(() => (registered && typeof location.state?.email === 'string' ? location.state.email : readRememberedEmail()));
   const [remember, setRemember] = useState(() => !!readRememberedEmail());
   const [fieldErrors, setFieldErrors] = useState({});
-  const [success, setSuccess] = useState(registered ? 'Akun berhasil dibuat. Silakan masuk menggunakan email dan kata sandi Anda.' : '');
+  // Setelah daftar: akun belum bisa dipakai sebelum email diverifikasi (pesan dari backend).
+  const [success, setSuccess] = useState(registered ? (typeof location.state?.message === 'string' ? location.state.message : 'Akun dibuat. Verifikasi email Anda lewat link yang kami kirim, lalu masuk.') : '');
+  // Login ditolak karena email belum diverifikasi (kode EMAIL_UNVERIFIED) -> { message, email } + tombol kirim ulang.
+  const [unverified, setUnverified] = useState(null);
+  const [resend, setResend] = useState({ busy: false, done: '' });
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [searchParams] = useSearchParams();
@@ -64,6 +68,7 @@ export default function Login() {
     e.preventDefault();
     if (isLocked || loading || splash) return;
     setError('');
+    setUnverified(null);
     const errors = validateLogin({ email, password });
     setFieldErrors(errors);
     if (Object.keys(errors).length) return;
@@ -81,6 +86,9 @@ export default function Login() {
         setLockedUntil(Date.now() + retrySeconds * 1000);
         setNow(Date.now());
         setError(err.response?.data?.message || `Terlalu banyak percobaan login. Coba lagi dalam ${retrySeconds} detik.`);
+      } else if (err.response?.data?.code === 'EMAIL_UNVERIFIED') {
+        setUnverified({ message: err.response.data.message, email: email.trim().toLowerCase() });
+        setResend({ busy: false, done: '' });
       } else if (err.response?.data?.code === 'ACCOUNT_BANNED') {
         setBanned(err.response.data.message || BANNED_MESSAGE);
       } else if (!err.response) {
@@ -91,6 +99,17 @@ export default function Login() {
       }
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function kirimUlangVerifikasi() {
+    setResend({ busy: true, done: '' });
+    try {
+      const res = await api.post('/auth/resend-verification', { email: unverified.email });
+      setResend({ busy: false, done: res.data?.message || 'Link verifikasi baru sudah dikirim.' });
+    } catch (err) {
+      setResend({ busy: false, done: '' });
+      setError(err.response?.data?.message || 'Gagal mengirim ulang link verifikasi.');
     }
   }
 
@@ -131,6 +150,25 @@ export default function Login() {
             {error && (
               <div className="mb-4 px-4 py-3 bg-red-50 border border-red-200 text-red-700 text-sm rounded-md">
                 {error}
+              </div>
+            )}
+
+            {unverified && !error && (
+              <div className="mb-4 px-4 py-3 bg-amber-50 border border-amber-200 text-amber-900 text-sm rounded-md">
+                <div className="flex items-start gap-2">
+                  <span className="material-symbols-outlined text-[18px] text-amber-600">mark_email_unread</span>
+                  <span>{unverified.message}</span>
+                </div>
+                {resend.done ? (
+                  <p className="mt-2 ml-7 text-xs text-emerald-700">{resend.done}</p>
+                ) : (
+                  <button type="button" disabled={resend.busy} onClick={kirimUlangVerifikasi}
+                    className="mt-2 ml-7 inline-flex items-center gap-1 text-xs font-semibold text-[#1e3a5f] hover:underline disabled:opacity-60">
+                    <span className="material-symbols-outlined text-[16px]">forward_to_inbox</span>
+                    {resend.busy ? 'Mengirim...' : 'Kirim ulang link verifikasi'}
+                  </button>
+                )}
+                <p className="mt-1 ml-7 text-[11px] text-amber-800/80">Email tidak masuk? Periksa folder Spam, atau hubungi admin Biro Umum untuk verifikasi manual.</p>
               </div>
             )}
 

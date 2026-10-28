@@ -42,7 +42,7 @@ export default function Register() {
     setLoading(true);
     try {
       const email = form.email.trim().toLowerCase();
-      await api.post('/auth/register', {
+      const res = await api.post('/auth/register', {
         nama_lengkap: form.nama_lengkap.trim(),
         email,
         no_hp: normalizePhone(form.no_hp),
@@ -50,8 +50,8 @@ export default function Register() {
         role: form.role,
         password: form.password,
       });
-      // Tidak login otomatis: pengguna diarahkan ke halaman Login dan masuk dengan akun barunya.
-      navigate('/login', { replace: true, state: { registered: true, email } });
+      // Tidak login otomatis: akun baru harus verifikasi email dulu (link dikirim ke email itu), lalu masuk lewat Login.
+      navigate('/login', { replace: true, state: { registered: true, email, verify: res.data?.verify, message: res.data?.message } });
     } catch (err) {
       const status = err.response?.status;
       const message = !err.response
@@ -196,7 +196,7 @@ export default function Register() {
             </div>
 
             <p className="text-[11px] text-slate-400 -mt-2">
-              *Pendaftaran hanya untuk email kedinasan @kemnaker.go.id. Akun yang didaftarkan mandiri hanya memiliki role Karyawan. Role PIC dan Kabag diberikan manual melalui database.
+              *Pendaftaran hanya untuk email kedinasan @kemnaker.go.id. Setelah daftar, buka link verifikasi yang kami kirim ke email tersebut untuk mengaktifkan akun. Akun yang didaftarkan mandiri hanya memiliki role Karyawan. Role PIC dan Kabag diberikan manual melalui database.
             </p>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

@@ -26,6 +26,7 @@ router.get('/', async (req, res) => {
         created_at: true,
         last_login_at: true,
         reset_requested_at: true,
+        email_verified_at: true,
       },
       orderBy: { created_at: 'asc' },
     });
@@ -137,6 +138,24 @@ router.post('/:id/reset-link', async (req, res) => {
   } catch (err) {
     logger.error('POST user reset-link gagal', { error: err });
     res.status(500).json({ message: 'Gagal membuat link reset password.' });
+  }
+});
+
+// Verifikasi email manual oleh Admin/Kabag -- dipakai bila email verifikasi tidak bisa dikirim (SMTP belum
+// diisi / gagal) atau tidak sampai. Pastikan dulu akun itu benar milik pegawai pemilik email tersebut.
+router.post('/:id/verify-email', async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id)) return res.status(400).json({ message: 'ID akun tidak valid.' });
+    const target = await prisma.user.findUnique({ where: { id }, select: { id: true, email_verified_at: true } });
+    if (!target) return res.status(404).json({ message: 'Akun tidak ditemukan.' });
+    if (target.email_verified_at) return res.json({ email_verified_at: target.email_verified_at, message: 'Email akun ini sudah terverifikasi.' });
+    const updated = await prisma.user.update({ where: { id }, data: { email_verified_at: new Date(), verify_token: null, verify_token_expires: null }, select: { email_verified_at: true } });
+    logger.info('Email akun diverifikasi manual', { user_id: id, by: req.user.id });
+    res.json({ email_verified_at: updated.email_verified_at, message: 'Email akun berhasil diverifikasi.' });
+  } catch (err) {
+    logger.error('POST user verify-email gagal', { error: err });
+    res.status(500).json({ message: 'Gagal memverifikasi email akun.' });
   }
 });
 

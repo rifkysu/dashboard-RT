@@ -3,6 +3,8 @@ import { holidayLabel } from '../utils/holidays';
 import { RuangFotoButton, RuangThumb } from './RuangFoto';
 import { iso, monthKey, monthDays, MAX_MONTHS } from '../hooks/useMonthSchedule';
 import { judulRuang } from '../utils/ruang';
+import useRuangInfo from '../hooks/useRuangInfo';
+import { temaRuang } from '../utils/temaRuang';
 
 const DAY_NAMES = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'];
 export const MONTH_NAMES = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
@@ -56,7 +58,9 @@ export function MonthFilter({ months, onSelect }) {
 // onAddBooking(date, room): kalau diisi, tiap sel punya tombol "+ Booking" (sel kosong: seluruh sel bisa diklik)
 // yang membuka form booking dengan ruangan & tanggal sel tersebut sudah terisi.
 // scrollToTodayKey (kiosk): setiap nilainya berubah (mis. ganti ruangan otomatis), tabel digulir halus ke baris hari ini.
-export default function RoomDateGrid({ months, rooms, items, loading, loadingMore, hasMore, onLoadMore, renderItem, onAddBooking, scrollToTodayKey }) {
+// kiosk: tampilan kiosk -- header gelap dengan garis warna tema tiap ruangan, latar sel bermotif kawung (bukan putih polos).
+export default function RoomDateGrid({ months, rooms, items, loading, loadingMore, hasMore, onLoadMore, renderItem, onAddBooking, scrollToTodayKey, kiosk = false }) {
+  const { info } = useRuangInfo();
   const scrollRef = useRef(null);
   const headRef = useRef(null);
   const sentinelRef = useRef(null);
@@ -184,7 +188,7 @@ export default function RoomDateGrid({ months, rooms, items, loading, loadingMor
     {geser.kiri && <button type="button" onClick={() => geserKe(-1)} aria-label="Geser ke ruangan sebelumnya" title="Geser ke kiri" className={panah} style={{ left: DATE_W + 8 }}><span className="material-symbols-outlined">chevron_left</span></button>}
     {geser.kanan && <button type="button" onClick={() => geserKe(1)} aria-label="Geser ke ruangan berikutnya" title="Geser ke kanan" className={`${panah} right-3`}><span className="material-symbols-outlined">chevron_right</span></button>}
     <div ref={scrollRef} onPointerDown={mulaiSeret} onPointerMove={saatSeret} onPointerUp={selesaiSeret} onPointerCancel={selesaiSeret}
-      className={`relative max-h-[72vh] overflow-auto overscroll-contain ${geser.kiri || geser.kanan ? (menyeret ? 'cursor-grabbing select-none' : 'cursor-grab') : ''}`}>
+      className={`relative max-h-[72vh] overflow-auto overscroll-contain ${kiosk ? 'bg-[#eaf0f7] bg-kawung-terang' : ''} ${geser.kiri || geser.kanan ? (menyeret ? 'cursor-grabbing select-none' : 'cursor-grab') : ''}`}>
       <table className="w-full table-fixed border-separate border-spacing-0" style={{ minWidth: DATE_W + rooms.length * COL_W }}>
         <colgroup>
           <col style={{ width: DATE_W }} />
@@ -192,27 +196,38 @@ export default function RoomDateGrid({ months, rooms, items, loading, loadingMor
         </colgroup>
         <thead ref={headRef}>
           <tr>
-            <th className="sticky top-0 left-0 z-30 bg-slate-100 border-b-2 border-r border-slate-200 text-left px-3 py-3 text-[11px] font-bold text-slate-700 uppercase tracking-wider w-[150px] min-w-[150px]">Tanggal</th>
-            {rooms.map((room) => (
-              <th key={room} title={judulRuang(room)} className="sticky top-0 z-20 bg-slate-100 border-b-2 border-l border-slate-200 text-left px-3 py-2 text-[11px] font-bold text-slate-700 align-top">
-                {/* Klik = popup foto & fasilitas ruangan (dikelola admin di menu Foto & Fasilitas Ruang) */}
-                <RuangFotoButton room={room} className="group w-full flex items-center gap-2.5 text-left rounded-lg -mx-1 px-1 py-0.5 hover:bg-white/70 focus:outline-none focus-visible:ring-2 focus-visible:ring-dinas/30">
-                  <RuangThumb room={room} className="w-9 h-9 rounded-lg ring-1 ring-black/5 transition group-hover:ring-kuningan/60" iconClass="text-[17px]" />
-                  <span className="min-w-0">
-                    <span className="line-clamp-2 leading-snug">{judulRuang(room)}</span>
-                    <span className="block text-[10px] font-semibold normal-case tracking-normal text-slate-500 group-hover:text-dinas">Lihat foto & fasilitas</span>
-                  </span>
-                </RuangFotoButton>
-              </th>
-            ))}
+            <th className={`sticky top-0 left-0 z-30 border-b-2 border-r text-left px-3 py-3 text-[11px] font-bold uppercase tracking-wider w-[150px] min-w-[150px] ${kiosk ? 'bg-dinas-ink text-[#e4c27f] border-dinas-ink border-r-white/10' : 'bg-slate-100 text-slate-700 border-slate-200'}`}>
+              {kiosk ? <span className="inline-flex items-center gap-1.5"><span className="material-symbols-outlined text-[16px]">calendar_month</span>Tanggal</span> : 'Tanggal'}
+            </th>
+            {rooms.map((room) => {
+              // Kiosk: garis atas & bingkai foto memakai warna tema layar ruangan itu (sama dengan /ruang/:slug).
+              const aksen = kiosk ? temaRuang(room, info).palet.aksen : null;
+              return (
+                <th key={room} title={judulRuang(room)} style={aksen ? { boxShadow: `inset 0 3px 0 ${aksen}` } : undefined}
+                  className={`sticky top-0 z-20 border-b-2 border-l text-left px-3 py-2 text-[11px] font-bold align-top ${kiosk ? 'bg-dinas-ink text-white border-dinas-ink border-l-white/10' : 'bg-slate-100 text-slate-700 border-slate-200'}`}>
+                  {/* Klik = popup foto & fasilitas ruangan (dikelola admin di menu Foto & Fasilitas Ruang) */}
+                  <RuangFotoButton room={room} className={`group w-full flex items-center gap-2.5 text-left rounded-lg -mx-1 px-1 py-0.5 focus:outline-none focus-visible:ring-2 ${kiosk ? 'hover:bg-white/10 focus-visible:ring-[#e4c27f]/60' : 'hover:bg-white/70 focus-visible:ring-dinas/30'}`}>
+                    <span className="shrink-0 rounded-lg" style={aksen ? { boxShadow: `0 0 0 2px ${aksen}` } : undefined}>
+                      <RuangThumb room={room} className={`w-9 h-9 rounded-lg transition ${kiosk ? '' : 'ring-1 ring-black/5 group-hover:ring-kuningan/60'}`} iconClass="text-[17px]" />
+                    </span>
+                    <span className="min-w-0">
+                      <span className="line-clamp-2 leading-snug">{judulRuang(room)}</span>
+                      <span className={`block text-[10px] font-semibold normal-case tracking-normal ${kiosk ? 'text-white/50 group-hover:text-[#e4c27f]' : 'text-slate-500 group-hover:text-dinas'}`}>Lihat foto & fasilitas</span>
+                    </span>
+                  </RuangFotoButton>
+                </th>
+              );
+            })}
           </tr>
         </thead>
         <tbody>
           {months.map((key) => (
             <React.Fragment key={key}>
               <tr>
-                <td colSpan={rooms.length + 1} className="bg-slate-800 text-white border-b border-slate-700 p-0">
-                  <div className="sticky left-0 inline-block px-3 py-2 text-xs font-bold tracking-wide">{monthLabel(key)}</div>
+                <td colSpan={rooms.length + 1} className={`text-white border-b p-0 ${kiosk ? 'bg-gradient-to-r from-dinas to-dinas-dark border-dinas-ink' : 'bg-slate-800 border-slate-700'}`}>
+                  <div className={`sticky left-0 inline-flex items-center gap-1.5 px-3 py-2 text-xs font-bold tracking-wide ${kiosk ? 'text-[#e4c27f] uppercase tracking-wider' : ''}`}>
+                    {kiosk && <span className="material-symbols-outlined text-[16px]">event</span>}{monthLabel(key)}
+                  </div>
                 </td>
               </tr>
               {monthDays(key).map((date) => {
@@ -221,10 +236,14 @@ export default function RoomDateGrid({ months, rooms, items, loading, loadingMor
                 const isToday = date === today;
                 const cuti = holidayLabel(date);
                 const weekend = idx >= 5;
-                const rowBg = isToday ? 'bg-sky-50/70' : cuti ? 'bg-amber-50/60' : weekend ? 'bg-red-50/40' : '';
+                const rowBg = kiosk
+                  ? (isToday ? 'bg-sky-200/45' : cuti ? 'bg-amber-100/60' : weekend ? 'bg-rose-100/40' : '')
+                  : (isToday ? 'bg-sky-50/70' : cuti ? 'bg-amber-50/60' : weekend ? 'bg-red-50/40' : '');
+                // Kolom tanggal menempel saat digulir ke samping -> latarnya tidak boleh tembus pandang.
+                const dateBg = isToday ? 'bg-sky-100' : cuti ? 'bg-amber-100' : weekend ? 'bg-red-50' : kiosk ? 'bg-[#f6f8fb]' : 'bg-white';
                 return (
                   <tr key={date} data-day={date}>
-                    <td className={`sticky left-0 z-10 border-b border-r border-slate-200 px-3 py-2.5 align-top w-[150px] min-w-[150px] ${isToday ? 'bg-sky-100' : cuti ? 'bg-amber-100' : weekend ? 'bg-red-50' : 'bg-white'}`}>
+                    <td className={`sticky left-0 z-10 border-b border-r border-slate-200 px-3 py-2.5 align-top w-[150px] min-w-[150px] ${dateBg} ${kiosk && isToday ? 'shadow-[inset_4px_0_0_#1e3a5f]' : ''}`}>
                       <div className={`text-xs font-bold ${cuti ? 'text-amber-700' : weekend ? 'text-red-600' : 'text-slate-800'}`}>{DAY_NAMES[idx]}</div>
                       <div className="text-[11px] text-slate-500">{d.getDate()} {d.toLocaleString('id-ID', { month: 'short' })} {d.getFullYear()}</div>
                       {isToday && <div className="mt-1 inline-block px-1.5 py-0.5 rounded bg-[#1e3a5f] text-white text-[9px] font-bold">HARI INI</div>}
@@ -233,7 +252,7 @@ export default function RoomDateGrid({ months, rooms, items, loading, loadingMor
                     {rooms.map((room) => {
                       const list = cells.get(`${date}|${room}`) || [];
                       return (
-                        <td key={room} className={`border-b border-l border-slate-200 p-1.5 align-top ${rowBg}`}>
+                        <td key={room} className={`border-b border-l p-1.5 align-top ${kiosk ? 'border-slate-300/60' : 'border-slate-200'} ${rowBg}`}>
                           <div className="group/cell space-y-1.5 min-h-[44px]">
                             {list.map((x) => renderItem(x, date))}
                             {onAddBooking && (list.length ? (

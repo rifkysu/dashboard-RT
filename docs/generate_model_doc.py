@@ -33,7 +33,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 LOGO = os.path.join(ROOT, "frontend", "public", "logo-kemnaker.png")
 
-TANGGAL = "27 Oktober 2026"
+TANGGAL = "28 Oktober 2026"
 SISTEM = "Sistem Layanan Biro Umum & Rumah Tangga"
 
 PW, PH = A4
@@ -858,7 +858,9 @@ def isi_aplikasi():
             "dan penanda waktu sekarang; klik = foto & fasilitas), sapaan sesuai jam, dan pita bergeser *Agenda hari ini* "
             "(rapat yang sedang/akan berlangsung di semua ruangan). Layar dijaga tetap menyala (Screen Wake Lock). Bila jadwal gagal dimuat, indikator Live berganti *Offline* (jam data terakhir), "
             "kartu menampilkan *Status tidak diketahui* (tidak pernah ditebak Tersedia), dan dicoba ulang tiap 15 detik. "
-            "Di bawahnya panel booking tamu, *Kalender booking* dengan keterangan warna status surat, dan footer.",
+            "Di bawahnya panel booking tamu, *Kalender booking* dengan keterangan warna status surat, dan footer. "
+            "Tabel kalender di kiosk bertampilan khusus: header gelap dengan garis warna tema layar tiap ruangan, latar sel bermotif kawung "
+            "(bukan putih polos), pemisah bulan biru-emas, dan kartu booking bergaris kiri sewarna status surat; landing & menu Ruang Rapat tetap tampilan biasa.",
             "Kiosk **/jadwal-rapat** berputar otomatis: ruangan berganti sendiri tiap 30 detik (Semua -> tiap ruangan) "
             "dan tabel digulir ke baris hari ini, dengan bilah waktu; disentuh = jeda 30 detik lalu lanjut; bisa dimatikan "
             "dengan tombol *Putar otomatis*; mati secara default bila dibuka dengan ?ruang=.",
@@ -904,7 +906,13 @@ def isi_aplikasi():
             "(sesi yang berakhir karena hal lain, mis. token kedaluwarsa, diarahkan ke halaman login).",
             "Daftar Akun: nama (min. 3 huruf, boleh gelar), email kedinasan @kemnaker.go.id, nomor HP Indonesia, unit kerja, kata sandi "
             "min. 8 karakter berisi huruf & angka. Setelah daftar, pengguna diarahkan ke halaman Login (tidak "
-            "otomatis masuk).",
+            "otomatis masuk). **Verifikasi email**: akun baru belum bisa login sampai pemilik email mengklik link verifikasi "
+            "(berlaku 24 jam) yang dikirim ke alamat @kemnaker.go.id-nya, jadi orang lain tidak bisa membuat akun memakai email "
+            "pegawai lain. Login sebelum verifikasi ditolak (kode EMAIL_UNVERIFIED) dengan tombol *Kirim ulang link verifikasi*. "
+            "Email yang masih tertunda (belum diverifikasi) boleh didaftarkan ulang oleh pemilik aslinya: data & sandi akun tertunda "
+            "diganti dan link baru dikirim ke kotak masuk pemilik email. Bila SMTP belum diisi / email tidak sampai, Admin/Kabag "
+            "memverifikasi manual (tombol *Verifikasi* di menu Akun & Akses). Akun yang ada sebelum fitur ini dianggap sudah "
+            "terverifikasi (migration 0036).",
             "Lupa kata sandi: link reset berlaku 1 jam, dikirim via email (SMTP) atau diteruskan admin dari "
             "menu Akun & Akses. Kata sandi baru mengikuti aturan yang sama dengan Daftar Akun (8-128 karakter, "
             "huruf & angka), diperiksa di frontend dan backend.",
@@ -1076,7 +1084,8 @@ def isi_aplikasi():
             ["/jadwal-rapat", "Jadwal Rapat (kiosk)", "Publik", "Jadwal baca saja untuk layar besar + panel booking tamu (Google)"],
             ["/ruang, /ruang/:ruang", "Layar Ruangan", "Publik", "Status & agenda satu ruangan untuk tablet di depan ruang"],
             ["/login", "Login", "Publik", "Validasi kolom, anti-spam, popup animasi"],
-            ["/register", "Daftar Akun", "Publik", "Validasi lengkap, lanjut ke Login"],
+            ["/register", "Daftar Akun", "Publik", "Validasi lengkap, kirim link verifikasi email, lanjut ke Login"],
+            ["/verifikasi-email", "Verifikasi Email", "Publik", "Tujuan link di email verifikasi (token di #fragment, sekali pakai)"],
             ["/forgot-password, /reset-password", "Lupa & Reset Kata Sandi", "Publik",
              "Link reset berlaku 1 jam; aturan sandi sama dengan Daftar Akun"],
             ["/dashboard", "Dashboard", "Login", "KPI, status ruang, aktivitas"],
@@ -1116,7 +1125,8 @@ def isi_aplikasi():
         table([24, 70, 32, 48], [
             ["Kelompok", "Metode & path", "Akses", "Fungsi"],
             ["Auth", "POST /auth/register", "Publik", "Daftar akun karyawan (tanpa token)"],
-            ["", "POST /auth/login", "Publik", "Login, mengembalikan JWT"],
+            ["", "POST /auth/login", "Publik", "Login, mengembalikan JWT (ditolak bila email belum diverifikasi)"],
+            ["", "POST /auth/verify-email, /auth/resend-verification", "Publik", "Pakai & kirim ulang link verifikasi email"],
             ["", "POST /auth/forgot-password, /auth/reset-password", "Publik", "Minta & pakai link reset"],
             ["", "POST /auth/logout", "Login", "Cabut token (token_version naik)"],
             ["", "GET /auth/me", "Login", "Profil sesi"],
@@ -1186,7 +1196,8 @@ def isi_aplikasi():
         table([36, 138], [
             ["Area", "Aturan"],
             ["Daftar akun", "Nama 3-150 karakter (huruf, spasi, . , ' -); email valid berdomain @kemnaker.go.id; HP 08/62/+62 10-15 digit; "
-             "unit kerja wajib; kata sandi 8-128 karakter berisi huruf & angka; email tidak boleh ganda."],
+             "unit kerja wajib; kata sandi 8-128 karakter berisi huruf & angka; email tidak boleh ganda (kecuali akun tertunda yang belum diverifikasi); "
+             "akun baru harus verifikasi email (link 24 jam) sebelum bisa login."],
             ["Reset kata sandi", "Token reset 32-256 karakter dan belum kedaluwarsa (1 jam); kata sandi baru "
              "8-128 karakter berisi huruf & angka (sama dengan daftar akun)."],
             ["Login", "Email berformat benar; kunci 1 menit setelah 5 percobaan gagal per IP+email; akun "

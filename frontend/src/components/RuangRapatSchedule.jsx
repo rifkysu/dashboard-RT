@@ -8,6 +8,8 @@ import { useDaftarRuang } from '../hooks/useRuangInfo';
 import { judulRuang } from '../utils/ruang';
 
 const STATUS = { belum: 'bg-red-50 border-red-300 text-red-900', ditinjau: 'bg-blue-50 border-blue-300 text-blue-900', diterima: 'bg-green-50 border-green-300 text-green-900' };
+// Kiosk: kartu booking diberi garis kiri tebal sewarna status supaya menonjol di latar bermotif.
+const STATUS_KIOSK = { belum: 'border-l-red-500', ditinjau: 'border-l-blue-500', diterima: 'border-l-green-500' };
 // Booking multi-hari: tampil di setiap hari dari `date` s/d `end_date`.
 const endOf = (x) => x.end_date || x.date;
 const dayCount = (a, b) => Math.round((new Date(`${b}T00:00:00`) - new Date(`${a}T00:00:00`)) / 86400000) + 1;
@@ -137,8 +139,9 @@ export default function RuangRapatSchedule({ autoRotate = false }) {
         loadingMore={s.loadingMore}
         hasMore={s.hasMore}
         onLoadMore={s.loadMore}
+        kiosk={autoRotate}
         renderItem={(x, date) => (
-          <div key={x.id} className={`border rounded-lg p-2 select-none ${STATUS[x.status] || STATUS.belum}`}>
+          <div key={x.id} className={`border rounded-lg p-2 select-none ${STATUS[x.status] || STATUS.belum} ${autoRotate ? `border-l-4 shadow-[0_4px_12px_-6px_rgba(14,30,51,.35)] ${STATUS_KIOSK[x.status] || STATUS_KIOSK.belum}` : ''}`}>
             <div className="text-[10px] font-bold">{x.start} – {x.end}{endOf(x) !== x.date && <span className="font-semibold opacity-75"> · Hari {dayCount(x.date, date)}/{dayCount(x.date, endOf(x))}</span>}</div>
             <div className="font-bold text-xs mt-1 leading-snug">{x.title}</div>
             <div className="text-[10px] font-semibold mt-0.5">♙ {x.pic}</div>

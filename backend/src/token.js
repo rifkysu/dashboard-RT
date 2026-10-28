@@ -40,4 +40,11 @@ function signToken(user, { remember = false } = {}) {
   );
 }
 
-module.exports = { signToken, hashResetToken, createResetToken };
+// Token verifikasi email Daftar Akun (hash disimpan di users.verify_token), berlaku 24 jam.
+const VERIFY_TOKEN_TTL_MS = 24 * 60 * 60 * 1000;
+function createVerifyToken() {
+  const rawToken = crypto.randomBytes(32).toString('hex');
+  return { rawToken, hash: hashResetToken(rawToken), expires: new Date(Date.now() + VERIFY_TOKEN_TTL_MS) };
+}
+
+module.exports = { signToken, hashResetToken, createResetToken, createVerifyToken };

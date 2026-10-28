@@ -119,6 +119,22 @@ export default function Akun() {
     }
   }
 
+  // Verifikasi email manual: untuk akun yang tidak menerima email verifikasi (SMTP mati / email tidak masuk).
+  async function verifyEmail(target) {
+    if (!(await confirm({ title: 'Verifikasi email akun ini?', message: `Akun "${target.nama_lengkap}" (${target.email}) akan langsung bisa login. Pastikan dulu akun ini benar didaftarkan oleh pemilik email tersebut (mis. konfirmasi langsung ke pegawainya).`, confirmText: 'Ya, Verifikasi', tone: 'info', icon: 'mark_email_read' }))) return;
+    setBusyId(target.id);
+    setError('');
+    try {
+      const res = await api.post(`/users/${target.id}/verify-email`);
+      setData((current) => current.map((u) => (u.id === target.id ? { ...u, email_verified_at: res.data.email_verified_at } : u)));
+      toast(`Email ${target.nama_lengkap} terverifikasi. Akun sekarang bisa login.`);
+    } catch (err) {
+      setError(err.response?.data?.message || 'Gagal memverifikasi email akun.');
+    } finally {
+      setBusyId(null);
+    }
+  }
+
   async function copyResetLink() {
     try {
       await navigator.clipboard.writeText(resetLink.url);
@@ -129,6 +145,7 @@ export default function Akun() {
   }
 
   const pendingResets = data.filter((u) => u.reset_requested_at && u.is_active);
+  const belumVerifikasi = data.filter((u) => !u.email_verified_at && u.is_active);
 
   if (user && !isAdmin) return <Navigate to="/dashboard" replace />;
 
@@ -158,6 +175,16 @@ export default function Akun() {
       </div>
 
       {error && <div className="mb-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-xs text-red-700">{error}</div>}
+
+      {belumVerifikasi.length > 0 && (
+        <div className="mb-4 rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900 flex items-start gap-3">
+          <span className="material-symbols-outlined text-sky-600">mark_email_unread</span>
+          <div>
+            <b>{belumVerifikasi.length} akun belum verifikasi email:</b> {belumVerifikasi.map((u) => u.nama_lengkap).join(', ')}.
+            <div className="text-xs mt-0.5">Akun ini belum bisa login sampai pemiliknya mengklik link di emailnya. Bila email tidak sampai, pastikan akun benar milik pegawai tersebut lalu klik <b>Verifikasi</b> pada barisnya.</div>
+          </div>
+        </div>
+      )}
 
       {pendingResets.length > 0 && (
         <div className="mb-4 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 flex items-start gap-3">
@@ -206,11 +233,18 @@ export default function Akun() {
                     <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-semibold whitespace-nowrap ${u.is_active ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>
                       {u.is_active ? 'Aktif' : 'Di-ban'}
                     </span>
+                    {!u.email_verified_at && <div className="mt-1 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-sky-100 text-sky-800 text-[10px] font-bold whitespace-nowrap" title="Belum bisa login sampai email diverifikasi"><span className="material-symbols-outlined text-[12px]">mark_email_unread</span>Belum verifikasi email</div>}
                   </td>
                   <td className="px-4 py-3 text-slate-500 whitespace-nowrap">{fmt(u.created_at)}</td>
                   <td className="px-4 py-3 text-slate-500 whitespace-nowrap">{u.last_login_at ? fmt(u.last_login_at) : <span className="text-slate-400 italic">Belum pernah login</span>}</td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
+                    {u.is_active && !u.email_verified_at && (
+                      <button type="button" onClick={() => verifyEmail(u)} disabled={busyId === u.id} title="Verifikasi email akun ini secara manual"
+                        className="px-3 py-1.5 rounded-lg text-xs font-semibold border border-sky-300 bg-sky-600 text-white hover:bg-sky-700 disabled:opacity-60 whitespace-nowrap">
+                        Verifikasi
+                      </button>
+                    )}
                     {u.is_active && (
                       <button
                         type="button"

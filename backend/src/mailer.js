@@ -59,4 +59,36 @@ async function sendResetPasswordEmail({ to, nama, resetUrl }) {
   logger.info('Email reset password terkirim', { to });
 }
 
-module.exports = { isMailConfigured, sendResetPasswordEmail };
+// Link verifikasi email setelah Daftar Akun: membuktikan pendaftar benar-benar memegang kotak masuk itu.
+async function sendVerifyEmail({ to, nama, verifyUrl }) {
+  const from = process.env.MAIL_FROM || `"Biro Umum" <${process.env.SMTP_USER}>`;
+  const text = [
+    `Halo ${nama},`,
+    '',
+    'Email ini didaftarkan untuk akun Aplikasi Biro Umum dan Rumah Tangga.',
+    'Buka link berikut untuk memverifikasi email dan mengaktifkan akun Anda (berlaku 24 jam):',
+    '',
+    verifyUrl,
+    '',
+    'Kalau Anda tidak merasa mendaftar, abaikan email ini -- akun tidak akan aktif tanpa verifikasi.',
+    '',
+    'Biro Umum dan Rumah Tangga',
+  ].join('\n');
+  const html = `
+    <div style="font-family:Arial,Helvetica,sans-serif;max-width:520px;margin:auto;color:#0f172a">
+      <h2 style="margin:0 0 12px">Verifikasi Email</h2>
+      <p>Halo <b>${escapeHtml(nama)}</b>,</p>
+      <p>Email ini didaftarkan untuk akun Aplikasi Biro Umum dan Rumah Tangga. Klik tombol di bawah untuk memverifikasi email dan mengaktifkan akun Anda.</p>
+      <p style="margin:24px 0">
+        <a href="${escapeHtml(verifyUrl)}" style="background:#0f172a;color:#fff;padding:12px 20px;border-radius:8px;text-decoration:none;font-weight:bold">Verifikasi Email Saya</a>
+      </p>
+      <p style="font-size:13px;color:#475569">Link berlaku 24 jam. Kalau tombol tidak bisa diklik, salin link ini ke browser:<br><span style="word-break:break-all">${escapeHtml(verifyUrl)}</span></p>
+      <p style="font-size:13px;color:#475569">Kalau Anda tidak merasa mendaftar, abaikan email ini &mdash; akun tidak akan aktif tanpa verifikasi.</p>
+      <p style="font-size:13px;color:#475569;margin-top:24px">Biro Umum dan Rumah Tangga</p>
+    </div>`;
+
+  await getTransporter().sendMail({ from, to, subject: 'Verifikasi Email Akun Biro Umum', text, html });
+  logger.info('Email verifikasi terkirim', { to });
+}
+
+module.exports = { isMailConfigured, sendResetPasswordEmail, sendVerifyEmail };
