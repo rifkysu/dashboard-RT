@@ -361,11 +361,12 @@ model RuangProfil {
 model RiwayatAktivitas {
   id          Int      @id @default(autoincrement())
   waktu       DateTime @default(now())
-  modul       String   @db.VarChar(30)  // pemeliharaan | pengadaan | kendaraan | ruang-rapat | akun
+  modul       String   @db.VarChar(30)  // pemeliharaan | pengadaan | kendaraan | ruang-rapat | ruangan | akun
   aksi        String   @db.VarChar(30)  // tambah | ubah | hapus | batal | batal-sebagian | ... (lihat src/audit.js)
   ref_id      Int?
   ref_kode    String?  @db.VarChar(150)
   ref_label   String?  @db.VarChar(300)
+  ref_grup    String?  @db.VarChar(150) // booking_group (Ruang Rapat) / nama ruangan -- "Riwayat data ini" (migration 0038)
   aktor_tipe  String   @db.VarChar(10)  // pegawai | tamu | sistem
   aktor_id    Int?
   aktor_nama  String?  @db.VarChar(150)
@@ -379,5 +380,6 @@ model RiwayatAktivitas {
   @@index([modul, waktu])
   @@index([aktor_tipe, aktor_id], map: "riwayat_aktivitas_aktor_idx")
   @@index([modul, ref_id], map: "riwayat_aktivitas_ref_idx")
+  @@index([modul, ref_grup], map: "riwayat_aktivitas_grup_idx")
   @@map("riwayat_aktivitas")
 }

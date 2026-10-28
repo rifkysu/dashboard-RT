@@ -10,6 +10,10 @@ const { booking: B } = require('./ruangRapat');
 const { ruangValid, resetDaftarRuang } = require('../ruangList');
 const live = require('../live');
 const { nowLocal } = require('../clock');
+const { catat, ringkas, pilihKolom } = require('../audit');
+// Ruangan di riwayat aktivitas: kode & grup = nama ruangan (ruang_profil tidak punya id angka).
+const refRuang = (room, satker) => ({ kode: room, label: satker || null, grup: room });
+const satkerOf = async (room) => (await prisma.ruangProfil.findUnique({ where: { room }, select: { satuan_kerja: true } }))?.satuan_kerja;
 
 // Daftar ruang rapat (per satuan kerja) + foto & fasilitas tiap ruangan untuk jadwal, kiosk, form booking,
 // dan slideshow layar ruangan (/ruang/:slug).
@@ -184,6 +188,7 @@ router.post('/foto', async (req, res) => {
       if (err instanceof PenuhError) return res.status(400).json({ message: `Maksimal ${MAX_FOTO} foto per ruangan. Hapus foto lama dulu.` });
       throw err;
     }
+    await catat(req, { modul: 'ruangan', aksi: 'foto-tambah', ref: refRuang(room, await satkerOf(room)), keterangan: `Foto ditambahkan${caption.trim() ? `: "${caption.trim()}"` : ''}.` });
     res.status(201).json({ data: fotoOut(foto), message: 'Foto ditambahkan.' });
   } catch (err) {
     logger.error('POST foto ruang gagal', { error: err });
@@ -198,8 +203,12 @@ router.put('/foto/:id', async (req, res) => {
     const { caption } = req.body || {};
     if (!Number.isInteger(id)) return res.status(400).json({ message: 'ID foto tidak valid.' });
     if (typeof caption !== 'string' || !validCaption(caption)) return res.status(400).json({ message: 'Keterangan foto maksimal 200 karakter.' });
+    const lama = await prisma.ruangFoto.findUnique({ where: { id }, select: { room: true, caption: true } });
     const { count } = await prisma.ruangFoto.updateMany({ where: { id }, data: { caption: caption.trim() } });
     if (!count) return res.status(404).json({ message: 'Foto tidak ditemukan.' });
+    if (lama && lama.caption !== caption.trim()) {
+      await catat(req, { modul: 'ruangan', aksi: 'foto-ubah', ref: refRuang(lama.room, await satkerOf(lama.room)), perubahan: [{ label: 'Keterangan foto', dari: lama.caption || null, ke: caption.trim() || null }] });
+    }
     res.json({ message: 'Keterangan foto disimpan.' });
   } catch (err) {
     logger.error('PUT foto ruang gagal', { error: err });
@@ -216,12 +225,13 @@ router.put('/urutan', async (req, res) => {
     }
     const sama = await prisma.$transaction(async (tx) => {
       await lockRuang(tx, room);
-      const current = await tx.ruangFoto.findMany({ where: { room }, select: { id: true } });
+      const current = await tx.ruangFoto.findMany({ where: { room }, select: { id: true }, orderBy: [{ sort_order: 'asc' }, { id: 'asc' }] });
       const ok = current.length === ids.length && new Set(ids).size === ids.length && current.every((f) => ids.includes(f.id));
       if (ok) for (const [i, id] of ids.entries()) await tx.ruangFoto.update({ where: { id }, data: { sort_order: i } });
-      return ok;
+      return ok && { berubah: current.some((f, i) => f.id !== ids[i]) };
     });
     if (!sama) return res.status(409).json({ message: 'Daftar foto sudah berubah. Muat ulang halaman lalu coba lagi.' });
+    if (sama.berubah) await catat(req, { modul: 'ruangan', aksi: 'foto-urutan', ref: refRuang(room, await satkerOf(room)), keterangan: `Urutan ${ids.length} foto slideshow diubah.` });
     res.json({ message: 'Urutan foto disimpan.' });
   } catch (err) {
     logger.error('PUT urutan foto ruang gagal', { error: err });
@@ -237,6 +247,7 @@ router.delete('/foto/:id', async (req, res) => {
     const foto = await prisma.ruangFoto.findUnique({ where: { id } });
     if (!foto) return res.status(404).json({ message: 'Foto tidak ditemukan.' });
     await prisma.ruangFoto.delete({ where: { id } });
+    await catat(req, { modul: 'ruangan', aksi: 'foto-hapus', ref: refRuang(foto.room, await satkerOf(foto.room)), keterangan: `Foto dihapus${foto.caption ? `: "${foto.caption}"` : ''}.` });
     const abs = path.resolve(BACKEND_ROOT, foto.file_path);
     if (abs.startsWith(path.join(BACKEND_ROOT, 'uploads') + path.sep)) fs.promises.unlink(abs).catch(() => {});
     res.json({ message: 'Foto dihapus.' });
@@ -253,7 +264,9 @@ router.put('/fasilitas', async (req, res) => {
     const fasilitas = validFasilitas(req.body?.fasilitas);
     if (!(await validRoom(room))) return res.status(400).json({ message: 'Ruangan tidak valid.' });
     if (!fasilitas) return res.status(400).json({ message: `Fasilitas tidak valid (maksimal ${MAX_FASILITAS}, nama maksimal 60 karakter).` });
+    const lama = await prisma.ruangProfil.findUnique({ where: { room }, select: { fasilitas: true, satuan_kerja: true } });
     await prisma.ruangProfil.update({ where: { room }, data: { fasilitas, updated_by: req.user.id } });
+    await catat(req, { modul: 'ruangan', aksi: 'ubah', ref: refRuang(room, lama?.satuan_kerja), bandingkanDengan: { modul: 'ruangan', sebelum: lama, sesudah: { fasilitas } } });
     res.json({ data: fasilitas, message: 'Fasilitas disimpan.' });
   } catch (err) {
     logger.error('PUT fasilitas ruang gagal', { error: err });
@@ -284,6 +297,7 @@ router.post('/ruangan', async (req, res) => {
       return tx.ruangProfil.create({ data: { room: nama.nama, ...detail.data, tema, fasilitas, sort_order: sesudah + 1, updated_by: req.user.id } });
     });
     resetDaftarRuang();
+    await catat(req, { modul: 'ruangan', aksi: 'tambah', ref: refRuang(profil.room, profil.satuan_kerja), perubahan: ringkas('ruangan', profil) });
     res.status(201).json({ data: { room: profil.room, ...profilOut(profil) }, message: 'Ruangan ditambahkan.' });
   } catch (err) {
     if (err.code === 'P2002') return res.status(400).json({ message: 'Ruangan dengan nama itu sudah ada.' });
@@ -306,6 +320,7 @@ router.put('/ruangan', async (req, res) => {
       if (nama.error) return res.status(400).json({ message: nama.error });
       baru = nama.nama;
     }
+    const sebelum = await prisma.ruangProfil.findUnique({ where: { room: b.room }, select: pilihKolom('ruangan') });
     await prisma.$transaction(async (tx) => {
       if (baru !== b.room) {
         // Kunci booking & foto kedua nama (urut abjad, sama seperti edit booking) supaya booking/upload
@@ -318,6 +333,8 @@ router.put('/ruangan', async (req, res) => {
       await tx.ruangProfil.update({ where: { room: baru }, data: { ...detail.data, updated_by: req.user.id } });
     });
     resetDaftarRuang();
+    const sesudah = await prisma.ruangProfil.findUnique({ where: { room: baru }, select: pilihKolom('ruangan') });
+    if (sesudah) await catat(req, { modul: 'ruangan', aksi: 'ubah', ref: refRuang(baru, sesudah.satuan_kerja), bandingkanDengan: { modul: 'ruangan', sebelum, sesudah }, keterangan: baru !== b.room ? `Ganti nama: booking & foto "${b.room}" ikut pindah ke "${baru}".` : undefined });
     // Nama ruangan juga tersimpan di data booking -> kalender di semua tab ikut dimuat ulang.
     if (baru !== b.room) { live.broadcast('ruang-rapat'); B.broadcastChange(); }
     res.json({ data: { room: baru }, message: 'Detail ruangan disimpan.' });
@@ -335,6 +352,7 @@ router.delete('/ruangan', async (req, res) => {
     const { room } = req.body || {};
     if (!(await validRoom(room))) return res.status(404).json({ message: 'Ruangan tidak ditemukan.' });
     const today = new Date(`${nowLocal().date}T00:00:00Z`);
+    const sebelum = await prisma.ruangProfil.findUnique({ where: { room }, select: pilihKolom('ruangan') });
     const fotos = await prisma.$transaction(async (tx) => {
       await B.lockRoom(tx, room);
       await lockRuang(tx, room);
@@ -346,6 +364,7 @@ router.delete('/ruangan', async (req, res) => {
       return list;
     });
     resetDaftarRuang();
+    await catat(req, { modul: 'ruangan', aksi: 'hapus', ref: refRuang(room, sebelum?.satuan_kerja), perubahan: ringkas('ruangan', sebelum, 'dari'), keterangan: fotos.length ? `${fotos.length} foto ruangan ikut dihapus. Booking lama tetap tersimpan.` : 'Booking lama tetap tersimpan.' });
     for (const f of fotos) {
       const abs = path.resolve(BACKEND_ROOT, f.file_path);
       if (abs.startsWith(path.join(BACKEND_ROOT, 'uploads') + path.sep)) fs.promises.unlink(abs).catch(() => {});

@@ -264,7 +264,7 @@ router.post('/bookings', submitIpLimiter, requireGuest, submitGuestLimiter, requ
     }, { timeout: 20000 });
 
     logger.info('Booking ruang rapat oleh tamu', { guest_id: guestId, booking_id: row.id });
-    await catat(req, { modul: 'ruang-rapat', aksi: 'tambah', ref: { id: row.id, kode: row.room, label: row.agenda }, perubahan: ringkas('ruang-rapat', row), keterangan: 'Diajukan tamu lewat kiosk (login Google).' });
+    await catat(req, { modul: 'ruang-rapat', aksi: 'tambah', ref: { id: row.id, kode: row.room, label: row.agenda, grup: row.booking_group }, perubahan: ringkas('ruang-rapat', row), keterangan: 'Diajukan tamu lewat kiosk (login Google).' });
     B.broadcastChange();
     res.status(201).json({ message: `Ruangan ${row.room} berhasil dibooking.`, data: { id: row.id, title: row.agenda, room: row.room, date: startDate, end_date, start, end } });
   } catch (err) {
@@ -290,8 +290,8 @@ router.post('/bookings/:id/cancel', submitIpLimiter, requireGuest, cancelGuestLi
     });
     if (!count) return res.status(404).json({ message: 'Booking tidak ditemukan, bukan milik Anda, sudah lewat, atau sudah dibatalkan.' });
     logger.info('Booking ruang rapat dibatalkan tamu', { guest_id: req.guest.id, booking_id: id });
-    const info = await prisma.ruangRapat.findUnique({ where: { id }, select: { room: true, agenda: true, cancel_reason: true } });
-    if (info) await catat(req, { modul: 'ruang-rapat', aksi: 'batal', ref: { id, kode: info.room, label: info.agenda }, keterangan: `Dibatalkan sendiri oleh tamu pengaju. Alasan: ${info.cancel_reason}` });
+    const info = await prisma.ruangRapat.findUnique({ where: { id }, select: { room: true, agenda: true, cancel_reason: true, booking_group: true } });
+    if (info) await catat(req, { modul: 'ruang-rapat', aksi: 'batal', ref: { id, kode: info.room, label: info.agenda, grup: info.booking_group }, keterangan: `Dibatalkan sendiri oleh tamu pengaju. Alasan: ${info.cancel_reason}` });
     B.broadcastChange();
     res.json({ message: 'Booking berhasil dibatalkan.' });
   } catch (err) {

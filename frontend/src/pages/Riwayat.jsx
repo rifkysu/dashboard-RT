@@ -15,6 +15,7 @@ const MODUL = {
   pengadaan: { label: 'Pengadaan', icon: 'shopping_cart' },
   kendaraan: { label: 'Kendaraan', icon: 'directions_car' },
   'ruang-rapat': { label: 'Ruang Rapat', icon: 'calendar_month' },
+  ruangan: { label: 'Ruangan & Foto', icon: 'photo_library' },
   akun: { label: 'Akun', icon: 'group' },
 };
 const AKSI = {
@@ -26,6 +27,10 @@ const AKSI = {
   'service-tambah': { label: 'Tambah service', cls: 'bg-emerald-50 text-emerald-700 border-emerald-200', icon: 'home_repair_service' },
   'service-ubah': { label: 'Ubah service', cls: 'bg-sky-50 text-sky-700 border-sky-200', icon: 'home_repair_service' },
   'service-hapus': { label: 'Hapus service', cls: 'bg-red-50 text-red-700 border-red-200', icon: 'home_repair_service' },
+  'foto-tambah': { label: 'Tambah foto', cls: 'bg-emerald-50 text-emerald-700 border-emerald-200', icon: 'add_photo_alternate' },
+  'foto-ubah': { label: 'Ubah foto', cls: 'bg-sky-50 text-sky-700 border-sky-200', icon: 'photo' },
+  'foto-hapus': { label: 'Hapus foto', cls: 'bg-red-50 text-red-700 border-red-200', icon: 'hide_image' },
+  'foto-urutan': { label: 'Urutan foto', cls: 'bg-sky-50 text-sky-700 border-sky-200', icon: 'swap_vert' },
   daftar: { label: 'Daftar akun', cls: 'bg-emerald-50 text-emerald-700 border-emerald-200', icon: 'person_add' },
   'daftar-ulang': { label: 'Daftar ulang', cls: 'bg-amber-50 text-amber-700 border-amber-200', icon: 'person_add' },
   'verifikasi-email': { label: 'Verifikasi email', cls: 'bg-emerald-50 text-emerald-700 border-emerald-200', icon: 'mark_email_read' },
@@ -38,15 +43,16 @@ const AKSI = {
 };
 // Pilihan filter aksi (beberapa aksi sejenis digabung).
 const FILTER_AKSI = [
-  { value: 'tambah,service-tambah,daftar,daftar-ulang', label: 'Tambah / daftar' },
-  { value: 'ubah,service-ubah', label: 'Ubah' },
-  { value: 'hapus,service-hapus', label: 'Hapus' },
+  { value: 'tambah,service-tambah,foto-tambah,daftar,daftar-ulang', label: 'Tambah / daftar' },
+  { value: 'ubah,service-ubah,foto-ubah,foto-urutan', label: 'Ubah' },
+  { value: 'hapus,service-hapus,foto-hapus', label: 'Hapus' },
   { value: 'batal,batal-sebagian', label: 'Batal booking' },
-  { value: 'hapus,service-hapus,batal,batal-sebagian', label: 'Semua hapus & batal' },
+  { value: 'hapus,service-hapus,foto-hapus,batal,batal-sebagian', label: 'Semua hapus & batal' },
   { value: 'role,ban,aktifkan,verifikasi-email,link-reset,blokir-tamu,buka-blokir-tamu', label: 'Pengelolaan akun' },
 ];
 const ROLE = { karyawan: 'Karyawan', pic: 'PIC', kabag: 'Kabag', admin: 'Admin', tamu: 'Tamu Google' };
-const FILTER_KEYS = ['modul', 'aksi', 'aktor', 'q', 'dari', 'sampai', 'ref'];
+// ref = id data; grup = satu pengajuan booking (booking_group) / satu ruangan (nama) -- "Riwayat data ini".
+const FILTER_KEYS = ['modul', 'aksi', 'aktor', 'q', 'dari', 'sampai', 'ref', 'grup'];
 
 const jam = (v) => new Date(v).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 const kunciHari = (v) => new Date(v).toLocaleDateString('sv-SE'); // YYYY-MM-DD zona lokal
@@ -78,8 +84,8 @@ export default function Riwayat() {
   const setFilter = (patch) => setParams((prev) => {
     const next = new URLSearchParams(prev);
     for (const [k, v] of Object.entries(patch)) { if (v) next.set(k, v); else next.delete(k); }
-    // Ganti modul -> filter satu data (ref) tidak berlaku lagi.
-    if ('modul' in patch && !('ref' in patch)) next.delete('ref');
+    // Ganti modul -> filter satu data (ref/grup) tidak berlaku lagi.
+    if ('modul' in patch && !('ref' in patch) && !('grup' in patch)) { next.delete('ref'); next.delete('grup'); }
     return next;
   }, { replace: true });
 
@@ -120,11 +126,14 @@ export default function Riwayat() {
   useEffect(() => { if (isAdmin) load(); }, [JSON.stringify(query), isAdmin]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { if (isAdmin) loadSamping(); }, [isAdmin]);
   useLive('riwayat', () => { load({ silent: true }); loadSamping(); });
-  // Kotak cari: kirim ke URL setelah berhenti mengetik 350 ms.
-  useEffect(() => { setCari(filter.q); }, [filter.q]);
+  // Kotak cari: kirim ke URL setelah berhenti mengetik 350 ms. Isi kotak hanya diganti dari URL bila
+  // perubahannya dari luar (Reset, tombol Back) -- bukan hasil ketikan sendiri, supaya huruf yang baru
+  // diketik tidak tertimpa nilai lama.
+  const qTerkirim = useRef(filter.q);
+  useEffect(() => { if (filter.q !== qTerkirim.current) { qTerkirim.current = filter.q; setCari(filter.q); } }, [filter.q]);
   useEffect(() => {
     if (cari.trim() === filter.q) return undefined;
-    const t = setTimeout(() => setFilter({ q: cari.trim() }), 350);
+    const t = setTimeout(() => { qTerkirim.current = cari.trim(); setFilter({ q: cari.trim() }); }, 350);
     return () => clearTimeout(t);
   }, [cari]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -156,7 +165,8 @@ export default function Riwayat() {
     return out;
   }, [items]);
   const adaFilter = FILTER_KEYS.some((k) => filter[k]);
-  const refAktif = filter.ref && items.find((x) => String(x.ref_id) === filter.ref && x.modul === filter.modul);
+  const satuData = filter.ref || filter.grup;
+  const refAktif = satuData && items.find((x) => x.modul === filter.modul && (filter.grup ? x.ref_grup === filter.grup : String(x.ref_id) === filter.ref));
   const aksiHapus = FILTER_AKSI[4].value;
 
   if (user && !isAdmin) return <Navigate to="/dashboard" replace />;
@@ -230,11 +240,11 @@ export default function Riwayat() {
             </button>
           </div>
         </div>
-        {filter.ref && (
+        {satuData && (
           <div className="mt-3 inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-dinas-soft text-dinas text-xs font-semibold">
             <span className="material-symbols-outlined text-[16px]">history</span>
-            Riwayat satu data: {MODUL[filter.modul]?.label} {refAktif ? `· ${refAktif.ref_kode || ''} ${refAktif.ref_label || ''}` : `#${filter.ref}`}
-            <button type="button" onClick={() => setFilter({ ref: '' })} aria-label="Hapus filter data" className="ml-1 hover:text-red-600"><span className="material-symbols-outlined text-[16px]">close</span></button>
+            {filter.modul === 'ruang-rapat' && filter.grup ? 'Riwayat satu pengajuan booking' : 'Riwayat satu data'}: {MODUL[filter.modul]?.label} {refAktif ? `· ${refAktif.ref_kode || ''} ${refAktif.ref_label || ''}` : filter.ref ? `#${filter.ref}` : ''}
+            <button type="button" onClick={() => setFilter({ ref: '', grup: '' })} aria-label="Hapus filter data" className="ml-1 hover:text-red-600"><span className="material-symbols-outlined text-[16px]">close</span></button>
           </div>
         )}
       </div>
@@ -255,7 +265,7 @@ export default function Riwayat() {
             <section key={g.key}>
               <h2 className="sticky top-0 z-10 -mx-1 px-1 py-2 bg-[var(--kanvas,#f3f4f7)]/95 backdrop-blur text-xs font-bold uppercase tracking-wider text-slate-500">{judulHari(g.key)} <span className="font-semibold normal-case tracking-normal text-slate-400">· {g.list.length} aktivitas</span></h2>
               <ol className="relative ml-3 border-l-2 border-slate-200 space-y-3">
-                {g.list.map((x) => <ItemRiwayat key={x.id} x={x} onRef={() => setFilter({ modul: x.modul, ref: String(x.ref_id) })} onAktor={() => setFilter({ aktor: `${x.aktor_tipe}${x.aktor_id ? `:${x.aktor_id}` : ''}` })} />)}
+                {g.list.map((x) => <ItemRiwayat key={x.id} x={x} onRef={() => setFilter(x.ref_grup ? { modul: x.modul, grup: x.ref_grup, ref: '' } : { modul: x.modul, ref: String(x.ref_id), grup: '' })} onAktor={() => setFilter({ aktor: `${x.aktor_tipe}${x.aktor_id ? `:${x.aktor_id}` : ''}` })} />)}
               </ol>
             </section>
           ))}
@@ -333,7 +343,7 @@ function ItemRiwayat({ x, onRef, onAktor }) {
 
         <div className="mt-3 pt-2 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-400">
           <span>{new Date(x.waktu).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'medium' })}{x.ip && ` · IP ${x.ip}`}</span>
-          {x.ref_id != null && <button type="button" onClick={onRef} className="font-semibold text-dinas hover:underline inline-flex items-center gap-1"><span className="material-symbols-outlined text-[14px]">history</span>Riwayat data ini</button>}
+          {(x.ref_grup || x.ref_id != null) && <button type="button" onClick={onRef} className="font-semibold text-dinas hover:underline inline-flex items-center gap-1"><span className="material-symbols-outlined text-[14px]">history</span>Riwayat data ini</button>}
         </div>
       </div>
     </li>

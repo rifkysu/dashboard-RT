@@ -908,7 +908,9 @@ def isi_aplikasi():
             "diawali huruf besar, berisi angka, min. 7 karakter (maks. 128; daftar syarat tercentang otomatis di bawah kolom sandi). Setelah daftar, pengguna diarahkan ke halaman Login (tidak "
             "otomatis masuk). **Verifikasi email**: akun baru belum bisa login sampai pemilik email mengklik link verifikasi "
             "(berlaku 24 jam) yang dikirim ke alamat @kemnaker.go.id-nya, jadi orang lain tidak bisa membuat akun memakai email "
-            "pegawai lain. Login sebelum verifikasi ditolak (kode EMAIL_UNVERIFIED) dengan tombol *Kirim ulang link verifikasi*. "
+            "pegawai lain. Di halaman verifikasi, pemilik email wajib memasukkan kata sandi saat daftar; bila tidak cocok (email sempat "
+            "didaftarkan ulang orang lain) verifikasi ditolak dan pemilik diminta daftar ulang, jadi akun tidak pernah aktif dengan sandi orang lain. "
+            "Login sebelum verifikasi ditolak (kode EMAIL_UNVERIFIED) dengan tombol *Kirim ulang link verifikasi*. "
             "Email yang masih tertunda (belum diverifikasi) boleh didaftarkan ulang oleh pemilik aslinya: data & sandi akun tertunda "
             "diganti dan link baru dikirim ke kotak masuk pemilik email. Bila SMTP belum diisi / email tidak sampai, Admin/Kabag "
             "memverifikasi manual (tombol *Verifikasi* di menu Akun & Akses). Akun yang ada sebelum fitur ini dianggap sudah "
@@ -1064,11 +1066,15 @@ def isi_aplikasi():
         *bullets(
             "Menu **/riwayat** (Admin/Kabag) = *audit trail*: siapa menambah, mengubah, menghapus, atau membatalkan data, kapan, "
             "di data mana, dan apa yang berubah. Mencakup Pemeliharaan, Pengadaan, Kendaraan (termasuk riwayat service), "
-            "Ruang Rapat (booking pegawai & tamu Google, ubah jadwal, batal sebagian/seluruhnya + alasan), dan Akun "
+            "Ruang Rapat (booking pegawai & tamu Google, ubah jadwal, batal sebagian/seluruhnya + alasan), Ruangan & Foto "
+            "(tambah/ubah/ganti nama/hapus ruangan, fasilitas, foto & urutannya), dan Akun "
             "(daftar & verifikasi email, ubah role, ban/aktifkan, link reset sandi, blokir tamu).",
             "Tiap perubahan dicatat per kolom **sebelum -> sesudah** (mis. Status: Pending -> On Progress; Nilai HPS; Jam mulai), "
             "unggahan dokumen dicatat nama filenya (isi file tidak ikut disalin). Data yang **dihapus tetap ada jejaknya**: "
-            "isi terakhirnya disimpan di riwayat. Simpan tanpa perubahan tidak dicatat.",
+            "isi terakhirnya disimpan di riwayat. Simpan tanpa perubahan tidak dicatat. Daftar file (foto kendaraan, dokumentasi final) "
+            "dibandingkan per isi file (1 diganti / ditambah / dihapus / urutan diubah). *Riwayat data ini* untuk booking mencakup satu "
+            "pengajuan utuh walau dipecah karena batal sebagian (kolom ref_grup = booking_group, migration 0038), untuk ruangan "
+            "termasuk nama lamanya bila pernah ganti nama.",
             "Tampilan garis waktu per hari; filter modul, jenis aksi, pelaku, rentang tanggal, dan pencarian (kode, nama data, "
             "nomor polisi, nama pelaku); tombol *Riwayat data ini* menampilkan seluruh riwayat satu data. Filter tersimpan di URL. "
             "Kartu ringkasan: aktivitas hari ini, 7 hari, hapus & batal 30 hari. **Unduh CSV** (maks. 20.000 baris) sesuai filter. Real-time (SSE).",

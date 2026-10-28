@@ -66,7 +66,8 @@ async function sendVerifyEmail({ to, nama, verifyUrl }) {
     `Halo ${nama},`,
     '',
     'Email ini didaftarkan untuk akun Aplikasi Biro Umum dan Rumah Tangga.',
-    'Buka link berikut untuk memverifikasi email dan mengaktifkan akun Anda (berlaku 24 jam):',
+    'Buka link berikut untuk memverifikasi email dan mengaktifkan akun Anda (berlaku 24 jam).',
+    'Anda akan diminta memasukkan kata sandi yang Anda buat saat mendaftar:',
     '',
     verifyUrl,
     '',
@@ -78,7 +79,7 @@ async function sendVerifyEmail({ to, nama, verifyUrl }) {
     <div style="font-family:Arial,Helvetica,sans-serif;max-width:520px;margin:auto;color:#0f172a">
       <h2 style="margin:0 0 12px">Verifikasi Email</h2>
       <p>Halo <b>${escapeHtml(nama)}</b>,</p>
-      <p>Email ini didaftarkan untuk akun Aplikasi Biro Umum dan Rumah Tangga. Klik tombol di bawah untuk memverifikasi email dan mengaktifkan akun Anda.</p>
+      <p>Email ini didaftarkan untuk akun Aplikasi Biro Umum dan Rumah Tangga. Klik tombol di bawah untuk memverifikasi email dan mengaktifkan akun Anda &mdash; Anda akan diminta memasukkan kata sandi yang Anda buat saat mendaftar.</p>
       <p style="margin:24px 0">
         <a href="${escapeHtml(verifyUrl)}" style="background:#0f172a;color:#fff;padding:12px 20px;border-radius:8px;text-decoration:none;font-weight:bold">Verifikasi Email Saya</a>
       </p>

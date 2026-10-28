@@ -274,7 +274,8 @@ router.put('/:id', requireRole(EDITOR_ROLES), async (req, res) => {
 
     if (!Object.keys(data).length) return res.status(400).json({ message: 'Tidak ada field yang diubah.' });
     data.updated_by = req.user.id;
-    const sebelum = await prisma.kendaraan.findUnique({ where: { id }, select: pilihKolom('kendaraan') });
+    // Foto disimpan ulang seluruhnya tiap perubahan -> isi foto lama ikut dibaca supaya riwayat menulis yang benar-benar berubah.
+    const sebelum = await prisma.kendaraan.findUnique({ where: { id }, select: pilihKolom('kendaraan', {}, { isi: photoCheck.items !== undefined }) });
     const row = await prisma.kendaraan.update({ where: { id }, data, include: WITH_SERVICE_SUMMARY });
     await catat(req, { modul: 'kendaraan', aksi: 'ubah', ref: refKendaraan(row), bandingkanDengan: { modul: 'kendaraan', sebelum, sesudah: row } });
     res.json({ data: serialize(row) });

@@ -241,20 +241,34 @@ router.post('/login', loginIpLimiter, loginLimiter, async (req, res) => {
 });
 
 // ---------------------------------------------------------
-// POST /api/auth/verify-email  { token } -- dari link di email verifikasi.
+// POST /api/auth/verify-email  { token, password } -- dari link di email verifikasi.
+// Kata sandi saat daftar WAJIB dicocokkan: akun tertunda bisa didaftarkan ulang (lihat /register), jadi tanpa
+// cek ini orang lain bisa mendaftarkan ulang email korban dengan sandinya sendiri, lalu korban yang mengklik
+// link terbaru justru mengaktifkan akun dengan sandi orang lain itu.
 // ---------------------------------------------------------
+const PASSWORD_MISMATCH = 'PASSWORD_MISMATCH';
 router.post('/verify-email', verifyEmailLimiter, async (req, res) => {
   try {
-    const { token } = req.body;
+    const { token, password } = req.body;
     if (typeof token !== 'string' || token.length < 32 || token.length > 256) {
       return res.status(400).json({ message: 'Link verifikasi tidak valid.' });
     }
+    if (typeof password !== 'string' || !password || password.length > 128) {
+      return res.status(400).json({ message: 'Masukkan kata sandi yang Anda buat saat mendaftar.' });
+    }
     const user = await prisma.user.findFirst({
       where: { verify_token: hashResetToken(token), verify_token_expires: { gt: new Date() } },
-      select: { id: true, email: true, nama_lengkap: true, role: true },
+      select: { id: true, email: true, nama_lengkap: true, role: true, password_hash: true },
     });
     if (!user) {
       return res.status(400).json({ message: 'Link verifikasi tidak valid atau sudah kedaluwarsa. Login untuk mengirim ulang link-nya.' });
+    }
+    if (!user.password_hash || !(await bcrypt.compare(password, user.password_hash))) {
+      return res.status(400).json({
+        code: PASSWORD_MISMATCH,
+        message: 'Kata sandi tidak cocok dengan pendaftaran terakhir untuk email ini. Kalau Anda yakin sandinya benar, berarti '
+          + 'email Anda didaftarkan ulang orang lain: daftar ulang dengan kata sandi Anda sendiri, lalu buka link verifikasi terbaru di email.',
+      });
     }
     await prisma.user.update({ where: { id: user.id }, data: { email_verified_at: new Date(), verify_token: null, verify_token_expires: null } });
     await catat(req, { modul: 'akun', aksi: 'verifikasi-email', ref: { id: user.id, kode: user.email, label: user.nama_lengkap }, aktor: aktorAkun(user), keterangan: 'Email diverifikasi lewat link di email.' });
@@ -270,7 +284,7 @@ router.post('/verify-email', verifyEmailLimiter, async (req, res) => {
 // Respons sengaja sama untuk email terdaftar maupun tidak (tidak membocorkan akun mana yang ada);
 // email dikirim di latar belakang supaya lama respons juga tidak membocorkannya.
 // ---------------------------------------------------------
-router.post('/resend-verification', resendVerifyLimiter, async (req, res) => {
+router.post('/resend-verification', registerLimiter, resendVerifyLimiter, async (req, res) => {
   try {
     const email = normalizeEmail(req.body.email);
     if (typeof email !== 'string' || email.length > 254 || !EMAIL_RE.test(email)) {

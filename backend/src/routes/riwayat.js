@@ -9,7 +9,7 @@ const router = express.Router();
 router.use(requireAuth);
 router.use(requireRole(ADMIN_ROLES));
 
-const MODUL = ['pemeliharaan', 'pengadaan', 'kendaraan', 'ruang-rapat', 'akun'];
+const MODUL = ['pemeliharaan', 'pengadaan', 'kendaraan', 'ruang-rapat', 'ruangan', 'akun'];
 const AKSI_RE = /^[a-z-]{2,30}$/;
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const PER_HALAMAN = 50;
@@ -18,10 +18,25 @@ const MAX_EXPORT = 20000;
 const awalHari = (d) => new Date(`${d}T00:00:00+07:00`);
 
 // Query filter -> { where } atau { error }.
+// Ruangan yang pernah ganti nama: riwayat dengan nama-nama lamanya ikut ditampilkan (ikuti catatan
+// "Nama ruangan: lama -> baru" mundur, maks. 10 kali ganti nama).
+async function namaRuangan(nama) {
+  const semua = new Set([nama]);
+  let cari = [nama];
+  for (let i = 0; i < 10 && cari.length; i++) {
+    const rows = await prisma.riwayatAktivitas.findMany({ where: { modul: 'ruangan', aksi: 'ubah', ref_grup: { in: cari } }, select: { perubahan: true } });
+    const lama = rows.flatMap((r) => (Array.isArray(r.perubahan) ? r.perubahan : []))
+      .filter((p) => p.label === 'Nama ruangan' && p.dari && !semua.has(p.dari)).map((p) => p.dari);
+    lama.forEach((n) => semua.add(n));
+    cari = lama;
+  }
+  return [...semua];
+}
+
 function filterDari(q) {
   const where = {};
   for (const [k, v] of Object.entries(q)) {
-    if (!['modul', 'aksi', 'aktor', 'q', 'dari', 'sampai', 'ref', 'page'].includes(k) || typeof v !== 'string' || v.length > 150) return { error: 'Parameter filter tidak valid.' };
+    if (!['modul', 'aksi', 'aktor', 'q', 'dari', 'sampai', 'ref', 'grup', 'page'].includes(k) || typeof v !== 'string' || v.length > 150) return { error: 'Parameter filter tidak valid.' };
   }
   if (q.modul) { if (!MODUL.includes(q.modul)) return { error: 'Modul tidak valid.' }; where.modul = q.modul; }
   if (q.aksi) {
@@ -38,6 +53,8 @@ function filterDari(q) {
   }
   // ref = id data tertentu (dipakai bersama modul) -> riwayat lengkap satu data.
   if (q.ref) { if (!/^\d{1,10}$/.test(q.ref) || !q.modul) return { error: 'Filter data tidak valid.' }; where.ref_id = Number(q.ref); }
+  // grup = booking_group / nama ruangan -> riwayat satu pengajuan booking / satu ruangan.
+  if (q.grup) { if (!q.modul || q.grup.length > 150) return { error: 'Filter data tidak valid.' }; where.ref_grup = q.grup; }
   if (q.dari || q.sampai) {
     if ((q.dari && !DATE_RE.test(q.dari)) || (q.sampai && !DATE_RE.test(q.sampai))) return { error: 'Format tanggal tidak valid.' };
     where.waktu = {};
@@ -55,6 +72,7 @@ router.get('/', async (req, res) => {
   try {
     const { where, error } = filterDari(req.query);
     if (error) return res.status(400).json({ message: error });
+    if (where.ref_grup && where.modul === 'ruangan') where.ref_grup = { in: await namaRuangan(where.ref_grup) };
     const page = Math.max(1, Math.min(10000, Number(req.query.page) || 1));
     const [total, rows] = await Promise.all([
       prisma.riwayatAktivitas.count({ where }),
@@ -77,7 +95,7 @@ router.get('/ringkasan', async (req, res) => {
     const [hari, minggu, hapus, pelaku] = await Promise.all([
       prisma.riwayatAktivitas.count({ where: { waktu: { gte: hariIni } } }),
       prisma.riwayatAktivitas.count({ where: { waktu: { gte: tujuhHari } } }),
-      prisma.riwayatAktivitas.count({ where: { waktu: { gte: tigaPuluhHari }, aksi: { in: ['hapus', 'batal', 'batal-sebagian', 'service-hapus'] } } }),
+      prisma.riwayatAktivitas.count({ where: { waktu: { gte: tigaPuluhHari }, aksi: { in: ['hapus', 'batal', 'batal-sebagian', 'service-hapus', 'foto-hapus'] } } }),
       prisma.riwayatAktivitas.groupBy({ by: ['aktor_tipe', 'aktor_id'], where: { waktu: { gte: tujuhHari } } }),
     ]);
     res.json({ data: { hari_ini: hari, tujuh_hari: minggu, hapus_batal_30_hari: hapus, pelaku_7_hari: pelaku.length } });
@@ -100,7 +118,7 @@ router.get('/aktor', async (req, res) => {
     // Satu akun bisa tercatat dengan beberapa nama (ganti nama) -> gabung per tipe+id, pakai nama terbaru.
     const map = new Map();
     for (const r of rows) {
-      const key = `${r.aktor_tipe}:${r.aktor_id ?? ''}`;
+      const key = r.aktor_id == null ? r.aktor_tipe : `${r.aktor_tipe}:${r.aktor_id}`;
       const cur = map.get(key);
       if (!cur) map.set(key, { key, tipe: r.aktor_tipe, id: r.aktor_id, nama: r.aktor_nama, email: r.aktor_email, jumlah: r._count._all, terakhir: r._max.waktu });
       else {
@@ -116,7 +134,7 @@ router.get('/aktor', async (req, res) => {
 });
 
 // Unduh CSV (bisa dibuka di Excel) sesuai filter yang sedang dipakai.
-const MODUL_LABEL = { pemeliharaan: 'Pemeliharaan', pengadaan: 'Pengadaan', kendaraan: 'Kendaraan', 'ruang-rapat': 'Ruang Rapat', akun: 'Akun' };
+const MODUL_LABEL = { pemeliharaan: 'Pemeliharaan', pengadaan: 'Pengadaan', kendaraan: 'Kendaraan', 'ruang-rapat': 'Ruang Rapat', ruangan: 'Ruangan & Foto', akun: 'Akun' };
 const fmtWaktu = (d) => {
   const w = new Date(+d + 7 * 3600000).toISOString();
   return `${w.slice(8, 10)}/${w.slice(5, 7)}/${w.slice(0, 4)} ${w.slice(11, 19)}`;
@@ -125,6 +143,7 @@ router.get('/export', async (req, res) => {
   try {
     const { where, error } = filterDari(req.query);
     if (error) return res.status(400).json({ message: error });
+    if (where.ref_grup && where.modul === 'ruangan') where.ref_grup = { in: await namaRuangan(where.ref_grup) };
     const rows = await prisma.riwayatAktivitas.findMany({ where, orderBy: [{ waktu: 'desc' }, { id: 'desc' }], take: MAX_EXPORT });
     const csv = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
     const detail = (p) => (Array.isArray(p) ? p.map((x) => ('dari' in x && 'ke' in x ? `${x.label}: ${x.dari ?? '(kosong)'} -> ${x.ke ?? '(kosong)'}` : `${x.label}: ${x.ke ?? x.dari ?? '(kosong)'}`)).join('; ') : '');

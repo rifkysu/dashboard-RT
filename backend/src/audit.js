@@ -1,3 +1,4 @@
+const crypto = require('crypto');
 const prisma = require('./prisma');
 const logger = require('./logger');
 const live = require('./live');
@@ -24,13 +25,18 @@ function tampil(v, tipe) {
   if (tipe === 'uang') return `Rp ${Number(v).toLocaleString('id-ID')}`;
   if (tipe === 'status') return STATUS[v] || String(v);
   if (tipe === 'surat') return SURAT[v] || String(v);
+  // "safir/garis-tegak" -> "Safir · Garis tegak" (label lengkap ada di frontend utils/temaRuang.js).
+  if (tipe === 'tema') return String(v).split('/').map((x) => x.charAt(0).toUpperCase() + x.slice(1).replace(/-/g, ' ')).join(' · ');
+  if (tipe === 'fasilitas') { const a = Array.isArray(v) ? v.map((f) => f?.label).filter(Boolean) : []; return a.length ? tampil(a.join(', ')) : null; }
   const s = String(v);
   return s.length > MAX_TEKS ? `${s.slice(0, MAX_TEKS)}…` : s;
 }
 
 // Kolom yang dicatat per modul. fields: { kolom: [label, tipe?] }.
 // files: { kolom_path: [label, kolom_nama_file | null, 'daftar'?] } -- file dibandingkan lewat path di disk
-// (tiap unggahan baru = path baru), isi Base64-nya tidak pernah ikut dicatat. 'daftar' = JSON array file.
+// (tiap unggahan baru = path baru), isi Base64-nya tidak pernah ikut dicatat. 'daftar' = JSON array file;
+// elemen ke-4 = kolom isi (JSON [{ data }]) untuk menghitung file yang ditambah/diganti/dihapus -- hanya dipakai
+// bila route ikut membaca kolom itu (lihat pilihKolom(..., { isi: true })).
 const MODUL = {
   pemeliharaan: {
     fields: {
@@ -48,7 +54,7 @@ const MODUL = {
       stage1_boq_file_path: ['File BOQ', null],
       stage1_document_file_path: ['Dokumen tahap 1', 'stage1_document_name'],
       stage2_invoice_document_file_path: ['Dokumen invoice', 'stage2_invoice_document_name'],
-      stage3_documentation_file_paths: ['Dokumentasi final', null, 'daftar'],
+      stage3_documentation_file_paths: ['Dokumentasi final', null, 'daftar', 'stage3_documentation_files'],
     },
   },
   pengadaan: {
@@ -78,7 +84,7 @@ const MODUL = {
     files: {
       bpkb_document_file_path: ['Dokumen BPKB', 'bpkb_document_name'],
       stnk_document_file_path: ['Dokumen STNK', 'stnk_document_name'],
-      photo_file_paths: ['Foto kendaraan', null, 'daftar'],
+      photo_file_paths: ['Foto kendaraan', null, 'daftar', 'photos'],
     },
   },
   'kendaraan-service': {
@@ -93,20 +99,38 @@ const MODUL = {
     },
     files: { surat_file_path: ['Surat permohonan', 'surat_name'] },
   },
+  ruangan: {
+    fields: {
+      room: ['Nama ruangan'], satuan_kerja: ['Satuan kerja'], kapasitas: ['Kapasitas (kursi)'], link_foto: ['Link dokumentasi foto'],
+      tema: ['Tema layar', 'tema'], fasilitas: ['Fasilitas', 'fasilitas'],
+    },
+    files: {},
+  },
 };
 
 // select Prisma untuk membaca data "sebelum" (tanpa isi file Base64 yang berat).
-function pilihKolom(modul, extra = {}) {
+// isi: true -> ikut baca kolom isi file daftar (berat; hanya bila daftar file itu memang sedang diubah).
+function pilihKolom(modul, extra = {}, { isi = false } = {}) {
   const cfg = MODUL[modul];
   const sel = { ...extra };
   for (const k of Object.keys(cfg.fields)) sel[k] = true;
-  for (const [k, [, nama]] of Object.entries(cfg.files)) { sel[k] = true; if (nama) sel[nama] = true; }
+  for (const [k, [, nama, , kolomIsi]] of Object.entries(cfg.files)) { sel[k] = true; if (nama) sel[nama] = true; if (isi && kolomIsi) sel[kolomIsi] = true; }
   return sel;
 }
 
-function jumlahDaftar(v) {
-  if (!v) return 0;
-  try { const a = typeof v === 'string' ? JSON.parse(v) : v; return Array.isArray(a) ? a.length : 0; } catch { return 0; }
+const bacaDaftar = (v) => { if (!v) return []; try { const a = typeof v === 'string' ? JSON.parse(v) : v; return Array.isArray(a) ? a : []; } catch { return []; } };
+const jumlahDaftar = (v) => bacaDaftar(v).length;
+// Sidik jari isi tiap file daftar (bukan path, yang selalu baru tiap disimpan ulang).
+const sidikDaftar = (v) => bacaDaftar(v).map((f) => crypto.createHash('sha1').update(String(f?.data ?? '')).digest('hex'));
+// Daftar file lama vs baru -> null (isi sama) atau teks "3 file (1 ditambah, 1 diganti)".
+function bedaDaftar(lama, baru) {
+  const a = sidikDaftar(lama), b = sidikDaftar(baru);
+  const sisaA = [...a], tambah = [];
+  for (const h of b) { const i = sisaA.indexOf(h); if (i >= 0) sisaA.splice(i, 1); else tambah.push(h); }
+  if (!tambah.length && !sisaA.length) return a.join() === b.join() ? null : `${b.length} file (urutan diubah)`;
+  const ganti = Math.min(tambah.length, sisaA.length);
+  const parts = [ganti && `${ganti} diganti`, tambah.length - ganti && `${tambah.length - ganti} ditambah`, sisaA.length - ganti && `${sisaA.length - ganti} dihapus`].filter(Boolean);
+  return `${b.length ? `${b.length} file` : 'kosong'} (${parts.join(', ')})`;
 }
 function tampilFile(row, kolom, [, nama, jenis]) {
   if (!row) return null;
@@ -128,6 +152,13 @@ function bandingkan(modul, sebelum, sesudah) {
     if (!(k in sesudah)) continue;
     const pathLama = sebelum?.[k] ?? null, pathBaru = sesudah[k] ?? null;
     if (pathLama === pathBaru) continue;
+    const kolomIsi = spec[3];
+    if (kolomIsi && sebelum && kolomIsi in sebelum && kolomIsi in sesudah) {
+      // Daftar file disimpan ulang seluruhnya tiap perubahan -> bandingkan isinya, bukan path-nya.
+      const ke = bedaDaftar(sebelum[kolomIsi], sesudah[kolomIsi]);
+      if (ke) out.push({ label: spec[0], dari: tampilFile(sebelum, k, spec), ke });
+      continue;
+    }
     const dari = tampilFile(sebelum, k, spec);
     let ke = tampilFile(sesudah, k, spec);
     if (ke && ke === dari) ke = `${ke} (diunggah ulang)`;
@@ -160,10 +191,11 @@ const potong = (v, n) => (v == null ? null : String(v).slice(0, n));
 
 /**
  * Catat satu aktivitas. Tidak pernah melempar error.
- *   modul   : 'pemeliharaan' | 'pengadaan' | 'kendaraan' | 'ruang-rapat' | 'akun'
+ *   modul   : 'pemeliharaan' | 'pengadaan' | 'kendaraan' | 'ruang-rapat' | 'ruangan' | 'akun'
  *   aksi    : 'tambah' | 'ubah' | 'hapus' | 'batal' | 'batal-sebagian' | 'service-tambah' | 'service-ubah' | 'service-hapus'
+ *             | 'foto-tambah' | 'foto-ubah' | 'foto-hapus' | 'foto-urutan'
  *             | 'role' | 'ban' | 'aktifkan' | 'verifikasi-email' | 'link-reset' | 'blokir-tamu' | 'buka-blokir-tamu'
- *   ref     : { id, kode, label } data yang disentuh
+ *   ref     : { id, kode, label, grup? } data yang disentuh (grup = kunci "Riwayat data ini" lintas baris)
  *   bandingkanDengan: { modul, sebelum, sesudah } -> perubahan dihitung otomatis; atau langsung `perubahan`
  *   aktor   : opsional, menggantikan pelaku dari req (mis. pendaftar akun yang belum login)
  *   Aksi 'ubah' tanpa perubahan & tanpa keterangan (simpan tanpa mengubah apa pun) tidak dicatat.
@@ -179,6 +211,7 @@ async function catat(req, { modul, aksi, ref = {}, perubahan, bandingkanDengan, 
         ref_id: Number.isInteger(ref.id) ? ref.id : null,
         ref_kode: potong(ref.kode, 150),
         ref_label: potong(ref.label, 300),
+        ref_grup: potong(ref.grup, 150),
         ...(aktor || aktorDari(req)),
         perubahan: list?.length ? list : undefined,
         keterangan: potong(keterangan, 1000),

@@ -88,7 +88,7 @@ router.put('/:id',requireRole(EDITOR_ROLES),async(req,res)=>{try{
  const DATE_FIELDS=['tanggal','tanggal_selesai','stage2_invoice_date','stage2_ls_date'];
  const data={};for(const f of allowed){if(body[f]===undefined)continue;if(DATE_FIELDS.includes(f))data[f]=body[f]?new Date(`${String(body[f]).slice(0,10)}T00:00:00Z`):null;else if(f==='stage2_payment_number')data[f]=body[f]===''||body[f]==null?null:Number(body[f]);else data[f]=body[f];}
  data.updated_by=req.user.id;
- const sebelum=await prisma.pemeliharaan.findUnique({where:{id},select:pilihKolom('pemeliharaan')});
+ const sebelum=await prisma.pemeliharaan.findUnique({where:{id},select:pilihKolom('pemeliharaan',{},{isi:body.stage3_documentation_files!==undefined})});
  const row=await prisma.pemeliharaan.update({where:{id},data,include:{createdBy:{select:{nama_lengkap:true}}}});
  await catat(req,{modul:'pemeliharaan',aksi:'ubah',ref:{id,kode:row.kode,label:row.judul},bandingkanDengan:{modul:'pemeliharaan',sebelum,sesudah:row}});
  res.json({data:serialize(row)});
