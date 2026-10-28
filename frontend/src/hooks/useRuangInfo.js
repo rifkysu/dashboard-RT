@@ -71,10 +71,10 @@ export default function useRuangInfo() {
 // Daftar ruangan yang bisa dibooking + pengelompokannya per satuan kerja (bagian).
 // rooms = ['BIRO UMUM', ...]; grup = [{ bagian, rooms }]. Sebelum dimuat: daftar cadangan RUANG_AWAL.
 export function useDaftarRuang() {
-  const { info, urutan, loaded, error } = useRuangInfo();
+  const { info, urutan, loaded, error, reload } = useRuangInfo();
   const rooms = urutan?.length ? urutan : RUANG_AWAL;
   const grup = useMemo(() => grupRuang(rooms, info), [rooms, info]);
-  return { rooms, grup, info, loaded, error };
+  return { rooms, grup, info, loaded, error, reload };
 }
 
 // Data slideshow satu ruangan, atau null bila ruangan itu belum punya foto.

@@ -6,6 +6,7 @@ import { useFeedback } from '../components/Feedback';
 import { useDaftarRuang } from '../hooks/useRuangInfo';
 import BagianTabs, { useBagian } from '../components/BagianTabs';
 import { LinkFotoRuang } from '../components/RuangFoto';
+import PilihSatker from '../components/PilihSatker';
 import { prosesFoto } from '../utils/prosesFoto';
 import { judulRuang, slugRuang } from '../utils/ruang';
 import { PALET, MOTIF, temaRuang } from '../utils/temaRuang';
@@ -83,7 +84,8 @@ export default function FotoRuang() {
   if (user && !isAdmin) return <Navigate to="/dashboard" replace />;
 
   const data = info?.[room] || { foto: [], fasilitas: [] };
-  const daftarSatker = grup.map((g) => g.bagian).filter((b) => b !== 'Lainnya');
+  // Satuan kerja yang sudah punya ruangan + jumlah ruangannya (pilihan teratas di isian satuan kerja).
+  const terpakai = Object.fromEntries(grup.filter((g) => g.bagian !== 'Lainnya').map((g) => [g.bagian, g.rooms.length]));
   // Tema layar yang dipakai ruangan lain -> peringatan bila admin memilih tema yang sama.
   const temaLain = {};
   for (const r of rooms) if (r !== room) (temaLain[temaRuang(r, info).key] ||= []).push(r);
@@ -175,7 +177,7 @@ export default function FotoRuang() {
         </div>
       </div>
 
-      <DetailPanel key={`detail-${room}`} room={room} data={data} daftarSatker={daftarSatker} temaLain={temaLain} memuat={memuat}
+      <DetailPanel key={`detail-${room}`} room={room} data={data} terpakai={terpakai} temaLain={temaLain} memuat={memuat}
         onSaved={async (baru, satker) => { await reload(); if (satker && bagian && satker !== bagian) setBagian(satker); setPilih(baru); }} />
 
       <div className="mt-5 grid lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)] gap-5 items-start">
@@ -184,14 +186,14 @@ export default function FotoRuang() {
       </div>
       </>}
 
-      {tambah && <TambahRuangDialog daftarSatker={daftarSatker} bagianAwal={bagian} onClose={() => setTambah(false)}
+      {tambah && <TambahRuangDialog terpakai={terpakai} bagianAwal={bagian} onClose={() => setTambah(false)}
         onDone={async (baru, satker) => { setTambah(false); await reload(); setBagian(satker); setPilih(baru); toast(`${judulRuang(baru)} ditambahkan. Sekarang bisa dibooking; tambahkan foto bila ada.`); }} />}
     </div>
   );
 }
 
 // Detail ruangan: nama, satuan kerja (bagian), kapasitas, link dokumentasi foto, dan tema layar ruangan.
-function DetailPanel({ room, data, daftarSatker, temaLain, memuat, onSaved }) {
+function DetailPanel({ room, data, terpakai, temaLain, memuat, onSaved }) {
   const { toast, alert, confirm } = useFeedback();
   const awal = { nama: room, satuan_kerja: data.satuan_kerja || '', kapasitas: data.kapasitas ?? '', link_foto: data.link_foto || '', tema: temaRuang(room, { [room]: data }).key };
   const [form, setForm] = useState(awal);
@@ -232,14 +234,13 @@ function DetailPanel({ room, data, daftarSatker, temaLain, memuat, onSaved }) {
       <div className="mt-4 grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
         <label className="block"><span className="block text-xs font-semibold text-slate-700 mb-1">Nama ruangan</span>
           <input value={form.nama} onChange={set('nama')} maxLength={150} className={inputCls} /></label>
-        <label className="block"><span className="block text-xs font-semibold text-slate-700 mb-1">Satuan kerja / bagian</span>
-          <input value={form.satuan_kerja} onChange={set('satuan_kerja')} maxLength={150} list="daftar-satker" className={inputCls} /></label>
+        <div><span className="block text-xs font-semibold text-slate-700 mb-1">Satuan kerja / bagian</span>
+          <PilihSatker value={form.satuan_kerja} onChange={(v) => setForm((f) => ({ ...f, satuan_kerja: v }))} terpakai={terpakai} /></div>
         <label className="block"><span className="block text-xs font-semibold text-slate-700 mb-1">Kapasitas (kursi)</span>
           <input type="number" min="1" max="10000" value={form.kapasitas} onChange={set('kapasitas')} placeholder="mis. 30" className={inputCls} /></label>
         <label className="block"><span className="block text-xs font-semibold text-slate-700 mb-1">Link dokumentasi foto</span>
           <input type="url" value={form.link_foto} onChange={set('link_foto')} maxLength={500} placeholder="https://drive.google.com/..." className={inputCls} /></label>
       </div>
-      <datalist id="daftar-satker">{daftarSatker.map((b) => <option key={b} value={b} />)}</datalist>
       <PilihTema room={form.nama.trim() || room} satker={form.satuan_kerja} tema={form.tema} temaLain={temaLain} onChange={(tema) => setForm((f) => ({ ...f, tema }))} />
       <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
         <LinkFotoRuang href={data.link_foto} className="text-xs font-semibold text-dinas hover:underline">Buka link dokumentasi foto</LinkFotoRuang>
@@ -256,47 +257,31 @@ function DetailPanel({ room, data, daftarSatker, temaLain, memuat, onSaved }) {
 function PilihTema({ room, satker, tema, temaLain, onChange }) {
   const t = temaRuang(room, { [room]: { tema } });
   const sama = temaLain[t.key] || [];
-  const penuhPalet = (p) => MOTIF.every((m) => temaLain[`${p}/${m.key}`]);
   return (
     <div className="mt-5 pt-4 border-t border-slate-200 grid lg:grid-cols-[minmax(0,1fr)_20rem] gap-5">
-      <div>
+      <div className="min-w-0">
         <div className="text-xs font-semibold text-slate-700">Tema layar ruangan</div>
         <p className="text-[11px] text-slate-500">Warna & motif layar depan ruangan dan popup fotonya. Buat beda tiap ruangan supaya mudah dikenali.</p>
-        <div className="mt-3 text-[11px] font-bold uppercase tracking-wider text-slate-500">Warna</div>
-        <div className="mt-1.5 flex flex-wrap gap-2" role="radiogroup" aria-label="Warna tema">
-          {PALET.map((p) => {
-            const on = p.key === t.palet.key;
-            return (
-              <button key={p.key} type="button" role="radio" aria-checked={on} title={p.label} onClick={() => onChange(`${p.key}/${t.motif.key}`)}
-                className={`relative w-9 h-9 rounded-full ring-2 ring-offset-2 transition ${on ? 'ring-dinas scale-110' : 'ring-transparent hover:ring-slate-300'} ${penuhPalet(p.key) && !on ? 'opacity-50' : ''}`}
-                style={{ background: `linear-gradient(135deg, ${p.latar} 50%, ${p.aksen} 50%)` }}>
-                <span className="sr-only">{p.label}</span>
-                {on && <span className="absolute inset-0 flex items-center justify-center material-symbols-outlined text-[16px] text-white drop-shadow">check</span>}
-              </button>
-            );
-          })}
-        </div>
-        <div className="mt-3 text-[11px] font-bold uppercase tracking-wider text-slate-500">Motif latar</div>
-        <div className="mt-1.5 flex flex-wrap gap-2" role="radiogroup" aria-label="Motif latar">
-          {MOTIF.map((m) => {
-            const on = m.key === t.motif.key;
-            const key = `${t.palet.key}/${m.key}`;
-            return (
-              <button key={m.key} type="button" role="radio" aria-checked={on} onClick={() => onChange(key)} style={t.style}
-                className={`relative w-20 h-12 rounded-lg overflow-hidden bg-latar ring-2 ring-offset-2 transition ${on ? 'ring-dinas' : 'ring-transparent hover:ring-slate-300'}`}>
-                <span className={`absolute inset-0 motif-${m.key}`} aria-hidden="true"></span>
-                <span className="relative text-[11px] font-bold text-white">{m.label}</span>
-                {temaLain[key] && <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-amber-400" title={`Dipakai: ${temaLain[key].map(judulRuang).join(', ')}`}></span>}
-              </button>
-            );
-          })}
+        <div className="mt-3 grid xl:grid-cols-2 gap-4">
+          <DaftarTema judul="Warna" items={PALET} aktif={t.palet.key} contoh="mis. hijau, biru, emas"
+            dipakai={(p) => temaLain[`${p.key}/${t.motif.key}`]} onPilih={(p) => onChange(`${p.key}/${t.motif.key}`)}
+            swatch={(p) => (
+              <span style={{ '--aksen': p.aksen, '--latar': p.latar }} className="relative block w-full h-full bg-latar">
+                <span className={`absolute inset-0 motif-${t.motif.key} opacity-60`}></span>
+                <span className="absolute left-1.5 bottom-1.5 w-6 h-1.5 rounded-full bg-aksen"></span>
+                <span className="absolute right-1.5 top-1.5 w-2.5 h-2.5 rounded-full bg-aksen"></span>
+              </span>
+            )} />
+          <DaftarTema judul="Motif latar" items={MOTIF} aktif={t.motif.key} contoh="mis. batik, garis, titik"
+            dipakai={(m) => temaLain[`${t.palet.key}/${m.key}`]} onPilih={(m) => onChange(`${t.palet.key}/${m.key}`)}
+            swatch={(m) => <span style={t.style} className="relative block w-full h-full bg-latar"><span className={`absolute inset-0 motif-${m.key}`}></span></span>} />
         </div>
         {sama.length > 0
           ? <p className="mt-3 px-3 py-2 rounded-lg bg-amber-50 border border-amber-200 text-[11px] text-amber-800">Tema {t.palet.label} · {t.motif.label} juga dipakai {sama.map(judulRuang).join(', ')}. Pilih kombinasi lain supaya layarnya beda.</p>
-          : <p className="mt-3 text-[11px] text-emerald-700 inline-flex items-center gap-1"><span className="material-symbols-outlined text-[15px]">check_circle</span>Tema ini hanya dipakai ruangan ini. Titik kuning = motif sudah dipakai ruangan lain.</p>}
+          : <p className="mt-3 text-[11px] text-emerald-700 inline-flex items-center gap-1"><span className="material-symbols-outlined text-[15px]">check_circle</span>Tema {t.palet.label} · {t.motif.label} hanya dipakai ruangan ini.</p>}
       </div>
       {/* Pratinjau layar ruangan */}
-      <div style={t.style} className="relative self-start rounded-2xl overflow-hidden bg-latar text-white p-4 min-h-[11rem]" aria-label="Pratinjau layar ruangan">
+      <div style={t.style} className="relative self-start rounded-2xl overflow-hidden bg-latar text-white p-4 min-h-[11rem] lg:sticky lg:top-4" aria-label="Pratinjau layar ruangan">
         <div className={`absolute inset-0 motif-${t.motif.key} opacity-60`} aria-hidden="true"></div>
         <div className="absolute inset-0" style={{ background: 'radial-gradient(60% 70% at 100% 100%, color-mix(in srgb, var(--aksen) 25%, transparent), transparent 70%)' }} aria-hidden="true"></div>
         <div className="relative">
@@ -305,6 +290,62 @@ function PilihTema({ room, satker, tema, temaLain, onChange }) {
           <div className="font-display text-xl font-extrabold leading-tight line-clamp-2">{judulRuang(room)}</div>
           <span className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full ring-1 ring-emerald-400/40 bg-emerald-400/15 text-emerald-300 text-[10px] font-bold uppercase tracking-wider"><span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>Tersedia</span>
           <div className="mt-3 flex gap-1">{[0, 1, 2, 3, 4].map((i) => <span key={i} className={`h-1.5 rounded-full ${i === 0 ? 'w-6 bg-aksen' : 'w-1.5 bg-white/25'}`}></span>)}</div>
+          <div className="mt-3 text-[10px] text-white/50">{t.palet.label} · {t.motif.label}</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Daftar pilihan tema (warna / motif, masing-masing 40) yang ringkas: bisa dicari, dikelompokkan per `grup`,
+// digulir di kotak setinggi tetap. Pilihan yang (dengan pasangan warna/motif saat ini) sudah dipakai ruangan lain
+// diberi keterangan. items = [{ key, label, grup }]; swatch(item) = isi kotak pratinjau kecil.
+function DaftarTema({ judul, items, aktif, contoh, swatch, dipakai, onPilih }) {
+  const [cari, setCari] = useState('');
+  const boxRef = useRef(null);
+  const q = cari.trim().toLowerCase();
+  const daftar = items.filter((x) => !q || x.label.toLowerCase().includes(q) || x.grup.toLowerCase().includes(q));
+  const grup = [...new Set(daftar.map((x) => x.grup))];
+  const label = items.find((x) => x.key === aktif)?.label;
+  // Saat dibuka: gulir daftar (bukan halaman) ke pilihan yang sedang dipakai.
+  useEffect(() => {
+    const box = boxRef.current;
+    const el = box?.querySelector('[aria-checked="true"]');
+    if (el) box.scrollTop = el.offsetTop - box.clientHeight / 2 + el.offsetHeight / 2;
+  }, []);
+  return (
+    <div className="min-w-0">
+      <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500">{judul} <span className="normal-case tracking-normal font-semibold text-slate-400">· {label} · {items.length} pilihan</span></div>
+      <div className="mt-1.5 rounded-xl border border-slate-200 bg-white">
+        <div className="relative border-b border-slate-200">
+          <span className="material-symbols-outlined absolute left-2.5 top-1/2 -translate-y-1/2 text-[17px] text-slate-400" aria-hidden="true">search</span>
+          <input type="search" value={cari} onChange={(e) => setCari(e.target.value)} placeholder={`Cari ${judul.toLowerCase()}… (${contoh})`} aria-label={`Cari ${judul.toLowerCase()}`}
+            className="w-full h-9 pl-8 pr-3 rounded-t-xl text-xs outline-none focus:bg-slate-50" />
+        </div>
+        <div ref={boxRef} className="relative max-h-60 overflow-y-auto overscroll-contain px-1.5 pb-1.5" role="radiogroup" aria-label={judul}>
+          {grup.map((g) => (
+            <div key={g}>
+              <div className="sticky top-0 z-10 bg-white/95 backdrop-blur px-1 pt-2 pb-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">{g}</div>
+              <div className="grid sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2 gap-1">
+                {daftar.filter((x) => x.grup === g).map((x) => {
+                  const on = x.key === aktif;
+                  const pakai = dipakai(x);
+                  return (
+                    <button key={x.key} type="button" role="radio" aria-checked={on} onClick={() => onPilih(x)}
+                      className={`flex items-center gap-2.5 w-full px-1.5 py-1.5 rounded-lg text-left transition ${on ? 'bg-dinas/10 ring-1 ring-dinas' : 'hover:bg-slate-50'}`}>
+                      <span className="shrink-0 w-14 h-8 rounded-md overflow-hidden" aria-hidden="true">{swatch(x)}</span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-xs font-semibold text-slate-800 truncate">{x.label}</span>
+                        {pakai && <span className="block text-[10px] text-amber-700 truncate" title={`Dipakai: ${pakai.map(judulRuang).join(', ')}`}>Dipakai {pakai.map(judulRuang).join(', ')}</span>}
+                      </span>
+                      {on && <span className="material-symbols-outlined shrink-0 text-[18px] text-dinas" aria-hidden="true">check_circle</span>}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+          {!daftar.length && <p className="px-2 py-6 text-center text-xs text-slate-500">"{cari.trim()}" tidak ditemukan.</p>}
         </div>
       </div>
     </div>
@@ -312,7 +353,7 @@ function PilihTema({ room, satker, tema, temaLain, onChange }) {
 }
 
 // Dialog tambah ruangan baru: langsung bisa dibooking setelah disimpan.
-function TambahRuangDialog({ daftarSatker, bagianAwal, onClose, onDone }) {
+function TambahRuangDialog({ terpakai, bagianAwal, onClose, onDone }) {
   const { alert } = useFeedback();
   const [form, setForm] = useState({ nama: '', satuan_kerja: bagianAwal || '', kapasitas: '', link_foto: '', fasilitas: '' });
   const [saving, setSaving] = useState(false);
@@ -353,9 +394,8 @@ function TambahRuangDialog({ daftarSatker, bagianAwal, onClose, onDone }) {
         <div className="p-5 grid sm:grid-cols-2 gap-4">
           <label className="block sm:col-span-2"><span className="block text-xs font-semibold text-slate-700 mb-1">Nama ruangan <span className="text-red-600">*</span></span>
             <input value={form.nama} onChange={set('nama')} maxLength={150} autoFocus placeholder="mis. Ruang Rapat Biro Perencanaan" className={inputCls} /></label>
-          <label className="block"><span className="block text-xs font-semibold text-slate-700 mb-1">Satuan kerja / bagian <span className="text-red-600">*</span></span>
-            <input value={form.satuan_kerja} onChange={set('satuan_kerja')} maxLength={150} list="tambah-satker" placeholder="Pilih atau ketik satuan kerja baru" className={inputCls} />
-            <datalist id="tambah-satker">{daftarSatker.map((b) => <option key={b} value={b} />)}</datalist></label>
+          <div><span className="block text-xs font-semibold text-slate-700 mb-1">Satuan kerja / bagian <span className="text-red-600">*</span></span>
+            <PilihSatker value={form.satuan_kerja} onChange={(v) => setForm((f) => ({ ...f, satuan_kerja: v }))} terpakai={terpakai} placeholder="Pilih dari daftar atau ketik nama baru" /></div>
           <label className="block"><span className="block text-xs font-semibold text-slate-700 mb-1">Kapasitas (kursi)</span>
             <input type="number" min="1" max="10000" value={form.kapasitas} onChange={set('kapasitas')} placeholder="mis. 30" className={inputCls} /></label>
           <label className="block sm:col-span-2"><span className="block text-xs font-semibold text-slate-700 mb-1">Link dokumentasi foto</span>

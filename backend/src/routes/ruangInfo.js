@@ -34,8 +34,20 @@ const NAMA_RE = /^[\p{L}\p{N} .,()&'-]+$/u;
 const slugOf = (r) => r.toLowerCase().trim().replace(/\s+/g, '-');
 const MAX_KAPASITAS = 10000;
 // Tema layar ruangan "<palet>/<motif>" -- sama dengan frontend/src/utils/temaRuang.js.
-const TEMA_PALET = ['emas', 'zamrud', 'safir', 'marun', 'ungu', 'jingga', 'limau', 'toska', 'mawar', 'perak', 'tembaga', 'nila', 'kuning', 'hutan'];
-const TEMA_MOTIF = ['kawung', 'garis', 'titik', 'kotak'];
+// 40 warna; 14 warna awal di depan (urutan isi awal migration 0034).
+const TEMA_PALET = [
+  'emas', 'zamrud', 'safir', 'marun', 'ungu', 'jingga', 'limau', 'toska', 'mawar', 'perak',
+  'tembaga', 'nila', 'kuning', 'hutan', 'delima', 'ceri', 'koral', 'salem', 'magenta', 'cabai',
+  'terakota', 'kunyit', 'mustard', 'sawo', 'kopi', 'mint', 'pandan', 'zaitun', 'lumut', 'giok',
+  'pinus', 'langit', 'samudra', 'kobalt', 'lavender', 'violet', 'arang', 'batu', 'pasir', 'mutiara',
+];
+// 40 motif; 4 motif awal di depan supaya ruangan baru tetap mendapat motif itu lebih dulu (temaBebas).
+const TEMA_MOTIF = [
+  'kawung', 'garis', 'titik', 'kotak', 'parang', 'truntum', 'ceplok', 'megamendung', 'tumpal', 'sekar',
+  'songket', 'sisik', 'tenun', 'garis-tegak', 'garis-datar', 'garis-silang', 'garis-tebal', 'garis-ganda', 'garis-halus', 'zigzag',
+  'gelombang', 'chevron', 'titik-rapat', 'titik-besar', 'titik-selang', 'lingkaran', 'gelembung', 'konsentris', 'riak', 'bintang',
+  'plus', 'kotak-kecil', 'catur', 'wajik', 'segitiga', 'heksagon', 'anyaman', 'bata', 'tangga', 'daun',
+];
 const validTema = (t) => typeof t === 'string' && TEMA_PALET.includes(t.split('/')[0]) && TEMA_MOTIF.includes(t.split('/')[1]) && t.split('/').length === 2;
 // Tema pertama yang belum dipakai ruangan lain (ruangan baru otomatis tampil beda).
 async function temaBebas(db) {

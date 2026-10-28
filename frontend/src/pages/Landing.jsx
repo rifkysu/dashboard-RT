@@ -442,6 +442,9 @@ export default function Landing() {
     return () => { cancelAnimationFrame(frame); window.removeEventListener('scroll', onScroll); };
   }, [ready]);
 
+  // Klik logo saat sudah di landing page: tidak ada pindah halaman, jadi gulir sendiri ke paling atas.
+  const keAtas = () => window.scrollTo({ top: 0, behavior: window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+
   if (guestRedirect) return <Navigate to={guestRedirect} replace />;
   if (loading || landingDown === null) return <div className="min-h-screen flex items-center justify-center bg-dinas-dark text-white/60 text-sm">Memuat…</div>;
   if (user) return <Navigate to="/dashboard" replace />;
@@ -451,7 +454,8 @@ export default function Landing() {
     <div className="min-h-screen flex flex-col bg-[#f3f4f7] text-slate-800">
       <header className={`sticky top-0 z-40 backdrop-blur-md border-b text-white transition-[background-color,box-shadow,border-color] duration-300 ${scrolled ? 'bg-dinas-ink/90 border-white/10 shadow-[0_8px_30px_-12px_rgba(0,0,0,.5)]' : 'bg-dinas-dark border-transparent'}`}>
         <div className="w-full max-w-[1800px] mx-auto px-4 md:px-8 xl:px-14 py-3 flex items-center justify-between gap-4">
-          <Link to="/" className="flex items-center gap-3 min-w-0">
+          {/* Logo: kembali ke awal landing page (gulir ke atas, hapus #bagian & ?filter di URL). */}
+          <Link to="/" onClick={keAtas} aria-label="Biro Umum dan Rumah Tangga, kembali ke awal halaman" className="flex items-center gap-3 min-w-0 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-kuningan">
             <BrandMark size="sm" className="!border-white/20" />
             <div className="min-w-0">
               <div className="font-display text-sm font-extrabold leading-tight truncate tracking-tight">Biro Umum dan Rumah Tangga</div>
@@ -731,13 +735,13 @@ export default function Landing() {
         <div className="absolute inset-0 bg-kawung-gelap opacity-60 [mask-image:linear-gradient(to_top,#000,transparent)]" aria-hidden="true"></div>
         <div className="relative w-full max-w-[1800px] mx-auto px-4 md:px-8 xl:px-14 py-12 grid gap-10 md:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)]">
           <div>
-            <div className="flex items-center gap-3">
+            <Link to="/" onClick={keAtas} className="flex w-fit items-center gap-3 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-kuningan">
               <BrandMark size="sm" className="!border-white/20" />
               <div>
                 <div className="font-display text-sm font-extrabold text-white">Biro Umum dan Rumah Tangga</div>
                 <div className="text-xs mt-0.5">Kementerian Ketenagakerjaan Republik Indonesia</div>
               </div>
-            </div>
+            </Link>
             <p className="text-xs leading-relaxed mt-4 max-w-[42ch]">Aplikasi internal untuk pengajuan pemeliharaan, pengadaan, pengelolaan kendaraan dinas, dan booking ruang rapat.</p>
             <a href={`mailto:${EMAIL}`} className="mt-4 inline-flex items-center gap-2 text-xs font-semibold text-white/85 hover:text-white">
               <span className="material-symbols-outlined text-[16px] text-[#e4c27f]">mail</span>{EMAIL}

@@ -844,7 +844,7 @@ def isi_aplikasi():
         h1("3. Modul & Fitur"),
         h2("3.1 Landing Page & Layar Kiosk"),
         *bullets(
-            "Halaman awal (**/**) memakai lebar layar penuh (maks. 1800px, tanpa ruang kosong kiri-kanan di monitor lebar) dan berisi hero, ringkasan modul, dan jadwal ruang rapat (tampilan grid "
+            "Halaman awal (**/**) memakai lebar layar penuh (maks. 1800px, tanpa ruang kosong kiri-kanan di monitor lebar; klik logo Biro Umum di navbar/footer kembali ke awal halaman) dan berisi hero, ringkasan modul, dan jadwal ruang rapat (tampilan grid "
             "ruangan x tanggal per bulan, sama dengan menu Ruang Rapat) yang diperbarui real-time.",
             "Tampilan landing: hero dengan aurora, grid titik, partikel emas, kata judul berganti, kartu live "
             "*Ruang rapat hari ini* berbingkai cahaya + chip kaca melayang; judul bagian disorot emas; kartu layanan "
@@ -873,7 +873,7 @@ def isi_aplikasi():
             "hari berganti otomatis tiap 30 detik dengan bilah waktu, kembali ke hari ini setelah hari ke-7; disentuh = jeda 30 detik dengan hitung mundur lalu lanjut sendiri). Publik & baca saja, "
             "real-time + muat ulang tiap menit, layar dijaga tetap menyala (Wake Lock), tombol layar penuh. **/ruang** "
             "menampilkan daftar ruangan; di landing page tiap ruangan pada kartu *Ruang rapat hari ini* dan bagian "
-            "*Layar per ruangan* (dikelompokkan per bagian) menautkan ke layarnya. Layar menampilkan satuan kerja & kapasitas ruangan, dan **tiap ruangan punya tema layar sendiri** (14 warna x 4 motif latar: Kawung, Garis, Titik, Kotak; isi awal 28 ruangan semuanya beda, migration 0034); warna status tetap hijau/kuning/merah di semua layar. Ruangan yang punya foto (Serbaguna, Setjen II, Biro Umum, serta 11 ruangan satuan kerja lain dari link dokumentasi spreadsheet) menampilkan "
+            "*Layar per ruangan* (dikelompokkan per bagian) menautkan ke layarnya. Layar menampilkan satuan kerja & kapasitas ruangan, dan **tiap ruangan punya tema layar sendiri** (40 warna dalam 5 kelompok: merah & merah muda, jingga/kuning/cokelat, hijau, biru & ungu, netral; x 40 motif latar dalam 4 kelompok: batik & tradisional (Kawung, Parang, Truntum, Mega Mendung, dll.), garis, titik & lingkaran, geometris & alam; warna & motif dipilih admin dari daftar ringkas yang bisa dicari; isi awal 28 ruangan semuanya beda, migration 0034); warna status tetap hijau/kuning/merah di semua layar. Ruangan yang punya foto (Serbaguna, Setjen II, Biro Umum, serta 11 ruangan satuan kerja lain dari link dokumentasi spreadsheet) menampilkan "
             "**slideshow foto ruangan** (crossfade + zoom pelan, ganti otomatis tiap 5 detik (disentuh = jeda 10 detik), swipe/panah, ketuk = tampilan penuh "
             "yang tertutup sendiri setelah 45 detik) beserta daftar **fasilitas**. Foto & fasilitas diambil dari database "
             "(`GET /ruang-info`) dan dikelola Admin/Kabag di menu **Foto & Fasilitas Ruang** (lihat 3.9); "
@@ -960,8 +960,8 @@ def isi_aplikasi():
         h2("3.6 Ruang Rapat"),
         *bullets(
             "Daftar ruangan diambil dari database (tabel `ruang_profil`, dikelola Admin/Kabag di menu Foto & Fasilitas Ruang), "
-            "isi awal 28 ruangan dari spreadsheet *Data Ruang Rapat di Sekretariat Jenderal Kemnaker* (migration 0033), "
-            "dikelompokkan per **bagian / satuan kerja**: Biro Umum (Biro Umum, Setjen II, Tri Dharma, Serbaguna, Graha Kemnaker), "
+            "isi awal 28 ruangan dari spreadsheet *Data Ruang Rapat di Sekretariat Jenderal Kemnaker* (migration 0033) ditambah Galeri Kemnaker (migration 0035), total 29, "
+            "dikelompokkan per **bagian / satuan kerja**: Biro Umum (Biro Umum, Setjen II, Tri Dharma, Serbaguna, Graha Kemnaker, Galeri Kemnaker), "
             "Biro Keuangan dan BMN, Biro Perencanaan, Politeknik Ketenagakerjaan, Biro Hubungan Masyarakat, Biro Kerja Sama, "
             "Biro Organisasi dan SDM Aparatur, PPSDM Ketenagakerjaan, dan Pusat Pasar Kerja.",
             "Tombol **Bagian** di atas kalender memilih bagian yang ditampilkan (default bagian pertama, ada *Semua bagian*); "
@@ -1027,7 +1027,7 @@ def isi_aplikasi():
         *bullets(
             "Menu **/foto-ruang** (Admin/Kabag) untuk mengelola **daftar ruang rapat per bagian** serta slideshow foto & daftar fasilitas yang tampil di "
             "layar depan tiap ruang rapat (/ruang/:ruang). Ruangan dipilih lewat tombol bagian lalu kartu ruangan (sampul serta jumlah foto & fasilitas).",
-            "**Tambah Ruangan**: nama, satuan kerja / bagian (pilih yang ada atau ketik baru), kapasitas kursi, link dokumentasi foto "
+            "**Tambah Ruangan**: nama, satuan kerja / bagian (daftar pilihan yang bisa dicari: satuan kerja yang sudah punya ruangan beserta jumlahnya, lalu unit Sekretariat Jenderal, Inspektorat Jenderal, dan keempat Ditjen dari frontend/src/utils/satuanKerja.js; nama lain tetap boleh diketik), kapasitas kursi, link dokumentasi foto "
             "(mis. folder Google Drive), dan fasilitas (satu per baris, ikon dipilih otomatis). Ruangan baru langsung bisa dibooking dan "
             "tampil di jadwal, kiosk, landing, & layar ruangan.",
             "**Detail ruangan**: ubah nama (semua booking & foto ikut pindah ke nama baru), satuan kerja, kapasitas, dan link foto. "
