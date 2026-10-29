@@ -350,6 +350,9 @@ model RuangProfil {
   maintenance     Boolean   @default(false)
   maintenance_ket String?   @db.VarChar(300)
   maintenance_at  DateTime?
+  // Periode blokir opsional (migration 0040): NULL keduanya = sampai dibuka lagi.
+  maintenance_mulai  DateTime? @db.Date
+  maintenance_sampai DateTime? @db.Date
   updated_by   Int?
   created_at   DateTime @default(now())
   updated_at   DateTime @default(now()) @updatedAt

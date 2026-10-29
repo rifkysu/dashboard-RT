@@ -45,6 +45,15 @@ function reload() {
   return lagi;
 }
 
+// Status maintenance bergantung tanggal (periode blokir mulai/berakhir) tanpa ada perubahan data, jadi layar
+// yang terbuka berhari-hari (kiosk, layar ruangan) memuat ulang sendiri sesaat setelah tengah malam.
+let midnightTimer = null;
+function jadwalTengahMalam() {
+  clearTimeout(midnightTimer);
+  const besok = new Date(); besok.setHours(24, 0, 30, 0);
+  midnightTimer = setTimeout(() => { reload(); jadwalTengahMalam(); }, besok - Date.now());
+}
+
 export default function useRuangInfo() {
   const [state, setState] = useState(shared);
   useEffect(() => {
@@ -59,10 +68,11 @@ export default function useRuangInfo() {
         clearTimeout(liveTimer);
         liveTimer = setTimeout(reload, 400);
       });
+      jadwalTengahMalam();
     }
     return () => {
       listeners.delete(setState);
-      if (!listeners.size && unsubscribeLive) { unsubscribeLive(); unsubscribeLive = null; clearTimeout(liveTimer); }
+      if (!listeners.size && unsubscribeLive) { unsubscribeLive(); unsubscribeLive = null; clearTimeout(liveTimer); clearTimeout(midnightTimer); }
     };
   }, []);
   return { info: state.info, urutan: state.urutan, error: state.error, loaded: state.loaded, reload };

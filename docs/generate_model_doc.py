@@ -1051,11 +1051,15 @@ def isi_aplikasi():
             "**Detail ruangan**: ubah nama (semua booking & foto ikut pindah ke nama baru), satuan kerja, kapasitas, dan link foto. "
             "**Hapus ruangan** ditolak bila masih ada booking aktif hari ini/ke depan; riwayat booking lama tetap tersimpan (dan tetap bisa diedit selama ruangannya tidak diganti), foto ikut dihapus.",
             "**Blokir ruangan (maintenance)**: panel di atas Detail ruangan untuk menutup sementara satu ruangan (mis. renovasi, AC rusak) "
-            "dengan keterangan opsional. Selama diblokir ruangan tidak bisa dibooking pegawai maupun tamu (dicek di server di dalam kunci "
-            "booking ruangan; pindah booking ke ruangan itu juga ditolak), pilihannya dinonaktifkan di form booking, dan diberi label "
-            "**Maintenance** di kartu ruangan admin, header tabel jadwal & kiosk, kartu status kiosk, landing, layar ruangan (banner besar), "
-            "dan Dashboard (tidak dihitung sebagai ruang kosong). Booking yang sudah ada tidak dihapus: admin diberi tahu jumlah booking "
-            "aktif hari ini/ke depan supaya bisa dipindah/dibatalkan. *Buka blokir* mengembalikan ruangan; keduanya tercatat di Riwayat Aktivitas.",
+            "dengan keterangan opsional. Lama blokir dipilih: *Sampai dibuka lagi*, atau *Pilih tanggal* (dari tanggal - sampai tanggal; "
+            "tanggal selesai dikosongkan = 1 hari). Selama periode blokir ruangan tidak bisa dibooking pegawai maupun tamu (dicek di server "
+            "di dalam kunci booking ruangan untuk setiap tanggal booking; pindah ruangan atau ganti tanggal booking ke periode itu juga ditolak), "
+            "dan di luar periode tetap bisa dibooking. Setelah tanggal selesai lewat, ruangan otomatis bisa dibooking lagi (layar yang terbuka lama seperti kiosk & layar ruangan memuat ulang status ruangan sesaat setelah tengah malam). Label **Maintenance** "
+            "(dengan tanggalnya bila terjadwal, mis. *Maintenance 3 Nov - 5 Nov*) tampil di form booking, kartu ruangan admin, header tabel "
+            "jadwal & kiosk, kartu status kiosk, landing, dan layar ruangan (banner besar saat hari ini termasuk periode). Dashboard hanya "
+            "menghitung ruangan yang diblokir hari ini (tidak dihitung sebagai ruang kosong). Ruangan tanpa batas tanggal dinonaktifkan di "
+            "pilihan form booking. Booking yang sudah ada tidak dihapus: admin diberi tahu jumlah booking aktif pada periode blokir supaya "
+            "bisa dipindah/dibatalkan. *Buka blokir* mengembalikan ruangan; blokir, ubah periode/keterangan, dan buka blokir tercatat di Riwayat Aktivitas.",
             "Kapasitas & link dokumentasi foto tampil di popup foto ruangan, kartu ruangan di form booking, dan kartu status kiosk.",
             "**Tema layar ruangan** di panel Detail ruangan: pilih warna & motif latar dengan pratinjau; tema yang sudah dipakai ruangan lain "
             "ditandai supaya tiap layar tetap beda. Ruangan baru otomatis mendapat tema yang belum dipakai.",
@@ -1190,7 +1194,7 @@ def isi_aplikasi():
             ["", "POST, PUT, DELETE /ruang-info/ruangan", "Admin/Kabag",
              "Tambah ruangan, ubah detail/nama (booking & foto ikut pindah), hapus ruangan"],
             ["", "PUT /ruang-info/maintenance", "Admin/Kabag",
-             "Blokir/buka blokir ruangan (maintenance) + keterangan; balas jumlah booking aktif terdampak"],
+             "Blokir/buka blokir ruangan (maintenance) + keterangan + periode opsional (mulai, sampai); balas jumlah booking aktif terdampak"],
             ["Maintenance", "GET /landing-status, GET /public-status/kiosk, GET /stream (SSE)", "Publik", "Status landing & kiosk, sinyal real-time"],
             ["", "GET / ; PUT /:menu_key", "Login; Admin/Kabag", "Baca & ubah mode maintenance"],
             ["Live", "GET /live/stream (SSE)", "Publik", "Satu sinyal real-time untuk semua modul"],
@@ -1227,7 +1231,7 @@ def isi_aplikasi():
             ["guest_accounts", "Akun tamu (login Google)",
              "google_sub unik; is_blocked (blokir admin); token_version untuk mencabut sesi"],
             ["ruang_foto", "Foto slideshow ruang rapat", "room + sort_order (urutan, 0 = sampul); file di uploads/ruang-foto/"],
-            ["ruang_profil", "Daftar ruang rapat (yang bisa dibooking)", "room = PK; satuan_kerja (bagian), kapasitas, link_foto, sort_order, tema (\"palet/motif\" layar ruangan); fasilitas JSONB [{ icon, label }]; maintenance, maintenance_ket, maintenance_at (ruangan diblokir sementara)"],
+            ["ruang_profil", "Daftar ruang rapat (yang bisa dibooking)", "room = PK; satuan_kerja (bagian), kapasitas, link_foto, sort_order, tema (\"palet/motif\" layar ruangan); fasilitas JSONB [{ icon, label }]; maintenance, maintenance_ket, maintenance_at, maintenance_mulai & maintenance_sampai (ruangan diblokir sementara; periode NULL = sampai dibuka lagi)"],
             ["maintenance_mode", "Status maintenance per menu", "menu_key unik"],
         ]),
 

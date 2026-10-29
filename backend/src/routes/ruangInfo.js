@@ -7,7 +7,7 @@ const { saveDataUrl } = require('../fileStorage');
 const { isGenuineDocumentDataUrl, maxDataUrlLength } = require('../fileSignature');
 const { requireAuth, requireRole, ADMIN_ROLES } = require('../middleware/auth');
 const { booking: B } = require('./ruangRapat');
-const { ruangValid, resetDaftarRuang } = require('../ruangList');
+const { ruangValid, resetDaftarRuang, blokirKena, isoTgl, teksPeriode } = require('../ruangList');
 const live = require('../live');
 const { nowLocal } = require('../clock');
 const { catat, ringkas, pilihKolom } = require('../audit');
@@ -59,7 +59,13 @@ async function temaBebas(db) {
   for (const m of TEMA_MOTIF) for (const p of TEMA_PALET) if (!dipakai.has(`${p}/${m}`)) return `${p}/${m}`;
   return null;
 }
-const profilOut = (p) => ({ satuan_kerja: p.satuan_kerja, kapasitas: p.kapasitas, link_foto: p.link_foto, tema: p.tema, fasilitas: Array.isArray(p.fasilitas) ? p.fasilitas : [], maintenance: !!p.maintenance, maintenance_ket: p.maintenance_ket ?? null, maintenance_at: p.maintenance_at ?? null });
+// maintenance = blokir masih berlaku (periode belum lewat); maintenance_hari_ini = hari ini termasuk periode blokir.
+const profilOut = (p, hariIni = nowLocal().date) => ({
+  satuan_kerja: p.satuan_kerja, kapasitas: p.kapasitas, link_foto: p.link_foto, tema: p.tema, fasilitas: Array.isArray(p.fasilitas) ? p.fasilitas : [],
+  maintenance: blokirKena(p, hariIni, '9999-12-31'), maintenance_hari_ini: blokirKena(p, hariIni, hariIni),
+  maintenance_mulai: isoTgl(p.maintenance_mulai), maintenance_sampai: isoTgl(p.maintenance_sampai),
+  maintenance_ket: p.maintenance_ket ?? null, maintenance_at: p.maintenance_at ?? null,
+});
 
 // Detail ruangan dari body -> { data } atau { error }. `wajib`: satuan kerja harus ada (tambah ruangan).
 function validDetail(b, wajib) {
@@ -274,9 +280,12 @@ router.put('/fasilitas', async (req, res) => {
   }
 });
 
-// Maintenance ruangan: { room, aktif: true|false, keterangan? }. Selama aktif ruangan tidak bisa dibooking
-// (pegawai & tamu); booking yang sudah ada tidak dihapus -> jumlahnya dikembalikan (`terdampak`) supaya
-// admin bisa memindahkan/membatalkannya sendiri.
+// Maintenance ruangan: { room, aktif: true|false, keterangan?, mulai?, sampai? }. Periode opsional
+// ('YYYY-MM-DD'): tanpa tanggal = diblokir sampai dibuka lagi; sampai kosong = hanya tanggal mulai (1 hari).
+// Selama periode itu ruangan tidak bisa dibooking (pegawai & tamu); booking yang sudah ada tidak dihapus ->
+// jumlah yang kena periode dikembalikan (`terdampak`) supaya admin bisa memindahkan/membatalkannya sendiri.
+const TGL_RE = /^\d{4}-\d{2}-\d{2}$/;
+const tglValid = (v) => typeof v === 'string' && TGL_RE.test(v) && !Number.isNaN(Date.parse(`${v}T00:00:00Z`)) && isoTgl(`${v}T00:00:00Z`) === v;
 router.put('/maintenance', async (req, res) => {
   try {
     const { room, aktif } = req.body || {};
@@ -284,31 +293,54 @@ router.put('/maintenance', async (req, res) => {
     if (!(await validRoom(room))) return res.status(404).json({ message: 'Ruangan tidak ditemukan.' });
     if (typeof aktif !== 'boolean') return res.status(400).json({ message: 'Status maintenance tidak valid.' });
     if (ket.length > 300) return res.status(400).json({ message: 'Keterangan maintenance maksimal 300 karakter.' });
-    const today = new Date(`${nowLocal().date}T00:00:00Z`);
+    const hariIni = nowLocal().date;
+    let mulai = null, sampai = null;
+    if (aktif) {
+      mulai = req.body.mulai || null; sampai = req.body.sampai || null;
+      if ((mulai && !tglValid(mulai)) || (sampai && !tglValid(sampai))) return res.status(400).json({ message: 'Tanggal maintenance tidak valid.' });
+      if (sampai && !mulai) return res.status(400).json({ message: 'Isi tanggal mulai maintenance.' });
+      if (mulai && !sampai) sampai = mulai; // 1 hari
+      if (mulai && sampai < mulai) return res.status(400).json({ message: 'Tanggal selesai tidak boleh sebelum tanggal mulai.' });
+      if (sampai && sampai < hariIni) return res.status(400).json({ message: 'Periode maintenance sudah lewat. Pilih tanggal hari ini atau setelahnya.' });
+    }
+    const today = new Date(`${hariIni}T00:00:00Z`);
     const { lama, terdampak } = await prisma.$transaction(async (tx) => {
       // Kunci booking ruangan ini: booking yang sedang disimpan bersamaan selesai dulu (dan ikut terhitung).
       await B.lockRoom(tx, room);
-      const lama = await tx.ruangProfil.findUnique({ where: { room }, select: { maintenance: true, maintenance_ket: true, satuan_kerja: true } });
+      const lama = await tx.ruangProfil.findUnique({ where: { room }, select: { maintenance: true, maintenance_ket: true, maintenance_mulai: true, maintenance_sampai: true, satuan_kerja: true } });
+      const masihAktif = blokirKena(lama, hariIni, '9999-12-31');
       await tx.ruangProfil.update({
         where: { room },
-        data: { maintenance: aktif, maintenance_ket: aktif ? ket || null : null, maintenance_at: aktif ? (lama.maintenance ? undefined : new Date()) : null, updated_by: req.user.id },
+        data: {
+          maintenance: aktif, maintenance_ket: aktif ? ket || null : null,
+          maintenance_mulai: mulai ? new Date(`${mulai}T00:00:00Z`) : null, maintenance_sampai: sampai ? new Date(`${sampai}T00:00:00Z`) : null,
+          maintenance_at: aktif ? (masihAktif ? undefined : new Date()) : null, updated_by: req.user.id,
+        },
       });
-      const terdampak = aktif ? await tx.ruangRapat.count({ where: { room, cancelled_at: null, end_date: { gte: today } } }) : 0;
-      return { lama, terdampak };
+      // Booking aktif yang kena periode blokir (hari ini/ke depan).
+      const dari = mulai && mulai > hariIni ? new Date(`${mulai}T00:00:00Z`) : today;
+      const terdampak = aktif ? await tx.ruangRapat.count({ where: { room, cancelled_at: null, end_date: { gte: dari }, ...(sampai ? { booking_date: { lte: new Date(`${sampai}T00:00:00Z`) } } : {}) } }) : 0;
+      return { lama: { ...lama, masihAktif }, terdampak };
     });
+    const periode = teksPeriode(mulai, sampai);
     const status = (on) => (on ? 'Maintenance (tidak bisa dibooking)' : 'Bisa dibooking');
-    const ketBaru = aktif ? ket || null : null;
+    const teksLama = lama.masihAktif ? teksPeriode(isoTgl(lama.maintenance_mulai), isoTgl(lama.maintenance_sampai)) || 'Sampai dibuka lagi' : null;
+    const teksBaru = aktif ? periode || 'Sampai dibuka lagi' : null;
+    const ketLama = lama.masihAktif ? lama.maintenance_ket || null : null, ketBaru = aktif ? ket || null : null;
     const perubahan = [];
-    if (lama.maintenance !== aktif) perubahan.push({ label: 'Status ruangan', dari: status(lama.maintenance), ke: status(aktif) });
-    if ((lama.maintenance_ket || null) !== ketBaru) perubahan.push({ label: 'Keterangan maintenance', dari: lama.maintenance_ket || null, ke: ketBaru });
+    if (lama.masihAktif !== aktif) perubahan.push({ label: 'Status ruangan', dari: status(lama.masihAktif), ke: status(aktif) });
+    if (teksLama !== teksBaru) perubahan.push({ label: 'Periode maintenance', dari: teksLama, ke: teksBaru });
+    if (ketLama !== ketBaru) perubahan.push({ label: 'Keterangan maintenance', dari: ketLama, ke: ketBaru });
     if (perubahan.length) {
-      await catat(req, { modul: 'ruangan', aksi: aktif ? 'maintenance' : 'buka-maintenance', ref: refRuang(room, lama.satuan_kerja), perubahan, keterangan: terdampak ? `${terdampak} booking aktif hari ini/ke depan tetap tersimpan.` : undefined });
+      await catat(req, { modul: 'ruangan', aksi: aktif ? 'maintenance' : 'buka-maintenance', ref: refRuang(room, lama.satuan_kerja), perubahan, keterangan: terdampak ? `${terdampak} booking aktif pada periode blokir tetap tersimpan.` : undefined });
     }
     // Jadwal, kiosk, layar ruangan & dashboard ikut diperbarui.
     live.broadcast('ruang-rapat'); B.broadcastChange();
     res.json({
       terdampak,
-      message: aktif ? `Ruangan ${room} diblokir (maintenance) dan tidak bisa dibooking sampai maintenance dimatikan.` : `Ruangan ${room} kembali bisa dibooking.`,
+      message: !aktif ? `Ruangan ${room} kembali bisa dibooking.`
+        : periode ? `Ruangan ${room} diblokir (maintenance) tanggal ${periode}; di luar tanggal itu tetap bisa dibooking.`
+        : `Ruangan ${room} diblokir (maintenance) dan tidak bisa dibooking sampai maintenance dimatikan.`,
     });
   } catch (err) {
     logger.error('PUT maintenance ruangan gagal', { error: err });

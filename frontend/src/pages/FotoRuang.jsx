@@ -5,7 +5,8 @@ import api from '../api';
 import { useFeedback } from '../components/Feedback';
 import { useDaftarRuang } from '../hooks/useRuangInfo';
 import BagianTabs, { useBagian } from '../components/BagianTabs';
-import { LinkFotoRuang } from '../components/RuangFoto';
+import { LinkFotoRuang, periodeMaintenance, tglPanjang } from '../components/RuangFoto';
+import { iso } from '../hooks/useMonthSchedule';
 import PilihSatker from '../components/PilihSatker';
 import { prosesFoto } from '../utils/prosesFoto';
 import { judulRuang, slugRuang } from '../utils/ruang';
@@ -148,7 +149,7 @@ export default function FotoRuang() {
                   ? <img src={sampul.src} alt="" className="w-full h-full object-cover transition duration-500 group-hover:scale-105" />
                   : <span className="absolute inset-0 flex flex-col items-center justify-center text-slate-400"><span className="material-symbols-outlined text-[28px]">add_photo_alternate</span><span className="text-[11px] font-semibold mt-0.5">Belum ada foto</span></span>}
                 {aktif && <span className="absolute top-2 right-2 w-6 h-6 rounded-full bg-dinas text-white flex items-center justify-center shadow"><span className="material-symbols-outlined text-[16px]">check</span></span>}
-                {d?.maintenance && <span className="absolute bottom-2 left-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500 text-white text-[10px] font-bold shadow"><span className="material-symbols-outlined text-[13px]">construction</span>Maintenance</span>}
+                {d?.maintenance && <span className="absolute bottom-2 left-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500 text-white text-[10px] font-bold shadow"><span className="material-symbols-outlined text-[13px]">construction</span>Maintenance{periodeMaintenance(d) ? ` ${periodeMaintenance(d)}` : ''}</span>}
               </div>
               <div className="px-3 py-2.5">
                 <div className="font-bold text-sm text-slate-900 truncate" title={judulRuang(r)}>{judulRuang(r)}</div>
@@ -195,23 +196,40 @@ export default function FotoRuang() {
   );
 }
 
-// Blokir ruangan saat maintenance (renovasi, AC rusak, dll.): selama aktif ruangan tidak bisa dibooking pegawai
-// maupun tamu, dan diberi tanda "Maintenance" di form booking, jadwal, kiosk, layar ruangan, dan dashboard.
-// Booking yang sudah ada tidak dihapus -- admin diberi tahu jumlahnya supaya bisa dipindah/dibatalkan.
+// Blokir ruangan saat maintenance (renovasi, AC rusak, dll.): selama periode blokir ruangan tidak bisa dibooking
+// pegawai maupun tamu, dan diberi tanda "Maintenance" di form booking, jadwal, kiosk, layar ruangan, dan dashboard.
+// Periode opsional: "Sampai dibuka lagi" atau pilih tanggal (1 hari / dari-sampai). Setelah tanggal selesai lewat
+// ruangan otomatis bisa dibooking lagi. Booking yang sudah ada tidak dihapus -- admin diberi tahu jumlahnya.
 function MaintenancePanel({ room, data, memuat, reload }) {
   const { toast, alert, confirm } = useFeedback();
   const aktif = !!data.maintenance;
-  const [ket, setKet] = useState(data.maintenance_ket || '');
+  const today = iso();
+  // Blokir yang periodenya sudah lewat (maintenance = false) tidak dipakai sebagai isian awal: tanggalnya sudah
+  // lewat sehingga tombol Blokir akan terkunci.
+  const awal = aktif
+    ? { ket: data.maintenance_ket || '', pakaiTanggal: !!data.maintenance_mulai, mulai: data.maintenance_mulai || today, sampai: data.maintenance_sampai || '' }
+    : { ket: '', pakaiTanggal: false, mulai: today, sampai: '' };
+  const [form, setForm] = useState(awal);
   const [saving, setSaving] = useState(false);
-  useEffect(() => { setKet(data.maintenance_ket || ''); }, [data.maintenance_ket]);
+  useEffect(() => { setForm(awal); }, [data.maintenance, data.maintenance_ket, data.maintenance_mulai, data.maintenance_sampai]); // eslint-disable-line react-hooks/exhaustive-deps
+  const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
+  // Tanggal selesai kosong / sama = 1 hari.
+  const satuHari = !form.sampai || form.sampai === form.mulai;
+  const periodeForm = form.pakaiTanggal ? (satuHari ? tglPanjang(form.mulai) : `${tglPanjang(form.mulai)} – ${tglPanjang(form.sampai)}`) : '';
+  const berubah = aktif && (form.ket.trim() !== (data.maintenance_ket || '') || form.pakaiTanggal !== !!data.maintenance_mulai
+    || (form.pakaiTanggal && (form.mulai !== data.maintenance_mulai || (form.sampai || form.mulai) !== data.maintenance_sampai)));
+  const tanggalSalah = form.pakaiTanggal && (!form.mulai || (form.sampai && form.sampai < form.mulai) || (form.sampai || form.mulai) < today);
 
-  async function kirim(nextAktif, keterangan) {
+  async function kirim(nextAktif) {
     setSaving(true);
     try {
-      const r = await api.put('/ruang-info/maintenance', { room, aktif: nextAktif, keterangan });
+      const body = nextAktif
+        ? { room, aktif: true, keterangan: form.ket, ...(form.pakaiTanggal ? { mulai: form.mulai, sampai: form.sampai || form.mulai } : {}) }
+        : { room, aktif: false };
+      const r = await api.put('/ruang-info/maintenance', body);
       await reload();
-      if (r.data.terdampak && nextAktif && !aktif) {
-        alert({ title: 'Ruangan diblokir', message: `Masih ada ${r.data.terdampak} booking aktif (hari ini/ke depan) di ${judulRuang(room)}. Booking tersebut tidak otomatis dibatalkan — pindahkan atau batalkan lewat menu Jadwal Ruang Rapat bila perlu.`, tone: 'warning' });
+      if (r.data.terdampak && nextAktif) {
+        alert({ title: aktif ? 'Blokir diperbarui' : 'Ruangan diblokir', message: `Masih ada ${r.data.terdampak} booking aktif di ${judulRuang(room)} pada periode blokir. Booking tersebut tidak otomatis dibatalkan — pindahkan atau batalkan lewat menu Jadwal Ruang Rapat bila perlu.`, tone: 'warning' });
       } else toast(r.data.message);
     } catch (e) {
       alert({ title: 'Gagal', message: e.response?.data?.message || 'Coba lagi.', tone: 'error' });
@@ -220,52 +238,86 @@ function MaintenancePanel({ room, data, memuat, reload }) {
   async function blokir() {
     if (!(await confirm({
       title: `Blokir ${judulRuang(room)}?`,
-      message: 'Ruangan ditandai sedang maintenance: pegawai dan tamu tidak bisa membooking ruangan ini sampai blokir dibuka lagi. Booking yang sudah ada tidak dihapus.',
+      message: form.pakaiTanggal
+        ? `Pegawai dan tamu tidak bisa membooking ruangan ini pada tanggal ${periodeForm}. Di luar tanggal itu ruangan tetap bisa dibooking. Booking yang sudah ada tidak dihapus.`
+        : 'Ruangan ditandai sedang maintenance: pegawai dan tamu tidak bisa membooking ruangan ini sampai blokir dibuka lagi. Booking yang sudah ada tidak dihapus.',
       confirmText: 'Ya, Blokir Ruangan', tone: 'warning', icon: 'construction',
     }))) return;
-    kirim(true, ket);
+    kirim(true);
   }
   async function buka() {
-    if (!(await confirm({ title: `Buka blokir ${judulRuang(room)}?`, message: 'Maintenance selesai, ruangan kembali bisa dibooking.', confirmText: 'Ya, Buka Blokir', tone: 'info', icon: 'lock_open' }))) return;
-    kirim(false, '');
+    if (!(await confirm({ title: `Buka blokir ${judulRuang(room)}?`, message: 'Maintenance selesai/dibatalkan, ruangan kembali bisa dibooking.', confirmText: 'Ya, Buka Blokir', tone: 'info', icon: 'lock_open' }))) return;
+    kirim(false);
   }
-  const sejak = data.maintenance_at ? new Date(data.maintenance_at).toLocaleString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : null;
+  const periodeAktif = periodeMaintenance(data, true);
+  const terjadwal = aktif && !data.maintenance_hari_ini;
 
   return (
     <div className={`mt-3 rounded-2xl border p-5 ${aktif ? 'bg-amber-50 border-amber-300' : 'bg-white border-slate-200'}`}>
       <div className="flex flex-wrap items-start gap-3">
         <span className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${aktif ? 'bg-amber-500 text-white' : 'bg-emerald-50 text-emerald-700'}`}>
-          <span className="material-symbols-outlined text-[22px]">{aktif ? 'construction' : 'event_available'}</span>
+          <span className="material-symbols-outlined text-[22px]">{terjadwal ? 'event_busy' : aktif ? 'construction' : 'event_available'}</span>
         </span>
         <div className="min-w-0 flex-1">
-          <h3 className="font-bold leading-tight">{aktif ? 'Ruangan sedang maintenance (diblokir)' : 'Ruangan bisa dibooking'}</h3>
+          <h3 className="font-bold leading-tight">{terjadwal ? 'Maintenance terjadwal' : aktif ? 'Ruangan sedang maintenance (diblokir)' : 'Ruangan bisa dibooking'}</h3>
           <p className="text-[11px] text-slate-600 mt-0.5">
             {aktif
-              ? `Pegawai & tamu tidak bisa membooking ruangan ini${sejak ? ` · diblokir sejak ${sejak}` : ''}. Tekan "Buka blokir" bila maintenance sudah selesai.`
-              : 'Sedang direnovasi, rusak, atau dipakai perbaikan? Blokir ruangan supaya tidak bisa dibooking sementara.'}
+              ? periodeAktif
+                ? `Pegawai & tamu tidak bisa membooking ruangan ini pada ${periodeAktif}. Setelah itu ruangan otomatis bisa dibooking lagi.`
+                : 'Pegawai & tamu tidak bisa membooking ruangan ini sampai blokir dibuka. Tekan "Buka blokir" bila maintenance sudah selesai.'
+              : 'Sedang direnovasi, rusak, atau dipakai perbaikan? Blokir ruangan supaya tidak bisa dibooking — terus-menerus atau hanya pada tanggal tertentu.'}
           </p>
         </div>
       </div>
-      <div className="mt-4 flex flex-col sm:flex-row gap-2">
-        <label className="flex-1 min-w-0">
-          <span className="sr-only">Keterangan maintenance</span>
-          <input value={ket} onChange={(e) => setKet(e.target.value)} maxLength={300} disabled={saving || memuat}
-            placeholder="Keterangan (opsional), mis. Perbaikan AC sampai 5 Nov" className={inputCls} />
-        </label>
-        {aktif ? (
-          <div className="flex gap-2">
-            {ket.trim() !== (data.maintenance_ket || '') && (
-              <button type="button" onClick={() => kirim(true, ket)} disabled={saving || memuat} className="px-4 h-10 rounded-lg border border-amber-400 bg-white text-sm font-semibold text-amber-800 hover:bg-amber-100 disabled:opacity-50">Simpan keterangan</button>
-            )}
-            <button type="button" onClick={buka} disabled={saving || memuat} className="inline-flex items-center justify-center gap-1.5 px-4 h-10 rounded-lg bg-emerald-600 text-white text-sm font-bold hover:bg-emerald-700 disabled:opacity-50">
-              <span className="material-symbols-outlined text-[18px]">lock_open</span>{saving ? 'Menyimpan…' : 'Buka blokir'}
+
+      <div className="mt-4 space-y-3">
+        <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Lama blokir">
+          {[[false, 'all_inclusive', 'Sampai dibuka lagi'], [true, 'date_range', 'Pilih tanggal']].map(([v, icon, label]) => (
+            <button key={label} type="button" role="radio" aria-checked={form.pakaiTanggal === v} disabled={saving || memuat}
+              onClick={() => setForm((f) => ({ ...f, pakaiTanggal: v }))}
+              className={`inline-flex items-center gap-1.5 px-3 h-9 rounded-lg border text-xs font-semibold disabled:opacity-50 ${form.pakaiTanggal === v ? 'bg-amber-100 border-amber-400 text-amber-900' : 'bg-white border-slate-300 text-slate-600 hover:bg-slate-50'}`}>
+              <span className="material-symbols-outlined text-[16px]">{icon}</span>{label}
             </button>
+          ))}
+        </div>
+        {form.pakaiTanggal && (
+          <div className="grid sm:grid-cols-2 gap-2">
+            <label className="block">
+              <span className="block text-[11px] font-semibold text-slate-600 mb-1">Dari tanggal</span>
+              <input type="date" value={form.mulai} min={today} disabled={saving || memuat} className={inputCls}
+                onChange={(e) => { const v = e.target.value; setForm((f) => ({ ...f, mulai: v, sampai: f.sampai && f.sampai < v ? v : f.sampai })); }} />
+            </label>
+            <label className="block">
+              <span className="block text-[11px] font-semibold text-slate-600 mb-1">Sampai tanggal <span className="font-normal text-slate-400">(kosongkan bila hanya 1 hari)</span></span>
+              <input type="date" value={form.sampai} min={form.mulai || today} onChange={set('sampai')} disabled={saving || memuat} className={inputCls} />
+            </label>
+            <p className="sm:col-span-2 text-[11px] text-slate-500">
+              {tanggalSalah ? <span className="text-red-600 font-semibold">Periode tidak valid: tanggal tidak boleh sudah lewat, dan tanggal selesai tidak boleh sebelum tanggal mulai.</span>
+                : <>Diblokir <b>{satuHari ? '1 hari' : 'beberapa hari'}</b>: {periodeForm}.</>}
+            </p>
           </div>
-        ) : (
-          <button type="button" onClick={blokir} disabled={saving || memuat} className="inline-flex items-center justify-center gap-1.5 px-4 h-10 rounded-lg bg-amber-500 text-white text-sm font-bold hover:bg-amber-600 disabled:opacity-50">
-            <span className="material-symbols-outlined text-[18px]">block</span>{saving ? 'Menyimpan…' : 'Blokir ruangan (maintenance)'}
-          </button>
         )}
+        <div className="flex flex-col sm:flex-row gap-2">
+          <label className="flex-1 min-w-0">
+            <span className="sr-only">Keterangan maintenance</span>
+            <input value={form.ket} onChange={set('ket')} maxLength={300} disabled={saving || memuat}
+              placeholder="Keterangan (opsional), mis. Perbaikan AC" className={inputCls} />
+          </label>
+          {aktif ? (
+            <div className="flex gap-2">
+              {berubah && (
+                <button type="button" onClick={() => kirim(true)} disabled={saving || memuat || tanggalSalah} className="px-4 h-10 rounded-lg border border-amber-400 bg-white text-sm font-semibold text-amber-800 hover:bg-amber-100 disabled:opacity-50">Simpan perubahan</button>
+              )}
+              <button type="button" onClick={buka} disabled={saving || memuat} className="inline-flex items-center justify-center gap-1.5 px-4 h-10 rounded-lg bg-emerald-600 text-white text-sm font-bold hover:bg-emerald-700 disabled:opacity-50">
+                <span className="material-symbols-outlined text-[18px]">lock_open</span>{saving ? 'Menyimpan…' : 'Buka blokir'}
+              </button>
+            </div>
+          ) : (
+            <button type="button" onClick={blokir} disabled={saving || memuat || tanggalSalah} className="inline-flex items-center justify-center gap-1.5 px-4 h-10 rounded-lg bg-amber-500 text-white text-sm font-bold hover:bg-amber-600 disabled:opacity-50">
+              <span className="material-symbols-outlined text-[18px]">block</span>{saving ? 'Menyimpan…' : 'Blokir ruangan (maintenance)'}
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );

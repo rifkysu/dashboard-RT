@@ -144,7 +144,7 @@ router.post('/',async(req,res)=>{try{
   const group=crypto.randomUUID(); // semua tanggal pengajuan ini = satu booking (lihat booking_group)
   const rows=await prisma.$transaction(async tx=>{
     await lockRoom(tx,room);
-    const mt=await cekMaintenance(tx,room);if(mt)throw new HttpError(409,mt);
+    const mt=await cekMaintenance(tx,room,ranges);if(mt)throw new HttpError(409,mt);
     // Semua tanggal dicek dulu; kalau ada satu saja yang bentrok, tidak ada yang disimpan.
     const conflicts=[];
     for(const [bd,ed] of ranges){const c=await tx.ruangRapat.findFirst({where:conflictWhere(room,bd,ed,time(start),time(end)),orderBy:[{booking_date:'asc'},{start_time:'asc'}]});if(c)conflicts.push(c);}
@@ -188,8 +188,6 @@ router.put('/:id',async(req,res)=>{try{
     const current=await tx.ruangRapat.findFirst({where:{id,cancelled_at:null},select:{room:true,booking_date:true,end_date:true,start_time:true,end_time:true}});
     if(!current)throw new HttpError(404,'Booking tidak ditemukan atau sudah dibatalkan.');
     if(current.room!==pre.room)throw new HttpError(409,'Booking baru saja diubah pengguna lain. Muat ulang lalu coba lagi.');
-    // Pindah ke ruangan yang sedang maintenance ditolak; booking yang memang sudah di ruangan itu tetap bisa diedit/dijadwal ulang.
-    if(data.room&&data.room!==pre.room){const mt=await cekMaintenance(tx,data.room);if(mt)throw new HttpError(409,mt);}
     const scheduleChanged=b.room!==undefined||b.date!==undefined||b.end_date!==undefined||b.start!==undefined||b.end!==undefined;
     if(scheduleChanged){
       const bd=b.date!==undefined?date(b.date):current.booking_date;
@@ -198,6 +196,8 @@ router.put('/:id',async(req,res)=>{try{
       const st=b.start!==undefined?time(b.start):current.start_time, et=b.end!==undefined?time(b.end):current.end_time;
       if(et<=st)throw new HttpError(400,'Jam selesai harus lebih besar dari jam mulai.');
       const rangeErr=rangeError(bd,ed);if(rangeErr)throw new HttpError(400,rangeErr);
+      // Pindah ruangan / ganti tanggal ke periode maintenance ditolak; edit lain (agenda, jam, PIC) di tanggal yang sama tetap boleh.
+      if((data.room&&data.room!==pre.room)||+bd!==+current.booking_date||+ed!==+current.end_date){const mt=await cekMaintenance(tx,data.room??pre.room,[[bd,ed]]);if(mt)throw new HttpError(409,mt);}
       const conflict=await tx.ruangRapat.findFirst({where:conflictWhere(data.room??pre.room,bd,ed,st,et,id),orderBy:[{booking_date:'asc'},{start_time:'asc'}]});
       if(conflict)throw new HttpError(409,conflictMessage(conflict));
       Object.assign(data,{booking_date:bd,end_date:ed,start_time:st,end_time:et});

@@ -3,7 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import api from '../api';
 import BrandMark from '../components/BrandMark';
 import FotoRuangSlideshow from '../components/FotoRuangSlideshow';
-import { RuangMaintenanceTag } from '../components/RuangFoto';
+import { RuangMaintenanceTag, tglPanjang } from '../components/RuangFoto';
 import useRuangRapatLive from '../hooks/useRuangRapatLive';
 import { iso } from '../hooks/useMonthSchedule';
 import { judulRuang, slugRuang, ruangDariSlug } from '../utils/ruang';
@@ -369,12 +369,14 @@ function Layar({ room }) {
         <section className="flex flex-col min-h-0 hero-in">
           <div className="text-sm md:text-base font-semibold uppercase tracking-[0.2em] text-aksen">{info?.[room]?.satuan_kerja || 'Ruang rapat'}{info?.[room]?.kapasitas ? <span className="text-white/50"> · {info[room].kapasitas} kursi</span> : null}</div>
           <h1 className="font-display font-extrabold tracking-tight leading-[1.02] text-[clamp(2.4rem,6vw,5.5rem)] mt-1">{judulRuang(room)}</h1>
-          {info?.[room]?.maintenance && (
+          {info?.[room]?.maintenance_hari_ini && (
             <div className="mt-4 self-start flex items-start gap-3 rounded-2xl bg-amber-400 text-amber-950 px-5 py-3 shadow-lg">
               <span className="material-symbols-outlined text-[28px]">construction</span>
               <div>
                 <div className="text-lg md:text-xl font-extrabold">Ruangan sedang maintenance</div>
-                <div className="text-sm md:text-base font-semibold opacity-80">{info[room].maintenance_ket || 'Sementara tidak bisa dibooking.'}</div>
+                <div className="text-sm md:text-base font-semibold opacity-80">
+                  {[info[room].maintenance_ket, info[room].maintenance_sampai ? `Sampai ${tglPanjang(info[room].maintenance_sampai)}` : 'Sementara tidak bisa dibooking.'].filter(Boolean).join(' · ')}
+                </div>
               </div>
             </div>
           )}

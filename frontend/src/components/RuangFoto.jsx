@@ -106,16 +106,30 @@ export function RuangFotoButton({ room, className = '', title, children, onOpen 
   );
 }
 
-// Label "Maintenance" untuk ruangan yang sedang diblokir Admin/Kabag (menu Foto & Fasilitas Ruang).
-// Tidak tampil apa-apa bila ruangan bisa dibooking. dark = untuk latar gelap (kiosk, layar ruangan).
+// 'YYYY-MM-DD' -> "3 Nov" / "3 Nov 2026" (panjang).
+const tglPendek = (s) => new Date(`${s}T00:00:00`).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
+export const tglPanjang = (s) => new Date(`${s}T00:00:00`).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+// Periode blokir maintenance ruangan -> "3 Nov" / "3 Nov – 5 Nov"; '' bila diblokir sampai dibuka lagi.
+export function periodeMaintenance(d, panjang = false) {
+  const m = d?.maintenance_mulai, s = d?.maintenance_sampai;
+  if (!m) return '';
+  const f = panjang ? tglPanjang : tglPendek;
+  return !s || m === s ? f(m) : `${f(m)} – ${f(s)}`;
+}
+
+// Label "Maintenance" untuk ruangan yang diblokir Admin/Kabag (menu Foto & Fasilitas Ruang). Hari ini termasuk
+// periode blokir -> "Maintenance"; blokir terjadwal nanti -> "Maintenance 3–5 Nov". Tidak tampil apa-apa bila
+// ruangan bisa dibooking. dark = untuk latar gelap (kiosk, layar ruangan).
 export function RuangMaintenanceTag({ room, dark = false, className = '' }) {
   const { info } = useRuangInfo();
   const d = info?.[room];
   if (!d?.maintenance) return null;
+  const periode = periodeMaintenance(d);
+  const judul = `Maintenance${periode ? ` ${periodeMaintenance(d, true)}` : ''}${d.maintenance_ket ? `: ${d.maintenance_ket}` : ''} — tidak bisa dibooking${periode ? ' pada tanggal tersebut' : ''}`;
   return (
-    <span title={d.maintenance_ket ? `Maintenance: ${d.maintenance_ket}` : 'Sedang maintenance, tidak bisa dibooking'}
+    <span title={judul}
       className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-bold normal-case tracking-normal ${dark ? 'bg-amber-400 text-amber-950' : 'bg-amber-100 text-amber-800 ring-1 ring-amber-300'} ${className}`}>
-      <span className="material-symbols-outlined text-[13px]">construction</span>Maintenance
+      <span className="material-symbols-outlined text-[13px]">construction</span>Maintenance{periode && (!d.maintenance_hari_ini || d.maintenance_mulai !== d.maintenance_sampai) ? ` ${periode}` : ''}
     </span>
   );
 }
@@ -132,7 +146,9 @@ export function RuangPilihanInfo({ room }) {
       {data?.maintenance && (
         <div className="mb-2 flex items-start gap-1.5 rounded-lg border border-amber-300 bg-amber-50 px-2.5 py-1.5 text-[11px] font-semibold text-amber-800">
           <span className="material-symbols-outlined text-[15px]">construction</span>
-          <span>Ruangan sedang maintenance{data.maintenance_ket ? `: ${data.maintenance_ket}` : ''}. Sementara tidak bisa dibooking — pilih ruangan lain.</span>
+          <span>{periodeMaintenance(data)
+            ? <>Ruangan maintenance tanggal {periodeMaintenance(data, true)}{data.maintenance_ket ? ` (${data.maintenance_ket})` : ''}. Tidak bisa dibooking pada tanggal tersebut — pilih tanggal lain atau ruangan lain.</>
+            : <>Ruangan sedang maintenance{data.maintenance_ket ? `: ${data.maintenance_ket}` : ''}. Sementara tidak bisa dibooking — pilih ruangan lain.</>}</span>
         </div>
       )}
       <div className="flex items-center gap-2.5">
