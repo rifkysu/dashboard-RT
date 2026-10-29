@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { holidayLabel } from '../utils/holidays';
-import { RuangFotoButton, RuangThumb } from './RuangFoto';
+import { RuangFotoButton, RuangThumb, RuangMaintenanceTag } from './RuangFoto';
 import { iso, monthKey, monthDays, MAX_MONTHS } from '../hooks/useMonthSchedule';
 import { judulRuang } from '../utils/ruang';
 import useRuangInfo from '../hooks/useRuangInfo';
@@ -212,6 +212,7 @@ export default function RoomDateGrid({ months, rooms, items, loading, loadingMor
                     </span>
                     <span className="min-w-0">
                       <span className="line-clamp-2 leading-snug">{judulRuang(room)}</span>
+                      <RuangMaintenanceTag room={room} dark={kiosk} className="mt-0.5" />
                       <span className={`block text-[10px] font-semibold normal-case tracking-normal ${kiosk ? 'text-white/50 group-hover:text-[#e4c27f]' : 'text-slate-500 group-hover:text-dinas'}`}>Lihat foto & fasilitas</span>
                     </span>
                   </RuangFotoButton>

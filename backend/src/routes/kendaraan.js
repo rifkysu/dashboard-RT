@@ -2,7 +2,7 @@ const express = require('express');
 const prisma = require('../prisma');
 const { saveDataUrl, hideFilePaths } = require('../fileStorage');
 const { isGenuineDocumentDataUrl, maxDataUrlLength } = require('../fileSignature');
-const { requireAuth, requireRole, EDITOR_ROLES } = require('../middleware/auth');
+const { requireAuth, requireRole, ADMIN_ROLES } = require('../middleware/auth');
 const { requireNotInMaintenance } = require('../middleware/maintenance');
 const logger = require('../logger');
 const { catat, ringkas, pilihKolom } = require('../audit');
@@ -131,9 +131,8 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// Tambah kendaraan terbuka untuk semua role yang login (seperti Ruang Rapat);
-// ubah/hapus/service tetap hanya kabag/PIC/admin.
-router.post('/', async (req, res) => {
+// Tambah/ubah/hapus kendaraan & service hanya Admin/Kabag; karyawan & PIC hanya bisa melihat data dan detail.
+router.post('/', requireRole(ADMIN_ROLES), async (req, res) => {
   try {
     const { nama_barang, merk, tipe, no_bpkb, plate, plat_khusus, jenis, sub, status, tanggal_perolehan, masa_berlaku_stnk, waktu_pajak, photos } = req.body;
 
@@ -208,7 +207,7 @@ router.post('/', async (req, res) => {
   }
 });
 
-router.put('/:id', requireRole(EDITOR_ROLES), async (req, res) => {
+router.put('/:id', requireRole(ADMIN_ROLES), async (req, res) => {
   try {
     const id = parseId(req.params.id);
     if (!id) return res.status(400).json({ message: 'ID kendaraan tidak valid.' });
@@ -287,7 +286,7 @@ router.put('/:id', requireRole(EDITOR_ROLES), async (req, res) => {
   }
 });
 
-router.delete('/:id', requireRole(EDITOR_ROLES), async (req, res) => {
+router.delete('/:id', requireRole(ADMIN_ROLES), async (req, res) => {
   try {
     const id = parseId(req.params.id);
     if (!id) return res.status(400).json({ message: 'ID kendaraan tidak valid.' });
@@ -345,7 +344,7 @@ router.get('/:id/services', async (req, res) => {
   }
 });
 
-router.post('/:id/services', requireRole(EDITOR_ROLES), async (req, res) => {
+router.post('/:id/services', requireRole(ADMIN_ROLES), async (req, res) => {
   try {
     const id = parseId(req.params.id);
     if (!id) return res.status(400).json({ message: 'ID kendaraan tidak valid.' });
@@ -408,7 +407,7 @@ router.get('/:id/services/:serviceId/invoice', async (req, res) => {
 });
 
 // Upload / ganti invoice PDF untuk riwayat service yang sudah ada.
-router.put('/:id/services/:serviceId/invoice', requireRole(EDITOR_ROLES), async (req, res) => {
+router.put('/:id/services/:serviceId/invoice', requireRole(ADMIN_ROLES), async (req, res) => {
   try {
     const id = parseId(req.params.id);
     const serviceId = parseId(req.params.serviceId);
@@ -440,7 +439,7 @@ router.put('/:id/services/:serviceId/invoice', requireRole(EDITOR_ROLES), async 
   }
 });
 
-router.delete('/:id/services/:serviceId', requireRole(EDITOR_ROLES), async (req, res) => {
+router.delete('/:id/services/:serviceId', requireRole(ADMIN_ROLES), async (req, res) => {
   try {
     const id = parseId(req.params.id);
     const serviceId = parseId(req.params.serviceId);

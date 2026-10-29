@@ -11,7 +11,7 @@ const { createRateLimiter } = require('../middleware/security');
 const { saveDataUrl } = require('../fileStorage');
 const { createCaptcha, verifyCaptcha } = require('../captcha');
 const { booking: B } = require('./ruangRapat');
-const { ruangValid } = require('../ruangList');
+const { ruangValid, cekMaintenance } = require('../ruangList');
 const { nowLocal } = require('../clock');
 
 // =====================================================================
@@ -249,6 +249,8 @@ router.post('/bookings', submitIpLimiter, requireGuest, submitGuestLimiter, requ
       if (active >= MAX_ACTIVE) throw new B.HttpError(429, `Anda sudah punya ${MAX_ACTIVE} booking aktif. Tunggu sampai ada yang selesai/dibatalkan.`);
 
       await B.lockRoom(tx, room);
+      const mt = await cekMaintenance(tx, room);
+      if (mt) throw new B.HttpError(409, mt);
       const conflict = await tx.ruangRapat.findFirst({ where: B.conflictWhere(room, bd, ed, B.time(start), B.time(end)), orderBy: [{ booking_date: 'asc' }, { start_time: 'asc' }] });
       if (conflict) throw new B.HttpError(409, B.conflictMessage(conflict));
 

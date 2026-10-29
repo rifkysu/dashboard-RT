@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import api from '../api';
 import BrandMark from '../components/BrandMark';
 import FotoRuangSlideshow from '../components/FotoRuangSlideshow';
+import { RuangMaintenanceTag } from '../components/RuangFoto';
 import useRuangRapatLive from '../hooks/useRuangRapatLive';
 import { iso } from '../hooks/useMonthSchedule';
 import { judulRuang, slugRuang, ruangDariSlug } from '../utils/ruang';
@@ -92,6 +93,7 @@ function PilihRuang({ salah }) {
                   : <span className="w-14 h-14 shrink-0 rounded-xl bg-white/5 ring-1 ring-white/10 inline-flex items-center justify-center"><span className="material-symbols-outlined text-aksen">meeting_room</span></span>}
                 <span className="min-w-0">
                 <span className="block font-display text-lg font-bold">{judulRuang(r)}</span>
+                <RuangMaintenanceTag room={r} dark />
                 <span className="block text-xs text-white/50 font-mono mt-0.5">/ruang/{slugRuang(r)}</span>
                 {fotoRuangDari(info, r) && <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-aksen mt-1"><span className="material-symbols-outlined text-[14px]">photo_library</span>{info[r].foto.length} foto{info[r].fasilitas.length ? ' & fasilitas' : ''}</span>}
                 </span>
@@ -367,6 +369,15 @@ function Layar({ room }) {
         <section className="flex flex-col min-h-0 hero-in">
           <div className="text-sm md:text-base font-semibold uppercase tracking-[0.2em] text-aksen">{info?.[room]?.satuan_kerja || 'Ruang rapat'}{info?.[room]?.kapasitas ? <span className="text-white/50"> · {info[room].kapasitas} kursi</span> : null}</div>
           <h1 className="font-display font-extrabold tracking-tight leading-[1.02] text-[clamp(2.4rem,6vw,5.5rem)] mt-1">{judulRuang(room)}</h1>
+          {info?.[room]?.maintenance && (
+            <div className="mt-4 self-start flex items-start gap-3 rounded-2xl bg-amber-400 text-amber-950 px-5 py-3 shadow-lg">
+              <span className="material-symbols-outlined text-[28px]">construction</span>
+              <div>
+                <div className="text-lg md:text-xl font-extrabold">Ruangan sedang maintenance</div>
+                <div className="text-sm md:text-base font-semibold opacity-80">{info[room].maintenance_ket || 'Sementara tidak bisa dibooking.'}</div>
+              </div>
+            </div>
+          )}
 
           <div className="mt-5">
             {memuat ? (

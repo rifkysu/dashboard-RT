@@ -148,6 +148,7 @@ export default function FotoRuang() {
                   ? <img src={sampul.src} alt="" className="w-full h-full object-cover transition duration-500 group-hover:scale-105" />
                   : <span className="absolute inset-0 flex flex-col items-center justify-center text-slate-400"><span className="material-symbols-outlined text-[28px]">add_photo_alternate</span><span className="text-[11px] font-semibold mt-0.5">Belum ada foto</span></span>}
                 {aktif && <span className="absolute top-2 right-2 w-6 h-6 rounded-full bg-dinas text-white flex items-center justify-center shadow"><span className="material-symbols-outlined text-[16px]">check</span></span>}
+                {d?.maintenance && <span className="absolute bottom-2 left-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500 text-white text-[10px] font-bold shadow"><span className="material-symbols-outlined text-[13px]">construction</span>Maintenance</span>}
               </div>
               <div className="px-3 py-2.5">
                 <div className="font-bold text-sm text-slate-900 truncate" title={judulRuang(r)}>{judulRuang(r)}</div>
@@ -177,6 +178,8 @@ export default function FotoRuang() {
         </div>
       </div>
 
+      <MaintenancePanel key={`mt-${room}`} room={room} data={data} memuat={memuat} reload={reload} />
+
       <DetailPanel key={`detail-${room}`} room={room} data={data} terpakai={terpakai} temaLain={temaLain} memuat={memuat}
         onSaved={async (baru, satker) => { await reload(); if (satker && bagian && satker !== bagian) setBagian(satker); setPilih(baru); }} />
 
@@ -188,6 +191,82 @@ export default function FotoRuang() {
 
       {tambah && <TambahRuangDialog terpakai={terpakai} bagianAwal={bagian} onClose={() => setTambah(false)}
         onDone={async (baru, satker) => { setTambah(false); await reload(); setBagian(satker); setPilih(baru); toast(`${judulRuang(baru)} ditambahkan. Sekarang bisa dibooking; tambahkan foto bila ada.`); }} />}
+    </div>
+  );
+}
+
+// Blokir ruangan saat maintenance (renovasi, AC rusak, dll.): selama aktif ruangan tidak bisa dibooking pegawai
+// maupun tamu, dan diberi tanda "Maintenance" di form booking, jadwal, kiosk, layar ruangan, dan dashboard.
+// Booking yang sudah ada tidak dihapus -- admin diberi tahu jumlahnya supaya bisa dipindah/dibatalkan.
+function MaintenancePanel({ room, data, memuat, reload }) {
+  const { toast, alert, confirm } = useFeedback();
+  const aktif = !!data.maintenance;
+  const [ket, setKet] = useState(data.maintenance_ket || '');
+  const [saving, setSaving] = useState(false);
+  useEffect(() => { setKet(data.maintenance_ket || ''); }, [data.maintenance_ket]);
+
+  async function kirim(nextAktif, keterangan) {
+    setSaving(true);
+    try {
+      const r = await api.put('/ruang-info/maintenance', { room, aktif: nextAktif, keterangan });
+      await reload();
+      if (r.data.terdampak && nextAktif && !aktif) {
+        alert({ title: 'Ruangan diblokir', message: `Masih ada ${r.data.terdampak} booking aktif (hari ini/ke depan) di ${judulRuang(room)}. Booking tersebut tidak otomatis dibatalkan — pindahkan atau batalkan lewat menu Jadwal Ruang Rapat bila perlu.`, tone: 'warning' });
+      } else toast(r.data.message);
+    } catch (e) {
+      alert({ title: 'Gagal', message: e.response?.data?.message || 'Coba lagi.', tone: 'error' });
+    } finally { setSaving(false); }
+  }
+  async function blokir() {
+    if (!(await confirm({
+      title: `Blokir ${judulRuang(room)}?`,
+      message: 'Ruangan ditandai sedang maintenance: pegawai dan tamu tidak bisa membooking ruangan ini sampai blokir dibuka lagi. Booking yang sudah ada tidak dihapus.',
+      confirmText: 'Ya, Blokir Ruangan', tone: 'warning', icon: 'construction',
+    }))) return;
+    kirim(true, ket);
+  }
+  async function buka() {
+    if (!(await confirm({ title: `Buka blokir ${judulRuang(room)}?`, message: 'Maintenance selesai, ruangan kembali bisa dibooking.', confirmText: 'Ya, Buka Blokir', tone: 'info', icon: 'lock_open' }))) return;
+    kirim(false, '');
+  }
+  const sejak = data.maintenance_at ? new Date(data.maintenance_at).toLocaleString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : null;
+
+  return (
+    <div className={`mt-3 rounded-2xl border p-5 ${aktif ? 'bg-amber-50 border-amber-300' : 'bg-white border-slate-200'}`}>
+      <div className="flex flex-wrap items-start gap-3">
+        <span className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${aktif ? 'bg-amber-500 text-white' : 'bg-emerald-50 text-emerald-700'}`}>
+          <span className="material-symbols-outlined text-[22px]">{aktif ? 'construction' : 'event_available'}</span>
+        </span>
+        <div className="min-w-0 flex-1">
+          <h3 className="font-bold leading-tight">{aktif ? 'Ruangan sedang maintenance (diblokir)' : 'Ruangan bisa dibooking'}</h3>
+          <p className="text-[11px] text-slate-600 mt-0.5">
+            {aktif
+              ? `Pegawai & tamu tidak bisa membooking ruangan ini${sejak ? ` · diblokir sejak ${sejak}` : ''}. Tekan "Buka blokir" bila maintenance sudah selesai.`
+              : 'Sedang direnovasi, rusak, atau dipakai perbaikan? Blokir ruangan supaya tidak bisa dibooking sementara.'}
+          </p>
+        </div>
+      </div>
+      <div className="mt-4 flex flex-col sm:flex-row gap-2">
+        <label className="flex-1 min-w-0">
+          <span className="sr-only">Keterangan maintenance</span>
+          <input value={ket} onChange={(e) => setKet(e.target.value)} maxLength={300} disabled={saving || memuat}
+            placeholder="Keterangan (opsional), mis. Perbaikan AC sampai 5 Nov" className={inputCls} />
+        </label>
+        {aktif ? (
+          <div className="flex gap-2">
+            {ket.trim() !== (data.maintenance_ket || '') && (
+              <button type="button" onClick={() => kirim(true, ket)} disabled={saving || memuat} className="px-4 h-10 rounded-lg border border-amber-400 bg-white text-sm font-semibold text-amber-800 hover:bg-amber-100 disabled:opacity-50">Simpan keterangan</button>
+            )}
+            <button type="button" onClick={buka} disabled={saving || memuat} className="inline-flex items-center justify-center gap-1.5 px-4 h-10 rounded-lg bg-emerald-600 text-white text-sm font-bold hover:bg-emerald-700 disabled:opacity-50">
+              <span className="material-symbols-outlined text-[18px]">lock_open</span>{saving ? 'Menyimpan…' : 'Buka blokir'}
+            </button>
+          </div>
+        ) : (
+          <button type="button" onClick={blokir} disabled={saving || memuat} className="inline-flex items-center justify-center gap-1.5 px-4 h-10 rounded-lg bg-amber-500 text-white text-sm font-bold hover:bg-amber-600 disabled:opacity-50">
+            <span className="material-symbols-outlined text-[18px]">block</span>{saving ? 'Menyimpan…' : 'Blokir ruangan (maintenance)'}
+          </button>
+        )}
+      </div>
     </div>
   );
 }

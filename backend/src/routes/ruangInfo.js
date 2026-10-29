@@ -59,7 +59,7 @@ async function temaBebas(db) {
   for (const m of TEMA_MOTIF) for (const p of TEMA_PALET) if (!dipakai.has(`${p}/${m}`)) return `${p}/${m}`;
   return null;
 }
-const profilOut = (p) => ({ satuan_kerja: p.satuan_kerja, kapasitas: p.kapasitas, link_foto: p.link_foto, tema: p.tema, fasilitas: Array.isArray(p.fasilitas) ? p.fasilitas : [] });
+const profilOut = (p) => ({ satuan_kerja: p.satuan_kerja, kapasitas: p.kapasitas, link_foto: p.link_foto, tema: p.tema, fasilitas: Array.isArray(p.fasilitas) ? p.fasilitas : [], maintenance: !!p.maintenance, maintenance_ket: p.maintenance_ket ?? null, maintenance_at: p.maintenance_at ?? null });
 
 // Detail ruangan dari body -> { data } atau { error }. `wajib`: satuan kerja harus ada (tambah ruangan).
 function validDetail(b, wajib) {
@@ -271,6 +271,48 @@ router.put('/fasilitas', async (req, res) => {
   } catch (err) {
     logger.error('PUT fasilitas ruang gagal', { error: err });
     res.status(500).json({ message: 'Gagal menyimpan fasilitas.' });
+  }
+});
+
+// Maintenance ruangan: { room, aktif: true|false, keterangan? }. Selama aktif ruangan tidak bisa dibooking
+// (pegawai & tamu); booking yang sudah ada tidak dihapus -> jumlahnya dikembalikan (`terdampak`) supaya
+// admin bisa memindahkan/membatalkannya sendiri.
+router.put('/maintenance', async (req, res) => {
+  try {
+    const { room, aktif } = req.body || {};
+    const ket = typeof req.body?.keterangan === 'string' ? req.body.keterangan.trim().replace(/\s+/g, ' ') : '';
+    if (!(await validRoom(room))) return res.status(404).json({ message: 'Ruangan tidak ditemukan.' });
+    if (typeof aktif !== 'boolean') return res.status(400).json({ message: 'Status maintenance tidak valid.' });
+    if (ket.length > 300) return res.status(400).json({ message: 'Keterangan maintenance maksimal 300 karakter.' });
+    const today = new Date(`${nowLocal().date}T00:00:00Z`);
+    const { lama, terdampak } = await prisma.$transaction(async (tx) => {
+      // Kunci booking ruangan ini: booking yang sedang disimpan bersamaan selesai dulu (dan ikut terhitung).
+      await B.lockRoom(tx, room);
+      const lama = await tx.ruangProfil.findUnique({ where: { room }, select: { maintenance: true, maintenance_ket: true, satuan_kerja: true } });
+      await tx.ruangProfil.update({
+        where: { room },
+        data: { maintenance: aktif, maintenance_ket: aktif ? ket || null : null, maintenance_at: aktif ? (lama.maintenance ? undefined : new Date()) : null, updated_by: req.user.id },
+      });
+      const terdampak = aktif ? await tx.ruangRapat.count({ where: { room, cancelled_at: null, end_date: { gte: today } } }) : 0;
+      return { lama, terdampak };
+    });
+    const status = (on) => (on ? 'Maintenance (tidak bisa dibooking)' : 'Bisa dibooking');
+    const ketBaru = aktif ? ket || null : null;
+    const perubahan = [];
+    if (lama.maintenance !== aktif) perubahan.push({ label: 'Status ruangan', dari: status(lama.maintenance), ke: status(aktif) });
+    if ((lama.maintenance_ket || null) !== ketBaru) perubahan.push({ label: 'Keterangan maintenance', dari: lama.maintenance_ket || null, ke: ketBaru });
+    if (perubahan.length) {
+      await catat(req, { modul: 'ruangan', aksi: aktif ? 'maintenance' : 'buka-maintenance', ref: refRuang(room, lama.satuan_kerja), perubahan, keterangan: terdampak ? `${terdampak} booking aktif hari ini/ke depan tetap tersimpan.` : undefined });
+    }
+    // Jadwal, kiosk, layar ruangan & dashboard ikut diperbarui.
+    live.broadcast('ruang-rapat'); B.broadcastChange();
+    res.json({
+      terdampak,
+      message: aktif ? `Ruangan ${room} diblokir (maintenance) dan tidak bisa dibooking sampai maintenance dimatikan.` : `Ruangan ${room} kembali bisa dibooking.`,
+    });
+  } catch (err) {
+    logger.error('PUT maintenance ruangan gagal', { error: err });
+    res.status(500).json({ message: 'Gagal mengubah status maintenance ruangan.' });
   }
 });
 

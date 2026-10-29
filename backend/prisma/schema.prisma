@@ -346,6 +346,10 @@ model RuangProfil {
   // Tema layar ruangan "<palet>/<motif>" (lihat migration 0034); NULL = otomatis dari nama.
   tema         String?  @db.VarChar(40)
   fasilitas    Json     @default("[]")
+  // Maintenance: ruangan diblokir sementara (tidak bisa dibooking), lihat migration 0039.
+  maintenance     Boolean   @default(false)
+  maintenance_ket String?   @db.VarChar(300)
+  maintenance_at  DateTime?
   updated_by   Int?
   created_at   DateTime @default(now())
   updated_at   DateTime @default(now()) @updatedAt

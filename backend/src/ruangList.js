@@ -20,4 +20,13 @@ function daftarRuang() {
 const ruangValid = async (room) => typeof room === 'string' && (await daftarRuang()).includes(room);
 const resetDaftarRuang = () => { cache = null; };
 
-module.exports = { daftarRuang, ruangValid, resetDaftarRuang };
+// Ruangan yang sedang maintenance (diblokir Admin/Kabag) tidak bisa dibooking. Selalu dibaca langsung dari DB
+// (tanpa cache) dan dipanggil di dalam transaksi setelah lockRoom, supaya tidak bisa lolos bersamaan dengan
+// admin yang baru saja mengaktifkan maintenance. -> pesan error, atau null bila ruangan bisa dibooking.
+async function cekMaintenance(db, room) {
+  const p = await db.ruangProfil.findUnique({ where: { room }, select: { maintenance: true, maintenance_ket: true } });
+  if (!p?.maintenance) return null;
+  return `Ruangan ${room} sedang maintenance${p.maintenance_ket ? ` (${p.maintenance_ket})` : ''} dan sementara tidak bisa dibooking.`;
+}
+
+module.exports = { daftarRuang, ruangValid, resetDaftarRuang, cekMaintenance };

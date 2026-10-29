@@ -164,12 +164,14 @@ function RuangStatus({ info }) {
   return (
     <ul className="mt-3 rounded-lg border border-slate-200 divide-y divide-slate-100 max-h-64 overflow-y-auto">
       {info.rooms.map((r) => (
-        <li key={r.room} className="flex items-center justify-between gap-2 text-[11px] px-2.5 py-1.5" title={r.dipakai ? `Dipakai: ${r.agenda}` : r.berikutnya ? `Booking berikutnya jam ${r.berikutnya}` : 'Tidak ada booking lagi hari ini'}>
+        <li key={r.room} className="flex items-center justify-between gap-2 text-[11px] px-2.5 py-1.5" title={r.maintenance ? `Maintenance${r.maintenance_ket ? `: ${r.maintenance_ket}` : ''}` : r.dipakai ? `Dipakai: ${r.agenda}` : r.berikutnya ? `Booking berikutnya jam ${r.berikutnya}` : 'Tidak ada booking lagi hari ini'}>
           <RuangFotoButton room={r.room} className="group min-w-0 flex items-center gap-2 text-left">
             <RuangThumb room={r.room} className="w-7 h-7 rounded-md ring-1 ring-black/5 transition group-hover:ring-kuningan/60" iconClass="text-[14px]" />
             <span className="font-semibold text-slate-700 truncate group-hover:text-dinas group-hover:underline">{judulRuang(r.room)}</span>
           </RuangFotoButton>
-          {r.dipakai
+          {r.maintenance
+            ? <span className="shrink-0 inline-flex items-center gap-1 font-bold text-amber-700" title={r.maintenance_ket || undefined}><span className="material-symbols-outlined text-[13px]">construction</span>Maintenance</span>
+            : r.dipakai
             ? <span className="shrink-0 font-bold text-red-600">Dipakai s/d {r.sampai}</span>
             : <span className="shrink-0 font-bold text-emerald-700">Kosong{r.berikutnya ? ` s/d ${r.berikutnya}` : ''}</span>}
         </li>
@@ -178,8 +180,103 @@ function RuangStatus({ info }) {
   );
 }
 
+// Panel khusus admin/kabag: daftar hal yang menunggu tindakan (bahasa sederhana + tombol langsung ke menunya)
+// dan pintasan menu admin beserta penjelasan singkat kegunaannya.
+const ADMIN_MENU = [
+  { to: '/akun', icon: 'group', title: 'Akun & Akses', desc: 'Ubah peran, aktif/nonaktifkan akun, verifikasi email, kirim link reset kata sandi.' },
+  { to: '/riwayat', icon: 'history', title: 'Riwayat Aktivitas', desc: 'Lihat siapa mengubah apa dan kapan. Bisa difilter & diunduh.' },
+  { to: '/foto-ruang', icon: 'photo_library', title: 'Foto & Fasilitas Ruang', desc: 'Atur foto, kapasitas, dan fasilitas tiap ruang rapat.' },
+  { to: '/settings', icon: 'settings', title: 'Settings', desc: 'Tutup sementara (maintenance) menu yang sedang diperbaiki.' },
+];
+const MENU_NAMA = { landing: 'Landing Page', kiosk: 'Kiosk Jadwal Rapat', dashboard: 'Dashboard', pemeliharaan: 'Pemeliharaan', pengadaan: 'Pengadaan', kendaraan: 'Kendaraan', 'ruang-rapat': 'Ruang Rapat' };
+
+function TodoItem({ icon, tone, count, title, desc, cta, to }) {
+  const navigate = useNavigate();
+  const t = TONE[tone];
+  return (
+    <li className="flex items-center gap-3 px-4 py-3">
+      <span className={`shrink-0 w-10 h-10 rounded-xl flex items-center justify-center ${t.chip}`}>
+        <span className="material-symbols-outlined text-[20px]">{icon}</span>
+      </span>
+      <div className="min-w-0 flex-1">
+        <div className="text-[13px] font-bold text-slate-800"><span className={`tabular-nums ${t.text}`}>{count}</span> {title}</div>
+        <div className="text-[11px] text-slate-500 leading-4 mt-0.5">{desc}</div>
+      </div>
+      <button onClick={() => navigate(to)} className="shrink-0 inline-flex items-center gap-1 rounded-lg bg-dinas-soft text-dinas px-3 py-1.5 text-xs font-bold hover:brightness-95">
+        <span className="hidden sm:inline">{cta}</span><span className="material-symbols-outlined text-[16px]">arrow_forward</span>
+      </button>
+    </li>
+  );
+}
+
+function AdminPanel({ ready, pm, pg, kd }) {
+  const navigate = useNavigate();
+  const { user, resetRequestCount, maintenance } = useAuth();
+  const menuMati = Object.entries(maintenance || {}).filter(([, m]) => m?.is_active).map(([k]) => MENU_NAMA[k] || k);
+  const todo = [
+    pm.pending > 0 && { key: 'pm', icon: 'build', tone: 'red', count: pm.pending, title: 'permintaan Pemeliharaan belum diproses', desc: 'Buka menu, pilih permintaan berstatus Pending, lalu ubah statusnya menjadi On Progress.', cta: 'Proses', to: '/pemeliharaan' },
+    pg.pending > 0 && { key: 'pg', icon: 'shopping_cart', tone: 'red', count: pg.pending, title: 'permintaan Pengadaan belum diproses', desc: 'Buka menu, pilih permintaan berstatus Pending, lalu ubah statusnya menjadi On Progress.', cta: 'Proses', to: '/pengadaan' },
+    resetRequestCount > 0 && { key: 'reset', icon: 'lock_reset', tone: 'red', count: resetRequestCount, title: 'permintaan reset kata sandi', desc: 'Pegawai lupa kata sandi. Buka Akun & Akses lalu tekan tombol kirim link reset pada akunnya.', cta: 'Kirim link', to: '/akun' },
+    kd.belum_bayar_pajak > 0 && { key: 'pajak', icon: 'receipt_long', tone: 'red', count: kd.belum_bayar_pajak, title: 'kendaraan belum bayar pajak', desc: 'Pastikan pajak dibayar, lalu perbarui tanggal pajaknya di menu Kendaraan.', cta: 'Lihat', to: '/kendaraan' },
+    kd.pajak_segera > 0 && { key: 'segera', icon: 'schedule', tone: 'amber', count: kd.pajak_segera, title: 'pajak kendaraan jatuh tempo ≤ 14 hari', desc: 'Siapkan pembayaran sebelum jatuh tempo.', cta: 'Lihat', to: '/kendaraan' },
+    menuMati.length > 0 && { key: 'mt', icon: 'construction', tone: 'amber', count: menuMati.length, title: 'menu sedang maintenance', desc: `${menuMati.join(', ')} tidak bisa diakses pegawai. Matikan maintenance di Settings bila sudah selesai.`, cta: 'Settings', to: '/settings' },
+  ].filter(Boolean);
+  const roleNama = user?.role === 'kabag' ? 'Kepala Bagian' : 'Admin';
+
+  return (
+    <section className="mb-7 dash-rise" style={{ '--dash-delay': '60ms' }}>
+      <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
+        <div>
+          <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+            <span className="material-symbols-outlined text-[20px] text-dinas">admin_panel_settings</span>Panel {roleNama}
+          </h2>
+          <p className="text-[11px] text-slate-500">Bagian ini hanya terlihat oleh Admin & Kepala Bagian. Mulai dari daftar "Perlu Tindakan Anda" di kiri.</p>
+        </div>
+      </div>
+      <div className="grid grid-cols-1 xl:grid-cols-5 gap-5">
+        <div className="xl:col-span-3 bg-white border border-slate-200 rounded-xl overflow-hidden">
+          <div className="px-4 py-3 border-b border-slate-200 flex items-center justify-between gap-2">
+            <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+              <span className="material-symbols-outlined text-[18px] text-amber-600">checklist</span>Perlu Tindakan Anda
+            </h3>
+            {ready && <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${todo.length ? TONE.red.chip : TONE.emerald.chip}`}>{todo.length ? `${todo.length} hal` : 'Beres'}</span>}
+          </div>
+          {!ready ? (
+            <p className="px-4 py-8 text-center text-xs text-slate-400">Memuat…</p>
+          ) : todo.length ? (
+            <ul className="divide-y divide-slate-100">{todo.map(({ key, ...it }) => <TodoItem key={key} {...it} />)}</ul>
+          ) : (
+            <div className="px-4 py-8 text-center">
+              <span className="material-symbols-outlined text-[34px] text-emerald-500">task_alt</span>
+              <p className="mt-1 text-sm font-semibold text-slate-700">Tidak ada yang perlu ditindaklanjuti</p>
+              <p className="text-[11px] text-slate-500">Semua permintaan sudah diproses dan pajak kendaraan aman.</p>
+            </div>
+          )}
+        </div>
+        <div className="xl:col-span-2 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-1 gap-3 content-start">
+          {ADMIN_MENU.map((m) => (
+            <button key={m.to} onClick={() => navigate(m.to)} className="dash-lift group text-left bg-white border border-slate-200 rounded-xl px-4 py-3 flex items-center gap-3">
+              <span className="dash-module-icon dash-module-icon-sm relative">
+                <span className="material-symbols-outlined text-[19px]">{m.icon}</span>
+                {m.to === '/akun' && resetRequestCount > 0 && <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 rounded-full bg-red-600 text-white text-[10px] font-bold flex items-center justify-center">{resetRequestCount}</span>}
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-[13px] font-bold text-slate-900">{m.title}</span>
+                <span className="block text-[11px] text-slate-500 leading-4">{m.desc}</span>
+              </span>
+              <span className="material-symbols-outlined text-[18px] text-slate-400 transition-transform group-hover:translate-x-0.5">arrow_forward</span>
+            </button>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 export default function Dashboard() {
   const { user } = useAuth();
+  const navigate = useNavigate();
+  const isAdmin = isAdminRole(user?.role);
   const [summary, setSummary] = useState(fallback);
   const [activities, setActivities] = useState([]);
   // null = belum pernah berhasil dimuat; Date = waktu terakhir berhasil.
@@ -221,6 +318,7 @@ export default function Dashboard() {
 
   const perluTindakan = totalPending + pajakTindakan;
   const modulIcon = { Pemeliharaan: 'build', Pengadaan: 'shopping_cart' };
+  const modulPath = { Pemeliharaan: '/pemeliharaan', Pengadaan: '/pengadaan' };
 
   return (
     <div className="menu-page menu-dashboard relative">
@@ -259,6 +357,8 @@ export default function Dashboard() {
         <StatCard delay={180} icon="meeting_room" tone="emerald" value={v(rr.kosong_sekarang)} label="Ruang Rapat Kosong" hint={ready && rr.total_ruang ? `Dari ${rr.total_ruang} ruang · pukul ${rr.jam}` : 'Saat ini'} to="/ruang-rapat" />
       </div>
 
+      {isAdmin && <AdminPanel ready={ready} pm={pm} pg={pg} kd={kd} />}
+
       {/* Menu layanan */}
       <div className="mb-3">
         <h2 className="text-lg font-bold text-slate-900">Menu Layanan</h2>
@@ -279,7 +379,7 @@ export default function Dashboard() {
         </ModuleCard>
       </div>
 
-      {isAdminRole(user?.role) && <GuestAccounts />}
+      {isAdmin && <GuestAccounts limit={5} />}
 
       {/* Aktivitas terbaru */}
       <div className="mt-7 bg-white border border-slate-200 rounded-xl overflow-hidden">
@@ -288,7 +388,7 @@ export default function Dashboard() {
             <span className="dash-module-icon dash-module-icon-sm"><span className="material-symbols-outlined text-[19px]">history</span></span>
             <div>
               <h2 className="text-lg font-bold text-slate-900 leading-tight">Aktivitas Terbaru</h2>
-              <p className="text-[11px] text-slate-500">20 perubahan terakhir di Pemeliharaan dan Pengadaan{loadedAt ? ` · diperbarui ${fmtTime(loadedAt)}` : ''}</p>
+              <p className="text-[11px] text-slate-500">20 perubahan terakhir di Pemeliharaan dan Pengadaan · klik baris untuk membuka menunya{loadedAt ? ` · diperbarui ${fmtTime(loadedAt)}` : ''}</p>
             </div>
           </div>
           <button onClick={load} disabled={refreshing} className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 hover:text-slate-900 disabled:opacity-60">
@@ -298,7 +398,7 @@ export default function Dashboard() {
         {activities.length ? (
           <ul className="divide-y divide-slate-100">
             {activities.map((a, i) => (
-              <li key={`${a.kode}-${i}`} className="flex items-center gap-3.5 px-5 py-3 hover:bg-slate-50">
+              <li key={`${a.kode}-${i}`} onClick={() => modulPath[a.modul] && navigate(modulPath[a.modul])} className={`flex items-center gap-3.5 px-5 py-3 hover:bg-slate-50 ${modulPath[a.modul] ? 'cursor-pointer' : ''}`}>
                 <span className="shrink-0 w-9 h-9 rounded-full bg-dinas-soft text-dinas flex items-center justify-center">
                   <span className="material-symbols-outlined text-[18px]">{modulIcon[a.modul] || 'description'}</span>
                 </span>

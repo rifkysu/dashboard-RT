@@ -13,11 +13,14 @@ const fmtWaktu = (v) => {
   return sameDay ? `Hari ini, ${d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}` : d.toLocaleString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 };
 
-export default function GuestAccounts({ className = 'mt-7' }) {
+// `limit`: jumlah baris yang tampil sebelum tombol "Tampilkan semua" (null = tampil semua).
+export default function GuestAccounts({ className = 'mt-7', limit = null }) {
   const { confirm, alert, toast } = useFeedback();
   const [rows, setRows] = useState(null);
   const [failed, setFailed] = useState(false);
   const [busy, setBusy] = useState(null);
+  const [cari, setCari] = useState('');
+  const [semua, setSemua] = useState(false);
   function load() {
     api.get('/guest/admin/accounts')
       .then((r) => { setRows(r.data.data || []); setFailed(false); })
@@ -46,6 +49,10 @@ export default function GuestAccounts({ className = 'mt-7' }) {
   }
 
   const sudahBooking = rows ? rows.filter((g) => g.total_booking > 0).length : 0;
+  const diblokir = rows ? rows.filter((g) => g.is_blocked).length : 0;
+  const q = cari.trim().toLowerCase();
+  const hasil = rows ? (q ? rows.filter((g) => `${g.nama} ${g.email}`.toLowerCase().includes(q)) : rows) : [];
+  const tampil = limit && !semua && !q ? hasil.slice(0, limit) : hasil;
 
   return (
     <div className={`${className} bg-white border border-slate-200 rounded-xl overflow-hidden`}>
@@ -53,15 +60,32 @@ export default function GuestAccounts({ className = 'mt-7' }) {
         <div className="flex items-center gap-3 min-w-0">
           <span className="dash-module-icon dash-module-icon-sm"><span className="material-symbols-outlined text-[19px]">person_check</span></span>
           <div className="min-w-0">
-            <h2 className="text-lg font-bold text-slate-900 leading-tight">Akun Google Tamu (Login + Booking Ruang Rapat)</h2>
-            <p className="text-[11px] text-slate-500">Semua akun yang login Google di landing page (tabel guest_accounts){rows ? ` · ${rows.length} akun, ${sudahBooking} sudah booking` : ''}</p>
+            <h2 className="text-lg font-bold text-slate-900 leading-tight">Akun Tamu Booking Ruang Rapat</h2>
+            <p className="text-[11px] text-slate-500">Tamu dari luar yang login dengan Google untuk memesan ruang rapat. Tekan <b>Blokir</b> bila ada yang menyalahgunakan (spam).</p>
           </div>
         </div>
-        <button onClick={load} className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50">
-          <span className="material-symbols-outlined text-[16px]">refresh</span>Refresh
-        </button>
+        <div className="flex items-center gap-2">
+          {rows && rows.length > 0 && (
+            <label className="relative">
+              <span className="material-symbols-outlined text-[16px] text-slate-400 absolute left-2 top-1/2 -translate-y-1/2">search</span>
+              <input value={cari} onChange={(e) => setCari(e.target.value)} placeholder="Cari nama / email" className="w-44 rounded-lg border border-slate-200 bg-white pl-7 pr-2 py-1.5 text-xs" />
+            </label>
+          )}
+          <button onClick={load} className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50">
+            <span className="material-symbols-outlined text-[16px]">refresh</span>Refresh
+          </button>
+        </div>
       </div>
-      {rows && rows.length ? (
+      {rows && rows.length > 0 && (
+        <div className="px-5 py-2.5 border-b border-slate-100 flex flex-wrap gap-2 text-[11px] font-semibold">
+          <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">{rows.length} akun tamu</span>
+          <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700">{sudahBooking} sudah booking</span>
+          {diblokir > 0 && <span className="px-2 py-0.5 rounded-full bg-red-50 text-red-700">{diblokir} diblokir</span>}
+        </div>
+      )}
+      {rows && rows.length && !hasil.length ? (
+        <p className="px-5 py-8 text-center text-xs text-slate-400">Tidak ada akun tamu yang cocok dengan "{cari}".</p>
+      ) : rows && rows.length ? (
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-slate-50 text-[11px] uppercase tracking-wider text-slate-500">
@@ -74,7 +98,7 @@ export default function GuestAccounts({ className = 'mt-7' }) {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {rows.map((g) => (
+              {tampil.map((g) => (
                 <tr key={g.id} className="hover:bg-slate-50">
                   <td className="px-5 py-3">
                     <div className="flex items-center gap-3 min-w-[200px]">
@@ -107,11 +131,21 @@ export default function GuestAccounts({ className = 'mt-7' }) {
               ))}
             </tbody>
           </table>
+          {tampil.length < hasil.length && (
+            <button onClick={() => setSemua(true)} className="w-full border-t border-slate-100 px-5 py-2.5 text-xs font-bold text-dinas hover:bg-slate-50">
+              Tampilkan semua ({hasil.length} akun)
+            </button>
+          )}
+          {limit && semua && !q && hasil.length > limit && (
+            <button onClick={() => setSemua(false)} className="w-full border-t border-slate-100 px-5 py-2.5 text-xs font-bold text-slate-500 hover:bg-slate-50">
+              Sembunyikan sebagian
+            </button>
+          )}
         </div>
       ) : (
         <div className="px-5 py-8 text-center">
           <span className="material-symbols-outlined text-[30px] text-slate-300">{failed ? 'cloud_off' : 'inbox'}</span>
-          <p className="mt-1 text-xs text-slate-400">{failed ? 'Gagal memuat akun tamu. Pastikan backend sudah di-restart.' : rows ? 'Belum ada tamu yang login Google.' : 'Memuat…'}</p>
+          <p className="mt-1 text-xs text-slate-400">{failed ? 'Gagal memuat akun tamu. Periksa koneksi lalu tekan Refresh.' : rows ? 'Belum ada tamu yang login Google.' : 'Memuat…'}</p>
         </div>
       )}
     </div>

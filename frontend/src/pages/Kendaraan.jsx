@@ -55,11 +55,11 @@ function relativeTime(v, now) {
 const todayLocal = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
 
 export default function Kendaraan() {
-  const { user } = useAuth();
+  const { isAdmin } = useAuth();
   const { alert, toast } = useFeedback();
-  // Semua role yang login boleh menambah kendaraan; mengubah/hapus/service hanya kabag/PIC/admin.
-  const canAdd = !!user;
-  const canManage = ['kabag', 'pic', 'admin'].includes(user?.role);
+  // Tambah/ubah/hapus/service hanya Admin/Kabag; karyawan & PIC hanya bisa melihat data dan detail.
+  const canAdd = isAdmin;
+  const canManage = isAdmin;
   const [tab, setTab] = useState('Roda 4');
   const [show, setShow] = useState(false);
   const [detail, setDetail] = useState(null);

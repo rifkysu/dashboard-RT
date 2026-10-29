@@ -1,6 +1,7 @@
 import React from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { judulRuang } from '../utils/ruang';
+import useRuangInfo from '../hooks/useRuangInfo';
 
 // Menu per bagian (satuan kerja) untuk ruang rapat: jadwal pegawai, kiosk, landing, dan admin.
 // Pilihan disimpan di URL (?bagian=Biro%20Umum, ?bagian=semua), jadi kiosk tiap satuan kerja bisa
@@ -46,14 +47,19 @@ export default function BagianTabs({ grup, value, onChange, dark = false, classN
 
 // Isi <select> ruangan, dikelompokkan per bagian. Ruangan lama yang sudah tidak ada di daftar
 // (mis. booking lama setelah ruangannya dihapus) tetap ditampilkan supaya pilihan tidak hilang.
+// Ruangan yang sedang maintenance tidak bisa dipilih (kecuali memang ruangan booking yang sedang diedit).
 export function RuangOptions({ grup, value }) {
+  const { info } = useRuangInfo();
   const ada = !value || grup.some((g) => g.rooms.includes(value));
   return (
     <>
       {!ada && <option value={value}>{judulRuang(value)}</option>}
       {grup.map((g) => (
         <optgroup key={g.bagian} label={g.bagian}>
-          {g.rooms.map((r) => <option key={r} value={r}>{judulRuang(r)}</option>)}
+          {g.rooms.map((r) => {
+            const mt = info?.[r]?.maintenance;
+            return <option key={r} value={r} disabled={mt && r !== value}>{judulRuang(r)}{mt ? ' — Maintenance (tidak bisa dibooking)' : ''}</option>;
+          })}
         </optgroup>
       ))}
     </>

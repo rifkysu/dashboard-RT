@@ -10,7 +10,7 @@ import { subscribeLive } from '../live';
 import { judulRuang, slugRuang } from '../utils/ruang';
 import useRuangInfo, { useDaftarRuang } from '../hooks/useRuangInfo';
 import { useBagian } from '../components/BagianTabs';
-import { RuangThumb } from '../components/RuangFoto';
+import { RuangThumb, RuangMaintenanceTag } from '../components/RuangFoto';
 
 const LAYANAN = [
   { icon: 'build', label: 'Pemeliharaan', desc: 'Pengajuan perbaikan gedung, sarana, dan prasarana kantor, dengan dokumen pendukung dari awal.', tags: ['Analisa & HPS', 'Pembayaran', 'Dokumentasi/BAST'], sep: '→' },
@@ -264,7 +264,7 @@ function RuangHariIni() {
               </span>
             </span>
             <div className="min-w-0 flex-1">
-              <div className="text-sm font-semibold text-dinas-ink">{judulRuang(r.room)}</div>
+              <div className="text-sm font-semibold text-dinas-ink flex flex-wrap items-center gap-1.5">{judulRuang(r.room)}<RuangMaintenanceTag room={r.room} /></div>
               {items && r.now && <div className="text-xs text-slate-500 truncate">{r.now.title}</div>}
               {items && (
                 <div className="relative mt-1.5 h-1.5 rounded-full bg-slate-100" title="Pemakaian ruang hari ini, 07.00–19.00" aria-hidden="true">
@@ -308,6 +308,7 @@ function LayarTile({ room }) {
       <span className="relative material-symbols-outlined text-[22px] text-[#e4c27f] drop-shadow">meeting_room</span>
       <div className="relative mt-auto pt-6">
         <div className="font-display font-bold leading-tight drop-shadow-[0_1px_4px_rgba(0,0,0,.5)]">{judulRuang(room)}</div>
+        <RuangMaintenanceTag room={room} dark className="mt-1" />
         {nFoto > 0 && <div className="text-[11px] text-white/70 mt-0.5 flex items-center gap-1"><span className="material-symbols-outlined text-[13px]">photo_library</span>{nFoto} foto</div>}
         <div className="mt-2 flex items-center gap-1 text-xs font-semibold text-white/80 group-hover:text-white">
           Buka layar<span className="material-symbols-outlined text-[15px] transition-transform group-hover:translate-x-1">arrow_forward</span>

@@ -106,6 +106,20 @@ export function RuangFotoButton({ room, className = '', title, children, onOpen 
   );
 }
 
+// Label "Maintenance" untuk ruangan yang sedang diblokir Admin/Kabag (menu Foto & Fasilitas Ruang).
+// Tidak tampil apa-apa bila ruangan bisa dibooking. dark = untuk latar gelap (kiosk, layar ruangan).
+export function RuangMaintenanceTag({ room, dark = false, className = '' }) {
+  const { info } = useRuangInfo();
+  const d = info?.[room];
+  if (!d?.maintenance) return null;
+  return (
+    <span title={d.maintenance_ket ? `Maintenance: ${d.maintenance_ket}` : 'Sedang maintenance, tidak bisa dibooking'}
+      className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-bold normal-case tracking-normal ${dark ? 'bg-amber-400 text-amber-950' : 'bg-amber-100 text-amber-800 ring-1 ring-amber-300'} ${className}`}>
+      <span className="material-symbols-outlined text-[13px]">construction</span>Maintenance
+    </span>
+  );
+}
+
 // Kartu ringkas di form booking: foto-foto kecil + fasilitas ruangan yang sedang dipilih.
 export function RuangPilihanInfo({ room }) {
   const { info } = useRuangInfo();
@@ -115,6 +129,12 @@ export function RuangPilihanInfo({ room }) {
   const fasilitas = data?.fasilitas || [];
   return (
     <div className="rounded-xl border border-slate-200 bg-slate-50 p-2.5">
+      {data?.maintenance && (
+        <div className="mb-2 flex items-start gap-1.5 rounded-lg border border-amber-300 bg-amber-50 px-2.5 py-1.5 text-[11px] font-semibold text-amber-800">
+          <span className="material-symbols-outlined text-[15px]">construction</span>
+          <span>Ruangan sedang maintenance{data.maintenance_ket ? `: ${data.maintenance_ket}` : ''}. Sementara tidak bisa dibooking — pilih ruangan lain.</span>
+        </div>
+      )}
       <div className="flex items-center gap-2.5">
         {foto.length ? (
           <RuangFotoButton room={room} className="relative shrink-0 flex -space-x-3 rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-dinas/40">

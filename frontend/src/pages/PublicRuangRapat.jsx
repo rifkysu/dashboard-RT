@@ -6,7 +6,7 @@ import { useAuth } from '../context/AuthContext';
 import BrandMark from '../components/BrandMark';
 import RuangRapatSchedule from '../components/RuangRapatSchedule';
 import GuestBooking from '../components/GuestBooking';
-import { RuangFotoButton } from '../components/RuangFoto';
+import { RuangFotoButton, RuangMaintenanceTag } from '../components/RuangFoto';
 import useRuangRapatLive from '../hooks/useRuangRapatLive';
 import { useDaftarRuang } from '../hooks/useRuangInfo';
 import BagianTabs, { useBagian } from '../components/BagianTabs';
@@ -172,6 +172,7 @@ function KartuRuang({ room, list, menit, memuat, galat, foto, kapasitas, delay, 
             <span className="font-display font-extrabold text-base leading-tight">{judulRuang(room)}</span>
             <span className="material-symbols-outlined text-[18px] text-white/40 transition group-hover:text-[#e4c27f]">photo_library</span>
           </span>
+          <RuangMaintenanceTag room={room} dark className="mt-1 self-start" />
           {kapasitas && <span className="mt-1 inline-flex items-center gap-1 text-[11px] text-white/50"><span className="material-symbols-outlined text-[14px]">chair</span>{kapasitas} kursi</span>}
           {memuat ? (
             <span className="mt-3 h-6 w-28 rounded-full bg-white/10 animate-pulse"></span>

@@ -31,6 +31,8 @@ const AKSI = {
   'foto-ubah': { label: 'Ubah foto', cls: 'bg-sky-50 text-sky-700 border-sky-200', icon: 'photo' },
   'foto-hapus': { label: 'Hapus foto', cls: 'bg-red-50 text-red-700 border-red-200', icon: 'hide_image' },
   'foto-urutan': { label: 'Urutan foto', cls: 'bg-sky-50 text-sky-700 border-sky-200', icon: 'swap_vert' },
+  maintenance: { label: 'Blokir (maintenance)', cls: 'bg-amber-50 text-amber-700 border-amber-200', icon: 'construction' },
+  'buka-maintenance': { label: 'Buka blokir ruangan', cls: 'bg-emerald-50 text-emerald-700 border-emerald-200', icon: 'lock_open' },
   daftar: { label: 'Daftar akun', cls: 'bg-emerald-50 text-emerald-700 border-emerald-200', icon: 'person_add' },
   'daftar-ulang': { label: 'Daftar ulang', cls: 'bg-amber-50 text-amber-700 border-amber-200', icon: 'person_add' },
   'verifikasi-email': { label: 'Verifikasi email', cls: 'bg-emerald-50 text-emerald-700 border-emerald-200', icon: 'mark_email_read' },
@@ -44,7 +46,7 @@ const AKSI = {
 // Pilihan filter aksi (beberapa aksi sejenis digabung).
 const FILTER_AKSI = [
   { value: 'tambah,service-tambah,foto-tambah,daftar,daftar-ulang', label: 'Tambah / daftar' },
-  { value: 'ubah,service-ubah,foto-ubah,foto-urutan', label: 'Ubah' },
+  { value: 'ubah,service-ubah,foto-ubah,foto-urutan,maintenance,buka-maintenance', label: 'Ubah' },
   { value: 'hapus,service-hapus,foto-hapus', label: 'Hapus' },
   { value: 'batal,batal-sebagian', label: 'Batal booking' },
   { value: 'hapus,service-hapus,foto-hapus,batal,batal-sebagian', label: 'Semua hapus & batal' },

@@ -694,13 +694,13 @@ def fc_kendaraan(f):
     f.node("list", "proc", 240, 62, "Daftar kendaraan", "cari, filter merek / status / tahun, tab Roda 2/4/6",
            w=210)
     f.node("aksi", "dec", 240, 118, "Aksi", w=100)
-    f.node("add", "proc", 100, 174, "Tambah Kendaraan", "semua peran", w=140)
+    f.node("add", "proc", 100, 174, "Tambah Kendaraan", "Admin / Kabag", w=140)
     f.node("bmn", "proc", 100, 224, "Data BMN", "No Polisi unik, plat khusus", w=140)
     f.node("foto", "proc", 100, 274, "Foto maks. 6", "dikompres di browser (1600 px)", w=140)
     f.node("pdf", "proc", 100, 324, "PDF BPKB & STNK", "opsional", w=140)
     f.node("save", "start", 100, 376, "Tersimpan", "SSE ke pengguna lain", w=140)
     f.node("det", "proc", 360, 174, "Buka Detail", "foto, dokumen, riwayat service", w=150)
-    f.node("rol", "dec", 360, 230, "Kabag / PIC", "/ Admin?", w=120)
+    f.node("rol", "dec", 360, 230, "Admin /", "Kabag?", w=120)
     f.node("view", "note", 452, 286, "Hanya lihat", w=56, h=22)
     f.node("kelola", "proc", 330, 330, "Kelola kendaraan",
            "ubah status Tersedia / Digunakan / Servis", "update masa berlaku STNK & waktu pajak",
@@ -831,8 +831,9 @@ def isi_aplikasi():
             ["Pemeliharaan / Pengadaan: lihat & ajukan", "-", "Ya", "Ya", "Ya", "Ya"],
             ["Pemeliharaan / Pengadaan: proses tahap, edit, hapus", "-", "-", "Data sendiri", "Semua", "Semua"],
             ["Kendaraan: lihat", "-", "Ya", "Ya", "Ya", "Ya"],
-            ["Kendaraan: tambah", "-", "Ya", "Ya", "Ya", "Ya"],
-            ["Kendaraan: ubah, hapus, foto, dokumen, service", "-", "-", "Ya", "Ya", "Ya"],
+            ["Kendaraan: lihat detail", "-", "Ya", "Ya", "Ya", "Ya"],
+            ["Kendaraan: tambah", "-", "-", "-", "Ya", "Ya"],
+            ["Kendaraan: ubah, hapus, foto, dokumen, service", "-", "-", "-", "Ya", "Ya"],
             ["Ruang Rapat: booking, edit, surat/status, cancel", "-", "Ya", "Ya", "Ya", "Ya"],
             ["Akun & Akses, Settings (Mode Maintenance)", "-", "-", "-", "Ya", "Ya"],
             ["Akses menu saat maintenance", "-", "-", "-", "Ya", "Ya"],
@@ -939,11 +940,18 @@ def isi_aplikasi():
             "(tampil \"-\" sebelum data pertama termuat, atau data terakhir beserta jamnya).",
             "Status ruang rapat saat ini: Kosong / Dipakai s.d. jam tertentu, termasuk booking multi-hari yang "
             "sedang berjalan.",
-            "Daftar aktivitas terbaru gabungan Pemeliharaan & Pengadaan.",
-            "Khusus Admin/Kabag (di Dashboard dan menu Akun & Akses): panel **Akun Google Tamu** berisi semua akun yang pernah login Google di kiosk "
+            "Daftar aktivitas terbaru gabungan Pemeliharaan & Pengadaan; klik baris untuk membuka menu terkait.",
+            "Khusus Admin/Kabag: **Panel Admin/Kepala Bagian** di bawah kartu ringkasan. Kiri: daftar **Perlu Tindakan "
+            "Anda** dalam bahasa sederhana (permintaan Pemeliharaan/Pengadaan Pending, permintaan reset kata sandi, "
+            "kendaraan belum bayar pajak / jatuh tempo H-14, menu yang sedang maintenance) beserta langkah singkat dan "
+            "tombol langsung ke menunya; bila kosong tampil \"Tidak ada yang perlu ditindaklanjuti\". Kanan: pintasan "
+            "Akun & Akses (dengan badge jumlah permintaan reset), Riwayat Aktivitas, Foto & Fasilitas Ruang, dan "
+            "Settings, masing-masing dengan penjelasan kegunaannya.",
+            "Khusus Admin/Kabag (di Dashboard dan menu Akun & Akses): panel **Akun Tamu Booking Ruang Rapat** berisi semua akun yang pernah login Google di kiosk "
             "/jadwal-rapat, termasuk yang belum booking (nama, email, login terakhir, booking terakhir, total booking, jumlah dibatalkan sendiri) dengan tombol **Blokir / "
-            "Buka blokir**; blokir langsung memutus sesi tamu tersebut. Detail booking di menu Ruang Rapat "
-            "menampilkan label nama & email tamu pengaju."),
+            "Buka blokir**; blokir langsung memutus sesi tamu tersebut. Tersedia pencarian nama/email dan ringkasan "
+            "jumlah akun, sudah booking, dan diblokir; di Dashboard hanya 5 akun teratas yang tampil (tombol "
+            "\"Tampilkan semua\"). Detail booking di menu Ruang Rapat menampilkan label nama & email tamu pengaju."),
         h2("3.4 Pemeliharaan & Pengadaan"),
         *bullets(
             "Pengajuan permintaan dengan dokumen pendukung (PDF/gambar/Office).",
@@ -959,10 +967,10 @@ def isi_aplikasi():
             "Data aset sesuai nomenklatur BMN: nama barang, merk, tipe, No BPKB, No Polisi (unik), plat "
             "khusus, tanggal perolehan, masa berlaku STNK, waktu pajak.",
             "Galeri hingga 6 foto (dikompres di browser, maks. 1600 px), dokumen PDF BPKB & STNK. Di modal "
-            "Detail foto bisa dibuka ukuran penuh; kabag/PIC/admin dapat menambah, mengganti, dan menghapus "
+            "Detail foto bisa dibuka ukuran penuh; Admin/Kabag dapat menambah, mengganti, dan menghapus "
             "foto (tetap maks. 6).",
             "Modal Detail: tombol **Edit Data** untuk mengubah semua data yang diisi saat Tambah Kendaraan "
-            "(kabag/PIC/admin).",
+            "(Admin/Kabag; karyawan & PIC hanya melihat).",
             "Status Tersedia / Digunakan / Servis; riwayat service per tanggal (satu catatan per tanggal) "
             "dengan invoice PDF.",
             "Pencarian dan filter pill: merek, status, tahun perolehan; tab Roda 2/4/6.",
@@ -1042,6 +1050,12 @@ def isi_aplikasi():
             "tampil di jadwal, kiosk, landing, & layar ruangan.",
             "**Detail ruangan**: ubah nama (semua booking & foto ikut pindah ke nama baru), satuan kerja, kapasitas, dan link foto. "
             "**Hapus ruangan** ditolak bila masih ada booking aktif hari ini/ke depan; riwayat booking lama tetap tersimpan (dan tetap bisa diedit selama ruangannya tidak diganti), foto ikut dihapus.",
+            "**Blokir ruangan (maintenance)**: panel di atas Detail ruangan untuk menutup sementara satu ruangan (mis. renovasi, AC rusak) "
+            "dengan keterangan opsional. Selama diblokir ruangan tidak bisa dibooking pegawai maupun tamu (dicek di server di dalam kunci "
+            "booking ruangan; pindah booking ke ruangan itu juga ditolak), pilihannya dinonaktifkan di form booking, dan diberi label "
+            "**Maintenance** di kartu ruangan admin, header tabel jadwal & kiosk, kartu status kiosk, landing, layar ruangan (banner besar), "
+            "dan Dashboard (tidak dihitung sebagai ruang kosong). Booking yang sudah ada tidak dihapus: admin diberi tahu jumlah booking "
+            "aktif hari ini/ke depan supaya bisa dipindah/dibatalkan. *Buka blokir* mengembalikan ruangan; keduanya tercatat di Riwayat Aktivitas.",
             "Kapasitas & link dokumentasi foto tampil di popup foto ruangan, kartu ruangan di form booking, dan kartu status kiosk.",
             "**Tema layar ruangan** di panel Detail ruangan: pilih warna & motif latar dengan pratinjau; tema yang sudah dipakai ruangan lain "
             "ditandai supaya tiap layar tetap beda. Ruangan baru otomatis mendapat tema yang belum dipakai.",
@@ -1175,6 +1189,8 @@ def isi_aplikasi():
              "Tambah/ubah keterangan/urutkan/hapus foto & simpan fasilitas"],
             ["", "POST, PUT, DELETE /ruang-info/ruangan", "Admin/Kabag",
              "Tambah ruangan, ubah detail/nama (booking & foto ikut pindah), hapus ruangan"],
+            ["", "PUT /ruang-info/maintenance", "Admin/Kabag",
+             "Blokir/buka blokir ruangan (maintenance) + keterangan; balas jumlah booking aktif terdampak"],
             ["Maintenance", "GET /landing-status, GET /public-status/kiosk, GET /stream (SSE)", "Publik", "Status landing & kiosk, sinyal real-time"],
             ["", "GET / ; PUT /:menu_key", "Login; Admin/Kabag", "Baca & ubah mode maintenance"],
             ["Live", "GET /live/stream (SSE)", "Publik", "Satu sinyal real-time untuk semua modul"],
@@ -1211,7 +1227,7 @@ def isi_aplikasi():
             ["guest_accounts", "Akun tamu (login Google)",
              "google_sub unik; is_blocked (blokir admin); token_version untuk mencabut sesi"],
             ["ruang_foto", "Foto slideshow ruang rapat", "room + sort_order (urutan, 0 = sampul); file di uploads/ruang-foto/"],
-            ["ruang_profil", "Daftar ruang rapat (yang bisa dibooking)", "room = PK; satuan_kerja (bagian), kapasitas, link_foto, sort_order, tema (\"palet/motif\" layar ruangan); fasilitas JSONB [{ icon, label }]"],
+            ["ruang_profil", "Daftar ruang rapat (yang bisa dibooking)", "room = PK; satuan_kerja (bagian), kapasitas, link_foto, sort_order, tema (\"palet/motif\" layar ruangan); fasilitas JSONB [{ icon, label }]; maintenance, maintenance_ket, maintenance_at (ruangan diblokir sementara)"],
             ["maintenance_mode", "Status maintenance per menu", "menu_key unik"],
         ]),
 
@@ -1269,8 +1285,8 @@ def isi_aplikasi():
         caption("Gambar 9. Flowchart permintaan Pemeliharaan / Pengadaan dari pengajuan hingga selesai"),
         PageBreak(),
         h2("9.5 Kendaraan"),
-        p("Semua peran dapat menambah kendaraan. Mengubah, menghapus, mengelola foto/dokumen, dan mencatat "
-          "riwayat service hanya untuk kabag, PIC, dan admin."),
+        p("Menambah, mengubah, menghapus, mengelola foto/dokumen, dan mencatat riwayat service kendaraan hanya "
+          "untuk Admin dan Kabag. Karyawan dan PIC hanya bisa melihat daftar dan detail kendaraan (tanpa tombol edit)."),
         flowchart(445, fc_kendaraan),
         caption("Gambar 10. Flowchart tambah kendaraan dan pengelolaan dari modal Detail"),
         PageBreak(),
