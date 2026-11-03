@@ -245,7 +245,7 @@ export default function RoomDateGrid({ months, rooms, items, loading, loadingMor
                 return (
                   <tr key={date} data-day={date}>
                     <td className={`sticky left-0 z-10 border-b border-r border-slate-200 px-3 py-2.5 align-top w-[150px] min-w-[150px] ${dateBg} ${kiosk && isToday ? 'shadow-[inset_4px_0_0_#1e3a5f]' : ''}`}>
-                      <div className={`text-xs font-bold ${cuti ? 'text-amber-700' : weekend ? 'text-red-600' : 'text-slate-800'}`}>{DAY_NAMES[idx]}</div>
+                      <div className={`text-xs font-bold ${cuti ? 'text-amber-700' : weekend ? 'text-red-700' : 'text-slate-800'}`}>{DAY_NAMES[idx]}</div>
                       <div className="text-[11px] text-slate-500">{d.getDate()} {d.toLocaleString('id-ID', { month: 'short' })} {d.getFullYear()}</div>
                       {isToday && <div className="mt-1 inline-block px-1.5 py-0.5 rounded bg-[#1e3a5f] text-white text-[10.5px] font-bold">HARI INI</div>}
                       {cuti && <div className="mt-1 text-[10.5px] font-bold text-amber-800 leading-tight">{cuti}</div>}

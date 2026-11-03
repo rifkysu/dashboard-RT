@@ -268,7 +268,7 @@ function BookingForm({ guest, onClose, onBooked, onSessionEnd }) {
   return (
     <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex overflow-y-auto overscroll-contain p-3 sm:p-4" role="dialog" aria-modal="true" aria-labelledby="guest-booking-title">
       {/* Klik di luar form sengaja tidak menutup form, supaya isian & file surat tidak hilang tak sengaja. */}
-      <div className="m-auto w-full max-w-3xl bg-[#f7f9fb] rounded-2xl shadow-2xl overflow-hidden">
+      <div className="m-auto w-full max-w-3xl bg-[#efe6d3] rounded-2xl shadow-2xl overflow-hidden">
         <div className="bg-white border-b px-5 sm:px-6 py-4 flex items-center justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
             <span className="w-10 h-10 shrink-0 rounded-xl bg-dinas text-white flex items-center justify-center"><span className="material-symbols-outlined">event_available</span></span>
@@ -425,7 +425,7 @@ export default function GuestBooking() {
   const expires = guest?.session_expires_at ? new Date(guest.session_expires_at).toLocaleString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : null;
 
   return (
-    <div id="booking-tamu" ref={panelRef} className="scroll-mt-24 relative overflow-hidden rounded-2xl border border-slate-200 bg-gradient-to-br from-[#f7efe0] via-white to-white p-5 md:p-6 shadow-[0_16px_40px_-28px_rgba(14,30,51,.5)]">
+    <div id="booking-tamu" ref={panelRef} className="scroll-mt-24 relative overflow-hidden rounded-2xl border border-slate-200 bg-gradient-to-br from-[#e9d8b5] via-[#f7efdf] to-[#f7efdf] p-5 md:p-6 shadow-[0_16px_40px_-28px_rgba(14,30,51,.5)]">
       <div className="flex flex-col lg:flex-row lg:items-center gap-5">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 font-display font-bold text-dinas-ink">

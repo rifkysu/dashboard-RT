@@ -644,3 +644,19 @@ html:not([data-theme="dark"]) .menu-page .menu-stat:focus-visible { outline-colo
    layar kantor yang terang atau oleh pegawai berkacamata. Di tema terang dinaikkan ke #64748b (4,8:1,
    lolos WCAG AA). Tema gelap punya aturan sendiri di dark-theme.css. */
 html:not([data-theme="dark"]) .text-slate-400 { color:#64748b; }
+
+/* Tema krem untuk landing page & kiosk (/jadwal-rapat): latar putih diganti krem supaya tidak silau.
+   :where() menjaga spesifisitas setara utilitas Tailwind, jadi kelas hover:/open: tetap menang. */
+:where(.tema-krem) .bg-white { background-color:#f7efdf; }
+:where(.tema-krem) .bg-white\/95 { background-color:rgba(247,239,223,.95); }
+:where(.tema-krem) .bg-slate-50 { background-color:#f2e8d4; }
+:where(.tema-krem) .bg-slate-100 { background-color:#e8dcc3; }
+:where(.tema-krem) .bg-\[\#f6f8fb\] { background-color:#f3eadb; }
+:where(.tema-krem) .bg-\[\#eaf0f7\] { background-color:#e9dec8; }
+:where(.tema-krem) .hover\:bg-slate-50:hover { background-color:#ebdfc6; }
+:where(.tema-krem) .hover\:bg-slate-100:hover { background-color:#e0d2b5; }
+:where(.tema-krem) .border-slate-100 { border-color:#e3d5ba; }
+:where(.tema-krem) .border-slate-200 { border-color:#dccdae; }
+:where(.tema-krem) .ring-slate-200 { --tw-ring-color:#dccdae; }
+/* Teks abu-abu kecil di atas krem: digelapkan sedikit supaya kontras tetap >= 4.5:1. */
+html .tema-krem .text-slate-400, html .tema-krem .text-slate-500 { color:#515b6b; }

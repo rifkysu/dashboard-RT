@@ -30,7 +30,7 @@ function useKioskMaintenance() {
 
 function KioskMaintenanceNotice({ message }) {
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 bg-dinas-dark bg-kawung-gelap">
+    <div className="tema-krem min-h-screen flex items-center justify-center px-4 bg-dinas-dark bg-kawung-gelap">
       <div className="max-w-lg w-full bg-white rounded-2xl p-8 shadow-xl text-center">
         <BrandMark size="sm" className="mx-auto" />
         <div className="mt-5 inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-amber-50 border border-amber-200 text-amber-700 text-sm font-semibold">
@@ -393,7 +393,7 @@ export default function PublicRuangRapat() {
   if (down && !isAdmin) return <KioskMaintenanceNotice message={down.message} />;
 
   return (
-    <div className="min-h-screen bg-[#f2f4f7]">
+    <div className="tema-krem min-h-screen bg-[#ede3cf]">
       {down && (
         <div className="flex flex-wrap items-center gap-2 px-4 py-3 bg-amber-50 border-b border-amber-200 text-sm text-amber-800">
           <span className="material-symbols-outlined text-[20px]">build</span>

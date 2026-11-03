@@ -237,7 +237,7 @@ function RuangHariIni() {
         <div>
           <div className="flex items-center gap-2">
             <span className="font-display font-bold text-dinas-ink">Ruang rapat hari ini</span>
-            <span className="inline-flex items-center gap-1 text-[11px] font-bold uppercase tracking-wider text-red-600">
+            <span className="inline-flex items-center gap-1 text-[11px] font-bold uppercase tracking-wider text-red-700">
               <span className="relative flex w-1.5 h-1.5"><span className="absolute inset-0 rounded-full bg-red-500 motion-safe:animate-ping"></span><span className="relative w-1.5 h-1.5 rounded-full bg-red-500"></span></span>Live
             </span>
           </div>
@@ -278,7 +278,7 @@ function RuangHariIni() {
             </div>
             <div className="text-right text-xs shrink-0">
               {!items ? <span className="text-slate-400">Memuat…</span>
-                : r.now ? <span className="font-semibold text-red-600">Dipakai s/d {r.now.end}</span>
+                : r.now ? <span className="font-semibold text-red-700">Dipakai s/d {r.now.end}</span>
                   : <span className="font-semibold text-emerald-700">Kosong{r.next && <span className="font-normal text-slate-500"> · booking {r.next.start}</span>}</span>}
             </div>
             <span className="material-symbols-outlined text-[16px] text-slate-300 -mr-1 transition group-hover:text-kuningan group-hover:translate-x-0.5">chevron_right</span>
@@ -366,7 +366,7 @@ function Eyebrow({ children, light }) {
 
 function LandingMaintenanceNotice({ message }) {
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 bg-dinas-dark bg-kawung-gelap">
+    <div className="tema-krem min-h-screen flex items-center justify-center px-4 bg-dinas-dark bg-kawung-gelap">
       <div className="max-w-lg w-full bg-white rounded-2xl p-8 shadow-xl">
         <div className="flex items-center gap-2 text-amber-700 text-sm font-semibold">
           <span className="material-symbols-outlined text-[20px]">build</span>Sedang dalam pemeliharaan sistem
@@ -452,7 +452,7 @@ export default function Landing() {
   if (landingDown) return <LandingMaintenanceNotice message={landingDown.message} />;
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#f3f4f7] text-slate-800">
+    <div className="tema-krem min-h-screen flex flex-col bg-[#ede3cf] text-slate-800">
       <header className={`sticky top-0 z-40 backdrop-blur-md border-b text-white transition-[background-color,box-shadow,border-color] duration-300 ${scrolled ? 'bg-dinas-ink/90 border-white/10 shadow-[0_8px_30px_-12px_rgba(0,0,0,.5)]' : 'bg-dinas-dark border-transparent'}`}>
         <div className="w-full max-w-[1800px] mx-auto px-4 md:px-8 xl:px-14 py-3 flex items-center justify-between gap-4">
           {/* Logo: kembali ke awal landing page (gulir ke atas, hapus #bagian & ?filter di URL). */}
@@ -470,7 +470,7 @@ export default function Landing() {
           </nav>
           <div className="flex items-center gap-2 shrink-0">
             <Link to="/register" className="hidden sm:inline-block px-4 py-2 rounded-lg text-sm font-semibold text-white/85 transition-colors hover:bg-white/10">Daftar</Link>
-            <Link to="/login" className="px-4 py-2 rounded-lg bg-white text-dinas text-sm font-bold shadow-sm transition hover:bg-[#f7efe0] hover:shadow-[0_0_0_4px_rgba(184,137,59,.25)]">Masuk</Link>
+            <Link to="/login" className="px-4 py-2 rounded-lg bg-white text-dinas text-sm font-bold shadow-sm transition hover:bg-[#e9d8b5] hover:shadow-[0_0_0_4px_rgba(184,137,59,.25)]">Masuk</Link>
             <button type="button" onClick={() => setMenuOpen((o) => !o)} aria-expanded={menuOpen} aria-label={menuOpen ? 'Tutup menu' : 'Buka menu'} className="md:hidden w-10 h-10 -mr-2 rounded-lg flex items-center justify-center text-white hover:bg-white/10">
               <span className="material-symbols-outlined">{menuOpen ? 'close' : 'menu'}</span>
             </button>
@@ -517,7 +517,7 @@ export default function Landing() {
               </p>
               <div className="hero-in flex flex-wrap gap-3 mt-9" style={{ '--d': '560ms' }}>
                 <Magnetic>
-                  <Link to="/login" className="btn-shine group inline-flex items-center gap-2 px-6 py-3.5 rounded-xl bg-white text-dinas text-sm font-bold shadow-[0_10px_30px_-10px_rgba(0,0,0,.5)] transition hover:bg-[#f7efe0] hover:shadow-[0_14px_36px_-10px_rgba(184,137,59,.6)]">
+                  <Link to="/login" className="btn-shine group inline-flex items-center gap-2 px-6 py-3.5 rounded-xl bg-white text-dinas text-sm font-bold shadow-[0_10px_30px_-10px_rgba(0,0,0,.5)] transition hover:bg-[#e9d8b5] hover:shadow-[0_14px_36px_-10px_rgba(184,137,59,.6)]">
                     Masuk ke aplikasi<span className="material-symbols-outlined text-[18px] transition-transform group-hover:translate-x-1">arrow_forward</span>
                   </Link>
                 </Magnetic>
@@ -563,8 +563,8 @@ export default function Landing() {
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
             {KEUNGGULAN.map((k, i) => (
               <Reveal key={k.title} delay={i * 80}>
-                <div className="group h-full rounded-2xl bg-white border border-slate-200 p-4 md:p-5 shadow-[0_18px_40px_-24px_rgba(14,30,51,.45)] transition duration-300 hover:-translate-y-1 hover:border-kuningan/40">
-                  <span className="pop-in"><span className="w-10 h-10 rounded-xl bg-[#f7efe0] text-kuningan-ink flex items-center justify-center transition-colors group-hover:bg-kuningan group-hover:text-white">
+                <div className="group h-full rounded-2xl bg-[#f7efdf] border border-[#dccdae] p-4 md:p-5 shadow-[0_18px_40px_-24px_rgba(14,30,51,.45)] transition duration-300 hover:-translate-y-1 hover:border-kuningan/40">
+                  <span className="pop-in"><span className="w-10 h-10 rounded-xl bg-[#e9d8b5] text-kuningan-ink flex items-center justify-center transition-colors group-hover:bg-kuningan group-hover:text-white">
                     <span className="material-symbols-outlined text-[20px]">{k.icon}</span>
                   </span></span>
                   <div className="font-display font-bold text-dinas-ink mt-3">{k.title}</div>
@@ -580,7 +580,7 @@ export default function Landing() {
           <div className="landing-marquee-track gap-3 py-1">
             {[...SOROTAN, ...SOROTAN].map((s, i) => (
               <span key={i} aria-hidden={i >= SOROTAN.length ? 'true' : undefined}
-                className="shrink-0 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white border border-slate-200 text-sm font-semibold text-dinas-ink shadow-[0_4px_14px_-10px_rgba(14,30,51,.4)]">
+                className="shrink-0 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#f7efdf] border border-[#dccdae] text-sm font-semibold text-dinas-ink shadow-[0_4px_14px_-10px_rgba(14,30,51,.4)]">
                 <span className="w-1.5 h-1.5 rounded-full bg-kuningan"></span>{s}
               </span>
             ))}
@@ -588,7 +588,8 @@ export default function Landing() {
         </section>
 
         {/* Layanan */}
-        <section id="layanan" className="scroll-mt-20 w-full max-w-[1800px] mx-auto px-4 md:px-8 xl:px-14 pt-12 pb-16 md:pt-16 md:pb-24">
+        <section id="layanan" className="scroll-mt-20 mt-12 md:mt-16 bg-[#ede3cf] border-y border-[#d9c9a9]">
+          <div className="w-full max-w-[1800px] mx-auto px-4 md:px-8 xl:px-14 pt-12 pb-16 md:pt-16 md:pb-24">
           <Reveal className="max-w-2xl">
             <Eyebrow>Layanan</Eyebrow>
             <h2 className="font-display text-3xl md:text-[2.25rem] font-extrabold text-dinas-ink mt-3 tracking-tight">Empat layanan, <span className="text-emas-gelap">satu alur kerja</span></h2>
@@ -597,7 +598,7 @@ export default function Landing() {
           <div className="grid sm:grid-cols-2 gap-5 mt-10">
             {LAYANAN.map((l, idx) => (
               <Reveal key={l.label} delay={idx * 90}>
-                <div onMouseMove={trackPointer} className="card-spotlight group relative h-full overflow-hidden bg-white rounded-2xl border border-slate-200 p-6 md:p-7 shadow-[0_1px_2px_rgba(14,30,51,.04),0_8px_24px_-14px_rgba(14,30,51,.18)] transition duration-300 hover:-translate-y-1 hover:border-kuningan/40 hover:shadow-[0_2px_4px_rgba(14,30,51,.04),0_24px_48px_-20px_rgba(14,30,51,.35)]">
+                <div onMouseMove={trackPointer} className="card-spotlight group relative h-full overflow-hidden bg-[#f7efdf] rounded-2xl border border-[#dccdae] p-6 md:p-7 shadow-[0_1px_2px_rgba(14,30,51,.04),0_8px_24px_-14px_rgba(14,30,51,.18)] transition duration-300 hover:-translate-y-1 hover:border-kuningan/40 hover:shadow-[0_2px_4px_rgba(14,30,51,.04),0_24px_48px_-20px_rgba(14,30,51,.35)]">
                   <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-dinas via-kuningan to-dinas origin-left scale-x-0 transition-transform duration-500 group-hover:scale-x-100" aria-hidden="true"></div>
                   <span className="material-symbols-outlined watermark-icon absolute -right-6 -bottom-8 text-dinas/[0.05] transition duration-500 group-hover:text-kuningan/[0.12] group-hover:-rotate-6 pointer-events-none" aria-hidden="true">{l.icon}</span>
                   <span className="absolute top-6 right-6 font-mono text-xs font-semibold text-slate-300 transition-colors group-hover:text-kuningan" aria-hidden="true">0{idx + 1}</span>
@@ -610,13 +611,14 @@ export default function Landing() {
                     {l.tags.map((t) => t.replace('{ruang}', semuaRuang.length)).map((t, i) => (
                       <React.Fragment key={t}>
                         {i > 0 && l.sep && <span className="text-slate-400 text-xs">{l.sep}</span>}
-                        <span className="text-[11px] font-semibold px-2 py-1 rounded-md bg-[#f7efe0] text-kuningan-ink">{t}</span>
+                        <span className="text-[11px] font-semibold px-2 py-1 rounded-md bg-[#e9d8b5] text-kuningan-ink">{t}</span>
                       </React.Fragment>
                     ))}
                   </div>
                 </div>
               </Reveal>
             ))}
+          </div>
           </div>
         </section>
 
@@ -698,7 +700,7 @@ export default function Landing() {
             </Reveal>
             <Reveal delay={100} className="space-y-3">
               {FAQ.map((f, i) => (
-                <details key={f.q} className="landing-faq group rounded-2xl border border-slate-200 bg-[#f8f9fb] open:bg-white open:shadow-[0_16px_40px_-26px_rgba(14,30,51,.45)] open:border-kuningan/40 transition" open={i === 0}>
+                <details key={f.q} className="landing-faq group rounded-2xl border border-slate-200 bg-[#f3eadb] open:bg-[#f7efdf] open:shadow-[0_16px_40px_-26px_rgba(14,30,51,.45)] open:border-kuningan/40 transition" open={i === 0}>
                   <summary className="flex items-center justify-between gap-4 cursor-pointer list-none px-5 py-4 font-display font-bold text-dinas-ink">
                     {f.q}
                     <span className="shrink-0 w-8 h-8 rounded-full bg-white border border-slate-200 flex items-center justify-center text-dinas transition-transform group-open:rotate-45">
@@ -722,7 +724,7 @@ export default function Landing() {
               <p className="text-white/75 mt-2">Masuk untuk mengajukan dan memantau permintaan Anda.</p>
             </div>
             <div className="relative flex flex-wrap gap-3">
-              <Link to="/login" className="btn-shine group inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-white text-dinas text-sm font-bold transition hover:-translate-y-0.5 hover:bg-[#f7efe0]">
+              <Link to="/login" className="btn-shine group inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-white text-dinas text-sm font-bold transition hover:-translate-y-0.5 hover:bg-[#e9d8b5]">
                 Masuk<span className="material-symbols-outlined text-[18px] transition-transform group-hover:translate-x-1">arrow_forward</span>
               </Link>
               <Link to="/register" className="px-6 py-3 rounded-xl border border-white/35 bg-white/5 text-sm font-semibold transition hover:bg-white/15">Daftar akun</Link>
