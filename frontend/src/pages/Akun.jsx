@@ -53,9 +53,10 @@ export default function Akun() {
       .catch((err) => { if (silent !== true) setError(err.response?.data?.message || 'Gagal memuat daftar akun.'); })
       .finally(() => { if (silent !== true) setLoading(false); });
   }
-  useEffect(() => { load(); }, []);
+  // Bukan admin -> halaman langsung dialihkan ke Dashboard (lihat bawah), jadi jangan minta daftar akun (pasti 403).
+  useEffect(() => { if (isAdmin) load(); }, [isAdmin]); // eslint-disable-line react-hooks/exhaustive-deps
   // Realtime: akun baru daftar, login, ban/aktifkan, atau minta reset langsung terlihat.
-  useLive('users', () => load(true));
+  useLive('users', () => { if (isAdmin) load(true); });
 
   async function toggleBan(target) {
     const nextActive = !target.is_active;

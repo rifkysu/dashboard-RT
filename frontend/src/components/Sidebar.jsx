@@ -33,7 +33,7 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
       {mobileOpen && (
         <div className="fixed inset-0 bg-slate-900/50 z-30 md:hidden" onClick={onMobileClose} aria-hidden="true"></div>
       )}
-      <aside className={`bg-dinas-dark bg-kawung-gelap text-white fixed left-0 top-0 h-full flex flex-col z-40 transition-transform duration-300 md:transition-all w-64 ${collapsed ? 'md:w-20' : 'md:w-60'} ${mobileOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0`}>
+      <aside className={`bg-dinas-dark bg-kawung-gelap text-white fixed left-0 top-0 h-full flex flex-col z-40 transition-transform duration-300 md:transition-[width,transform] w-64 ${collapsed ? 'md:w-20' : 'md:w-60'} ${mobileOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0`}>
         <button
           type="button"
           onClick={onToggle}

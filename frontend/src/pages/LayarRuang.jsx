@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
+import visibleInterval from '../utils/visibleInterval';
 import api from '../api';
 import BrandMark from '../components/BrandMark';
 import FotoRuangSlideshow from '../components/FotoRuangSlideshow';
@@ -305,7 +306,7 @@ function Layar({ room }) {
       .catch(() => { if (id === reqRef.current) { setOffline(true); setItems((prev) => prev || []); } });
   }
   // Muat ulang tiap menit & saat tanggal berganti (layar menyala berhari-hari).
-  useEffect(() => { load(); const t = setInterval(load, 60000); return () => clearInterval(t); }, [today]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { load(); return visibleInterval(load, 60000); }, [today]); // eslint-disable-line react-hooks/exhaustive-deps
   useRuangRapatLive(load);
 
   useEffect(() => { document.title = `${judulRuang(room)} · Layar Ruang Rapat`; }, [room]);
@@ -364,7 +365,7 @@ function Layar({ room }) {
         </div>
       </header>
 
-      <main className="relative flex-1 min-h-0 grid lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)] gap-6 lg:gap-10 px-5 md:px-10 py-6 md:py-8">
+      <main className="relative flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)] gap-6 lg:gap-10 px-5 md:px-10 py-6 md:py-8">
         {/* Kiri: nama ruang + status besar */}
         <section className="flex flex-col min-h-0 hero-in">
           <div className="text-sm md:text-base font-semibold uppercase tracking-[0.2em] text-aksen">{info?.[room]?.satuan_kerja || 'Ruang rapat'}{info?.[room]?.kapasitas ? <span className="text-white/50"> · {info[room].kapasitas} kursi</span> : null}</div>

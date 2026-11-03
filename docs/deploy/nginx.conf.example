@@ -14,6 +14,17 @@
 # Sembunyikan versi Nginx di header & halaman error.
 server_tokens off;
 
+# Kompres JS/CSS/JSON sebelum dikirim (umumnya 70-80% lebih kecil) -> halaman lebih cepat terbuka
+# dan bandwidth server lebih hemat. Respons API (JSON dari backend) ikut dikompres lewat gzip_proxied.
+# Font .woff2 & foto JPG/PNG sudah terkompres, jadi sengaja tidak dimasukkan.
+# text/event-stream (realtime) TIDAK boleh dimasukkan: gzip menahan sinyal di buffer.
+gzip on;
+gzip_vary on;
+gzip_comp_level 5;
+gzip_min_length 1024;
+gzip_proxied any;
+gzip_types text/plain text/css text/csv application/javascript application/json image/svg+xml;
+
 server {
     listen 80;
     server_name <<GANTI_DOMAIN>>;

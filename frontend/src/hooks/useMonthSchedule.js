@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import api from '../api';
 import useRuangRapatLive from './useRuangRapatLive';
+import visibleInterval from '../utils/visibleInterval';
 
 // Maks. bulan yang dimuat lewat infinite scroll (batas backend 400 hari per request).
 export const MAX_MONTHS = 12;
@@ -68,7 +69,7 @@ export default function useMonthSchedule(endpoint, extraParams) {
     load().then((ok) => { if (!ok && monthsRef.current === next) { moreFailedAt.current = Date.now(); setMonths(cur); } });
   };
 
-  useEffect(() => { load(); const t = setInterval(load, 60000); return () => clearInterval(t); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { load(); return visibleInterval(load, 60000); }, []); // eslint-disable-line react-hooks/exhaustive-deps
   useRuangRapatLive(load);
 
   return { months, items, setItems, loading, loadingMore, error, setError, selectMonth, loadMore, reload: load, hasMore: months.length < MAX_MONTHS };

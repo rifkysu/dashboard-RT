@@ -33,7 +33,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 LOGO = os.path.join(ROOT, "frontend", "public", "logo-kemnaker.png")
 
-TANGGAL = "28 Oktober 2026"
+TANGGAL = "2 November 2026"
 SISTEM = "Sistem Layanan Biro Umum & Rumah Tangga"
 
 PW, PH = A4
@@ -805,9 +805,10 @@ def isi_aplikasi():
 
         PageBreak(),
         h1("2. Pengguna & Hak Akses"),
-        p("Sistem mengenal empat peran (*enum* `user_role`). Peran dan status aktif pengguna selalu dibaca "
-          "ulang dari database pada setiap request, sehingga perubahan peran lewat pgAdmin 4 atau menu Akun & "
-          "Akses langsung berlaku tanpa perlu login ulang."),
+        p("Sistem mengenal empat peran (*enum* `user_role`). Peran dan status aktif pengguna dibaca ulang dari "
+          "database (bukan dari token), dengan cache singkat 5 detik di memori backend: perubahan lewat menu Akun & "
+          "Akses langsung berlaku, perubahan lewat pgAdmin 4 berlaku paling lambat 5 detik, dan request yang mengubah "
+          "data (POST/PUT/DELETE) selalu dicek langsung ke database. Tidak perlu login ulang."),
         table([25, 62, 87], [
             ["Peran", "Cara mendapatkan", "Ringkasan wewenang"],
             ["Karyawan", "Daftar mandiri lewat halaman Daftar Akun (satu-satunya peran yang bisa dipilih).",
@@ -1148,9 +1149,12 @@ def isi_aplikasi():
             "dengan infinite scroll, dipakai menu Ruang Rapat, landing page, dan kiosk. Lebar kolom ruangan tetap (nama panjang "
             "maks. 2 baris); bila ruangan tidak muat, muncul tombol panah kiri/kanan + bayangan tepi; tabel juga bisa digeser dengan "
             "jari (layar sentuh) atau klik-tahan-seret mouse (klik di akhir seretan tidak membuka booking).",
-            "**AuthContext**: sesi, peran, status maintenance, sinkronisasi berkala (30 detik) + sinyal live.",
+            "**AuthContext**: sesi, peran, status maintenance, sinkronisasi berkala (30 detik, hanya saat tab terlihat) + sinyal live.",
             "**live.js** + hook **useLive**: satu koneksi SSE bersama per tab; halaman berlangganan topik "
-            "modulnya dan memuat ulang data tanpa kedip saat ada perubahan dari pengguna lain.",
+            "modulnya dan memuat ulang data tanpa kedip saat ada perubahan dari pengguna lain. Tab yang sedang "
+            "tersembunyi menunda muat ulang sampai dibuka lagi; polling berkala (utils/visibleInterval.js) juga berhenti selama tab tersembunyi.",
+            "**App.jsx**: code splitting per halaman (React.lazy) -- pembukaan pertama hanya mengunduh halaman yang dibuka, "
+            "halaman lain di-prefetch saat browser senggang; library (React, router, axios) dipisah ke berkas vendor yang tetap ter-cache antar-deploy.",
             "**Feedback**: popup konfirmasi/peringatan dan notifikasi toast yang seragam.",
             "**DocumentViewer**: pratinjau dokumen melalui Blob URL; **LoginSplash**: popup animasi logo "
             "login/logout.",
@@ -1278,7 +1282,8 @@ def isi_aplikasi():
         PageBreak(),
         h2("9.3 Pemeriksaan setiap request API"),
         p("Setiap request ke modul yang memerlukan login melewati pemeriksaan berurutan di backend. Peran dan "
-          "status akun dibaca ulang dari database, bukan dari isi token."),
+          "status akun dibaca ulang dari database, bukan dari isi token (cache 5 detik untuk request baca, "
+          "dikosongkan setiap ada perubahan data; status maintenance di-cache 10 detik dengan cara yang sama)."),
         flowchart(562, fc_request),
         caption("Gambar 8. Flowchart pemeriksaan request API dan kode respons penolakannya"),
         PageBreak(),
@@ -1372,6 +1377,9 @@ def isi_infra():
             "dan setelah reconnect semua halaman memuat ulang sekali.",
             "Syarat deploy real-time: backend dijalankan sebagai satu proses (bukan cluster/beberapa instance), "
             "reverse proxy tidak mem-buffer `/api/live/stream`, dan TRUST_PROXY=true bila di belakang proxy.",
+            "Hemat beban server: tab yang tersembunyi tidak polling dan menunda muat ulang dari sinyal SSE; Nginx "
+            "mengompres (gzip) JS/CSS/JSON/CSV kecuali stream SSE; berkas `/assets/` ber-hash di-cache 30 hari; frontend "
+            "dipecah per halaman sehingga unduhan pertama sekitar setengah dari sebelumnya.",
             "Backend mengakses PostgreSQL melalui Prisma Client (TCP 5432); pgAdmin 4 dipakai admin untuk "
             "administrasi database.",
             "Berkas unggahan disimpan di `backend/uploads/` dan tidak diekspos sebagai folder publik; isi "

@@ -62,7 +62,7 @@ export default function ProtectedRoute() {
   return (
     <div className="app-shell-bg min-h-screen">
       <Sidebar collapsed={collapsed} onToggle={toggleSidebar} mobileOpen={mobileOpen} onMobileClose={() => setMobileOpen(false)} theme={theme} onThemeChange={changeTheme} />
-      <div className={`min-h-screen transition-all duration-300 ml-0 ${collapsed ? 'md:ml-20' : 'md:ml-60'}`}>
+      <div className={`min-h-screen transition-[margin-left] duration-300 ml-0 ${collapsed ? 'md:ml-20' : 'md:ml-60'}`}>
         <header className="md:hidden sticky top-0 z-20 bg-dinas-dark bg-kawung-gelap text-white px-4 py-3 flex items-center gap-3">
           <button type="button" onClick={() => setMobileOpen(true)} aria-label="Buka menu" className="w-10 h-10 rounded-lg flex items-center justify-center text-white hover:bg-white/10">
             <span className="material-symbols-outlined">menu</span>

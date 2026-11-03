@@ -141,12 +141,80 @@ main.app-main { background: var(--kanvas) !important; min-height:100vh; }
 .menu-riwayat .menu-hero::after { content:'history'; }
 .menu-settings .menu-hero::after { content:'settings'; }
 .menu-profile .menu-hero::after { content:'person'; }
+.menu-foto-ruang .menu-hero::after { content:'photo_library'; }
 /* Tombol utama di header: gradasi + bayangan + terangkat saat disorot */
 .menu-page .menu-hero > button.bg-slate-900 {
   background:linear-gradient(135deg, #2c5689, var(--dinas)) !important;
   box-shadow:0 8px 18px -10px rgba(30,58,95,.8); transition:transform .2s ease, box-shadow .2s ease;
 }
 .menu-page .menu-hero > button.bg-slate-900:hover { transform:translateY(-2px); box-shadow:0 12px 22px -10px rgba(30,58,95,.85); }
+
+/* Mode terang: header semua menu ikut panel biru seperti dashboard (gradasi dinas + cahaya kuningan
+   + motif kawung putih). Mode gelap punya gayanya sendiri di dark-theme.css. */
+html:not([data-theme="dark"]) .menu-page:not(.menu-dashboard) .menu-hero {
+  border-color:transparent;
+  background:
+    radial-gradient(60% 120% at 100% 0%, rgba(184,137,59,.32), transparent 60%),
+    radial-gradient(50% 90% at 0% 100%, rgba(37,99,235,.25), transparent 60%),
+    linear-gradient(135deg, #1e3a5f 0%, #142a47 60%, #0e1e33 100%);
+  box-shadow:0 14px 34px -18px rgba(14,30,51,.55);
+}
+html:not([data-theme="dark"]) .menu-page:not(.menu-dashboard) .menu-hero::before { background-image:var(--kawung-gelap); width:min(560px,70%); }
+html:not([data-theme="dark"]) .menu-page:not(.menu-dashboard) .menu-hero h1 { color:#ffffff !important; }
+html:not([data-theme="dark"]) .menu-page:not(.menu-dashboard) .menu-hero p { color:rgba(255,255,255,.78) !important; }
+html:not([data-theme="dark"]) .menu-page:not(.menu-dashboard) .menu-kicker { color:rgba(255,255,255,.72); }
+/* Ikon menu: kotak kaca putih transparan, bukan biru di atas biru. */
+html:not([data-theme="dark"]) .menu-page:not(.menu-dashboard) .menu-hero::after {
+  background:rgba(255,255,255,.12); border:1px solid rgba(255,255,255,.22); box-shadow:none;
+}
+/* Tombol utama (Tambah ...): putih dengan teks biru supaya menonjol di panel biru. */
+html:not([data-theme="dark"]) .menu-page .menu-hero > button.bg-slate-900 {
+  background:#ffffff !important; color:var(--dinas) !important;
+  box-shadow:0 8px 18px -10px rgba(0,0,0,.45);
+}
+html:not([data-theme="dark"]) .menu-page .menu-hero > button.bg-slate-900:hover { background:#f1f5fb !important; box-shadow:0 12px 22px -10px rgba(0,0,0,.5); }
+
+/* Mode terang: kartu ringkasan di bawah header (components/MenuStats.jsx) ikut biru, senada header.
+   Warna arti status (merah/kuning/hijau) tetap ada di garis kiri, ikon & angka -- versi terang
+   supaya terbaca di latar gelap. */
+html:not([data-theme="dark"]) .menu-page .menu-stat {
+  background:
+    radial-gradient(80% 140% at 100% 0%, rgba(184,137,59,.22), transparent 60%),
+    linear-gradient(135deg, #24466f 0%, #1e3a5f 55%, #142a47 100%) !important;
+  border-color:rgba(255,255,255,.08) !important; color:#fff !important;
+  box-shadow:0 10px 24px -16px rgba(14,30,51,.6);
+}
+html:not([data-theme="dark"]) .menu-page .menu-stat.dash-lift:hover { border-color:rgba(255,255,255,.28) !important; box-shadow:0 16px 30px -14px rgba(14,30,51,.65) !important; }
+html:not([data-theme="dark"]) .menu-page .menu-stat.is-active { border-color:var(--kuningan) !important; box-shadow:0 0 0 3px rgba(184,137,59,.35), 0 10px 24px -16px rgba(14,30,51,.6) !important; }
+html:not([data-theme="dark"]) .menu-page .menu-stat .text-slate-600 { color:rgba(255,255,255,.78) !important; }
+html:not([data-theme="dark"]) .menu-page .menu-stat .text-slate-500 { color:rgba(255,255,255,.6) !important; }
+html:not([data-theme="dark"]) .menu-page .menu-stat .text-slate-900,
+html:not([data-theme="dark"]) .menu-page .menu-stat .text-dinas { color:#ffffff !important; }
+html:not([data-theme="dark"]) .menu-page .menu-stat .text-red-700 { color:#fca5a5 !important; }
+html:not([data-theme="dark"]) .menu-page .menu-stat .text-amber-700 { color:#fcd34d !important; }
+html:not([data-theme="dark"]) .menu-page .menu-stat .text-emerald-700 { color:#6ee7b7 !important; }
+html:not([data-theme="dark"]) .menu-page .menu-stat .bg-red-50 { background:rgba(239,68,68,.2) !important; }
+html:not([data-theme="dark"]) .menu-page .menu-stat .bg-amber-50 { background:rgba(251,191,36,.18) !important; }
+html:not([data-theme="dark"]) .menu-page .menu-stat .bg-emerald-50 { background:rgba(16,185,129,.2) !important; }
+html:not([data-theme="dark"]) .menu-page .menu-stat .bg-dinas-soft { background:rgba(255,255,255,.12) !important; }
+html:not([data-theme="dark"]) .menu-page .menu-stat .bg-dinas { background:var(--kuningan) !important; }
+html:not([data-theme="dark"]) .menu-page .menu-stat:focus-visible { outline-color:var(--kuningan); }
+
+/* Pita judul biru di atas panel putih (mis. panel Detail/Foto/Fasilitas di menu Foto & Fasilitas Ruang):
+   pasang class panel-biru-head di baris judul yang menjadi anak pertama panel ber-padding p-5. */
+.menu-page .panel-biru-head {
+  margin:-20px -20px 0; padding:16px 20px; border-radius:11px 11px 0 0;
+  background:
+    radial-gradient(60% 160% at 100% 0%, rgba(184,137,59,.28), transparent 60%),
+    linear-gradient(135deg, #24466f 0%, #1e3a5f 55%, #142a47 100%);
+}
+.menu-page .panel-biru-head h3 { color:#ffffff !important; }
+.menu-page .panel-biru-head .bg-dinas { background:#ffffff !important; color:var(--dinas) !important; }
+.menu-page .panel-biru-head .bg-dinas:hover:not(:disabled) { background:#eef3fa !important; }
+.menu-page .panel-biru-head p, .menu-page .panel-biru-head .text-slate-500, .menu-page .panel-biru-head .text-slate-600 { color:rgba(255,255,255,.75) !important; }
+.menu-page .panel-biru-head > span:first-child, .menu-page .panel-biru-head > div:first-child > span:first-child {
+  background:rgba(255,255,255,.12) !important; color:#ffffff !important; border:1px solid rgba(255,255,255,.2);
+}
 
 /* Kartu ringkasan per menu (components/MenuStats.jsx) */
 .menu-stat { position:relative; overflow:hidden; }
@@ -457,7 +525,7 @@ main.app-main { background: var(--kanvas) !important; min-height:100vh; }
 .landing-dots { background-image:radial-gradient(rgba(255,255,255,.14) 1px, transparent 1px); background-size:22px 22px; }
 /* Aurora: bias warna yang berputar pelan di belakang hero. */
 @keyframes aurora-spin { to { transform:rotate(360deg); } }
-.landing-aurora { background:conic-gradient(from 0deg, rgba(184,137,59,.0), rgba(184,137,59,.28), rgba(37,99,235,.22), rgba(56,189,248,.10), rgba(184,137,59,.0)); filter:blur(90px); animation:aurora-spin 28s linear infinite; }
+.landing-aurora { background:conic-gradient(from 0deg, rgba(184,137,59,.0), rgba(184,137,59,.28), rgba(37,99,235,.22), rgba(56,189,248,.10), rgba(184,137,59,.0)); filter:blur(90px); animation:aurora-spin 28s linear infinite; will-change:transform; }
 /* Kartu kaca kecil yang melayang di sekitar kartu live hero. */
 .glass-chip { background:rgba(255,255,255,.12); border:1px solid rgba(255,255,255,.22); -webkit-backdrop-filter:blur(14px); backdrop-filter:blur(14px); box-shadow:0 18px 40px -18px rgba(0,0,0,.6); }
 @keyframes landing-float-b { 0%,100% { transform:translateY(0) rotate(-2deg); } 50% { transform:translateY(-12px) rotate(1deg); } }

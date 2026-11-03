@@ -1,5 +1,27 @@
 const jwt = require('jsonwebtoken');
 const prisma = require('../prisma');
+const live = require('../live');
+
+// Cache singkat data akun untuk requireAuth: tiap halaman memicu beberapa request sekaligus (plus
+// polling), dan tanpa cache semuanya membaca tabel users. Supaya role/ban/logout tetap langsung
+// berlaku: request yang mengubah data (POST/PUT/DELETE) selalu membaca database, cache dikosongkan
+// setiap ada perubahan lewat aplikasi (live.onChange), dan perubahan langsung lewat pgAdmin4
+// paling lambat terbaca setelah USER_CACHE_MS.
+const USER_CACHE_MS = 5000;
+const userCache = new Map();
+live.onChange(() => userCache.clear());
+
+async function loadUser(id, fresh) {
+  const hit = userCache.get(id);
+  if (!fresh && hit && Date.now() - hit.at < USER_CACHE_MS) return hit.user;
+  const user = await prisma.user.findUnique({
+    where: { id },
+    select: { role: true, is_active: true, nama_lengkap: true, email: true, token_version: true },
+  });
+  if (userCache.size > 5000) userCache.clear();
+  userCache.set(id, { user, at: Date.now() });
+  return user;
+}
 
 // Kode & pesan untuk akun yang di-ban admin (is_active = false). Frontend
 // mengenali kode ini dan menampilkan popup pemberitahuan ban di halaman Login.
@@ -8,9 +30,9 @@ const ACCOUNT_BANNED_MESSAGE =
   'Akun Anda telah diblokir oleh admin karena terdeteksi melanggar ketentuan penggunaan atau melakukan spam berlebihan. Hubungi admin Biro Umum jika menurut Anda ini sebuah kesalahan.';
 
 // Middleware: memastikan request punya token JWT yang valid.
-// Role & status aktif SELALU diambil segar dari database (bukan dari klaim
-// token yang bisa basi) -> perubahan role/nonaktifkan akun lewat pgAdmin4
-// langsung berlaku di request berikutnya, tanpa perlu logout/login ulang.
+// Role & status aktif diambil dari database (bukan dari klaim token yang bisa
+// basi) -> perubahan role/nonaktifkan akun lewat pgAdmin4 berlaku dalam
+// beberapa detik, tanpa perlu logout/login ulang (lihat cache loadUser di atas).
 async function requireAuth(req, res, next) {
   const header = req.headers.authorization || '';
   const token = header.startsWith('Bearer ') ? header.slice(7).trim() : null;
@@ -27,10 +49,7 @@ async function requireAuth(req, res, next) {
       return res.status(401).json({ message: 'Token tidak valid.' });
     }
 
-    const current = await prisma.user.findUnique({
-      where: { id },
-      select: { role: true, is_active: true, nama_lengkap: true, email: true, token_version: true },
-    });
+    const current = await loadUser(id, req.method !== 'GET' && req.method !== 'HEAD');
     // Akun di-ban admin saat masih login -> sesi langsung diputus dan frontend
     // menampilkan pemberitahuan ban (lihat kode ACCOUNT_BANNED di api.js).
     if (current && !current.is_active) {

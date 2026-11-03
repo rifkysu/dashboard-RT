@@ -42,4 +42,7 @@ function streamHandler(req, res) {
   req.on('close', () => { clearInterval(heartbeat); bus.off('change', send); });
 }
 
-module.exports = { broadcast, notifyOnWrite, streamHandler, TOPICS };
+// Untuk cache di memori (mis. middleware/auth.js): dipanggil setiap ada perubahan data apa pun.
+function onChange(fn) { bus.on('change', fn); }
+
+module.exports = { broadcast, notifyOnWrite, streamHandler, onChange, TOPICS };

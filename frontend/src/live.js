@@ -9,8 +9,23 @@ const listeners = new Set();
 let es = null;
 let dropped = false;
 
-function emit(topic) {
+function emitNow(topic) {
   listeners.forEach((fn) => { try { fn(topic); } catch (e) { console.error('[LIVE]', e); } });
+}
+
+// Tab tersembunyi tidak langsung refetch: topik yang berubah dikumpulkan dan baru dikirim saat
+// tab terlihat lagi. Tanpa ini, satu perubahan data memicu refetch dari SEMUA tab yang terbuka
+// di semua komputer, padahal kebanyakan sedang tidak dilihat.
+const pending = new Set();
+function emit(topic) {
+  if (typeof document !== 'undefined' && document.hidden) { pending.add(topic); return; }
+  emitNow(topic);
+}
+function flushPending() {
+  if (document.hidden || !pending.size) return;
+  const topics = pending.has('*') ? ['*'] : [...pending];
+  pending.clear();
+  topics.forEach(emitNow);
 }
 
 function connect() {
@@ -33,6 +48,7 @@ function disconnect() {
 // berikutnya tertahan dan halaman terlihat macet. Saat halaman dipulihkan dari cache tombol
 // Back, sambungkan lagi dan minta semua halaman refetch karena perubahan selama itu terlewat.
 if (typeof window !== 'undefined') {
+  document.addEventListener('visibilitychange', flushPending);
   window.addEventListener('pagehide', disconnect);
   window.addEventListener('pageshow', (e) => {
     if (listeners.size && !es) { connect(); if (e.persisted) emit('*'); }

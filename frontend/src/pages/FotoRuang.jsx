@@ -109,7 +109,7 @@ export default function FotoRuang() {
   }
 
   return (
-    <div className="menu-page max-w-6xl mx-auto">
+    <div className="menu-page menu-foto-ruang max-w-6xl mx-auto">
       <div className="menu-hero mb-6">
         <div>
           <span className="menu-kicker">Biro Umum / Foto & Fasilitas Ruang</span>
@@ -143,18 +143,18 @@ export default function FotoRuang() {
           const sampul = d?.foto?.[0];
           return (
             <button key={r} type="button" role="tab" aria-selected={aktif} onClick={() => setPilih(r)}
-              className={`group text-left rounded-2xl border overflow-hidden transition ${aktif ? 'border-dinas ring-2 ring-dinas/20 bg-white shadow-md' : 'border-slate-200 bg-white hover:border-slate-300 hover:shadow-sm'}`}>
+              className={`group text-left rounded-2xl border overflow-hidden transition ${aktif ? 'border-dinas ring-2 ring-dinas/25 bg-dinas shadow-md' : 'border-dinas/15 bg-dinas-soft hover:border-dinas/40 hover:shadow-sm'}`}>
               <div className="relative aspect-[16/9] bg-slate-100 overflow-hidden">
                 {sampul
                   ? <img src={sampul.src} alt="" className="w-full h-full object-cover transition duration-500 group-hover:scale-105" />
                   : <span className="absolute inset-0 flex flex-col items-center justify-center text-slate-400"><span className="material-symbols-outlined text-[28px]">add_photo_alternate</span><span className="text-[11px] font-semibold mt-0.5">Belum ada foto</span></span>}
-                {aktif && <span className="absolute top-2 right-2 w-6 h-6 rounded-full bg-dinas text-white flex items-center justify-center shadow"><span className="material-symbols-outlined text-[16px]">check</span></span>}
+                {aktif && <span className="absolute top-2 right-2 w-6 h-6 rounded-full bg-kuningan text-white flex items-center justify-center shadow"><span className="material-symbols-outlined text-[16px]">check</span></span>}
                 {d?.maintenance && <span className="absolute bottom-2 left-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500 text-white text-[10px] font-bold shadow"><span className="material-symbols-outlined text-[13px]">construction</span>Maintenance{periodeMaintenance(d) ? ` ${periodeMaintenance(d)}` : ''}</span>}
               </div>
               <div className="px-3 py-2.5">
-                <div className="font-bold text-sm text-slate-900 truncate" title={judulRuang(r)}>{judulRuang(r)}</div>
-                {!bagian && <div className="text-[11px] text-slate-500 truncate">{d?.satuan_kerja}</div>}
-                <div className="text-[11px] text-slate-500">{loaded ? `${d?.foto?.length || 0} foto · ${d?.fasilitas?.length || 0} fasilitas` : gagalMuat ? 'Gagal dimuat' : 'Memuat…'}</div>
+                <div className={`font-bold text-sm truncate ${aktif ? 'text-white' : 'text-dinas'}`} title={judulRuang(r)}>{judulRuang(r)}</div>
+                {!bagian && <div className={`text-[11px] truncate ${aktif ? 'text-white/70' : 'text-dinas/70'}`}>{d?.satuan_kerja}</div>}
+                <div className={`text-[11px] ${aktif ? 'text-white/70' : 'text-dinas/70'}`}>{loaded ? `${d?.foto?.length || 0} foto · ${d?.fasilitas?.length || 0} fasilitas` : gagalMuat ? 'Gagal dimuat' : 'Memuat…'}</div>
               </div>
             </button>
           );
@@ -254,7 +254,7 @@ function MaintenancePanel({ room, data, memuat, reload }) {
 
   return (
     <div className={`mt-3 rounded-2xl border p-5 ${aktif ? 'bg-amber-50 border-amber-300' : 'bg-white border-slate-200'}`}>
-      <div className="flex flex-wrap items-start gap-3">
+      <div className={`flex flex-wrap items-start gap-3 ${aktif ? '' : 'panel-biru-head'}`}>
         <span className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${aktif ? 'bg-amber-500 text-white' : 'bg-emerald-50 text-emerald-700'}`}>
           <span className="material-symbols-outlined text-[22px]">{terjadwal ? 'event_busy' : aktif ? 'construction' : 'event_available'}</span>
         </span>
@@ -275,7 +275,7 @@ function MaintenancePanel({ room, data, memuat, reload }) {
           {[[false, 'all_inclusive', 'Sampai dibuka lagi'], [true, 'date_range', 'Pilih tanggal']].map(([v, icon, label]) => (
             <button key={label} type="button" role="radio" aria-checked={form.pakaiTanggal === v} disabled={saving || memuat}
               onClick={() => setForm((f) => ({ ...f, pakaiTanggal: v }))}
-              className={`inline-flex items-center gap-1.5 px-3 h-9 rounded-lg border text-xs font-semibold disabled:opacity-50 ${form.pakaiTanggal === v ? 'bg-amber-100 border-amber-400 text-amber-900' : 'bg-white border-slate-300 text-slate-600 hover:bg-slate-50'}`}>
+              className={`inline-flex items-center gap-1.5 px-3 h-9 rounded-lg border text-xs font-semibold disabled:opacity-50 ${form.pakaiTanggal === v ? 'bg-dinas border-dinas text-white' : 'bg-dinas-soft border-dinas/20 text-dinas hover:border-dinas'}`}>
               <span className="material-symbols-outlined text-[16px]">{icon}</span>{label}
             </button>
           ))}
@@ -355,7 +355,7 @@ function DetailPanel({ room, data, terpakai, temaLain, memuat, onSaved }) {
 
   return (
     <form onSubmit={simpan} className="mt-3 bg-white border border-slate-200 rounded-2xl p-5">
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 panel-biru-head">
         <span className="w-10 h-10 rounded-xl bg-sky-50 text-sky-700 flex items-center justify-center"><span className="material-symbols-outlined text-[22px]">info</span></span>
         <div>
           <h3 className="font-bold leading-tight">Detail ruangan</h3>
@@ -463,13 +463,13 @@ function DaftarTema({ judul, items, aktif, contoh, swatch, dipakai, onPilih }) {
                   const pakai = dipakai(x);
                   return (
                     <button key={x.key} type="button" role="radio" aria-checked={on} onClick={() => onPilih(x)}
-                      className={`flex items-center gap-2.5 w-full px-1.5 py-1.5 rounded-lg text-left transition ${on ? 'bg-dinas/10 ring-1 ring-dinas' : 'hover:bg-slate-50'}`}>
+                      className={`flex items-center gap-2.5 w-full px-1.5 py-1.5 rounded-lg text-left transition ${on ? 'bg-dinas ring-1 ring-dinas' : 'hover:bg-dinas-soft'}`}>
                       <span className="shrink-0 w-14 h-8 rounded-md overflow-hidden" aria-hidden="true">{swatch(x)}</span>
                       <span className="min-w-0 flex-1">
-                        <span className="block text-xs font-semibold text-slate-800 truncate">{x.label}</span>
-                        {pakai && <span className="block text-[10px] text-amber-700 truncate" title={`Dipakai: ${pakai.map(judulRuang).join(', ')}`}>Dipakai {pakai.map(judulRuang).join(', ')}</span>}
+                        <span className={`block text-xs font-semibold truncate ${on ? 'text-white' : 'text-slate-800'}`}>{x.label}</span>
+                        {pakai && <span className={`block text-[10px] truncate ${on ? 'text-amber-200' : 'text-amber-700'}`} title={`Dipakai: ${pakai.map(judulRuang).join(', ')}`}>Dipakai {pakai.map(judulRuang).join(', ')}</span>}
                       </span>
-                      {on && <span className="material-symbols-outlined shrink-0 text-[18px] text-dinas" aria-hidden="true">check_circle</span>}
+                      {on && <span className="material-symbols-outlined shrink-0 text-[18px] text-amber-300" aria-hidden="true">check_circle</span>}
                     </button>
                   );
                 })}
@@ -537,8 +537,8 @@ function TambahRuangDialog({ terpakai, bagianAwal, onClose, onDone }) {
           {fasilitas.length > 0 && (
             <ul className="sm:col-span-2 -mt-2 flex flex-wrap gap-1.5" aria-label="Pratinjau fasilitas">
               {fasilitas.map((f) => (
-                <li key={f.label} className="inline-flex items-center gap-1 px-2 py-1 rounded-lg border border-slate-200 bg-slate-50 text-xs font-semibold text-slate-700">
-                  <span className="material-symbols-outlined text-[16px] text-kuningan">{f.icon}</span>{f.label}
+                <li key={f.label} className="inline-flex items-center gap-1 px-2 py-1 rounded-lg border border-dinas bg-dinas text-xs font-semibold text-white">
+                  <span className="material-symbols-outlined text-[16px] text-amber-300">{f.icon}</span>{f.label}
                 </li>
               ))}
             </ul>
@@ -630,7 +630,7 @@ function FotoPanel({ room, foto, memuat, gagalMuat, reload }) {
 
   return (
     <section className="bg-white border border-slate-200 rounded-2xl p-5">
-      <div className="flex flex-wrap items-start justify-between gap-3">
+      <div className="flex flex-wrap items-start justify-between gap-3 panel-biru-head">
         <div className="flex items-center gap-3">
           <span className="w-10 h-10 rounded-xl bg-dinas-soft text-dinas flex items-center justify-center"><span className="material-symbols-outlined text-[22px]">photo_library</span></span>
           <div>
@@ -857,7 +857,7 @@ function FasilitasPanel({ room, fasilitas, adaFoto, memuat, reload }) {
 
   return (
     <section className="bg-white border border-slate-200 rounded-2xl p-5">
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 panel-biru-head">
         <span className="w-10 h-10 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center"><span className="material-symbols-outlined text-[22px]">checklist</span></span>
         <div>
           <h3 className="font-bold leading-tight">Fasilitas ruangan</h3>
@@ -872,12 +872,12 @@ function FasilitasPanel({ room, fasilitas, adaFoto, memuat, reload }) {
         {draft.length ? (
           <ul className="space-y-1.5">
             {draft.map((f, i) => (
-              <li key={f.label} className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg border border-slate-200 bg-slate-50">
-                <span className="material-symbols-outlined text-[18px] text-kuningan">{f.icon}</span>
-                <span className="flex-1 min-w-0 text-sm font-semibold text-slate-800 truncate">{f.label}</span>
-                <button type="button" onClick={() => geser(i, -1)} disabled={i === 0} aria-label="Naikkan" className="w-7 h-7 rounded-md text-slate-500 hover:bg-white disabled:opacity-30 inline-flex items-center justify-center"><span className="material-symbols-outlined text-[18px]">arrow_upward</span></button>
-                <button type="button" onClick={() => geser(i, 1)} disabled={i === draft.length - 1} aria-label="Turunkan" className="w-7 h-7 rounded-md text-slate-500 hover:bg-white disabled:opacity-30 inline-flex items-center justify-center"><span className="material-symbols-outlined text-[18px]">arrow_downward</span></button>
-                <button type="button" onClick={() => setDraft((d) => d.filter((_, j) => j !== i))} aria-label={`Hapus ${f.label}`} className="w-7 h-7 rounded-md text-red-600 hover:bg-red-50 inline-flex items-center justify-center"><span className="material-symbols-outlined text-[18px]">close</span></button>
+              <li key={f.label} className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg border border-dinas bg-dinas text-white">
+                <span className="material-symbols-outlined text-[18px] text-amber-300">{f.icon}</span>
+                <span className="flex-1 min-w-0 text-sm font-semibold text-white truncate">{f.label}</span>
+                <button type="button" onClick={() => geser(i, -1)} disabled={i === 0} aria-label="Naikkan" className="w-7 h-7 rounded-md text-white/75 hover:bg-white/15 disabled:opacity-30 inline-flex items-center justify-center"><span className="material-symbols-outlined text-[18px]">arrow_upward</span></button>
+                <button type="button" onClick={() => geser(i, 1)} disabled={i === draft.length - 1} aria-label="Turunkan" className="w-7 h-7 rounded-md text-white/75 hover:bg-white/15 disabled:opacity-30 inline-flex items-center justify-center"><span className="material-symbols-outlined text-[18px]">arrow_downward</span></button>
+                <button type="button" onClick={() => setDraft((d) => d.filter((_, j) => j !== i))} aria-label={`Hapus ${f.label}`} className="w-7 h-7 rounded-md text-red-300 hover:bg-white/15 inline-flex items-center justify-center"><span className="material-symbols-outlined text-[18px]">close</span></button>
               </li>
             ))}
           </ul>
@@ -892,7 +892,7 @@ function FasilitasPanel({ room, fasilitas, adaFoto, memuat, reload }) {
             const on = ada(p.label);
             return (
               <button key={p.label} type="button" onClick={() => togglePreset(p)} aria-pressed={on}
-                className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border text-xs font-semibold transition ${on ? 'border-dinas bg-dinas text-white' : 'border-slate-300 bg-white text-slate-700 hover:border-dinas'}`}>
+                className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border text-xs font-semibold transition ${on ? 'border-dinas bg-dinas text-white' : 'border-dinas/20 bg-dinas-soft text-dinas hover:border-dinas'}`}>
                 <span className="material-symbols-outlined text-[16px]">{on ? 'check' : p.icon}</span>{p.label}
               </button>
             );
@@ -911,7 +911,7 @@ function FasilitasPanel({ room, fasilitas, adaFoto, memuat, reload }) {
         <div className="mt-2 flex flex-wrap gap-1" role="radiogroup" aria-label="Ikon fasilitas">
           {IKON.map((i) => (
             <button key={i} type="button" role="radio" aria-checked={ikon === i} aria-label={`Ikon ${i}`} onClick={() => setIkon(i)}
-              className={`w-8 h-8 rounded-lg inline-flex items-center justify-center border transition ${ikon === i ? 'border-dinas bg-dinas-soft text-dinas' : 'border-transparent text-slate-500 hover:bg-slate-100'}`}>
+              className={`w-8 h-8 rounded-lg inline-flex items-center justify-center border transition ${ikon === i ? 'border-dinas bg-dinas text-white' : 'border-transparent text-dinas/70 hover:bg-dinas-soft'}`}>
               <span className="material-symbols-outlined text-[18px]">{i}</span>
             </button>
           ))}

@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
+import visibleInterval from '../utils/visibleInterval';
 import api from '../api';
 import { subscribeLive } from '../live';
 import { useAuth } from '../context/AuthContext';
@@ -119,7 +120,7 @@ function useJadwalHariIni(today) {
     setItems((prev) => (prev && dimuatPada && iso(dimuatPada) !== today ? null : prev));
     load();
   }, [today]); // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => { const t = setInterval(load, gagal ? 15000 : 60000); return () => clearInterval(t); }, [gagal]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => visibleInterval(load, gagal ? 15000 : 60000), [gagal]); // eslint-disable-line react-hooks/exhaustive-deps
   useRuangRapatLive(load);
   return { items, gagal, dimuatPada };
 }

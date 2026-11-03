@@ -1,13 +1,61 @@
-import React from 'react';
+import React, { lazy, useEffect } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
-import Login from './pages/Login'; import Register from './pages/Register';
-import ForgotPassword from './pages/ForgotPassword'; import ResetPassword from './pages/ResetPassword'; import VerifikasiEmail from './pages/VerifikasiEmail';
-import Dashboard from './pages/Dashboard'; import Pemeliharaan from './pages/Pemeliharaan'; import Pengadaan from './pages/Pengadaan';
-import Kendaraan from './pages/Kendaraan'; import RuangRapat from './pages/RuangRapat'; import Settings from './pages/Settings'; import Profile from './pages/Profile'; import Akun from './pages/Akun'; import PublicRuangRapat from './pages/PublicRuangRapat'; import LayarRuang from './pages/LayarRuang'; import FotoRuang from './pages/FotoRuang'; import Riwayat from './pages/Riwayat';
-import Landing from './pages/Landing';
 import ProtectedRoute, { MenuGate } from './components/ProtectedRoute';
 import { PublicLayout } from './components/PageTransition';
+
+// Tiap halaman jadi file JS terpisah (code splitting): pembukaan pertama cukup mengunduh halaman
+// yang sedang dibuka, bukan seluruh aplikasi. Setelah halaman tampil, sisanya diunduh diam-diam
+// saat browser senggang (lihat prefetchPages) supaya pindah menu tetap instan.
+const pages = {
+  Login: () => import('./pages/Login'), Register: () => import('./pages/Register'),
+  ForgotPassword: () => import('./pages/ForgotPassword'), ResetPassword: () => import('./pages/ResetPassword'), VerifikasiEmail: () => import('./pages/VerifikasiEmail'),
+  Dashboard: () => import('./pages/Dashboard'), Pemeliharaan: () => import('./pages/Pemeliharaan'), Pengadaan: () => import('./pages/Pengadaan'),
+  Kendaraan: () => import('./pages/Kendaraan'), RuangRapat: () => import('./pages/RuangRapat'), Settings: () => import('./pages/Settings'), Profile: () => import('./pages/Profile'), Akun: () => import('./pages/Akun'),
+  PublicRuangRapat: () => import('./pages/PublicRuangRapat'), LayarRuang: () => import('./pages/LayarRuang'), FotoRuang: () => import('./pages/FotoRuang'), Riwayat: () => import('./pages/Riwayat'),
+  Landing: () => import('./pages/Landing'),
+};
+// Setelah aplikasi di-deploy ulang, file halaman lama (nama ber-hash) sudah terhapus dari server;
+// tab yang masih terbuka gagal mengunduhnya saat pindah menu -> muat ulang sekali agar memakai versi baru.
+function lazyPage(load) {
+  return lazy(() => load().then((mod) => {
+    try { sessionStorage.removeItem('chunkReload'); } catch {}
+    return mod;
+  }, (err) => {
+    let sudah = false;
+    try { sudah = sessionStorage.getItem('chunkReload') === '1'; sessionStorage.setItem('chunkReload', '1'); } catch {}
+    if (sudah) throw err;
+    window.location.reload();
+    return new Promise(() => {});
+  }));
+}
+const Login = lazyPage(pages.Login);
+const Register = lazyPage(pages.Register);
+const ForgotPassword = lazyPage(pages.ForgotPassword);
+const ResetPassword = lazyPage(pages.ResetPassword);
+const VerifikasiEmail = lazyPage(pages.VerifikasiEmail);
+const Dashboard = lazyPage(pages.Dashboard);
+const Pemeliharaan = lazyPage(pages.Pemeliharaan);
+const Pengadaan = lazyPage(pages.Pengadaan);
+const Kendaraan = lazyPage(pages.Kendaraan);
+const RuangRapat = lazyPage(pages.RuangRapat);
+const Settings = lazyPage(pages.Settings);
+const Profile = lazyPage(pages.Profile);
+const Akun = lazyPage(pages.Akun);
+const PublicRuangRapat = lazyPage(pages.PublicRuangRapat);
+const LayarRuang = lazyPage(pages.LayarRuang);
+const FotoRuang = lazyPage(pages.FotoRuang);
+const Riwayat = lazyPage(pages.Riwayat);
+const Landing = lazyPage(pages.Landing);
+
+// Layar ruangan (/ruang) & kiosk (/jadwal-rapat) tidak pernah pindah menu -> tidak perlu prefetch.
+function prefetchPages() {
+  if (/^\/(ruang|jadwal-rapat)(\/|$)/.test(window.location.pathname)) return;
+  const idle = window.requestIdleCallback || ((fn) => setTimeout(fn, 1500));
+  idle(() => Object.values(pages).forEach((load) => load().catch(() => {})));
+}
+
 export default function App(){
+ useEffect(prefetchPages, []);
  return <Routes>
   <Route element={<PublicLayout/>}>
    <Route path="/" element={<Landing/>}/><Route path="/login" element={<Login/>}/><Route path="/jadwal-rapat" element={<PublicRuangRapat/>}/><Route path="/ruang" element={<LayarRuang/>}/><Route path="/ruang/:slug" element={<LayarRuang/>}/><Route path="/register" element={<Register/>}/><Route path="/forgot-password" element={<ForgotPassword/>}/><Route path="/reset-password" element={<ResetPassword/>}/><Route path="/verifikasi-email" element={<VerifikasiEmail/>}/>

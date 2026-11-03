@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import api from '../api';
 import { subscribeLive } from '../live';
+import visibleInterval from '../utils/visibleInterval';
 
 const AuthContext = createContext(null);
 
@@ -74,8 +75,7 @@ export function AuthProvider({ children }) {
   // reload halaman (sebelumnya timer hanya dibuat kalau token sudah ada saat app dibuka).
   useEffect(() => {
     if (!user?.id) return undefined;
-    const timer = setInterval(() => { refreshUser(); refreshMaintenance(); refreshResetRequests(); }, 30000);
-    return () => clearInterval(timer);
+    return visibleInterval(() => { refreshUser(); refreshMaintenance(); refreshResetRequests(); }, 30000);
   }, [user?.id]);
 
   useEffect(() => { refreshResetRequests(); }, [user?.id, user?.role]);

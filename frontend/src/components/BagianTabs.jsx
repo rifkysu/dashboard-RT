@@ -31,7 +31,7 @@ export default function BagianTabs({ grup, value, onChange, dark = false, classN
   const opsi = [{ bagian: '', label: 'Semua bagian', n: total }, ...grup.map((g) => ({ bagian: g.bagian, label: g.bagian, n: g.rooms.length }))];
   const cls = (on) => (dark
     ? on ? 'bg-[#e4c27f] text-dinas-ink ring-[#e4c27f]' : 'bg-white/[.06] text-white/75 ring-white/15 hover:bg-white/10 hover:text-white'
-    : on ? 'bg-slate-900 text-white ring-slate-900' : 'bg-white text-slate-600 ring-slate-200 hover:bg-slate-50');
+    : on ? 'bg-dinas text-white ring-dinas' : 'bg-dinas-soft text-dinas ring-dinas/15 hover:ring-dinas/40');
   return (
     <div className={`flex gap-1.5 overflow-x-auto pb-1 -mx-1 px-1 min-w-0 ${className}`} role="group" aria-label="Pilih bagian / satuan kerja">
       {opsi.map((o) => (
@@ -39,7 +39,7 @@ export default function BagianTabs({ grup, value, onChange, dark = false, classN
           className={`shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full ring-1 text-xs font-semibold transition ${cls(value === o.bagian)}`}>
           {!o.bagian && <span className="material-symbols-outlined text-[15px]">apartment</span>}
           {o.label}
-          <span className={`tabular-nums text-[10px] font-bold px-1.5 rounded-full ${value === o.bagian ? (dark ? 'bg-dinas-ink/15' : 'bg-white/20') : (dark ? 'bg-white/10' : 'bg-slate-100')}`}>{o.n}</span>
+          <span className={`tabular-nums text-[10px] font-bold px-1.5 rounded-full ${value === o.bagian ? (dark ? 'bg-dinas-ink/15' : 'bg-white/20') : (dark ? 'bg-white/10' : 'bg-dinas/10')}`}>{o.n}</span>
         </button>
       ))}
     </div>

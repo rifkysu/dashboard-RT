@@ -5,6 +5,7 @@ import useRuangRapatLive from '../hooks/useRuangRapatLive';
 import { useAuth, isAdminRole } from '../context/AuthContext';
 import GuestAccounts from '../components/GuestAccounts';
 import useLive from '../hooks/useLive';
+import visibleInterval from '../utils/visibleInterval';
 import { judulRuang } from '../utils/ruang';
 import { RuangFotoButton, RuangThumb } from '../components/RuangFoto';
 
@@ -75,9 +76,14 @@ function StatCard({ icon, value, label, hint, tone, to, delay = 0 }) {
 
 function ModuleCard({ icon, title, desc, badge, badgeTone = 'slate', to, delay = 0, children }) {
   const navigate = useNavigate();
+  // Bukan <button>: kartu Ruang Rapat berisi tombol foto ruangan, dan tombol di dalam tombol tidak valid
+  // (browser bisa memindahkan/menelan klik tombol dalam). Keyboard tetap bisa membuka kartu (Enter/Spasi),
+  // tapi hanya saat fokus di kartu itu sendiri, bukan di tombol di dalamnya.
   return (
-    <button onClick={() => navigate(to)} style={{ '--dash-delay': `${delay}ms` }}
-      className="dash-module dash-rise dash-lift text-left group bg-white border border-slate-200 rounded-xl p-5 flex flex-col">
+    <div role="link" tabIndex={0} onClick={() => navigate(to)}
+      onKeyDown={(e) => { if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); navigate(to); } }}
+      style={{ '--dash-delay': `${delay}ms` }}
+      className="dash-module dash-rise dash-lift text-left group bg-white border border-slate-200 rounded-xl p-5 flex flex-col cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-dinas">
       <div className="flex justify-between items-start gap-3">
         <span className="dash-module-icon"><span className="material-symbols-outlined text-[22px]">{icon}</span></span>
         {badge && <span className={`text-[11px] font-bold px-2 py-1 rounded-md whitespace-nowrap ${TONE[badgeTone].chip}`}>{badge}</span>}
@@ -88,7 +94,7 @@ function ModuleCard({ icon, title, desc, badge, badgeTone = 'slate', to, delay =
       <div className="mt-auto pt-4">
         <div className="dash-module-cta">Buka {title}<span className="material-symbols-outlined text-[16px] transition-transform group-hover:translate-x-1">arrow_forward</span></div>
       </div>
-    </button>
+    </div>
   );
 }
 
@@ -301,8 +307,7 @@ export default function Dashboard() {
   }
   useEffect(() => {
     load();
-    const timer = setInterval(load, 60000);
-    return () => clearInterval(timer);
+    return visibleInterval(load, 60000);
   }, []);
   useRuangRapatLive(load);
   // Angka & aktivitas Pemeliharaan/Pengadaan/pajak kendaraan ikut realtime.
