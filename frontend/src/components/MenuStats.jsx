@@ -26,9 +26,9 @@ export default function MenuStats({ items }) {
               <span className="material-symbols-outlined text-[20px] sm:text-[22px]">{it.icon}</span>
             </span>
             <span className="min-w-0 flex-1">
-              <span className="block text-[11px] sm:text-xs font-semibold text-slate-600 truncate">{it.label}</span>
+              <span className="block text-[11px] sm:text-xs font-semibold text-slate-600 leading-tight sm:truncate">{it.label}</span>
               <span className={`block mt-0.5 font-display text-2xl sm:text-[26px] font-extrabold leading-none tabular-nums ${it.value ? t.text : 'text-slate-900'}`}>{it.value ?? '–'}</span>
-              {it.hint && <span className="block text-[10.5px] text-slate-500 mt-1 truncate">{it.hint}</span>}
+              {it.hint && <span className="block text-[10.5px] text-slate-500 mt-1 leading-tight sm:truncate">{it.hint}</span>}
             </span>
             {it.active && <span className="material-symbols-outlined text-[18px] text-dinas shrink-0">filter_alt</span>}
           </Tag>

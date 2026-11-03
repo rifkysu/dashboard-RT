@@ -350,9 +350,9 @@ export default function Kendaraan() {
                     <td className="px-4 py-3">
                       {x.photos?.[0]?.data
                         ? <img src={x.photos[0].data} alt={x.nama_barang} className="h-14 w-20 rounded-lg object-cover border" />
-                        : <div className="h-14 w-20 rounded-lg border bg-slate-100 flex items-center justify-center text-[9px] text-slate-400">No Foto</div>}
+                        : <div className="h-14 w-20 rounded-lg border bg-slate-100 flex items-center justify-center text-[10.5px] text-slate-400">No Foto</div>}
                     </td>
-                    <td className="px-4 py-4 font-semibold">{x.nama_barang}{x.sub && <div className="font-normal text-[10px] text-slate-500">{x.sub}</div>}</td>
+                    <td className="px-4 py-4 font-semibold">{x.nama_barang}{x.sub && <div className="font-normal text-[11px] text-slate-500">{x.sub}</div>}</td>
                     <td className="px-4">{x.merk}</td>
                     <td className="px-4">{x.tipe}</td>
                     <td className="px-4">{x.no_bpkb || '-'}</td>
@@ -361,7 +361,7 @@ export default function Kendaraan() {
                       {x.plat_khusus && (
                         <div className="font-normal mt-0.5">
                           {x.plat_khusus}
-                          <span className="ml-1.5 inline-flex px-1.5 py-0.5 rounded-full bg-fuchsia-100 text-fuchsia-700 text-[9px] font-bold align-middle">KHUSUS</span>
+                          <span className="ml-1.5 inline-flex px-1.5 py-0.5 rounded-full bg-fuchsia-100 text-fuchsia-700 text-[10.5px] font-bold align-middle">KHUSUS</span>
                         </div>
                       )}
                     </td>
@@ -723,7 +723,7 @@ function VehicleDetail({ vehicle, error, canManage, busyDoc, onClose, onView, on
                 {canManage && photos.length < MAX_PHOTOS && (
                   <label title="Tambah foto" className={`relative h-24 rounded-xl border border-dashed border-slate-300 bg-white flex flex-col items-center justify-center text-slate-500 ${busyPhoto ? 'opacity-50 pointer-events-none' : 'cursor-pointer hover:bg-slate-50'}`}>
                     <span className="material-symbols-outlined">add_a_photo</span>
-                    <span className="text-[10px] mt-1">Tambah ({MAX_PHOTOS - photos.length} lagi)</span>
+                    <span className="text-[11px] mt-1">Tambah ({MAX_PHOTOS - photos.length} lagi)</span>
                     <input type="file" multiple className="hidden" accept="image/jpeg,image/png,image/webp" disabled={busyPhoto} onChange={(e) => { addDetailPhotos(e.target.files); e.target.value = ''; }} />
                   </label>
                 )}
@@ -1008,9 +1008,9 @@ function ServiceHistory({ vehicleId, refreshKey, canManage, onView, onChanged })
                   <div className="flex items-start gap-2 min-w-0 flex-1">
                     <span className="material-symbols-outlined text-[18px] text-slate-400 mt-0.5">build</span>
                     <div className="min-w-0">
-                      <div className="text-sm font-semibold text-slate-800">{fmtDate(item.tanggal_service)}{i === 0 && <span className="ml-2 px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 text-[9px] font-bold align-middle">TERAKHIR</span>}</div>
+                      <div className="text-sm font-semibold text-slate-800">{fmtDate(item.tanggal_service)}{i === 0 && <span className="ml-2 px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 text-[10.5px] font-bold align-middle">TERAKHIR</span>}</div>
                       {item.bagian_service && <div className="text-xs text-slate-700 mt-0.5 break-words">{item.bagian_service}</div>}
-                      <div className="text-[10px] text-slate-400 truncate">
+                      <div className="text-[11px] text-slate-400 truncate">
                         {item.invoice_document_name ? item.invoice_document_name : 'Belum ada PDF'}
                         {item.createdBy?.nama_lengkap && ` · Dicatat oleh ${item.createdBy.nama_lengkap}`}
                       </div>

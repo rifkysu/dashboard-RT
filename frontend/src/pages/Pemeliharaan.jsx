@@ -296,13 +296,13 @@ export default function Pemeliharaan() {
       <div className="menu-toolbar flex flex-col sm:flex-row sm:items-end justify-end gap-3 mb-4">
         <div>
           <label className="block text-xs font-semibold text-slate-600 mb-1">Tanggal mulai export</label>
-          <input type="date" value={exportDateRange.mulai} onChange={e=>setExportDateRange(r=>({...r,mulai:e.target.value}))} className="h-11 px-3 rounded-lg border border-slate-300 bg-white text-sm text-slate-700" />
+          <input type="date" aria-label="Tanggal mulai export" value={exportDateRange.mulai} onChange={e=>setExportDateRange(r=>({...r,mulai:e.target.value}))} className="h-11 px-3 rounded-lg border border-slate-300 bg-white text-sm text-slate-700" />
         </div>
         <div>
           <label className="block text-xs font-semibold text-slate-600 mb-1">Tanggal sampai export</label>
-          <input type="date" value={exportDateRange.sampai} onChange={e=>setExportDateRange(r=>({...r,sampai:e.target.value}))} className="h-11 px-3 rounded-lg border border-slate-300 bg-white text-sm text-slate-700" />
+          <input type="date" aria-label="Tanggal sampai export" value={exportDateRange.sampai} onChange={e=>setExportDateRange(r=>({...r,sampai:e.target.value}))} className="h-11 px-3 rounded-lg border border-slate-300 bg-white text-sm text-slate-700" />
         </div>
-        <button onClick={exportExcel} className="h-11 px-4 rounded-lg bg-emerald-600 text-white font-semibold hover:bg-emerald-700">
+        <button onClick={exportExcel} className="h-11 px-4 rounded-lg bg-emerald-700 text-white font-semibold hover:bg-emerald-800">
           <span className="material-symbols-outlined text-[18px] align-middle mr-1">download</span>
           Export Excel ({visibleData.length})
         </button>
@@ -316,16 +316,16 @@ export default function Pemeliharaan() {
           <tr className="bg-white border-b-2 border-slate-200 divide-x divide-slate-200">
             <th className="p-2"><input placeholder="Filter ID" value={filters.id} onChange={e=>setFilters(f=>({...f,id:e.target.value}))} className="w-full h-8 px-2 text-xs border rounded"/></th>
             <th className="p-2"><input placeholder="Filter nama" value={filters.nama} onChange={e=>setFilters(f=>({...f,nama:e.target.value}))} className="w-full h-8 px-2 text-xs border rounded"/></th>
-            <th className="p-2"><select value={filters.lokasi} onChange={e=>setFilters(f=>({...f,lokasi:e.target.value}))} className="w-full h-8 text-xs border rounded"><option value="">Semua Lokasi</option><option>Graha Kemnaker</option><option>Gatsu 51</option><option>Wisma Ciloto</option><option>Rumah Dinas</option><option>RC Walang</option><option>RC Kranji</option></select></th>
+            <th className="p-2"><select aria-label="Filter lokasi" value={filters.lokasi} onChange={e=>setFilters(f=>({...f,lokasi:e.target.value}))} className="w-full h-8 text-xs border rounded"><option value="">Semua Lokasi</option><option>Graha Kemnaker</option><option>Gatsu 51</option><option>Wisma Ciloto</option><option>Rumah Dinas</option><option>RC Walang</option><option>RC Kranji</option></select></th>
             <th className="p-2"><input type="text" placeholder="Filter titik lokasi" value={filters.titik_lokasi} onChange={e=>setFilters(f=>({...f,titik_lokasi:e.target.value}))} className="w-full h-8 px-2 text-xs border rounded"/></th>
-            <th className="p-2"><select value={filters.kategori} onChange={e=>setFilters(f=>({...f,kategori:e.target.value}))} className="w-full h-8 text-xs border rounded"><option value="">Semua</option><option value="sarana">Sarana</option><option value="prasarana">Prasarana</option></select></th>
+            <th className="p-2"><select aria-label="Filter kategori" value={filters.kategori} onChange={e=>setFilters(f=>({...f,kategori:e.target.value}))} className="w-full h-8 text-xs border rounded"><option value="">Semua</option><option value="sarana">Sarana</option><option value="prasarana">Prasarana</option></select></th>
             <th className="p-2"><input type="text" placeholder="Filter PIC RT" value={filters.pic} onChange={e=>setFilters(f=>({...f,pic:e.target.value}))} className="w-full h-8 px-2 text-xs border rounded"/></th>
             <th className="p-2"><input type="text" placeholder="Filter Nama Perusahaan" value={filters.vendor} onChange={e=>setFilters(f=>({...f,vendor:e.target.value}))} className="w-full h-8 px-2 text-xs border rounded"/></th>
             <th className="p-2"><input type="text" placeholder="Filter Transaksi" value={filters.transaksi} onChange={e=>setFilters(f=>({...f,transaksi:e.target.value}))} className="w-full h-8 px-2 text-xs border rounded"/></th>
             <th className="p-2"><input type="text" inputMode="numeric" placeholder="Filter Nilai Invoice" value={filters.invoice_amount} onChange={e=>setFilters(f=>({...f,invoice_amount:e.target.value}))} className="w-full h-8 px-2 text-xs border rounded"/></th>
-            <th className="p-2"><input type="date" title="Filter tanggal input" value={filters.tanggal_input} onChange={e=>setFilters(f=>({...f,tanggal_input:e.target.value}))} className="w-full h-8 px-2 text-xs border rounded"/></th>
-            <th className="p-2"><select value={filters.status} onChange={e=>setFilters(f=>({...f,status:e.target.value}))} className="w-full h-8 text-xs border rounded"><option value="">Semua</option><option value="pending">Pending</option><option value="on_progress">On Progress</option><option value="selesai">Selesai</option></select></th>
-            <th className="p-2"><input type="date" title="Filter tanggal selesai" value={filters.tanggal_selesai} onChange={e=>setFilters(f=>({...f,tanggal_selesai:e.target.value}))} className="w-full h-8 px-2 text-xs border rounded"/></th>
+            <th className="p-2"><input type="date" title="Filter tanggal input" aria-label="Filter tanggal input" value={filters.tanggal_input} onChange={e=>setFilters(f=>({...f,tanggal_input:e.target.value}))} className="w-full h-8 px-2 text-xs border rounded"/></th>
+            <th className="p-2"><select aria-label="Filter status" value={filters.status} onChange={e=>setFilters(f=>({...f,status:e.target.value}))} className="w-full h-8 text-xs border rounded"><option value="">Semua</option><option value="pending">Pending</option><option value="on_progress">On Progress</option><option value="selesai">Selesai</option></select></th>
+            <th className="p-2"><input type="date" title="Filter tanggal selesai" aria-label="Filter tanggal selesai" value={filters.tanggal_selesai} onChange={e=>setFilters(f=>({...f,tanggal_selesai:e.target.value}))} className="w-full h-8 px-2 text-xs border rounded"/></th>
             <th></th>
             <th></th>
           </tr></thead>
@@ -407,7 +407,7 @@ function StageModal({ row, stage, draft, setDraft, canEdit, roleLabel, saving, o
     <div className="min-h-full flex items-start justify-center">
       <div className="w-full max-w-6xl bg-[#f7f9fb] rounded-xl shadow-2xl overflow-hidden">
         <div className="bg-white border-b border-slate-200 px-5 md:px-8 py-5 flex items-center justify-between">
-          <div className="flex items-center gap-3"><BrandMark size="xs" /><div><div className="font-semibold text-slate-900">Biro Umum</div><div className="text-[10px] uppercase tracking-wider text-slate-500">Rumah Tangga</div></div></div>
+          <div className="flex items-center gap-3"><BrandMark size="xs" /><div><div className="font-semibold text-slate-900">Biro Umum</div><div className="text-[11px] uppercase tracking-wider text-slate-500">Rumah Tangga</div></div></div>
           <button onClick={onClose} className="w-10 h-10 rounded-lg flex items-center justify-center text-slate-500 hover:bg-slate-100"><span className="material-symbols-outlined">close</span></button>
         </div>
 
@@ -423,7 +423,7 @@ function StageModal({ row, stage, draft, setDraft, canEdit, roleLabel, saving, o
           <div className="bg-white rounded-xl p-4 md:p-6 shadow-sm mb-8"><div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {stages.map((s) => { const active = s.no === stage.no; const done = (draft[s.field] || 'pending') === 'selesai'; const locked = s.no > 1 && (draft[stages[s.no - 2].field] || 'pending') !== 'selesai'; return <button type="button" key={s.no} disabled={locked && canEdit} onClick={() => { if (locked || s.no === stage.no) return; if (!canEdit || s.no < stage.no) onJump(s); else onNext(); }} className={`relative flex items-center gap-4 p-3 rounded-lg text-left ${locked ? 'opacity-50 cursor-not-allowed' : active ? 'bg-slate-100' : 'hover:bg-slate-50'}`}>
               <div className={`w-12 h-12 rounded-lg flex items-center justify-center shrink-0 shadow-sm ${active ? 'bg-slate-200 text-slate-900' : done ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-500'}`}><span className="material-symbols-outlined text-[24px]">{s.icon}</span></div>
-              <div className="flex flex-col min-w-0"><div className="flex items-center gap-2"><span className="text-[10px] uppercase tracking-widest text-slate-500 font-bold">Langkah 0{s.no}</span>{active && <span className="px-2 py-0.5 rounded-full bg-slate-900 text-white text-[10px] font-bold">AKTIF</span>}</div><span className="text-sm font-semibold text-slate-900 truncate">{s.short}</span><span className="text-xs text-slate-500">{locked ? 'Menunggu tahap sebelumnya' : statusLabel[draft[s.field] || 'pending']}</span></div>
+              <div className="flex flex-col min-w-0"><div className="flex items-center gap-2"><span className="text-[11px] uppercase tracking-widest text-slate-500 font-bold">Langkah 0{s.no}</span>{active && <span className="px-2 py-0.5 rounded-full bg-slate-900 text-white text-[11px] font-bold">AKTIF</span>}</div><span className="text-sm font-semibold text-slate-900 truncate">{s.short}</span><span className="text-xs text-slate-500">{locked ? 'Menunggu tahap sebelumnya' : statusLabel[draft[s.field] || 'pending']}</span></div>
             </button>; })}
           </div></div>
 

@@ -90,7 +90,7 @@ export default function Register() {
 
       <main className="flex-1 flex items-center justify-center p-6 md:p-10">
         <div className="w-full max-w-[560px]">
-        <Link to="/" className="inline-flex items-center gap-1.5 text-sm text-slate-600 hover:text-slate-900 font-semibold mb-4">
+        <Link to="/" className="inline-flex items-center gap-1.5 text-sm text-slate-600 hover:text-slate-900 font-semibold py-2 -my-2 mb-2">
           <span className="material-symbols-outlined text-[18px]">arrow_back</span>
           Kembali ke beranda
         </Link>
@@ -158,10 +158,11 @@ export default function Register() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-1.5">
+                <label htmlFor="daftar-unit-kerja" className="block text-sm font-semibold text-slate-700 mb-1.5">
                   Unit Kerja / Bagian *
                 </label>
                 <select
+                  id="daftar-unit-kerja"
                   required
                   value={form.unit_kerja}
                   onChange={(e) => update('unit_kerja', e.target.value)}
@@ -178,10 +179,11 @@ export default function Register() {
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-1.5">
+                <label htmlFor="daftar-peran" className="block text-sm font-semibold text-slate-700 mb-1.5">
                   Peran / Hak Akses *
                 </label>
                 <select
+                  id="daftar-peran"
                   required
                   value={form.role}
                   onChange={(e) => update('role', e.target.value)}
@@ -197,7 +199,7 @@ export default function Register() {
             </div>
 
             <p className="text-[11px] text-slate-400 -mt-2">
-              *Pendaftaran hanya untuk email kedinasan @kemnaker.go.id. Setelah daftar, buka link verifikasi yang kami kirim ke email tersebut untuk mengaktifkan akun. Akun yang didaftarkan mandiri hanya memiliki role Karyawan. Role PIC dan Kabag diberikan manual melalui database.
+              *Pendaftaran hanya untuk email kedinasan @kemnaker.go.id. Setelah daftar, buka link verifikasi yang kami kirim ke email tersebut untuk mengaktifkan akun. Akun yang didaftarkan mandiri hanya memiliki role Karyawan. Karyawan otomatis menjadi PIC setelah mengajukan permintaan pertamanya; role Kabag dan Admin diberikan Admin lewat menu Akun &amp; Akses.
             </p>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

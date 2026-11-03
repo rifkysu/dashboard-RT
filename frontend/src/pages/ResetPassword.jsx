@@ -100,7 +100,7 @@ export default function ResetPassword() {
                     className="w-full pl-11 pr-11 py-3 bg-white border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]/15 focus:border-[#1e3a5f] focus:bg-white transition"
                     required
                   />
-                  <button type="button" onClick={() => setShowPassword((s) => !s)} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                  <button type="button" onClick={() => setShowPassword((s) => !s)} aria-label={showPassword ? 'Sembunyikan kata sandi' : 'Tampilkan kata sandi'} className="absolute right-1 top-1/2 -translate-y-1/2 w-10 h-10 rounded-md flex items-center justify-center text-slate-400 hover:text-slate-600">
                     <span className="material-symbols-outlined text-[20px]">{showPassword ? 'visibility_off' : 'visibility'}</span>
                   </button>
                 </div>
@@ -131,7 +131,7 @@ export default function ResetPassword() {
           )}
 
           <div className="mt-8 pt-6 border-t border-slate-100 text-center">
-            <Link to="/login" className="inline-flex items-center gap-1.5 text-sm text-slate-600 hover:text-slate-900 font-semibold">
+            <Link to="/login" className="inline-flex items-center gap-1.5 text-sm text-slate-600 hover:text-slate-900 font-semibold py-2 -my-2">
               <span className="material-symbols-outlined text-[18px]">arrow_back</span>
               Kembali ke Login
             </Link>

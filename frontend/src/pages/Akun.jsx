@@ -216,7 +216,7 @@ export default function Akun() {
                 const terkunci = u.role === 'admin' && user?.role !== 'admin';
                 return (
                 <tr key={u.id} className="divide-x divide-slate-100 hover:bg-slate-50/50">
-                  <td className="px-4 py-3 font-semibold text-slate-800"><div className="flex items-start gap-2.5"><span className={`shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold ${u.is_active ? (avatarTone[u.role] || avatarTone.karyawan) : 'bg-red-100 text-red-700'}`}>{initials(u.nama_lengkap)}</span><div className="min-w-0"><div className="whitespace-nowrap">{u.nama_lengkap}{isSelf && <span className="ml-1.5 text-[10px] font-bold text-slate-500">(Kamu)</span>}</div>{u.reset_requested_at && u.is_active && <div className="mt-1 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 text-[10px] font-bold whitespace-nowrap"><span className="material-symbols-outlined text-[12px]">lock_reset</span>Minta reset · {fmt(u.reset_requested_at)}</div>}</div></div></td>
+                  <td className="px-4 py-3 font-semibold text-slate-800"><div className="flex items-start gap-2.5"><span className={`shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold ${u.is_active ? (avatarTone[u.role] || avatarTone.karyawan) : 'bg-red-100 text-red-700'}`}>{initials(u.nama_lengkap)}</span><div className="min-w-0"><div className="whitespace-nowrap">{u.nama_lengkap}{isSelf && <span className="ml-1.5 text-[11px] font-bold text-slate-500">(Kamu)</span>}</div>{u.reset_requested_at && u.is_active && <div className="mt-1 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 text-[11px] font-bold whitespace-nowrap"><span className="material-symbols-outlined text-[12px]">lock_reset</span>Minta reset · {fmt(u.reset_requested_at)}</div>}</div></div></td>
                   <td className="px-4 py-3 text-slate-600">{u.email}</td>
                   <td className="px-4 py-3">
                     {/* Role admin hanya bisa diberi/dicabut oleh Admin; role akun sendiri tidak bisa diubah. */}
@@ -236,7 +236,7 @@ export default function Akun() {
                     <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-semibold whitespace-nowrap ${u.is_active ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>
                       {u.is_active ? 'Aktif' : 'Di-ban'}
                     </span>
-                    {!u.email_verified_at && <div className="mt-1 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-sky-100 text-sky-800 text-[10px] font-bold whitespace-nowrap" title="Belum bisa login sampai email diverifikasi"><span className="material-symbols-outlined text-[12px]">mark_email_unread</span>Belum verifikasi email</div>}
+                    {!u.email_verified_at && <div className="mt-1 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-sky-100 text-sky-800 text-[11px] font-bold whitespace-nowrap" title="Belum bisa login sampai email diverifikasi"><span className="material-symbols-outlined text-[12px]">mark_email_unread</span>Belum verifikasi email</div>}
                   </td>
                   <td className="px-4 py-3 text-slate-500 whitespace-nowrap">{fmt(u.created_at)}</td>
                   <td className="px-4 py-3 text-slate-500 whitespace-nowrap">{u.last_login_at ? fmt(u.last_login_at) : <span className="text-slate-400 italic">Belum pernah login</span>}</td>
@@ -306,7 +306,7 @@ export default function Akun() {
 ${resetLink.url}`)}`}
                   target="_blank"
                   rel="noreferrer"
-                  className="px-4 py-2.5 rounded-lg bg-emerald-600 text-white text-xs font-semibold hover:bg-emerald-700"
+                  className="px-4 py-2.5 rounded-lg bg-emerald-700 text-white text-xs font-semibold hover:bg-emerald-800"
                 >
                   Kirim via WhatsApp ({resetLink.no_hp})
                 </a>

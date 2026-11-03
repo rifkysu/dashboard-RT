@@ -77,10 +77,10 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
                 <span className={`relative w-7 h-7 rounded-md flex items-center justify-center shrink-0 transition-colors ${isActive ? 'bg-kuningan/20 text-[#e4c27f]' : 'text-white/55 group-hover:text-white/85'}`}>
                   <span className="material-symbols-outlined text-[20px]">{item.icon}</span>
                   {down && <span className={`absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-amber-500 border-2 border-dinas-dark ${collapsed ? 'hidden md:block' : 'hidden'}`}></span>}
-                  {notif > 0 && <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-red-600 text-white text-[10px] font-bold flex items-center justify-center border-2 border-dinas-dark">{notif}</span>}
+                  {notif > 0 && <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-red-600 text-white text-[11px] font-bold flex items-center justify-center border-2 border-dinas-dark">{notif}</span>}
                 </span>
                 <span className={`${isActive ? 'font-bold' : 'font-medium'} ${hideWhenCollapsed}`}>{item.label}</span>
-                {down && <span className={`ml-auto text-[9px] font-bold px-1.5 py-0.5 rounded-full ${isActive ? 'bg-amber-400 text-amber-950' : 'bg-amber-400/20 text-amber-200'} ${hideWhenCollapsed}`}>MAINTENANCE</span>}
+                {down && <span className={`ml-auto text-[10.5px] font-bold px-1.5 py-0.5 rounded-full ${isActive ? 'bg-amber-400 text-amber-950' : 'bg-amber-400/20 text-amber-200'} ${hideWhenCollapsed}`}>MAINTENANCE</span>}
               </>}
             </NavLink>
             );

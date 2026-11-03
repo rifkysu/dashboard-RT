@@ -98,7 +98,7 @@ function MaintenancePanel({ maintenance, refreshMaintenance }) {
                   <span className={`shrink-0 w-9 h-9 rounded-lg flex items-center justify-center ${active ? 'bg-amber-100 text-amber-700' : 'bg-dinas-soft text-dinas'}`}><span className="material-symbols-outlined text-[19px]">{MENU_ICONS[key]}</span></span>
                   <div className="min-w-0">
                     <div className="font-semibold text-sm text-slate-800 truncate">{MENU_LABELS[key]}</div>
-                    <div className={`text-[10px] font-bold ${active ? 'text-amber-700' : 'text-emerald-700'}`}>{active ? 'MAINTENANCE' : 'AKTIF'}{key === 'kiosk' && <span className="ml-1 font-mono font-semibold text-slate-400">/jadwal-rapat</span>}</div>
+                    <div className={`text-[11px] font-bold ${active ? 'text-amber-700' : 'text-emerald-700'}`}>{active ? 'MAINTENANCE' : 'AKTIF'}{key === 'kiosk' && <span className="ml-1 font-mono font-semibold text-slate-400">/jadwal-rapat</span>}</div>
                   </div>
                 </div>
                 <button

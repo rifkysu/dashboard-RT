@@ -112,7 +112,7 @@ export default function GuestAccounts({ className = 'mt-7', limit = null }) {
                   <td className="px-3 py-3 min-w-[220px]">
                     {g.last_booking ? (
                       <>
-                        <div className="text-[13px] font-semibold text-slate-800 truncate max-w-[280px]">{g.last_booking.title}{g.last_booking.cancelled && <span className="ml-1.5 text-[10px] font-bold px-1.5 py-0.5 rounded bg-red-50 text-red-700">Batal</span>}</div>
+                        <div className="text-[13px] font-semibold text-slate-800 truncate max-w-[280px]">{g.last_booking.title}{g.last_booking.cancelled && <span className="ml-1.5 text-[11px] font-bold px-1.5 py-0.5 rounded bg-red-50 text-red-700">Batal</span>}</div>
                         <div className="text-[11px] text-slate-500">{g.last_booking.room} · {fmtShort(g.last_booking.date)}{g.last_booking.end_date !== g.last_booking.date ? `–${fmtShort(g.last_booking.end_date)}` : ''} · {g.last_booking.start}–{g.last_booking.end} · diajukan {fmtWaktu(g.last_booking.created_at)}</div>
                       </>
                     ) : <span className="text-[12px] text-slate-400">Belum mengisi form booking</span>}
@@ -120,7 +120,7 @@ export default function GuestAccounts({ className = 'mt-7', limit = null }) {
                   <td className="px-3 py-3 text-[12px] text-slate-600 whitespace-nowrap">{g.last_login_at ? fmtWaktu(g.last_login_at) : '-'}</td>
                   <td className="px-3 py-3 text-center whitespace-nowrap">
                     <div className="font-bold tabular-nums text-slate-700">{g.total_booking}</div>
-                    {g.dibatalkan_sendiri > 0 && <div className="text-[10px] text-red-600">{g.dibatalkan_sendiri} dibatalkan sendiri</div>}
+                    {g.dibatalkan_sendiri > 0 && <div className="text-[11px] text-red-600">{g.dibatalkan_sendiri} dibatalkan sendiri</div>}
                   </td>
                   <td className="px-5 py-3 text-right whitespace-nowrap">
                     <button onClick={() => toggleBlock(g)} disabled={busy === g.id} className={`inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-semibold disabled:opacity-60 ${g.is_blocked ? 'bg-red-50 text-red-700 border border-red-200 hover:bg-red-100' : 'border border-slate-200 text-slate-600 hover:bg-slate-100'}`}>

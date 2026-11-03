@@ -45,6 +45,11 @@ html[data-theme="dark"] .menu-page .hover\:bg-slate-50:hover { background:var(--
 html[data-theme="dark"] .bg-dinas-soft { background:var(--dinas-soft) !important; }
 html[data-theme="dark"] .text-dinas { color:var(--gelap-aksen) !important; }
 html[data-theme="dark"] .text-dinas-ink { color:var(--dinas-ink) !important; }
+/* Varian transparan biru dinas (kartu Foto & Fasilitas Ruang dll.): tanpa ini teks/garisnya tetap biru tua
+   di atas latar gelap dan hampir tidak terlihat. */
+html[data-theme="dark"] .text-dinas\/70, html[data-theme="dark"] .text-dinas\/80 { color:var(--teks-redup) !important; }
+html[data-theme="dark"] .border-dinas\/15, html[data-theme="dark"] .border-dinas\/20 { border-color:rgba(156,189,230,.22) !important; }
+html[data-theme="dark"] .border-dinas\/40, html[data-theme="dark"] .hover\:border-dinas\/40:hover { border-color:rgba(156,189,230,.45) !important; }
 
 /* Tombol utama: biru dinas sedikit lebih terang supaya terlihat di latar gelap */
 html[data-theme="dark"] .menu-page .bg-slate-900,
@@ -65,7 +70,7 @@ html[data-theme="dark"] .hover\:bg-emerald-100:hover { background:rgba(16,185,12
 html[data-theme="dark"] .bg-blue-50, html[data-theme="dark"] .bg-sky-50,
 html[data-theme="dark"] .bg-sky-50\/70 { background:rgba(59,130,246,.13) !important; }
 html[data-theme="dark"] .bg-blue-100, html[data-theme="dark"] .bg-sky-100 { background:rgba(59,130,246,.22) !important; }
-html[data-theme="dark"] .bg-violet-50 { background:rgba(139,92,246,.15) !important; }
+html[data-theme="dark"] .bg-violet-50, html[data-theme="dark"] .bg-violet-100 { background:rgba(139,92,246,.15) !important; }
 html[data-theme="dark"] .bg-fuchsia-100 { background:rgba(217,70,239,.18) !important; }
 
 /* ---- Teks --------------------------------------------------------------- */
@@ -82,7 +87,7 @@ html[data-theme="dark"] .menu-page .fixed .text-slate-700, html[data-theme="dark
 html[data-theme="dark"] .text-slate-600, html[data-theme="dark"] .text-slate-500,
 html[data-theme="dark"] .menu-page .text-slate-600, html[data-theme="dark"] .menu-page .text-slate-500,
 html[data-theme="dark"] .menu-page .fixed .text-slate-600, html[data-theme="dark"] .menu-page .fixed .text-slate-500 { color:var(--teks-redup) !important; }
-html[data-theme="dark"] .text-slate-400, html[data-theme="dark"] .menu-page .text-slate-400 { color:#7d8ba0 !important; }
+html[data-theme="dark"] .text-slate-400, html[data-theme="dark"] .menu-page .text-slate-400 { color:#8a97ab !important; }
 html[data-theme="dark"] .text-slate-300 { color:#5f6d82 !important; }
 html[data-theme="dark"] .text-red-500, html[data-theme="dark"] .text-red-600, html[data-theme="dark"] .text-red-700,
 html[data-theme="dark"] .text-red-800, html[data-theme="dark"] .text-red-900 { color:#f4a19b !important; }
@@ -92,7 +97,7 @@ html[data-theme="dark"] .text-emerald-600, html[data-theme="dark"] .text-emerald
 html[data-theme="dark"] .text-emerald-800, html[data-theme="dark"] .text-green-700,
 html[data-theme="dark"] .text-green-900 { color:#74d6ab !important; }
 html[data-theme="dark"] .text-blue-600, html[data-theme="dark"] .text-blue-700,
-html[data-theme="dark"] .text-blue-900 { color:#9fc1f3 !important; }
+html[data-theme="dark"] .text-blue-900, html[data-theme="dark"] .text-sky-700 { color:#9fc1f3 !important; }
 html[data-theme="dark"] .text-violet-700 { color:#c9b8fd !important; }
 html[data-theme="dark"] .text-fuchsia-700 { color:#f1b2fb !important; }
 

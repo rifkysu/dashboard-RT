@@ -124,7 +124,7 @@ function StatusMix({ data }) {
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
           <span className="font-display text-lg font-extrabold leading-none tabular-nums text-slate-900">{total}</span>
-          <span className="text-[9px] font-semibold text-slate-500 mt-0.5">total</span>
+          <span className="text-[10.5px] font-semibold text-slate-500 mt-0.5">total</span>
         </div>
       </div>
       <ul className="flex-1 min-w-0 space-y-1.5 text-[11px]">
@@ -159,7 +159,7 @@ function PajakSegera({ list }) {
           </li>
         ))}
       </ul>
-      {list.length > 3 && <div className="mt-1 text-[10px] text-amber-700">+{list.length - 3} kendaraan lainnya</div>}
+      {list.length > 3 && <div className="mt-1 text-[11px] text-amber-700">+{list.length - 3} kendaraan lainnya</div>}
     </div>
   );
 }
@@ -173,7 +173,7 @@ function RuangStatus({ info }) {
         <li key={r.room} className="flex items-center justify-between gap-2 text-[11px] px-2.5 py-1.5" title={r.maintenance ? `Maintenance${r.maintenance_ket ? `: ${r.maintenance_ket}` : ''}` : r.dipakai ? `Dipakai: ${r.agenda}` : r.berikutnya ? `Booking berikutnya jam ${r.berikutnya}` : 'Tidak ada booking lagi hari ini'}>
           <RuangFotoButton room={r.room} className="group min-w-0 flex items-center gap-2 text-left">
             <RuangThumb room={r.room} className="w-7 h-7 rounded-md ring-1 ring-black/5 transition group-hover:ring-kuningan/60" iconClass="text-[14px]" />
-            <span className="font-semibold text-slate-700 truncate group-hover:text-dinas group-hover:underline">{judulRuang(r.room)}</span>
+            <span className="font-semibold text-slate-700 line-clamp-2 leading-snug group-hover:text-dinas group-hover:underline" title={judulRuang(r.room)}>{judulRuang(r.room)}</span>
           </RuangFotoButton>
           {r.maintenance
             ? <span className="shrink-0 inline-flex items-center gap-1 font-bold text-amber-700" title={r.maintenance_ket || undefined}><span className="material-symbols-outlined text-[13px]">construction</span>Maintenance</span>
@@ -264,7 +264,7 @@ function AdminPanel({ ready, pm, pg, kd }) {
             <button key={m.to} onClick={() => navigate(m.to)} className="dash-lift group text-left bg-white border border-slate-200 rounded-xl px-4 py-3 flex items-center gap-3">
               <span className="dash-module-icon dash-module-icon-sm relative">
                 <span className="material-symbols-outlined text-[19px]">{m.icon}</span>
-                {m.to === '/akun' && resetRequestCount > 0 && <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 rounded-full bg-red-600 text-white text-[10px] font-bold flex items-center justify-center">{resetRequestCount}</span>}
+                {m.to === '/akun' && resetRequestCount > 0 && <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 rounded-full bg-red-600 text-white text-[11px] font-bold flex items-center justify-center">{resetRequestCount}</span>}
               </span>
               <span className="min-w-0 flex-1">
                 <span className="block text-[13px] font-bold text-slate-900">{m.title}</span>

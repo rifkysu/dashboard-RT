@@ -148,7 +148,7 @@ function TimelineHari({ list, menit, rentang }) {
         })}
         {menit >= awal && menit <= akhir && <span className="absolute -inset-y-0 w-0.5 bg-white shadow-[0_0_6px_rgba(255,255,255,.9)]" style={{ left: pos(menit) }}></span>}
       </span>
-      <span className="mt-1 flex justify-between text-[9px] font-mono tabular-nums text-white/35">
+      <span className="mt-1 flex justify-between text-[11px] font-mono tabular-nums text-white/55">
         {jamLabel.map((j) => <span key={j}>{pad(j)}</span>)}
       </span>
     </span>
@@ -235,7 +235,7 @@ function TickerAgenda({ list, menit, memuat, galat }) {
         <span className="font-mono tabular-nums text-white/80">{x.start}–{x.end}</span>
         <span className="font-bold text-[#e4c27f]">{judulRuang(x.room)}</span>
         <span className="text-white/85">{x.title}</span>
-        {jalan && <span className="px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-300 text-[10px] font-bold uppercase tracking-wider">Berlangsung</span>}
+        {jalan && <span className="px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-300 text-[11px] font-bold uppercase tracking-wider">Berlangsung</span>}
       </span>
     );
   });
@@ -430,9 +430,9 @@ export default function PublicRuangRapat() {
             <span><span className="font-semibold text-white/85">Biro Umum dan Rumah Tangga</span> · Kementerian Ketenagakerjaan</span>
           </div>
           <div className="flex items-center gap-4 font-semibold">
-            <Link to="/" className="hover:text-white">Beranda</Link>
-            <Link to="/ruang" className="hover:text-white">Layar ruangan</Link>
-            <Link to="/login" className="inline-flex items-center gap-1 text-[#e4c27f] hover:text-white"><span className="material-symbols-outlined text-[16px]">login</span>Masuk pegawai</Link>
+            <Link to="/" className="py-2 -my-2 hover:text-white">Beranda</Link>
+            <Link to="/ruang" className="py-2 -my-2 hover:text-white">Layar ruangan</Link>
+            <Link to="/login" className="inline-flex items-center gap-1 py-2 -my-2 text-[#e4c27f] hover:text-white"><span className="material-symbols-outlined text-[16px]">login</span>Masuk pegawai</Link>
           </div>
         </div>
       </footer>

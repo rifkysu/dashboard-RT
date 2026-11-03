@@ -105,7 +105,7 @@ function PilihRuang({ salah }) {
         </div>
         </div>
         ))}
-        <Link to="/" className="inline-flex items-center gap-1.5 mt-8 text-sm text-white/60 hover:text-white">
+        <Link to="/" className="inline-flex items-center gap-1.5 mt-6 py-2 text-sm text-white/60 hover:text-white">
           <span className="material-symbols-outlined text-[18px]">arrow_back</span>Kembali ke beranda
         </Link>
       </div>
@@ -209,7 +209,7 @@ function AgendaMingguan({ minggu, memuat, sekarang, menitSekarang, tema }) {
           return (
             <button key={h.d} type="button" role="tab" aria-selected={aktif} onClick={() => pilih(i)}
               className={`relative rounded-xl py-2 flex flex-col items-center transition duration-300 ${aktif ? 'bg-aksen text-dinas-ink shadow-aksen scale-105' : 'bg-white/5 hover:bg-white/10 text-white/80'}`}>
-              <span className={`text-[10px] md:text-[11px] font-bold uppercase ${aktif ? 'text-dinas-ink/70' : 'text-white/50'}`}>{i === 0 ? 'Hari ini' : tgl.toLocaleDateString('id-ID', { weekday: 'short' })}</span>
+              <span className={`text-xs md:text-[13px] font-bold uppercase ${aktif ? 'text-dinas-ink/70' : 'text-white/50'}`}>{i === 0 ? 'Hari ini' : tgl.toLocaleDateString('id-ID', { weekday: 'short' })}</span>
               <span className="font-display text-lg md:text-xl font-extrabold leading-tight tabular-nums">{tgl.getDate()}</span>
               <span className={`mt-0.5 h-1.5 flex items-center gap-0.5`}>
                 {h.list.slice(0, 3).map((x) => <span key={x.id} className={`w-1.5 h-1.5 rounded-full ${aktif ? 'bg-dinas-ink/70' : 'bg-aksen'}`}></span>)}

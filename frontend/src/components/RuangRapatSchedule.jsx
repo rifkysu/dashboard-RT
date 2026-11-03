@@ -142,9 +142,9 @@ export default function RuangRapatSchedule({ autoRotate = false }) {
         kiosk={autoRotate}
         renderItem={(x, date) => (
           <div key={x.id} className={`border rounded-lg p-2 select-none ${STATUS[x.status] || STATUS.belum} ${autoRotate ? `border-l-4 shadow-[0_4px_12px_-6px_rgba(14,30,51,.35)] ${STATUS_KIOSK[x.status] || STATUS_KIOSK.belum}` : ''}`}>
-            <div className="text-[10px] font-bold">{x.start} – {x.end}{endOf(x) !== x.date && <span className="font-semibold opacity-75"> · Hari {dayCount(x.date, date)}/{dayCount(x.date, endOf(x))}</span>}</div>
+            <div className="text-[11px] font-bold">{x.start} – {x.end}{endOf(x) !== x.date && <span className="font-semibold opacity-75"> · Hari {dayCount(x.date, date)}/{dayCount(x.date, endOf(x))}</span>}</div>
             <div className="font-bold text-xs mt-1 leading-snug">{x.title}</div>
-            <div className="text-[10px] font-semibold mt-0.5">♙ {x.pic}</div>
+            <div className="text-[11px] font-semibold mt-0.5">♙ {x.pic}</div>
           </div>
         )}
       />

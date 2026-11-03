@@ -213,7 +213,7 @@ export default function RoomDateGrid({ months, rooms, items, loading, loadingMor
                     <span className="min-w-0">
                       <span className="line-clamp-2 leading-snug">{judulRuang(room)}</span>
                       <RuangMaintenanceTag room={room} dark={kiosk} className="mt-0.5" />
-                      <span className={`block text-[10px] font-semibold normal-case tracking-normal ${kiosk ? 'text-white/50 group-hover:text-[#e4c27f]' : 'text-slate-500 group-hover:text-dinas'}`}>Lihat foto & fasilitas</span>
+                      <span className={`block text-[11px] font-semibold normal-case tracking-normal ${kiosk ? 'text-white/50 group-hover:text-[#e4c27f]' : 'text-slate-500 group-hover:text-dinas'}`}>Lihat foto & fasilitas</span>
                     </span>
                   </RuangFotoButton>
                 </th>
@@ -247,8 +247,8 @@ export default function RoomDateGrid({ months, rooms, items, loading, loadingMor
                     <td className={`sticky left-0 z-10 border-b border-r border-slate-200 px-3 py-2.5 align-top w-[150px] min-w-[150px] ${dateBg} ${kiosk && isToday ? 'shadow-[inset_4px_0_0_#1e3a5f]' : ''}`}>
                       <div className={`text-xs font-bold ${cuti ? 'text-amber-700' : weekend ? 'text-red-600' : 'text-slate-800'}`}>{DAY_NAMES[idx]}</div>
                       <div className="text-[11px] text-slate-500">{d.getDate()} {d.toLocaleString('id-ID', { month: 'short' })} {d.getFullYear()}</div>
-                      {isToday && <div className="mt-1 inline-block px-1.5 py-0.5 rounded bg-[#1e3a5f] text-white text-[9px] font-bold">HARI INI</div>}
-                      {cuti && <div className="mt-1 text-[9px] font-bold text-amber-800 leading-tight">{cuti}</div>}
+                      {isToday && <div className="mt-1 inline-block px-1.5 py-0.5 rounded bg-[#1e3a5f] text-white text-[10.5px] font-bold">HARI INI</div>}
+                      {cuti && <div className="mt-1 text-[10.5px] font-bold text-amber-800 leading-tight">{cuti}</div>}
                     </td>
                     {rooms.map((room) => {
                       const list = cells.get(`${date}|${room}`) || [];
@@ -258,7 +258,7 @@ export default function RoomDateGrid({ months, rooms, items, loading, loadingMor
                             {list.map((x) => renderItem(x, date))}
                             {onAddBooking && (list.length ? (
                               <button type="button" onClick={() => onAddBooking(date, room)} title={`Booking ${room} · ${d.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}`}
-                                className="cell-add w-full flex items-center justify-center gap-1 py-1 rounded-md border border-dashed border-slate-300 text-[10px] font-semibold text-slate-500 hover:border-sky-300 hover:bg-sky-50 hover:text-[#1e3a5f]">
+                                className="cell-add w-full flex items-center justify-center gap-1 py-1 rounded-md border border-dashed border-slate-300 text-[11px] font-semibold text-slate-500 hover:border-sky-300 hover:bg-sky-50 hover:text-[#1e3a5f]">
                                 <span className="material-symbols-outlined text-[14px]">add</span>Tambah
                               </button>
                             ) : (

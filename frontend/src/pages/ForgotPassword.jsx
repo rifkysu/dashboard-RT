@@ -109,7 +109,7 @@ export default function ForgotPassword() {
           )}
 
           <div className="mt-8 pt-6 border-t border-slate-100 text-center">
-            <Link to="/login" className="inline-flex items-center gap-1.5 text-sm text-slate-600 hover:text-slate-900 font-semibold">
+            <Link to="/login" className="inline-flex items-center gap-1.5 text-sm text-slate-600 hover:text-slate-900 font-semibold py-2 -my-2">
               <span className="material-symbols-outlined text-[18px]">arrow_back</span>
               Kembali ke Login
             </Link>

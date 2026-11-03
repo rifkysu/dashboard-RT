@@ -15,7 +15,7 @@ const TONES = {
   danger: { icon: 'delete_forever', iconBox: 'bg-red-100 text-red-600', button: 'bg-red-600 hover:bg-red-700' },
   warning: { icon: 'warning', iconBox: 'bg-amber-100 text-amber-600', button: 'bg-amber-600 hover:bg-amber-700' },
   error: { icon: 'error', iconBox: 'bg-red-100 text-red-600', button: 'bg-slate-900 hover:bg-slate-800' },
-  success: { icon: 'check_circle', iconBox: 'bg-emerald-100 text-emerald-600', button: 'bg-emerald-600 hover:bg-emerald-700' },
+  success: { icon: 'check_circle', iconBox: 'bg-emerald-100 text-emerald-600', button: 'bg-emerald-700 hover:bg-emerald-800' },
   info: { icon: 'info', iconBox: 'bg-blue-100 text-blue-600', button: 'bg-slate-900 hover:bg-slate-800' },
 };
 const TOAST_TONES = {

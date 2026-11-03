@@ -77,7 +77,7 @@ export default function PilihSatker({ value, onChange, terpakai = {}, className 
           )}
           {grup.map((g) => (
             <div key={g.grup} role="group" aria-label={g.grup}>
-              <div className="sticky top-0 z-10 bg-white/95 backdrop-blur px-3 pt-2 pb-1 text-[10px] font-bold uppercase tracking-wider text-slate-400 truncate" title={g.grup}>{g.grup}</div>
+              <div className="sticky top-0 z-10 bg-white/95 backdrop-blur px-3 pt-2 pb-1 text-[11px] font-bold uppercase tracking-wider text-slate-400 truncate" title={g.grup}>{g.grup}</div>
               {g.unit.map((nama) => {
                 i += 1;
                 const idx = i;
@@ -86,7 +86,7 @@ export default function PilihSatker({ value, onChange, terpakai = {}, className 
                   <div key={nama} id={`${id}-${idx}`} data-i={idx} role="option" aria-selected={on} onClick={() => pilih(nama)} onMouseEnter={() => setAktif(idx)}
                     className={`mx-1 px-2 py-1.5 rounded-lg flex items-center gap-2 cursor-pointer text-sm ${idx === aktif ? 'bg-slate-100' : ''} ${on ? 'font-semibold text-dinas' : 'text-slate-700'}`}>
                     <span className="min-w-0 flex-1 truncate" title={nama}>{nama}</span>
-                    {terpakai[nama] ? <span className="shrink-0 text-[10px] font-semibold text-slate-500 tabular-nums">{terpakai[nama]} ruangan</span> : null}
+                    {terpakai[nama] ? <span className="shrink-0 text-[11px] font-semibold text-slate-500 tabular-nums">{terpakai[nama]} ruangan</span> : null}
                     {on && <span className="material-symbols-outlined shrink-0 text-[17px]">check</span>}
                   </div>
                 );

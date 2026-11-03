@@ -128,7 +128,7 @@ export function RuangMaintenanceTag({ room, dark = false, className = '' }) {
   const judul = `Maintenance${periode ? ` ${periodeMaintenance(d, true)}` : ''}${d.maintenance_ket ? `: ${d.maintenance_ket}` : ''} — tidak bisa dibooking${periode ? ' pada tanggal tersebut' : ''}`;
   return (
     <span title={judul}
-      className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-bold normal-case tracking-normal ${dark ? 'bg-amber-400 text-amber-950' : 'bg-amber-100 text-amber-800 ring-1 ring-amber-300'} ${className}`}>
+      className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[11px] font-bold normal-case tracking-normal ${dark ? 'bg-amber-400 text-amber-950' : 'bg-amber-100 text-amber-800 ring-1 ring-amber-300'} ${className}`}>
       <span className="material-symbols-outlined text-[13px]">construction</span>Maintenance{periode && (!d.maintenance_hari_ini || d.maintenance_mulai !== d.maintenance_sampai) ? ` ${periode}` : ''}
     </span>
   );
@@ -175,11 +175,11 @@ export function RuangPilihanInfo({ room }) {
       {fasilitas.length > 0 && (
         <ul className="mt-2 flex flex-wrap gap-1">
           {fasilitas.slice(0, 6).map((f) => (
-            <li key={f.label} className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-white border border-slate-200 text-[10px] font-semibold text-slate-600">
+            <li key={f.label} className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-white border border-slate-200 text-[11px] font-semibold text-slate-600">
               <span className="material-symbols-outlined text-[13px] text-kuningan">{f.icon}</span>{f.label}
             </li>
           ))}
-          {fasilitas.length > 6 && <li className="px-1.5 py-0.5 text-[10px] font-semibold text-slate-500">+{fasilitas.length - 6} lainnya</li>}
+          {fasilitas.length > 6 && <li className="px-1.5 py-0.5 text-[11px] font-semibold text-slate-500">+{fasilitas.length - 6} lainnya</li>}
         </ul>
       )}
     </div>

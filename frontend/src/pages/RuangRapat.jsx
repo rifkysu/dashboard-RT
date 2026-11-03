@@ -163,9 +163,9 @@ export default function RuangRapat() {
     ]}/>
     <div className="bg-white border border-slate-200 rounded-xl p-4 mb-5 shadow-sm"><div className="flex flex-wrap items-center gap-3 text-xs font-medium"><span className="font-bold text-slate-700 mr-2">Petunjuk warna surat:</span>{Object.entries(STATUS_META).map(([k,m])=><span key={k} className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full border ${m.badge}`}><span className={`w-2.5 h-2.5 rounded-full ${m.dot}`}/>{m.label}</span>)}<span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border bg-amber-100 text-amber-800 border-amber-200"><span className="w-2.5 h-2.5 rounded-full bg-amber-500"/>Cuti Bersama</span></div></div>
     <div className="menu-toolbar flex flex-col sm:flex-row sm:items-end justify-end gap-3 mb-4">
-      <div><label className="block text-xs font-semibold text-slate-600 mb-1">Tanggal mulai export</label><input type="date" value={range.mulai} onChange={e=>setExportRange({...range,mulai:e.target.value})} className="h-11 px-3 rounded-lg border border-slate-300 bg-white text-sm text-slate-700"/></div>
-      <div><label className="block text-xs font-semibold text-slate-600 mb-1">Tanggal sampai export</label><input type="date" value={range.sampai} onChange={e=>setExportRange({...range,sampai:e.target.value})} className="h-11 px-3 rounded-lg border border-slate-300 bg-white text-sm text-slate-700"/></div>
-      <button type="button" onClick={exportExcel} disabled={exporting} className="h-11 px-4 rounded-lg bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700 disabled:opacity-60"><span className="material-symbols-outlined text-[18px] align-middle mr-1">download</span>{exporting?'Menyiapkan...':'Export Excel'}</button>
+      <div><label className="block text-xs font-semibold text-slate-600 mb-1">Tanggal mulai export</label><input type="date" aria-label="Tanggal mulai export" value={range.mulai} onChange={e=>setExportRange({...range,mulai:e.target.value})} className="h-11 px-3 rounded-lg border border-slate-300 bg-white text-sm text-slate-700"/></div>
+      <div><label className="block text-xs font-semibold text-slate-600 mb-1">Tanggal sampai export</label><input type="date" aria-label="Tanggal sampai export" value={range.sampai} onChange={e=>setExportRange({...range,sampai:e.target.value})} className="h-11 px-3 rounded-lg border border-slate-300 bg-white text-sm text-slate-700"/></div>
+      <button type="button" onClick={exportExcel} disabled={exporting} className="h-11 px-4 rounded-lg bg-emerald-700 text-white text-sm font-semibold hover:bg-emerald-800 disabled:opacity-60"><span className="material-symbols-outlined text-[18px] align-middle mr-1">download</span>{exporting?'Menyiapkan...':'Export Excel'}</button>
       <button type="button" onClick={exportSurat} disabled={exportingSurat} title="Unduh semua file surat booking pada rentang tanggal ini (nomor surat yang sama cukup 1 file)" className="h-11 px-4 rounded-lg bg-slate-900 text-white text-sm font-semibold hover:bg-slate-800 disabled:opacity-60"><span className="material-symbols-outlined text-[18px] align-middle mr-1">folder_zip</span>{exportingSurat?'Menyiapkan ZIP...':'Export Surat (ZIP)'}</button>
     </div>
     {error&&<div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-xs font-medium text-red-700">{error}</div>}
@@ -173,17 +173,17 @@ export default function RuangRapat() {
       <div className="px-4 py-3 border-b flex flex-wrap items-center gap-2"><span className="shrink-0 text-xs font-semibold text-slate-500">Bagian</span><BagianTabs grup={grup} value={bagian} onChange={setBagian} className="flex-1"/></div>
       <RoomDateGrid months={months} rooms={roomRows} items={items} loading={loading} loadingMore={sched.loadingMore} hasMore={sched.hasMore} onLoadMore={sched.loadMore} onAddBooking={canBook?(date,room)=>{setError('');setForm({...emptyForm,room:ROOMS.includes(room)?room:ROOMS[0],date});setShowBook(true);}:undefined} renderItem={(x,date)=>{if(x.cancelled)return (
         <button key={x.id} type="button" onClick={()=>setCancelledView(x)} className="w-full text-left border border-dashed border-slate-300 bg-slate-100 text-slate-500 rounded-lg p-2 transition hover:bg-slate-200/70">
-          <div className="flex items-start justify-between gap-1"><span className="text-[9px] font-bold line-through">{x.start}–{x.end}</span><span className="text-[8px] px-1.5 py-0.5 rounded-full border border-slate-300 bg-white font-bold text-slate-600">DIBATALKAN</span></div>
+          <div className="flex items-start justify-between gap-1"><span className="text-[10.5px] font-bold line-through">{x.start}–{x.end}</span><span className="text-[10.5px] px-1.5 py-0.5 rounded-full border border-slate-300 bg-white font-bold text-slate-600">DIBATALKAN</span></div>
           <div className="font-bold text-[11px] mt-1 leading-snug line-through">{x.title}</div>
-          <div className="text-[9px] mt-1 font-semibold">♙ {x.pic}</div>
-          <div className="text-[9px] mt-1 italic truncate">{x.cancel_reason?`Alasan: ${x.cancel_reason}`:'Tanpa alasan'}</div>
+          <div className="text-[10.5px] mt-1 font-semibold">♙ {x.pic}</div>
+          <div className="text-[10.5px] mt-1 italic truncate">{x.cancel_reason?`Alasan: ${x.cancel_reason}`:'Tanpa alasan'}</div>
         </button>
       );const m=STATUS_META[x.status]||STATUS_META.belum; return (
         <button key={x.id} type="button" onClick={()=>openBooking(x,date)} className={`w-full text-left border rounded-lg p-2 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${m.card}`}>
-          <div className="flex items-start justify-between gap-1"><span className="text-[9px] font-bold">{x.start}–{x.end}{endOf(x)!==x.date&&<span className="block font-semibold opacity-75">Hari {dayCount(x.date,date)}/{dayCount(x.date,endOf(x))}</span>}</span><span className={`text-[8px] px-1.5 py-0.5 rounded-full border ${m.badge}`}>{m.label}</span></div>
+          <div className="flex items-start justify-between gap-1"><span className="text-[10.5px] font-bold">{x.start}–{x.end}{endOf(x)!==x.date&&<span className="block font-semibold opacity-75">Hari {dayCount(x.date,date)}/{dayCount(x.date,endOf(x))}</span>}</span><span className={`text-[10.5px] px-1.5 py-0.5 rounded-full border ${m.badge}`}>{m.label}</span></div>
           <div className="font-bold text-[11px] mt-1 leading-snug">{x.title}</div>
-          <div className="text-[9px] mt-1 font-semibold">♙ {x.pic}</div>
-          {x.surat_name&&<div className="text-[8px] mt-1 truncate opacity-75">📄 {x.surat_name}</div>}
+          <div className="text-[10.5px] mt-1 font-semibold">♙ {x.pic}</div>
+          {x.surat_name&&<div className="text-[10.5px] mt-1 truncate opacity-75">📄 {x.surat_name}</div>}
         </button>
       );}}/>
     </div>
@@ -219,13 +219,13 @@ function CancelDatesModal({booking,initialDate,saving,onClose,onSubmit}){
         :<>
           <p className="text-xs text-slate-600">Centang tanggal yang ingin dibatalkan. Tanggal lain tetap terbooking dengan data & surat yang sama.{groupCount>1&&<> Daftar ini berisi <b>semua tanggal dalam satu pengajuan</b> ({days.length} tanggal), termasuk yang tidak berurutan.</>}</p>
           <label className="flex items-center gap-2 text-xs font-bold text-slate-700 cursor-pointer"><input type="checkbox" checked={all} onChange={()=>setPicked(all?new Set():new Set(days))} className="w-4 h-4"/>Pilih semua ({days.length} hari)</label>
-          <div className="max-h-60 overflow-y-auto space-y-2 pr-1">{days.map(d=>{const on=picked.has(d);const cuti=cutiBersamaLabel(d);return <label key={d} className={`flex items-center gap-3 px-3 py-2.5 rounded-lg border cursor-pointer text-sm ${on?'bg-red-50 border-red-300 text-red-800':'bg-white border-slate-200'}`}><input type="checkbox" checked={on} onChange={()=>toggle(d)} className="w-4 h-4"/><span className="font-semibold">{formatDateLabel(d)} {new Date(`${d}T00:00:00`).getFullYear()}</span>{cuti&&<span className="text-[10px] text-amber-700 font-semibold">{cuti}</span>}{on&&<span className="ml-auto text-[10px] font-bold">DIBATALKAN</span>}</label>;})}</div>
+          <div className="max-h-60 overflow-y-auto space-y-2 pr-1">{days.map(d=>{const on=picked.has(d);const cuti=cutiBersamaLabel(d);return <label key={d} className={`flex items-center gap-3 px-3 py-2.5 rounded-lg border cursor-pointer text-sm ${on?'bg-red-50 border-red-300 text-red-800':'bg-white border-slate-200'}`}><input type="checkbox" checked={on} onChange={()=>toggle(d)} className="w-4 h-4"/><span className="font-semibold">{formatDateLabel(d)} {new Date(`${d}T00:00:00`).getFullYear()}</span>{cuti&&<span className="text-[11px] text-amber-700 font-semibold">{cuti}</span>}{on&&<span className="ml-auto text-[11px] font-bold">DIBATALKAN</span>}</label>;})}</div>
           {all&&<p className="text-xs font-semibold text-red-700">Semua tanggal dipilih — seluruh booking akan berstatus Dibatalkan.</p>}
         </>}
       <div>
         <label className="block text-xs font-bold text-slate-700 mb-1.5">Alasan pembatalan <span className="font-normal text-slate-400">(opsional)</span></label>
         <textarea value={reason} onChange={e=>setReason(e.target.value)} maxLength={500} rows={3} placeholder="Contoh: Rapat diundur ke minggu depan" className="w-full px-3 py-2.5 rounded-lg border border-slate-300 bg-white text-sm outline-none focus:border-slate-900 resize-none"/>
-        <div className="text-[10px] text-slate-400 text-right mt-0.5">{reason.length}/500</div>
+        <div className="text-[11px] text-slate-400 text-right mt-0.5">{reason.length}/500</div>
       </div>
       <div className="flex justify-end gap-2 border-t pt-4"><button type="button" onClick={onClose} className="px-4 py-2.5 rounded-lg border bg-white text-sm font-semibold">Tidak</button><button type="button" disabled={saving||!picked.size} onClick={()=>onSubmit(days.filter(d=>picked.has(d)),reason)} className="px-5 py-2.5 rounded-lg bg-red-600 text-white text-sm font-semibold disabled:opacity-50">{saving?'Memproses...':single?'Ya, Batalkan Booking':all?'Batalkan Semua':`Batalkan ${picked.size} Tanggal`}</button></div>
     </div>

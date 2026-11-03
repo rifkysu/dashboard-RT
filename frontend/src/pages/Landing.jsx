@@ -237,7 +237,7 @@ function RuangHariIni() {
         <div>
           <div className="flex items-center gap-2">
             <span className="font-display font-bold text-dinas-ink">Ruang rapat hari ini</span>
-            <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-red-600">
+            <span className="inline-flex items-center gap-1 text-[11px] font-bold uppercase tracking-wider text-red-600">
               <span className="relative flex w-1.5 h-1.5"><span className="absolute inset-0 rounded-full bg-red-500 motion-safe:animate-ping"></span><span className="relative w-1.5 h-1.5 rounded-full bg-red-500"></span></span>Live
             </span>
           </div>
@@ -504,7 +504,7 @@ export default function Landing() {
           <div className="relative w-full max-w-[1800px] mx-auto px-4 md:px-8 xl:px-14 pt-14 pb-20 md:pt-20 md:pb-28 grid lg:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)] gap-12 lg:gap-16 items-center">
             <div className="parallax-slow">
               <span className="hero-in inline-flex items-center gap-2 pl-1.5 pr-3 py-1 rounded-full bg-white/10 ring-1 ring-white/15 text-xs font-semibold text-white/85 backdrop-blur" style={{ '--d': '0ms' }}>
-                <span className="px-2 py-0.5 rounded-full bg-kuningan text-[10px] font-bold uppercase tracking-wider text-white">Internal</span>
+                <span className="px-2 py-0.5 rounded-full bg-kuningan text-[11px] font-bold uppercase tracking-wider text-white">Internal</span>
                 Aplikasi Layanan Biro Umum
               </span>
               <h1 className="font-display mt-6 text-[2.4rem] sm:text-[3.4rem] lg:text-[4.1rem] font-extrabold leading-[1.05] tracking-[-0.03em]">
@@ -744,22 +744,22 @@ export default function Landing() {
               </div>
             </Link>
             <p className="text-xs leading-relaxed mt-4 max-w-[42ch]">Aplikasi internal untuk pengajuan pemeliharaan, pengadaan, pengelolaan kendaraan dinas, dan booking ruang rapat.</p>
-            <a href={`mailto:${EMAIL}`} className="mt-4 inline-flex items-center gap-2 text-xs font-semibold text-white/85 hover:text-white">
+            <a href={`mailto:${EMAIL}`} className="mt-3 inline-flex items-center gap-2 py-1 text-xs font-semibold text-white/85 hover:text-white">
               <span className="material-symbols-outlined text-[16px] text-[#e4c27f]">mail</span>{EMAIL}
             </a>
           </div>
           <div>
             <div className="text-xs font-bold uppercase tracking-wider text-white/90">Layanan</div>
-            <ul className="mt-3 space-y-2 text-xs">
-              {LAYANAN.map((l) => <li key={l.label}><a href="#layanan" className="inline-flex items-center gap-2 transition-colors hover:text-white"><span className="material-symbols-outlined text-[15px] text-white/40">{l.icon}</span>{l.label}</a></li>)}
+            <ul className="mt-2 space-y-0.5 text-xs">
+              {LAYANAN.map((l) => <li key={l.label}><a href="#layanan" className="inline-flex items-center gap-2 py-1 transition-colors hover:text-white"><span className="material-symbols-outlined text-[15px] text-white/40">{l.icon}</span>{l.label}</a></li>)}
             </ul>
           </div>
           <div>
             <div className="text-xs font-bold uppercase tracking-wider text-white/90">Tautan</div>
-            <ul className="mt-3 space-y-2 text-xs">
-              {NAV.map((n) => <li key={n.href}><a href={n.href} className="transition-colors hover:text-white">{n.label}</a></li>)}
-              <li><Link to="/jadwal-rapat" className="transition-colors hover:text-white">Tampilan kiosk</Link></li>
-              <li><Link to="/login" className="transition-colors hover:text-white">Masuk</Link> · <Link to="/register" className="transition-colors hover:text-white">Daftar</Link></li>
+            <ul className="mt-2 space-y-0.5 text-xs">
+              {NAV.map((n) => <li key={n.href}><a href={n.href} className="inline-block py-1 transition-colors hover:text-white">{n.label}</a></li>)}
+              <li><Link to="/jadwal-rapat" className="inline-block py-1 transition-colors hover:text-white">Tampilan kiosk</Link></li>
+              <li><Link to="/login" className="inline-block py-1 transition-colors hover:text-white">Masuk</Link> · <Link to="/register" className="inline-block py-1 transition-colors hover:text-white">Daftar</Link></li>
             </ul>
           </div>
         </div>

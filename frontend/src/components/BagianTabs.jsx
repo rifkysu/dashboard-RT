@@ -39,7 +39,7 @@ export default function BagianTabs({ grup, value, onChange, dark = false, classN
           className={`shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full ring-1 text-xs font-semibold transition ${cls(value === o.bagian)}`}>
           {!o.bagian && <span className="material-symbols-outlined text-[15px]">apartment</span>}
           {o.label}
-          <span className={`tabular-nums text-[10px] font-bold px-1.5 rounded-full ${value === o.bagian ? (dark ? 'bg-dinas-ink/15' : 'bg-white/20') : (dark ? 'bg-white/10' : 'bg-dinas/10')}`}>{o.n}</span>
+          <span className={`tabular-nums text-[11px] font-bold px-1.5 rounded-full ${value === o.bagian ? (dark ? 'bg-dinas-ink/15' : 'bg-white/20') : (dark ? 'bg-white/10' : 'bg-dinas/10')}`}>{o.n}</span>
         </button>
       ))}
     </div>

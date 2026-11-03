@@ -309,8 +309,8 @@ function ItemRiwayat({ x, onRef, onAktor }) {
         </div>
         <div className="mt-1.5 flex flex-wrap items-center gap-x-1.5 text-xs text-slate-500">
           <span className="material-symbols-outlined text-[15px]">{tamu ? 'travel_explore' : 'person'}</span>
-          <button type="button" onClick={onAktor} className="font-semibold text-slate-700 hover:text-dinas hover:underline" title="Tampilkan semua aktivitas orang ini">{x.aktor_nama || x.aktor_email || 'Tanpa nama'}</button>
-          {x.aktor_role && <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${tamu ? 'bg-amber-50 text-amber-700' : 'bg-slate-100 text-slate-600'}`}>{ROLE[x.aktor_role] || x.aktor_role}</span>}
+          <button type="button" onClick={onAktor} className="py-1.5 -my-1.5 font-semibold text-slate-700 hover:text-dinas hover:underline" title="Tampilkan semua aktivitas orang ini">{x.aktor_nama || x.aktor_email || 'Tanpa nama'}</button>
+          {x.aktor_role && <span className={`px-1.5 py-0.5 rounded text-[11px] font-bold ${tamu ? 'bg-amber-50 text-amber-700' : 'bg-slate-100 text-slate-600'}`}>{ROLE[x.aktor_role] || x.aktor_role}</span>}
           {x.aktor_email && <span className="text-slate-400">· {x.aktor_email}</span>}
         </div>
 
@@ -329,7 +329,7 @@ function ItemRiwayat({ x, onRef, onAktor }) {
         {x.keterangan && <p className="mt-2 text-xs text-slate-600 bg-slate-50 rounded-lg px-3 py-2">{x.keterangan}</p>}
         {isi.length > 0 && (
           <div className="mt-2">
-            <button type="button" onClick={() => setBuka((b) => !b)} aria-expanded={buka} className="inline-flex items-center gap-1 text-xs font-semibold text-dinas hover:underline">
+            <button type="button" onClick={() => setBuka((b) => !b)} aria-expanded={buka} className="inline-flex items-center gap-1 py-1.5 -my-1.5 text-xs font-semibold text-dinas hover:underline">
               <span className={`material-symbols-outlined text-[16px] transition ${buka ? 'rotate-90' : ''}`}>chevron_right</span>
               {buka ? 'Sembunyikan' : 'Lihat'} isi data {x.aksi.includes('hapus') ? 'yang dihapus' : 'saat dibuat'} ({isi.length} kolom)
             </button>
@@ -345,7 +345,7 @@ function ItemRiwayat({ x, onRef, onAktor }) {
 
         <div className="mt-3 pt-2 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-400">
           <span>{new Date(x.waktu).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'medium' })}{x.ip && ` · IP ${x.ip}`}</span>
-          {(x.ref_grup || x.ref_id != null) && <button type="button" onClick={onRef} className="font-semibold text-dinas hover:underline inline-flex items-center gap-1"><span className="material-symbols-outlined text-[14px]">history</span>Riwayat data ini</button>}
+          {(x.ref_grup || x.ref_id != null) && <button type="button" onClick={onRef} className="py-1.5 -my-1.5 font-semibold text-dinas hover:underline inline-flex items-center gap-1"><span className="material-symbols-outlined text-[14px]">history</span>Riwayat data ini</button>}
         </div>
       </div>
     </li>

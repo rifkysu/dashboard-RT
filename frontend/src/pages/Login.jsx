@@ -119,7 +119,7 @@ export default function Login() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#f2f4f7] p-4 sm:p-6">
       <div className="w-full max-w-4xl">
-        <Link to="/" className="inline-flex items-center gap-1.5 text-sm text-slate-600 hover:text-slate-900 font-semibold mb-4">
+        <Link to="/" className="inline-flex items-center gap-1.5 text-sm text-slate-600 hover:text-slate-900 font-semibold py-2 -my-2 mb-2">
           <span className="material-symbols-outlined text-[18px]">arrow_back</span>
           Kembali ke beranda
         </Link>
@@ -203,12 +203,13 @@ export default function Login() {
                   placeholder="Kata Sandi"
                   autoComplete="current-password"
                   aria-invalid={!!fieldErrors.password}
-                  className={`w-full pl-12 pr-11 py-3 bg-white border rounded-md ${fieldErrors.password ? 'border-red-400' : 'border-slate-300'} text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]/15 focus:border-[#1e3a5f] transition`}
+                  className={`w-full pl-12 pr-12 py-3 bg-white border rounded-md ${fieldErrors.password ? 'border-red-400' : 'border-slate-300'} text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]/15 focus:border-[#1e3a5f] transition`}
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword((s) => !s)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  aria-label={showPassword ? 'Sembunyikan kata sandi' : 'Tampilkan kata sandi'}
+                  className="absolute right-1 top-1/2 -translate-y-1/2 w-10 h-10 rounded-md flex items-center justify-center text-slate-400 hover:text-slate-600"
                 >
                   <span className="material-symbols-outlined text-[20px]">
                     {showPassword ? 'visibility_off' : 'visibility'}
@@ -223,7 +224,7 @@ export default function Login() {
                   <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} className="w-4 h-4 rounded border-slate-300 accent-[#1e3a5f]" />
                   Ingat saya <span className="text-slate-400">(30 hari)</span>
                 </label>
-                <Link to="/forgot-password" className="text-xs font-semibold text-[#1e3a5f] hover:underline">
+                <Link to="/forgot-password" className="inline-block py-2 -my-2 text-xs font-semibold text-[#1e3a5f] hover:underline">
                   Lupa kata sandi?
                 </Link>
               </div>

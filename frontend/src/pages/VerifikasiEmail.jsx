@@ -81,7 +81,7 @@ export default function VerifikasiEmail() {
                     <input type={lihat ? 'text' : 'password'} value={password} onChange={(e) => setPassword(e.target.value)} autoFocus autoComplete="current-password"
                       placeholder="Kata sandi saat mendaftar" maxLength={128} aria-label="Kata sandi saat mendaftar"
                       className="w-full pl-11 pr-11 py-3 bg-white border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]/15 focus:border-[#1e3a5f] transition" />
-                    <button type="button" onClick={() => setLihat((v) => !v)} aria-label={lihat ? 'Sembunyikan kata sandi' : 'Tampilkan kata sandi'} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                    <button type="button" onClick={() => setLihat((v) => !v)} aria-label={lihat ? 'Sembunyikan kata sandi' : 'Tampilkan kata sandi'} className="absolute right-1 top-1/2 -translate-y-1/2 w-10 h-10 rounded-md flex items-center justify-center text-slate-400 hover:text-slate-600">
                       <span className="material-symbols-outlined text-[20px]">{lihat ? 'visibility_off' : 'visibility'}</span>
                     </button>
                   </div>

@@ -33,7 +33,7 @@ export default function MultiDatePicker({ value, onChange, max = 60 }) {
         <button type="button" onClick={() => shift(1)} aria-label="Bulan berikutnya" className="w-8 h-8 rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-600">›</button>
       </div>
       <div className="grid grid-cols-7 gap-1 text-center">
-        {DAYS.map((d, i) => <div key={d} className={`text-[10px] font-bold py-1 ${i > 4 ? 'text-red-500' : 'text-slate-500'}`}>{d}</div>)}
+        {DAYS.map((d, i) => <div key={d} className={`text-[11px] font-bold py-1 ${i > 4 ? 'text-red-500' : 'text-slate-500'}`}>{d}</div>)}
         {cells.map((day, i) => {
           if (!day) return <div key={`x${i}`} />;
           const key = iso(view.y, view.m, day);

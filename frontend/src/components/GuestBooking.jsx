@@ -155,7 +155,7 @@ function PanelKetersediaan({ form, cek, bentrok }) {
             {cek.items.map((x) => (
               <li key={x.id} className={`flex items-start gap-2 rounded-lg border px-2.5 py-1.5 text-xs ${ids.has(x.id) ? 'border-red-300 bg-red-50 text-red-800' : 'border-slate-200 bg-slate-50 text-slate-700'}`}>
                 <span className="font-mono font-bold tabular-nums shrink-0">{x.start}–{x.end}</span>
-                <span className="min-w-0"><span className="block font-semibold truncate">{x.title}</span>{(form.date !== form.end_date || (x.end_date || x.date) !== x.date) && <span className="block text-[10px] opacity-75">{rentangTgl(x)}</span>}</span>
+                <span className="min-w-0"><span className="block font-semibold truncate">{x.title}</span>{(form.date !== form.end_date || (x.end_date || x.date) !== x.date) && <span className="block text-[11px] opacity-75">{rentangTgl(x)}</span>}</span>
               </li>
             ))}
           </ul>
@@ -467,7 +467,7 @@ export default function GuestBooking() {
                 <div className="flex items-start justify-between gap-2">
                   <span className="font-semibold text-dinas-ink truncate">{b.title}</span>
                   {b.cancelled
-                    ? <span className="shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded bg-red-100 text-red-700">{b.cancelled_by_self ? 'Dibatalkan oleh Anda' : 'Dibatalkan Biro Umum'}</span>
+                    ? <span className="shrink-0 text-[11px] font-bold px-1.5 py-0.5 rounded bg-red-100 text-red-700">{b.cancelled_by_self ? 'Dibatalkan oleh Anda' : 'Dibatalkan Biro Umum'}</span>
                     : <button type="button" onClick={() => setCancelling(b)} className="shrink-0 inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-1 rounded-md border border-red-200 text-red-700 hover:bg-red-50"><span className="material-symbols-outlined text-[14px]">event_busy</span>Batalkan</button>}
                 </div>
                 <div className="text-xs text-slate-500 mt-0.5">{judulRuang(b.room)} · {fmtTanggal(b.date)}{b.end_date !== b.date ? ` s/d ${fmtTanggal(b.end_date)}` : ''} · {b.start}–{b.end}</div>

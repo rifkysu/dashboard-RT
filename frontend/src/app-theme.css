@@ -33,7 +33,7 @@ main.app-main { background: var(--kanvas) !important; min-height:100vh; }
 .menu-page h1,.menu-page h2,.menu-page h3,.menu-page h4,.menu-page .text-slate-900,.menu-page .text-slate-800 { color:var(--dinas-ink) !important; }
 .menu-page .text-slate-700 { color:#334155 !important; }
 .menu-page .text-slate-600,.menu-page .text-slate-500 { color:var(--teks-redup) !important; }
-.menu-page .text-slate-400 { color:#94a3b8 !important; }
+.menu-page .text-slate-400 { color:#64748b !important; } /* #94a3b8 di latar putih hanya 2,6:1 */
 
 /* ---- Kartu & panel ------------------------------------------------------- */
 .menu-page .bg-white,
@@ -639,3 +639,8 @@ html:not([data-theme="dark"]) .menu-page .menu-stat:focus-visible { outline-colo
 .motif-bata { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='32' viewBox='0 0 48 32'%3E%3Cg fill='none' stroke='%23fff' stroke-opacity='.1' stroke-width='1.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M0 0H48M0 16H48M0 0V16M24 16V32'/%3E%3C/g%3E%3C/svg%3E"); }
 .motif-tangga { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='30' height='30' viewBox='0 0 30 30'%3E%3Cg fill='none' stroke='%23fff' stroke-opacity='.1' stroke-width='1.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M0 30V20H10V10H20V0H30'/%3E%3C/g%3E%3C/svg%3E"); }
 .motif-daun { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40' viewBox='0 0 40 40'%3E%3Cg fill='none' stroke='%23fff' stroke-opacity='.1' stroke-width='1.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M10 30C10 18 18 10 30 10C30 22 22 30 10 30ZM10 30L24 16'/%3E%3C/g%3E%3C/svg%3E"); }
+
+/* Kontras teks: abu-abu Tailwind slate-400 (#94a3b8) di latar putih hanya 2,6:1 -- sulit dibaca, apalagi di
+   layar kantor yang terang atau oleh pegawai berkacamata. Di tema terang dinaikkan ke #64748b (4,8:1,
+   lolos WCAG AA). Tema gelap punya aturan sendiri di dark-theme.css. */
+html:not([data-theme="dark"]) .text-slate-400 { color:#64748b; }

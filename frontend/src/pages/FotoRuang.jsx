@@ -149,12 +149,12 @@ export default function FotoRuang() {
                   ? <img src={sampul.src} alt="" className="w-full h-full object-cover transition duration-500 group-hover:scale-105" />
                   : <span className="absolute inset-0 flex flex-col items-center justify-center text-slate-400"><span className="material-symbols-outlined text-[28px]">add_photo_alternate</span><span className="text-[11px] font-semibold mt-0.5">Belum ada foto</span></span>}
                 {aktif && <span className="absolute top-2 right-2 w-6 h-6 rounded-full bg-kuningan text-white flex items-center justify-center shadow"><span className="material-symbols-outlined text-[16px]">check</span></span>}
-                {d?.maintenance && <span className="absolute bottom-2 left-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500 text-white text-[10px] font-bold shadow"><span className="material-symbols-outlined text-[13px]">construction</span>Maintenance{periodeMaintenance(d) ? ` ${periodeMaintenance(d)}` : ''}</span>}
+                {d?.maintenance && <span className="absolute bottom-2 left-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-700 text-white text-[11px] font-bold shadow"><span className="material-symbols-outlined text-[13px]">construction</span>Maintenance{periodeMaintenance(d) ? ` ${periodeMaintenance(d)}` : ''}</span>}
               </div>
               <div className="px-3 py-2.5">
                 <div className={`font-bold text-sm truncate ${aktif ? 'text-white' : 'text-dinas'}`} title={judulRuang(r)}>{judulRuang(r)}</div>
-                {!bagian && <div className={`text-[11px] truncate ${aktif ? 'text-white/70' : 'text-dinas/70'}`}>{d?.satuan_kerja}</div>}
-                <div className={`text-[11px] ${aktif ? 'text-white/70' : 'text-dinas/70'}`}>{loaded ? `${d?.foto?.length || 0} foto · ${d?.fasilitas?.length || 0} fasilitas` : gagalMuat ? 'Gagal dimuat' : 'Memuat…'}</div>
+                {!bagian && <div className={`text-[11px] truncate ${aktif ? 'text-white/70' : 'text-dinas/80'}`}>{d?.satuan_kerja}</div>}
+                <div className={`text-[11px] ${aktif ? 'text-white/70' : 'text-dinas/80'}`}>{loaded ? `${d?.foto?.length || 0} foto · ${d?.fasilitas?.length || 0} fasilitas` : gagalMuat ? 'Gagal dimuat' : 'Memuat…'}</div>
               </div>
             </button>
           );
@@ -308,12 +308,12 @@ function MaintenancePanel({ room, data, memuat, reload }) {
               {berubah && (
                 <button type="button" onClick={() => kirim(true)} disabled={saving || memuat || tanggalSalah} className="px-4 h-10 rounded-lg border border-amber-400 bg-white text-sm font-semibold text-amber-800 hover:bg-amber-100 disabled:opacity-50">Simpan perubahan</button>
               )}
-              <button type="button" onClick={buka} disabled={saving || memuat} className="inline-flex items-center justify-center gap-1.5 px-4 h-10 rounded-lg bg-emerald-600 text-white text-sm font-bold hover:bg-emerald-700 disabled:opacity-50">
+              <button type="button" onClick={buka} disabled={saving || memuat} className="inline-flex items-center justify-center gap-1.5 px-4 h-10 rounded-lg bg-emerald-700 text-white text-sm font-bold hover:bg-emerald-800 disabled:opacity-50">
                 <span className="material-symbols-outlined text-[18px]">lock_open</span>{saving ? 'Menyimpan…' : 'Buka blokir'}
               </button>
             </div>
           ) : (
-            <button type="button" onClick={blokir} disabled={saving || memuat || tanggalSalah} className="inline-flex items-center justify-center gap-1.5 px-4 h-10 rounded-lg bg-amber-500 text-white text-sm font-bold hover:bg-amber-600 disabled:opacity-50">
+            <button type="button" onClick={blokir} disabled={saving || memuat || tanggalSalah} className="inline-flex items-center justify-center gap-1.5 px-4 h-10 rounded-lg bg-amber-700 text-white text-sm font-bold hover:bg-amber-800 disabled:opacity-50">
               <span className="material-symbols-outlined text-[18px]">block</span>{saving ? 'Menyimpan…' : 'Blokir ruangan (maintenance)'}
             </button>
           )}
@@ -416,12 +416,12 @@ function PilihTema({ room, satker, tema, temaLain, onChange }) {
         <div className={`absolute inset-0 motif-${t.motif.key} opacity-60`} aria-hidden="true"></div>
         <div className="absolute inset-0" style={{ background: 'radial-gradient(60% 70% at 100% 100%, color-mix(in srgb, var(--aksen) 25%, transparent), transparent 70%)' }} aria-hidden="true"></div>
         <div className="relative">
-          <div className="flex items-center justify-between text-[10px] text-white/50"><span>Pratinjau layar</span><span className="font-bold tabular-nums text-white/80">09:30</span></div>
-          <div className="mt-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-aksen truncate">{satker || 'Ruang rapat'}</div>
+          <div className="flex items-center justify-between text-[11px] text-white/50"><span>Pratinjau layar</span><span className="font-bold tabular-nums text-white/80">09:30</span></div>
+          <div className="mt-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-aksen truncate">{satker || 'Ruang rapat'}</div>
           <div className="font-display text-xl font-extrabold leading-tight line-clamp-2">{judulRuang(room)}</div>
-          <span className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full ring-1 ring-emerald-400/40 bg-emerald-400/15 text-emerald-300 text-[10px] font-bold uppercase tracking-wider"><span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>Tersedia</span>
+          <span className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full ring-1 ring-emerald-400/40 bg-emerald-400/15 text-emerald-300 text-[11px] font-bold uppercase tracking-wider"><span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>Tersedia</span>
           <div className="mt-3 flex gap-1">{[0, 1, 2, 3, 4].map((i) => <span key={i} className={`h-1.5 rounded-full ${i === 0 ? 'w-6 bg-aksen' : 'w-1.5 bg-white/25'}`}></span>)}</div>
-          <div className="mt-3 text-[10px] text-white/50">{t.palet.label} · {t.motif.label}</div>
+          <div className="mt-3 text-[11px] text-white/50">{t.palet.label} · {t.motif.label}</div>
         </div>
       </div>
     </div>
@@ -456,7 +456,7 @@ function DaftarTema({ judul, items, aktif, contoh, swatch, dipakai, onPilih }) {
         <div ref={boxRef} className="relative max-h-60 overflow-y-auto overscroll-contain px-1.5 pb-1.5" role="radiogroup" aria-label={judul}>
           {grup.map((g) => (
             <div key={g}>
-              <div className="sticky top-0 z-10 bg-white/95 backdrop-blur px-1 pt-2 pb-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">{g}</div>
+              <div className="sticky top-0 z-10 bg-white/95 backdrop-blur px-1 pt-2 pb-1 text-[11px] font-bold uppercase tracking-wider text-slate-400">{g}</div>
               <div className="grid sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2 gap-1">
                 {daftar.filter((x) => x.grup === g).map((x) => {
                   const on = x.key === aktif;
@@ -467,7 +467,7 @@ function DaftarTema({ judul, items, aktif, contoh, swatch, dipakai, onPilih }) {
                       <span className="shrink-0 w-14 h-8 rounded-md overflow-hidden" aria-hidden="true">{swatch(x)}</span>
                       <span className="min-w-0 flex-1">
                         <span className={`block text-xs font-semibold truncate ${on ? 'text-white' : 'text-slate-800'}`}>{x.label}</span>
-                        {pakai && <span className={`block text-[10px] truncate ${on ? 'text-amber-200' : 'text-amber-700'}`} title={`Dipakai: ${pakai.map(judulRuang).join(', ')}`}>Dipakai {pakai.map(judulRuang).join(', ')}</span>}
+                        {pakai && <span className={`block text-[11px] truncate ${on ? 'text-amber-200' : 'text-amber-700'}`} title={`Dipakai: ${pakai.map(judulRuang).join(', ')}`}>Dipakai {pakai.map(judulRuang).join(', ')}</span>}
                       </span>
                       {on && <span className="material-symbols-outlined shrink-0 text-[18px] text-amber-300" aria-hidden="true">check_circle</span>}
                     </button>
@@ -911,7 +911,7 @@ function FasilitasPanel({ room, fasilitas, adaFoto, memuat, reload }) {
         <div className="mt-2 flex flex-wrap gap-1" role="radiogroup" aria-label="Ikon fasilitas">
           {IKON.map((i) => (
             <button key={i} type="button" role="radio" aria-checked={ikon === i} aria-label={`Ikon ${i}`} onClick={() => setIkon(i)}
-              className={`w-8 h-8 rounded-lg inline-flex items-center justify-center border transition ${ikon === i ? 'border-dinas bg-dinas text-white' : 'border-transparent text-dinas/70 hover:bg-dinas-soft'}`}>
+              className={`w-8 h-8 rounded-lg inline-flex items-center justify-center border transition ${ikon === i ? 'border-dinas bg-dinas text-white' : 'border-transparent text-dinas/80 hover:bg-dinas-soft'}`}>
               <span className="material-symbols-outlined text-[18px]">{i}</span>
             </button>
           ))}
