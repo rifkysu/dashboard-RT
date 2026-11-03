@@ -20,6 +20,12 @@ Versi ini menambahkan hardening dasar untuk deployment produksi:
 - Link reset kata sandi memakai `#token=` agar token tidak tercatat di log server.
 - Halaman web diberi HSTS, CSP (`script-src 'self'`, tanpa script inline), `Referrer-Policy: no-referrer`, dll. lewat `docs/deploy/security-headers.conf`; Nginx hanya TLS 1.2/1.3, `server_tokens off`, file tersembunyi ditolak.
 - Frontend memakai Vite 8 (celah keamanan dev server Vite 5 sudah tertutup).
+- Akun Admin hanya bisa dikelola Admin: Kabag ditolak (403) saat mengubah role, mem-ban, membuat link reset kata sandi, atau memverifikasi akun Admin. Sebelumnya Kabag bisa membuat link reset untuk Admin (link dikembalikan ke pembuatnya) lalu login sebagai Admin.
+- Body JSON 25 MB hanya untuk request dengan token sah (pegawai/tamu); tanpa token maks. 256 KB, supaya orang tanpa login tidak bisa membanjiri server dengan body besar.
+- Export CSV/Excel menetralkan sel yang diawali `=`, `+`, `-`, `@` (diberi awalan `'`) agar isi dari pengguna/tamu tidak dijalankan Excel sebagai rumus (CSV injection).
+- Foto kendaraan hanya menerima JPG/PNG/WEBP asli.
+- Dengan `TRUST_PROXY=true`, backend hanya mendengarkan `127.0.0.1` (ubah lewat `HOST` bila Nginx berada di server lain, dan batasi port backend dengan firewall). Tanpa ini, port 4000 yang terbuka ke jaringan memungkinkan pemalsuan header `X-Forwarded-For` untuk lolos dari batas percobaan login.
+- ID di URL di luar batas INTEGER ditolak 400 (bukan error 500).
 
 ## Penting
 

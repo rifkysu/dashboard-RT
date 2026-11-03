@@ -41,7 +41,7 @@ Full-stack app (React + Node.js/Express + PostgreSQL + **Prisma**) untuk mengelo
   - **Karyawan** — cuma bisa melihat & mengajukan permintaan baru (Pemeliharaan/Pengadaan). Satu-satunya role yang bisa daftar mandiri lewat form Register.
   - **Auto-promote PIC** — begitu seorang karyawan berhasil menambahkan permintaan Pemeliharaan/Pengadaan pertamanya, role-nya **otomatis naik jadi PIC** (tanpa logout/login ulang).
   - **PIC** — hanya boleh **mengedit data yang dia buat sendiri** (dicek dari `created_by`), tidak bisa mengedit punya orang lain.
-  - **Kabag & Admin** — bebas mengedit/menghapus semua data di semua modul.
+  - **Kabag & Admin** — bebas mengedit/menghapus semua data di semua modul. Pengecualian: **akun Admin hanya bisa dikelola Admin** — Kabag tidak bisa mengubah role, mem-ban, membuat link reset kata sandi, atau memverifikasi akun Admin (tombolnya tidak muncul dan API menolak 403), supaya Kabag tidak bisa mengambil alih akun Admin.
   - **Admin** — role tertinggi, tidak ada di form Register; diberikan oleh Admin lain lewat menu **Akun & Akses** (atau manual lewat pgAdmin4 untuk admin pertama). Satu-satunya role yang bisa mengatur Mode Maintenance, dan selalu bisa mengakses semua menu walau sedang di-maintenance.
   - Role & status aktif user **selalu dicek ulang langsung dari database di setiap request** (bukan dipercaya dari isi token JWT) — jadi kalau role diubah (lewat menu Akun & Akses maupun pgAdmin4), perubahannya langsung berlaku ke request berikutnya, **tanpa perlu logout**.
 

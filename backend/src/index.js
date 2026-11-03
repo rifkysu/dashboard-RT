@@ -53,10 +53,17 @@ const rateKeyByUser = (req) => {
 };
 app.use(createRateLimiter({ windowMs: 60 * 1000, max: 180, message: 'Terlalu banyak permintaan. Coba lagi sebentar.', keyFn: rateKeyByUser }));
 // File upload disimpan sebagai Base64 di payload JSON; naikkan limit agar dokumen tidak ditolak 413.
-app.use(express.json({ limit: '25mb', strict: true }));
+// Batas besar hanya untuk request yang membawa token sah (pegawai/tamu): tanpa ini siapa pun tanpa login
+// bisa mengirim body 25MB berulang-ulang (mis. ke /api/auth/login) dan menghabiskan memori/CPU server,
+// karena body diparse sebelum pengecekan login di route. Login, daftar, dan reset sandi cukup ~256KB.
+const jsonBesar = express.json({ limit: '25mb', strict: true });
+const jsonKecil = express.json({ limit: '256kb', strict: true });
+app.use((req, res, next) => (rateKeyByUser(req) ? jsonBesar : jsonKecil)(req, res, next));
 app.use(express.urlencoded({ extended: false, limit: '2mb', parameterLimit: 100 }));
 ensureUploadRoot();
 app.use(validateCommonInput);
+// ID di URL di luar batas INTEGER PostgreSQL (> 2147483647) -> 400, bukan error 500 dari database.
+app.use((req, res, next) => (req.path.split('/').some((s) => /^\d+$/.test(s) && Number(s) > 2147483647) ? res.status(400).json({ message: 'ID tidak valid.' }) : next()));
 // Jangan expose folder upload sebagai static publik. File sensitif sebaiknya disajikan lewat endpoint yang terautentikasi.
 // app.use('/uploads', express.static(...));
 
@@ -103,6 +110,11 @@ app.use('/api', (req, res) => {
 // JSON berpesan jelas, bukan halaman HTML default Express yang tidak terbaca frontend.
 app.use((err, req, res, next) => {
   if (err.type === 'entity.too.large') {
+    // Token kedaluwarsa/dicabut -> body dibatasi 256KB (lihat jsonKecil), jadi upload besar ditolak di sini
+    // sebelum sempat sampai ke pengecekan login. Balas 401 supaya frontend mengarahkan ke halaman login.
+    if (req.headers.authorization && !rateKeyByUser(req)) {
+      return res.status(401).json({ message: 'Sesi Anda sudah berakhir. Silakan login kembali.' });
+    }
     return res.status(413).json({ message: 'Ukuran data/dokumen terlalu besar (maks. total 25MB per simpan). Upload sebagian dokumen lewat menu Detail.' });
   }
   if (err.type === 'entity.parse.failed') {
@@ -114,4 +126,9 @@ app.use((err, req, res, next) => {
 
 
 const PORT = Number(process.env.PORT) || 4000;
-app.listen(PORT, () => console.log(`✅ Backend Biro Umum berjalan di http://localhost:${PORT}`));
+// Di belakang Nginx (TRUST_PROXY=true) backend hanya mendengarkan 127.0.0.1: header X-Forwarded-For
+// dipercaya, jadi kalau port 4000 bisa dihubungi langsung dari jaringan, penyerang bisa memalsukan IP-nya
+// dan lolos dari batas percobaan login. Tanpa proxy (dev/LAN) tetap semua interface seperti sebelumnya.
+// HOST di .env bisa menimpa (mis. Nginx di server lain -> HOST=0.0.0.0 + firewall yang hanya mengizinkan Nginx).
+const HOST = process.env.HOST || (process.env.TRUST_PROXY === 'true' ? '127.0.0.1' : '0.0.0.0');
+app.listen(PORT, HOST, () => console.log(`✅ Backend Biro Umum berjalan di http://${HOST === '0.0.0.0' ? 'localhost' : HOST}:${PORT}`));

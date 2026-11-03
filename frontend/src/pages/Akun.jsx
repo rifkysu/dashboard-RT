@@ -212,6 +212,8 @@ export default function Akun() {
               {!loading && data.length === 0 && <tr><td colSpan={10} className="py-8 text-center text-slate-400">Belum ada akun.</td></tr>}
               {data.map((u) => {
                 const isSelf = u.id === user?.id;
+                // Akun Admin hanya bisa dikelola Admin (ban, link reset, verifikasi) -- sama dengan aturan di backend.
+                const terkunci = u.role === 'admin' && user?.role !== 'admin';
                 return (
                 <tr key={u.id} className="divide-x divide-slate-100 hover:bg-slate-50/50">
                   <td className="px-4 py-3 font-semibold text-slate-800"><div className="flex items-start gap-2.5"><span className={`shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold ${u.is_active ? (avatarTone[u.role] || avatarTone.karyawan) : 'bg-red-100 text-red-700'}`}>{initials(u.nama_lengkap)}</span><div className="min-w-0"><div className="whitespace-nowrap">{u.nama_lengkap}{isSelf && <span className="ml-1.5 text-[10px] font-bold text-slate-500">(Kamu)</span>}</div>{u.reset_requested_at && u.is_active && <div className="mt-1 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 text-[10px] font-bold whitespace-nowrap"><span className="material-symbols-outlined text-[12px]">lock_reset</span>Minta reset · {fmt(u.reset_requested_at)}</div>}</div></div></td>
@@ -240,13 +242,14 @@ export default function Akun() {
                   <td className="px-4 py-3 text-slate-500 whitespace-nowrap">{u.last_login_at ? fmt(u.last_login_at) : <span className="text-slate-400 italic">Belum pernah login</span>}</td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
-                    {u.is_active && !u.email_verified_at && (
+                    {terkunci && !isSelf && <span className="text-[11px] text-slate-400 italic whitespace-nowrap" title="Ban, link reset, dan verifikasi akun Admin hanya bisa dilakukan Admin">Dikelola Admin</span>}
+                    {!terkunci && u.is_active && !u.email_verified_at && (
                       <button type="button" onClick={() => verifyEmail(u)} disabled={busyId === u.id} title="Verifikasi email akun ini secara manual"
                         className="px-3 py-1.5 rounded-lg text-xs font-semibold border border-sky-300 bg-sky-600 text-white hover:bg-sky-700 disabled:opacity-60 whitespace-nowrap">
                         Verifikasi
                       </button>
                     )}
-                    {u.is_active && (
+                    {!terkunci && u.is_active && (
                       <button
                         type="button"
                         onClick={() => makeResetLink(u)}
@@ -259,7 +262,7 @@ export default function Akun() {
                     )}
                     {isSelf ? (
                       <span className="text-[11px] text-slate-400 italic">Akun sendiri</span>
-                    ) : (
+                    ) : terkunci ? null : (
                       <button
                         type="button"
                         onClick={() => toggleBan(u)}

@@ -318,7 +318,7 @@ router.post('/forgot-password', forgotPasswordLimiter, async (req, res) => {
       return res.status(400).json({ message: 'Format email tidak valid.' });
     }
 
-    const user = await prisma.user.findFirst({ where: { email, is_active: true }, select: { id: true, email: true, nama_lengkap: true } });
+    const user = await prisma.user.findFirst({ where: { ...emailWhere(email), is_active: true }, select: { id: true, email: true, nama_lengkap: true } });
 
     if (!isMailConfigured()) {
       if (user) await prisma.user.update({ where: { id: user.id }, data: { reset_requested_at: new Date() } });

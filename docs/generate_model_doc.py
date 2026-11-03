@@ -33,7 +33,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 LOGO = os.path.join(ROOT, "frontend", "public", "logo-kemnaker.png")
 
-TANGGAL = "2 November 2026"
+TANGGAL = "3 November 2026"
 SISTEM = "Sistem Layanan Biro Umum & Rumah Tangga"
 
 PW, PH = A4
@@ -819,7 +819,8 @@ def isi_aplikasi():
              "mengelola kendaraan."],
             ["Kabag", "Diberikan Admin/Kabag lewat menu Akun & Akses (atau pgAdmin 4).",
              "Setara admin: mengedit/menghapus seluruh data, Mode Maintenance, Akun & Akses, dan tetap dapat "
-             "mengakses menu yang sedang maintenance."],
+             "mengakses menu yang sedang maintenance. Pengecualian: akun **Admin** tidak bisa disentuh Kabag "
+             "(ubah role, ban/aktifkan, link reset kata sandi, verifikasi email hanya oleh Admin)."],
             ["Admin", "Diberikan Admin lain lewat menu Akun & Akses; admin pertama lewat pgAdmin 4 (tidak tersedia di form Daftar).",
              "Mengedit/menghapus seluruh data + Mode Maintenance, Akun & Akses (ban/aktifkan akun, kirim link "
              "reset, ubah role), tetap dapat mengakses menu yang sedang maintenance."],
@@ -837,6 +838,7 @@ def isi_aplikasi():
             ["Kendaraan: ubah, hapus, foto, dokumen, service", "-", "-", "-", "Ya", "Ya"],
             ["Ruang Rapat: booking, edit, surat/status, cancel", "-", "Ya", "Ya", "Ya", "Ya"],
             ["Akun & Akses, Settings (Mode Maintenance)", "-", "-", "-", "Ya", "Ya"],
+            ["Kelola akun Admin (role, ban, link reset, verifikasi)", "-", "-", "-", "-", "Ya"],
             ["Akses menu saat maintenance", "-", "-", "-", "Ya", "Ya"],
         ]),
         note("Otorisasi diterapkan dua lapis: tombol/menu disembunyikan di frontend, dan setiap endpoint API "
@@ -1164,7 +1166,7 @@ def isi_aplikasi():
         PageBreak(),
         h1("6. Antarmuka API (REST)"),
         p("Seluruh endpoint berada di bawah prefix `/api`, bertukar data JSON (berkas dikirim sebagai data URL "
-          "Base64, maks. 25 MB per request). Endpoint bertanda Login memerlukan header "
+          "Base64, maks. 25 MB per request bertoken; tanpa token maks. 256 KB). Endpoint bertanda Login memerlukan header "
           "`Authorization: Bearer <JWT>`."),
         table([24, 70, 32, 48], [
             ["Kelompok", "Metode & path", "Akses", "Fungsi"],
@@ -1444,6 +1446,7 @@ def isi_infra():
             ["FRONTEND_URL", "Ya", "Origin yang diizinkan CORS & dasar link reset kata sandi"],
             ["PORT", "Tidak", "Port backend, default 4000"],
             ["TRUST_PROXY", "Tidak", "true bila di belakang reverse proxy agar IP klien terbaca benar"],
+            ["HOST", "Tidak", "Alamat yang didengarkan backend; default 127.0.0.1 bila TRUST_PROXY=true, selain itu 0.0.0.0"],
             ["PRISMA_LOG", "Tidak", "true untuk log peringatan Prisma"],
             ["SMTP_HOST / PORT / USER / PASS, MAIL_FROM", "Tidak",
              "Mengirim email reset kata sandi; bila kosong permintaan masuk ke notifikasi admin"],
@@ -1516,12 +1519,18 @@ def isi_infra():
             ["Kata sandi", "bcrypt cost 12; token reset acak 32 byte, disimpan sebagai hash SHA-256, berlaku "
              "1 jam, tidak pernah ditampilkan ke peminta publik; token dikirim di #fragment link sehingga "
              "tidak tercatat di log server."],
-            ["Otorisasi", "RBAC per endpoint (requireRole) + aturan kepemilikan data PIC; menu disembunyikan di "
-             "frontend."],
+            ["Otorisasi", "RBAC per endpoint (requireRole) + aturan kepemilikan data PIC; akun Admin hanya dapat "
+             "dikelola Admin (Kabag ditolak 403 saat mengubah role, mem-ban, membuat link reset, atau memverifikasi akun Admin, "
+             "sehingga Kabag tidak bisa mengambil alih akun Admin); menu disembunyikan di frontend."],
             ["Validasi input", "Validasi tipe, panjang, tanggal, nominal di backend (validate.js) dan frontend; "
-             "body JSON maks. 25 MB."],
-            ["Berkas", "Whitelist MIME + pemeriksaan magic number; nama berkas disanitasi; folder uploads tidak "
-             "dipublikasikan; pratinjau lewat Blob URL."],
+             "body JSON maks. 25 MB hanya untuk request bertoken sah (pegawai/tamu), tanpa token maks. 256 KB "
+             "(mencegah banjir body besar tanpa login); ID di URL di luar batas INTEGER ditolak 400."],
+            ["Berkas", "Whitelist MIME + pemeriksaan magic number (foto kendaraan & ruangan hanya JPG/PNG/WEBP); "
+             "nama berkas disanitasi; folder uploads tidak dipublikasikan; pratinjau lewat Blob URL."],
+            ["Export CSV/Excel", "Sel yang diawali = + - @ diberi awalan ' (backend/src/csv.js, frontend utils/excelCell.js) "
+             "supaya isi dari pengguna/tamu (mis. agenda \"=HYPERLINK(...)\") tidak dijalankan Excel sebagai rumus."],
+            ["Jaringan backend", "Bila TRUST_PROXY=true, backend hanya mendengarkan 127.0.0.1 (HOST bisa diubah), sehingga "
+             "header X-Forwarded-For tidak bisa dipalsukan dari luar untuk lolos dari rate limit login."],
             ["Maintenance", "Menu dapat dikunci (HTTP 503) tanpa mematikan server."],
         ]),
         h1("9. Logging & Pemantauan"),

@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { excelCell } from '../utils/excelCell';
 import api from '../api';
 import { useAuth } from '../context/AuthContext';
 import DocumentViewer from '../components/DocumentViewer';
@@ -266,7 +267,7 @@ export default function Pemeliharaan() {
     if (!exportData.length) return alert({ title: 'Tidak ada data', message: 'Tidak ada data yang sesuai dengan filter dan rentang tanggal untuk diekspor.', tone: 'info' });
     const headers = ['ID Request','Nama Pekerjaan','Lokasi','Titik Lokasi','Kategori','PIC RT','Nama Perusahaan','Transaksi','Nilai Invoice','Tanggal Input','Status','Tanggal Selesai'];
     const body = exportData.map(row => [row.kode, row.judul, row.lokasi, row.titik_lokasi || '-', row.kategori, row.pic || '-', row.stage2_vendor || '-', paymentLabel(row), row.stage2_invoice_amount !== null && row.stage2_invoice_amount !== undefined && row.stage2_invoice_amount !== '' ? `Rp ${money(row.stage2_invoice_amount)}` : '-', String(row.tanggal || '').slice(0,10), statusLabel[row.status] || row.status, row.status === 'selesai' ? (String(row.tanggal_selesai || '').slice(0,10) || '-') : '-']);
-    const html = `<table><thead><tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr></thead><tbody>${body.map(r => `<tr>${r.map(v => `<td>${String(v).replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]))}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
+    const html = `<table><thead><tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr></thead><tbody>${body.map(r => `<tr>${r.map(v => `<td style="mso-number-format:'\@'">${excelCell(v)}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
     const blob = new Blob([`\ufeff${html}`], { type: 'application/vnd.ms-excel' });
     const url = URL.createObjectURL(blob); const a = document.createElement('a');
     a.href = url; a.download = `pemeliharaan_filtered_${localToday()}.xls`; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);

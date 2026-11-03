@@ -89,6 +89,8 @@ function validatePhotos(photos) {
   if (!Array.isArray(photos) || photos.length > MAX_PHOTOS) return { ok: false };
   for (const p of photos) {
     if (!p || typeof p.name !== 'string' || p.name.length > 255) return { ok: false };
+    // Hanya gambar: isGenuineDocumentDataUrl juga menerima PDF/Word/Excel, yang bukan foto.
+    if (typeof p.data !== 'string' || !/^data:image\/(jpeg|png|webp);base64,/i.test(p.data)) return { ok: false };
     if (!isGenuineDocumentDataUrl(p.data, MAX_PHOTO_BYTES)) return { ok: false };
   }
   return { ok: true, items: photos };

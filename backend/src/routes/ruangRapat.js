@@ -1,4 +1,4 @@
-const express=require('express');const crypto=require('crypto');const {EventEmitter}=require('events');const prisma=require('../prisma');const {saveDataUrl,hideFilePaths}=require('../fileStorage');const {isGenuineDocumentDataUrl,maxDataUrlLength}=require('../fileSignature');const {requireAuth}=require('../middleware/auth');const {requireNotInMaintenance}=require('../middleware/maintenance');const logger=require('../logger');const {createSseLimiter}=require('../middleware/security');const fs=require('fs');const nodePath=require('path');const {UPLOAD_ROOT}=require('../fileStorage');const {createZip}=require('../zip');
+const express=require('express');const crypto=require('crypto');const {EventEmitter}=require('events');const prisma=require('../prisma');const {saveDataUrl,hideFilePaths}=require('../fileStorage');const {isGenuineDocumentDataUrl,maxDataUrlLength}=require('../fileSignature');const {requireAuth}=require('../middleware/auth');const {requireNotInMaintenance}=require('../middleware/maintenance');const logger=require('../logger');const {createSseLimiter}=require('../middleware/security');const fs=require('fs');const nodePath=require('path');const {UPLOAD_ROOT}=require('../fileStorage');const {createZip}=require('../zip');const {csvCell}=require('../csv');
 const router=express.Router();
 // Bus internal untuk broadcast SSE (Server-Sent Events) tiap ada booking berubah,
 // supaya kalender publik & admin refresh real-time tanpa polling.
@@ -119,7 +119,7 @@ router.get('/surat-export',async(req,res)=>{try{
   for(const r of rows)for(let t=+r.booking_date;t<=+r.end_date;t+=DAY)perDay.push({day:fmtDate(new Date(t)),r});
   perDay.sort((a,b)=>a.day.localeCompare(b.day)||(+a.r.start_time)-(+b.r.start_time)||a.r.room.localeCompare(b.r.room));
   const tglID=v=>`${v.slice(8,10)}/${v.slice(5,7)}/${v.slice(0,4)}`;
-  const csv=v=>`"${String(v).replace(/"/g,'""')}"`;
+  const csv=csvCell; // nilai diawali = + - @ (mis. agenda dari tamu) tidak dibaca Excel sebagai rumus
   const list=[['No','Tanggal','Ruang Rapat','Nama Rapat','PIC','Nomor Surat','File'],...perDay.map(({day,r},i)=>[i+1,tglID(day),r.room,r.agenda,r.pic,(r.nomor_surat||'').trim()||'-',fileOf.get(keyOf(r))||'(file tidak ditemukan di server)'])].map(r=>r.map(csv).join(',')).join('\r\n');
   files.push({name:'daftar_surat.csv',data:Buffer.from('\ufeff'+list,'utf8')});
   const zip=createZip(files);

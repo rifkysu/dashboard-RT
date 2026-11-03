@@ -13,6 +13,7 @@ import MenuStats from '../components/MenuStats';
 import { RuangFotoButton, RuangPilihanInfo } from '../components/RuangFoto';
 import BagianTabs, { useBagian, RuangOptions } from '../components/BagianTabs';
 import { useDaftarRuang } from '../hooks/useRuangInfo';
+import { excelCell } from '../utils/excelCell';
 
 const STATUS_META = {
   belum: { label: 'Belum Ada Surat', card: 'bg-red-50 border-red-300 text-red-900', badge: 'bg-red-100 text-red-700 border-red-200', dot: 'bg-red-500' },
@@ -116,7 +117,7 @@ export default function RuangRapat() {
       }
       rows.sort((a,b)=>`${a.day} ${a.start} ${a.room}`.localeCompare(`${b.day} ${b.start} ${b.room}`));
       if(!rows.length){alert({title:'Tidak ada data',message:'Tidak ada booking pada rentang tanggal tersebut.',tone:'info'});return;}
-      const esc=v=>String(v??'').replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+      const esc=excelCell; // escape HTML + rumus Excel (=, +, -, @) dari agenda/PIC tamu tidak dijalankan
       const tgl=v=>new Date(`${v}T00:00:00`).toLocaleDateString('id-ID',{day:'2-digit',month:'2-digit',year:'numeric'});
       const headers=['Tanggal','Ruang Rapat','Nama Rapat','PIC','Nomor Surat'];
       // mso-number-format:@ -> Excel memperlakukan sebagai teks (nomor surat & tanggal tidak diubah otomatis)

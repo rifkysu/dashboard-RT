@@ -2,6 +2,7 @@ const express = require('express');
 const prisma = require('../prisma');
 const { requireAuth, requireRole, ADMIN_ROLES } = require('../middleware/auth');
 const logger = require('../logger');
+const { csvCell } = require('../csv');
 
 // Menu "Riwayat Aktivitas" (Admin/Kabag): baca-saja. Tidak ada endpoint ubah/hapus -- tabelnya pun
 // menolak UPDATE/DELETE (migration 0037). Data ditulis lewat src/audit.js oleh tiap modul.
@@ -145,7 +146,7 @@ router.get('/export', async (req, res) => {
     if (error) return res.status(400).json({ message: error });
     if (where.ref_grup && where.modul === 'ruangan') where.ref_grup = { in: await namaRuangan(where.ref_grup) };
     const rows = await prisma.riwayatAktivitas.findMany({ where, orderBy: [{ waktu: 'desc' }, { id: 'desc' }], take: MAX_EXPORT });
-    const csv = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+    const csv = csvCell; // nilai diawali = + - @ tidak dibaca Excel sebagai rumus (lihat src/csv.js)
     const detail = (p) => (Array.isArray(p) ? p.map((x) => ('dari' in x && 'ke' in x ? `${x.label}: ${x.dari ?? '(kosong)'} -> ${x.ke ?? '(kosong)'}` : `${x.label}: ${x.ke ?? x.dari ?? '(kosong)'}`)).join('; ') : '');
     const lines = [
       ['Waktu (WIB)', 'Modul', 'Aksi', 'Kode / Ref', 'Data', 'Pelaku', 'Tipe Pelaku', 'Role', 'Email Pelaku', 'Detail', 'Keterangan', 'IP'],
