@@ -9,7 +9,8 @@ const shortLabel = (s) => { const d = new Date(`${s}T00:00:00`); return `${DAYS[
 
 // Kalender pilih banyak tanggal (boleh loncat-loncat): klik tanggal untuk memilih / membatalkan pilihan.
 // value = array 'YYYY-MM-DD' terurut. Tanggal yang berurutan nanti digabung backend jadi satu booking multi-hari.
-export default function MultiDatePicker({ value, onChange, max = 60 }) {
+// minDate/maxDate (opsional, 'YYYY-MM-DD'): tanggal di luar batas tampil redup & tidak bisa dipilih (dipakai form tamu kiosk).
+export default function MultiDatePicker({ value, onChange, max = 60, minDate, maxDate }) {
   const [view, setView] = useState(() => { const d = new Date(`${value[0] || todayISO()}T00:00:00`); return { y: d.getFullYear(), m: d.getMonth() }; });
   const selected = new Set(value);
   const today = todayISO();
@@ -19,8 +20,10 @@ export default function MultiDatePicker({ value, onChange, max = 60 }) {
   const cells = [...Array(lead).fill(null), ...Array.from({ length: total }, (_, i) => i + 1)];
   const shift = (n) => setView(({ y, m }) => { const d = new Date(y, m + n, 1); return { y: d.getFullYear(), m: d.getMonth() }; });
 
+  const outOfRange = (key) => (minDate && key < minDate) || (maxDate && key > maxDate);
   function toggle(day) {
     const key = iso(view.y, view.m, day);
+    if (outOfRange(key) && !selected.has(key)) return;
     if (selected.has(key)) onChange(value.filter((x) => x !== key));
     else if (value.length < max) onChange([...value, key].sort());
   }
@@ -40,14 +43,16 @@ export default function MultiDatePicker({ value, onChange, max = 60 }) {
           const on = selected.has(key);
           const holiday = holidayLabel(key);
           const red = i % 7 > 4 || holiday;
+          const off = outOfRange(key) && !on;
           return (
             <button
               key={key}
               type="button"
               onClick={() => toggle(day)}
+              disabled={off}
               aria-pressed={on}
-              title={holiday || undefined}
-              className={`h-9 rounded-lg text-sm font-semibold transition ${on ? 'bg-slate-900 text-white' : red ? 'text-red-600 hover:bg-red-50' : 'text-slate-700 hover:bg-slate-100'} ${key === today && !on ? 'ring-1 ring-violet-400' : ''}`}
+              title={off ? 'Di luar rentang yang bisa dibooking' : holiday || undefined}
+              className={`h-9 rounded-lg text-sm font-semibold transition ${on ? 'bg-slate-900 text-white' : off ? 'text-slate-300 cursor-not-allowed' : red ? 'text-red-600 hover:bg-red-50' : 'text-slate-700 hover:bg-slate-100'} ${key === today && !on ? 'ring-1 ring-violet-400' : ''}`}
             >
               {day}
             </button>

@@ -1,9 +1,9 @@
 /* Semua font dibundel bersama aplikasi (tidak diambil dari Google Fonts saat dibuka),
    supaya tampilan tetap utuh walau server/jaringan kantor tidak bisa mengakses internet. */
-@import '@fontsource/public-sans/latin-400.css';
-@import '@fontsource/public-sans/latin-500.css';
-@import '@fontsource/public-sans/latin-600.css';
-@import '@fontsource/public-sans/latin-700.css';
+/* Teks isi: Inter versi variabel dengan sumbu optical size (opsz) -- bentuk huruf menyesuaikan ukuran
+   otomatis: sedikit lebih renggang & terbuka di teks kecil (tabel 11px, label), lebih rapat di ukuran besar.
+   Satu berkas untuk semua ketebalan 100-900; browser hanya mengunduh subset latin (~73 KB) untuk teks Indonesia. */
+@import '@fontsource-variable/inter/opsz.css';
 @import '@fontsource/plus-jakarta-sans/latin-500.css';
 @import '@fontsource/plus-jakarta-sans/latin-600.css';
 @import '@fontsource/plus-jakarta-sans/latin-700.css';

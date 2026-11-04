@@ -4,15 +4,15 @@
    - Warna lain hanya untuk arti status (merah/kuning/hijau).
    - Ornamen: motif batik kawung tipis (--kawung-*), hanya di header halaman, sapaan dashboard,
      landing, dan panel login.
-   - Font: Plus Jakarta Sans (judul), Public Sans (isi), JetBrains Mono (kode & nomor).
+   - Font: Plus Jakarta Sans (judul), Inter variabel + optical size (isi), JetBrains Mono (kode & nomor).
    ===================================================================== */
 :root {
   color-scheme: light;
   --dinas:#1e3a5f; --dinas-dark:#142a47; --dinas-ink:#0e1e33; --dinas-soft:#e8eef6;
   --kuningan:#b8893b; --kuningan-soft:#f7efe0; --kuningan-ink:#7a5a20;
   --kanvas:#f3f4f7; --garis:#e2e6ed; --teks:#1b2534; --teks-redup:#5f6b7a;
-  --f-display:"Plus Jakarta Sans","Public Sans",Arial,sans-serif;
-  --f-body:"Public Sans",Arial,sans-serif;
+  --f-display:"Plus Jakarta Sans","Inter Variable",system-ui,"Segoe UI",Roboto,Arial,sans-serif;
+  --f-body:"Inter Variable",Inter,system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
   --f-mono:"JetBrains Mono",Consolas,monospace;
   --kartu-bayang:0 1px 2px rgba(14,30,51,.04), 0 6px 18px -10px rgba(14,30,51,.12);
   /* Motif kawung: empat kelopak lonjong mengelilingi titik tengah, diulang sebagai ubin. */
@@ -24,6 +24,12 @@ body { min-height: 100vh; background: var(--kanvas) !important; font-family: var
 main.app-main { background: var(--kanvas) !important; min-height:100vh; }
 .font-display { font-family: var(--f-display) !important; }
 .font-mono { font-family: var(--f-mono) !important; }
+/* Tipografi: optical size otomatis (Inter), angka sejajar per kolom di tabel & angka ringkasan,
+   judul dipecah seimbang (tidak menyisakan satu kata di baris terakhir). */
+body { font-optical-sizing:auto; -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale; }
+table, .tabular-nums { font-variant-numeric: tabular-nums; }
+h1, h2, h3 { text-wrap: balance; }
+p { text-wrap: pretty; }
 .bg-kawung-gelap { background-image: var(--kawung-gelap); }
 .bg-kawung-terang { background-image: var(--kawung-terang); }
 
@@ -148,6 +154,8 @@ main.app-main { background: var(--kanvas) !important; min-height:100vh; }
   box-shadow:0 8px 18px -10px rgba(30,58,95,.8); transition:transform .2s ease, box-shadow .2s ease;
 }
 .menu-page .menu-hero > button.bg-slate-900:hover { transform:translateY(-2px); box-shadow:0 12px 22px -10px rgba(30,58,95,.85); }
+/* Label tombol header tetap satu baris (mis. "Booking Ruang Rapat"); deskripsi di kiri yang mengalah. */
+.menu-page .menu-hero > button, .menu-page .menu-hero > a { white-space:nowrap; flex-shrink:0; }
 
 /* Mode terang: header semua menu ikut panel biru seperti dashboard (gradasi dinas + cahaya kuningan
    + motif kawung putih). Mode gelap punya gayanya sendiri di dark-theme.css. */

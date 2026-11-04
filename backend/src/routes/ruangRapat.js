@@ -272,4 +272,4 @@ router.delete('/:id',async(req,res)=>{try{const id=Number(req.params.id);if(!Num
   broadcastChange();res.json({message:'Booking dibatalkan.'});}catch(err){logger.error('DELETE ruang rapat gagal',{error:err});res.status(500).json({message:'Gagal membatalkan booking.'});}});
 module.exports=router;
 // Dipakai juga oleh form booking tamu (routes/guest.js) supaya aturan & cek bentroknya sama persis.
-module.exports.booking={validText,validPhone,normPhone,validDate,validTime,validFile,validNomorSurat,validSuratName,date,time,DAY,conflictWhere,conflictMessage,lockRoom,HttpError,suratStatus,out,broadcastChange};
+module.exports.booking={dateRuns,validText,validPhone,normPhone,validDate,validTime,validFile,validNomorSurat,validSuratName,date,time,DAY,conflictWhere,conflictMessage,lockRoom,HttpError,suratStatus,out,broadcastChange};

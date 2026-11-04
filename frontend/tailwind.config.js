@@ -5,8 +5,8 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        sans: ['"Public Sans"', 'Arial', 'sans-serif'],
-        display: ['"Plus Jakarta Sans"', '"Public Sans"', 'Arial', 'sans-serif'],
+        sans: ['"Inter Variable"', 'Inter', 'system-ui', '"Segoe UI"', 'Roboto', 'Arial', 'sans-serif'],
+        display: ['"Plus Jakarta Sans"', '"Inter Variable"', 'system-ui', 'Arial', 'sans-serif'],
         mono: ['"JetBrains Mono"', 'Consolas', 'monospace'],
       },
       colors: {

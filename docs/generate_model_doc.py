@@ -886,18 +886,22 @@ def isi_aplikasi():
             "perubahan langsung tampil di layar lewat SSE (topik ruang-info).",
             "**Booking ruang rapat untuk tamu** (tanpa akun pegawai): tombol *Login dengan Google untuk booking* "
             "di halaman kiosk **/jadwal-rapat** (di atas jadwal; landing page hanya menautkan ke sana). Setelah login Google (OAuth 2.0 + PKCE), tamu mengisi form booking "
-            "yang **semua kolomnya wajib** (agenda, nomor surat, PIC, No. HP PIC, ruangan, tanggal mulai & sampai, "
-            "jam, file surat permohonan); tombol Kirim baru aktif bila semua terisi. Saat submit wajib mengisi "
+            "yang **semua kolomnya wajib** (agenda, nomor surat, PIC, No. HP PIC, ruangan, tanggal, "
+            "jam, file surat permohonan). **Tanggal wajib diisi lewat salah satu dari dua cara**: *Rentang tanggal* (hari berturut-turut, "
+            "maks. 7 hari / 1 minggu) atau *Pilih beberapa tanggal* di kalender (boleh loncat-loncat, mis. Senin & Kamis saja, maks. 7 tanggal; "
+            "tanggal di luar hari ini s/d 90 hari ke depan tampil redup); jam sama untuk semua tanggal; server menyimpan satu baris "
+            "per rentang tanggal berurutan yang diikat `booking_group` (satu pengajuan); tombol Kirim baru aktif bila semua terisi. Saat submit wajib mengisi "
             "**captcha 6 angka** (gambar PNG dari server) yang **berlaku 5 menit** dan hangus setelah sekali dicek. "
             "Begitu ruangan, tanggal & jam dipilih, form langsung **mengecek ketersediaan** (jadwal publik, ikut real-time): "
             "daftar *Jam terisi* di ruangan itu ditampilkan, jam yang bentrok ditandai merah dan tombol Kirim dikunci; "
             "bila tersedia muncul tanda *Ruangan tersedia*. Server tetap mengecek ulang bentrok di dalam transaksi dengan kunci "
             "per ruangan (dua pengajuan bersamaan tidak bisa sama-sama lolos); bila keduluan (409), daftar jam terisi di form diperbarui.",
             "Sesi akun Google tamu **berlaku 7 hari**. Anti-spam: jeda 60 detik antar pengajuan, maks. 3 pengajuan "
-            "per 24 jam dan 5 booking aktif per akun, satu pengajuan maks. 7 hari berturut-turut & maks. 90 hari "
+            "per 24 jam dan 5 booking aktif per akun (dihitung per pengajuan, bukan per tanggal), satu pengajuan maks. 7 hari berturut-turut (rentang) atau 7 tanggal (pilih) & maks. 90 hari "
             "ke depan, rate limit per akun & IP, serta akun bisa diblokir admin. Daftar *Booking Anda* tampil di "
-            "panel yang sama.",
-            "Tamu bisa **membatalkan booking miliknya sendiri** (alasan opsional) selama booking belum lewat; data "
+            "panel yang sama: satu kartu per pengajuan berisi semua tanggalnya.",
+            "Tamu bisa **membatalkan booking miliknya sendiri** (alasan opsional) selama booking belum lewat; semua tanggal "
+            "pengajuan yang belum lewat ikut dibatalkan; data "
             "tidak dihapus, pembatal dicatat di `cancelled_by_guest_id` dan tampil \"Dibatalkan oleh nama (tamu)\" di menu Ruang Rapat.",
             "Mengikuti Mode Maintenance menu *landing*; status dibaca dari endpoint publik tanpa login."),
         h2("3.2 Autentikasi"),
@@ -1415,7 +1419,7 @@ def isi_infra():
             ["", "React Router DOM", "6.24 (routing SPA)"],
             ["", "Axios", "1.7 (HTTP client, interceptor token & 401)"],
             ["", "Vite + @vitejs/plugin-react", "8.3 (dev server :5173, build ke dist/)"],
-            ["", "Tailwind CSS 3 (dibundel saat build) + app-theme.css; font dibundel lokal", "Styling & animasi, tanpa CDN"],
+            ["", "Tailwind CSS 3 (dibundel saat build) + app-theme.css; font dibundel lokal: Inter variabel (isi), Plus Jakarta Sans (judul), JetBrains Mono (jam)", "Styling & animasi, tanpa CDN"],
             ["Backend", "Node.js", "22 LTS"],
             ["", "Express", "4.19 (REST API, port 4000)"],
             ["", "Prisma ORM & Prisma Client", "6.19"],

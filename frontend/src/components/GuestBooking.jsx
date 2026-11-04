@@ -10,13 +10,22 @@ import { judulRuang } from '../utils/ruang';
 import { useDaftarRuang } from '../hooks/useRuangInfo';
 import { RuangOptions } from './BagianTabs';
 import { RuangPilihanInfo } from './RuangFoto';
+import MultiDatePicker from './MultiDatePicker';
 
 // Booking ruang rapat dari halaman kiosk /jadwal-rapat untuk TAMU (tanpa akun pegawai) lewat login Google.
 // Aturan yang sama dicek ulang di backend (backend/src/routes/guest.js).
 const MAX_FILE = 8 * 1024 * 1024;
 const ALLOWED = ['application/pdf', 'image/jpeg', 'image/png'];
+// Dua cara memilih tanggal (tamu WAJIB memakai salah satu, dateMode kosong = belum memilih):
+//  - 'range': rentang berturut-turut (tanggal mulai s/d sampai), maks. MAX_SPAN_DAYS hari (per minggu).
+//  - 'pick' : tanggal bebas di kalender (boleh loncat-loncat, mis. Senin & Kamis saja) -> ruangan tidak
+//             terkunci di hari yang tidak dipakai, maks. MAX_DATES tanggal.
+// Batas sama dengan backend (MAX_SPAN_DAYS, MAX_DATES, MAX_AHEAD_DAYS di routes/guest.js).
 const MAX_SPAN_DAYS = 7;
-const emptyForm = { title: '', nomor_surat: '', pic: '', pic_phone: '', room: '', date: '', end_date: '', start: '', end: '', surat_name: '', surat_file_data: '' };
+const MAX_DATES = 7;
+const MAX_AHEAD_DAYS = 90;
+const emptyForm = { title: '', nomor_surat: '', pic: '', pic_phone: '', room: '', dateMode: '', date: '', end_date: '', dates: [], start: '', end: '', surat_name: '', surat_file_data: '' };
+const REQUIRED_KEYS = ['title', 'nomor_surat', 'pic', 'pic_phone', 'room', 'start', 'end', 'surat_name', 'surat_file_data'];
 
 const LOGIN_ERRORS = {
   not_configured: 'Login Google belum dikonfigurasi di server. Hubungi admin Biro Umum.',
@@ -29,8 +38,29 @@ const LOGIN_ERRORS = {
 };
 
 const fmtTanggal = (v) => new Date(`${v}T00:00:00`).toLocaleDateString('id-ID', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
-const dayDiff = (a, b) => Math.round((new Date(`${b}T00:00:00Z`) - new Date(`${a}T00:00:00Z`)) / 86400000);
 const nowHm = () => { const d = new Date(); return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`; };
+const addDays = (s, n) => { const d = new Date(`${s}T00:00:00`); d.setDate(d.getDate() + n); return iso(d); };
+const dayDiff = (a, b) => Math.round((new Date(`${b}T00:00:00Z`) - new Date(`${a}T00:00:00Z`)) / 86400000);
+const listDates = (from, to) => { const out = []; for (let d = from; d <= to && out.length < 400; d = addDays(d, 1)) out.push(d); return out; };
+// Tanggal yang benar-benar akan dibooking, dari mode mana pun (dipakai cek ketersediaan & validasi).
+// Mode rentang yang belum valid (sampai < mulai / lebih dari 7 hari) -> kosong, pesan salahnya muncul di validasi.
+function tanggalTerpilih(form) {
+  if (form.dateMode === 'pick') return form.dates;
+  if (form.dateMode === 'range' && form.date) {
+    const to = form.end_date || form.date;
+    if (to < form.date || dayDiff(form.date, to) + 1 > MAX_SPAN_DAYS) return [];
+    return listDates(form.date, to);
+  }
+  return [];
+}
+// Booking (dari jadwal publik) yang rentangnya mengenai salah satu tanggal pilihan.
+const kenaTanggal = (x, dates) => dates.some((d) => x.date <= d && (x.end_date || x.date) >= d);
+// Daftar tanggal satu pengajuan tamu: segmen berurutan digabung "a s/d b", segmen dipisah koma.
+const fmtSegmen = (s) => (s.from === s.to ? fmtTanggal(s.from) : `${fmtTanggal(s.from)} s/d ${fmtTanggal(s.to)}`);
+const tanggalBooking = (b) => {
+  const segs = b.segments?.length ? (b.cancelled ? b.segments : b.segments.filter((s) => !s.cancelled)) : [{ from: b.date, to: b.end_date || b.date }];
+  return segs.map(fmtSegmen).join(', ');
+};
 
 function GoogleIcon() {
   return (
@@ -88,37 +118,41 @@ function Captcha({ captcha, loading, onReload, value, onChange }) {
   );
 }
 
-// Cek ketersediaan langsung di form: jadwal publik ruangan terpilih pada rentang tanggal terpilih.
-// Bentrok ditampilkan sebelum kirim & tombol Kirim dikunci. Ikut sinyal live, jadi booking orang lain
-// yang baru masuk langsung terlihat. Backend tetap memeriksa ulang di dalam transaksi (sumber kebenaran).
-function useKetersediaan(room, from, to) {
+// Cek ketersediaan langsung di form: jadwal publik ruangan terpilih pada tanggal-tanggal terpilih.
+// Satu request untuk rentang tanggal pertama s/d terakhir (maks. 90 hari), lalu disaring ke booking
+// yang mengenai salah satu tanggal pilihan. Bentrok ditampilkan sebelum kirim & tombol Kirim dikunci.
+// Ikut sinyal live, jadi booking orang lain yang baru masuk langsung terlihat. Backend tetap memeriksa
+// ulang di dalam transaksi (sumber kebenaran).
+function useKetersediaan(room, dates) {
   const [state, setState] = useState({ items: null, gagal: false, memuat: false });
   const reqRef = useRef(0);
+  const key = dates.join(',');
   const load = useCallback(() => {
     const id = ++reqRef.current;
-    if (!room || !from || !to || to < from || dayDiff(from, to) + 1 > MAX_SPAN_DAYS) { setState({ items: null, gagal: false, memuat: false }); return; }
+    const list = key ? key.split(',') : [];
+    if (!room || !list.length) { setState({ items: null, gagal: false, memuat: false }); return; }
     setState((s) => ({ ...s, memuat: true }));
-    api.get('/ruang-rapat/public-schedule', { params: { from, to } })
+    api.get('/ruang-rapat/public-schedule', { params: { from: list[0], to: list[list.length - 1] } })
       .then((r) => {
         if (id !== reqRef.current) return;
-        const items = (r.data.data || []).filter((x) => x.room === room && !x.cancelled).sort((a, b) => a.date.localeCompare(b.date) || a.start.localeCompare(b.start));
+        const items = (r.data.data || []).filter((x) => x.room === room && !x.cancelled && kenaTanggal(x, list)).sort((a, b) => a.date.localeCompare(b.date) || a.start.localeCompare(b.start));
         setState({ items, gagal: false, memuat: false });
       })
       .catch(() => { if (id === reqRef.current) setState({ items: null, gagal: true, memuat: false }); });
-  }, [room, from, to]);
+  }, [room, key]);
   useEffect(() => { load(); }, [load]);
   useRuangRapatLive(load);
   return { ...state, reload: load };
 }
 
-// Sama dengan conflictWhere di backend: rentang tanggal beririsan DAN jam beririsan (jam sama tiap hari).
-const bentrokDengan = (items, form) => (items && form.start && form.end && form.start < form.end
-  ? items.filter((x) => x.date <= form.end_date && (x.end_date || x.date) >= form.date && x.start < form.end && x.end > form.start)
+// Sama dengan conflictWhere di backend: tanggal beririsan DAN jam beririsan (jam sama di setiap tanggal).
+const bentrokDengan = (items, form, dates) => (items && form.start && form.end && form.start < form.end
+  ? items.filter((x) => kenaTanggal(x, dates) && x.start < form.end && x.end > form.start)
   : []);
 const rentangTgl = (x) => ((x.end_date || x.date) !== x.date ? `${fmtTanggal(x.date)} s/d ${fmtTanggal(x.end_date)}` : fmtTanggal(x.date));
 
-function PanelKetersediaan({ form, cek, bentrok }) {
-  if (!form.room || !form.date || !form.end_date) {
+function PanelKetersediaan({ form, dates, cek, bentrok }) {
+  if (!form.room || !dates.length) {
     return <p className="md:col-span-2 -mt-1 text-[11px] text-slate-500 inline-flex items-center gap-1.5"><span className="material-symbols-outlined text-[16px]">info</span>Pilih ruangan & tanggal untuk melihat jam yang sudah terisi.</p>;
   }
   if (cek.gagal) {
@@ -149,17 +183,17 @@ function PanelKetersediaan({ form, cek, bentrok }) {
         </div>
       )}
       <div className="rounded-xl border border-slate-200 bg-white px-4 py-3">
-        <div className="text-xs font-semibold text-slate-700">Jam terisi di {judulRuang(form.room)} · {form.date === form.end_date ? fmtTanggal(form.date) : `${fmtTanggal(form.date)} s/d ${fmtTanggal(form.end_date)}`}</div>
+        <div className="text-xs font-semibold text-slate-700">Jam terisi di {judulRuang(form.room)} · {dates.length === 1 ? fmtTanggal(dates[0]) : form.dateMode === 'range' ? `${fmtTanggal(dates[0])} s/d ${fmtTanggal(dates[dates.length - 1])}` : `${dates.length} tanggal dipilih`}</div>
         {cek.items.length ? (
           <ul className="mt-2 grid gap-1.5 sm:grid-cols-2">
             {cek.items.map((x) => (
               <li key={x.id} className={`flex items-start gap-2 rounded-lg border px-2.5 py-1.5 text-xs ${ids.has(x.id) ? 'border-red-300 bg-red-50 text-red-800' : 'border-slate-200 bg-slate-50 text-slate-700'}`}>
                 <span className="font-mono font-bold tabular-nums shrink-0">{x.start}–{x.end}</span>
-                <span className="min-w-0"><span className="block font-semibold truncate">{x.title}</span>{(form.date !== form.end_date || (x.end_date || x.date) !== x.date) && <span className="block text-[11px] opacity-75">{rentangTgl(x)}</span>}</span>
+                <span className="min-w-0"><span className="block font-semibold truncate">{x.title}</span>{(dates.length > 1 || (x.end_date || x.date) !== x.date) && <span className="block text-[11px] opacity-75">{rentangTgl(x)}</span>}</span>
               </li>
             ))}
           </ul>
-        ) : <div className="mt-1 text-xs text-emerald-700">Belum ada booking pada tanggal ini — semua jam tersedia.</div>}
+        ) : <div className="mt-1 text-xs text-emerald-700">Belum ada booking pada {dates.length > 1 ? 'tanggal-tanggal' : 'tanggal'} ini — semua jam tersedia.</div>}
       </div>
     </div>
   );
@@ -175,8 +209,10 @@ function BookingForm({ guest, onClose, onBooked, onSessionEnd }) {
   const [saving, setSaving] = useState(false);
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
   const today = iso();
-  const cek = useKetersediaan(form.room, form.date, form.end_date);
-  const bentrok = bentrokDengan(cek.items, form);
+  const maxDate = addDays(today, MAX_AHEAD_DAYS);
+  const tanggal = tanggalTerpilih(form);
+  const cek = useKetersediaan(form.room, tanggal);
+  const bentrok = bentrokDengan(cek.items, form, tanggal);
 
   const loadCaptcha = useCallback(async () => {
     setCaptchaLoading(true);
@@ -220,20 +256,28 @@ function BookingForm({ guest, onClose, onBooked, onSessionEnd }) {
   const isCaptchaExpired = () => !captcha || new Date(captcha.expires_at) <= new Date();
   const captchaExpired = isCaptchaExpired();
   // Tombol Kirim baru aktif kalau SEMUA kolom (termasuk surat & captcha) sudah diisi.
-  const complete = Object.keys(emptyForm).every((k) => String(form[k] || '').trim()) && answer.length === 6;
+  // Tanggal wajib diisi lewat SALAH SATU mode (rentang atau pilih beberapa tanggal).
+  const complete = REQUIRED_KEYS.every((k) => String(form[k] || '').trim()) && tanggal.length > 0 && answer.length === 6;
 
   function validate() {
     const errors = requireFields([
       ['Topik / agenda', form.title], ['Nomor surat', form.nomor_surat], ['Nama PIC', form.pic], ['No. HP PIC', form.pic_phone], ['Ruangan', form.room],
-      ['Tanggal mulai', form.date], ['Sampai tanggal', form.end_date], ['Jam mulai', form.start], ['Jam selesai', form.end], ['File surat permohonan', form.surat_file_data],
+      ['Jam mulai', form.start], ['Jam selesai', form.end], ['File surat permohonan', form.surat_file_data],
     ]);
     if (!/^\d{6}$/.test(answer)) errors.push('Captcha wajib diisi (6 angka).');
     if (form.pic_phone && !HP_RE.test(normalizePhone(form.pic_phone))) errors.push('No. HP PIC tidak valid (contoh: 081234567890 atau +6281234567890).');
-    if (form.date && form.date < today) errors.push('Tanggal mulai tidak boleh sebelum hari ini.');
-    if (form.date && form.end_date && form.end_date < form.date) errors.push('Sampai tanggal tidak boleh sebelum tanggal mulai.');
-    if (form.date && form.end_date && dayDiff(form.date, form.end_date) + 1 > MAX_SPAN_DAYS) errors.push(`Booking tamu maksimal ${MAX_SPAN_DAYS} hari berturut-turut.`);
+    if (!form.dateMode) errors.push('Tanggal wajib diisi: pilih "Rentang tanggal" atau "Pilih beberapa tanggal".');
+    else if (form.dateMode === 'pick' && !form.dates.length) errors.push('Pilih minimal 1 tanggal di kalender.');
+    else if (form.dateMode === 'range') {
+      if (!form.date) errors.push('Tanggal mulai wajib diisi.');
+      else if (form.end_date && form.end_date < form.date) errors.push('Sampai tanggal tidak boleh sebelum tanggal mulai.');
+      else if (form.end_date && dayDiff(form.date, form.end_date) + 1 > MAX_SPAN_DAYS) errors.push(`Rentang tanggal maksimal ${MAX_SPAN_DAYS} hari berturut-turut. Untuk hari yang tidak berurutan pakai "Pilih beberapa tanggal".`);
+    }
+    if (tanggal.some((d) => d < today)) errors.push('Tanggal tidak boleh sebelum hari ini.');
+    if (tanggal.some((d) => d > maxDate)) errors.push(`Booking paling jauh ${MAX_AHEAD_DAYS} hari ke depan.`);
+    if (form.dateMode === 'pick' && form.dates.length > MAX_DATES) errors.push(`Maksimal ${MAX_DATES} tanggal per pengajuan.`);
     if (form.start && form.end && form.start >= form.end) errors.push('Jam selesai harus lebih besar dari jam mulai.');
-    if (form.date === today && form.start && form.start < nowHm()) errors.push('Jam mulai hari ini sudah lewat.');
+    if (tanggal.includes(today) && form.start && form.start < nowHm()) errors.push('Jam mulai hari ini sudah lewat.');
     if (isCaptchaExpired()) errors.push('Captcha sudah kedaluwarsa. Klik "Ganti captcha".');
     if (bentrok.length) errors.push(`Jam yang dipilih bentrok dengan booking lain di ${judulRuang(form.room)}: ${bentrok.map((x) => `"${x.title}" ${x.start}–${x.end}`).join(', ')}.`);
     return errors;
@@ -246,7 +290,10 @@ function BookingForm({ guest, onClose, onBooked, onSessionEnd }) {
     if (errors.length) { await alert({ title: 'Form belum lengkap', intro: 'Periksa data berikut:', message: errors, tone: 'warning' }); return; }
     setSaving(true);
     try {
-      const r = await guestApi.post('/guest/bookings', { ...form, pic_phone: normalizePhone(form.pic_phone), captcha: answer });
+      // Mode rentang -> date & end_date; mode pilih -> dates (backend membedakan dari ada/tidaknya `dates`).
+      const { dateMode, date, end_date, dates, ...rest } = form;
+      const tanggalPayload = dateMode === 'pick' ? { dates: [...dates].sort() } : { date, end_date: end_date || date };
+      const r = await guestApi.post('/guest/bookings', { ...rest, ...tanggalPayload, pic_phone: normalizePhone(form.pic_phone), captcha: answer });
       onBooked(r.data);
     } catch (err) {
       const status = err.response?.status;
@@ -262,8 +309,6 @@ function BookingForm({ guest, onClose, onBooked, onSessionEnd }) {
       if (status === 409) cek.reload();
     } finally { setSaving(false); }
   }
-
-  const span = form.date && form.end_date && form.end_date >= form.date ? dayDiff(form.date, form.end_date) + 1 : 0;
 
   return (
     <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex overflow-y-auto overscroll-contain p-3 sm:p-4" role="dialog" aria-modal="true" aria-labelledby="guest-booking-title">
@@ -293,15 +338,55 @@ function BookingForm({ guest, onClose, onBooked, onSessionEnd }) {
               </select>
             </Field>
             <RuangPilihanInfo room={form.room} />
-            <Field label="Tanggal Mulai" hint={form.date ? fmtTanggal(form.date) : null}>
-              <input type="date" value={form.date} min={today} onChange={(e) => { const v = e.target.value; setForm((f) => ({ ...f, date: v, end_date: !f.end_date || f.end_date < v ? v : f.end_date })); }} className={inputCls} />
-            </Field>
-            <Field label="Sampai Tanggal" hint={span ? `${span} hari · jam yang sama setiap hari (maks. ${MAX_SPAN_DAYS} hari)` : `Isi sama dengan tanggal mulai untuk booking 1 hari (maks. ${MAX_SPAN_DAYS} hari)`}>
-              <input type="date" value={form.end_date} min={form.date || today} onChange={set('end_date')} className={inputCls} />
-            </Field>
+            <div className="md:col-span-2">
+              <span className="block text-xs font-semibold text-slate-700 mb-1.5">Tanggal <span className="text-red-600">*</span> <span className="font-normal text-slate-500">— pilih salah satu cara</span></span>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2" role="radiogroup" aria-label="Cara memilih tanggal">
+                {[
+                  { mode: 'range', icon: 'date_range', judul: 'Rentang tanggal', ket: `Hari berturut-turut, maks. ${MAX_SPAN_DAYS} hari (1 minggu)` },
+                  { mode: 'pick', icon: 'calendar_month', judul: 'Pilih beberapa tanggal', ket: `Boleh loncat-loncat, maks. ${MAX_DATES} tanggal` },
+                ].map((o) => {
+                  const on = form.dateMode === o.mode;
+                  // Ganti mode: tanggal yang sudah dipilih dibawa ke mode baru sejauh muat.
+                  const pilih = () => setForm((f) => {
+                    if (f.dateMode === o.mode) return f;
+                    const sekarang = tanggalTerpilih(f);
+                    return o.mode === 'pick'
+                      ? { ...f, dateMode: 'pick', dates: sekarang.slice(0, MAX_DATES) }
+                      : { ...f, dateMode: 'range', date: sekarang[0] || '', end_date: sekarang[0] || '' };
+                  });
+                  return (
+                    <button key={o.mode} type="button" role="radio" aria-checked={on} onClick={pilih}
+                      className={`flex items-start gap-3 rounded-xl border px-3.5 py-3 text-left transition ${on ? 'border-dinas bg-dinas text-white shadow-sm' : 'border-slate-300 bg-white text-slate-700 hover:border-dinas'}`}>
+                      <span className={`material-symbols-outlined text-[22px] ${on ? 'text-white' : 'text-dinas'}`}>{o.icon}</span>
+                      <span className="min-w-0">
+                        <span className="block text-sm font-bold">{o.judul}</span>
+                        <span className={`block text-[11px] ${on ? 'text-white/80' : 'text-slate-500'}`}>{o.ket}</span>
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+              {form.dateMode === 'range' && (
+                <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <Field label="Tanggal Mulai" hint={form.date ? fmtTanggal(form.date) : null}>
+                    <input type="date" value={form.date} min={today} max={maxDate} onChange={(e) => { const v = e.target.value; setForm((f) => ({ ...f, date: v, end_date: !f.end_date || f.end_date < v || dayDiff(v, f.end_date) + 1 > MAX_SPAN_DAYS ? v : f.end_date })); }} className={inputCls} />
+                  </Field>
+                  <Field label="Sampai Tanggal" hint={tanggal.length > 1 ? `${tanggal.length} hari · jam yang sama setiap hari (maks. ${MAX_SPAN_DAYS} hari)` : `Isi sama dengan tanggal mulai untuk booking 1 hari (maks. ${MAX_SPAN_DAYS} hari)`}>
+                    <input type="date" value={form.end_date} min={form.date || today} max={form.date ? [addDays(form.date, MAX_SPAN_DAYS - 1), maxDate].sort()[0] : maxDate} onChange={set('end_date')} className={inputCls} />
+                  </Field>
+                </div>
+              )}
+              {form.dateMode === 'pick' && (
+                <div className="mt-3">
+                  <MultiDatePicker value={form.dates} onChange={(dates) => setForm((f) => ({ ...f, dates }))} max={MAX_DATES} minDate={today} maxDate={maxDate} />
+                  <span className="block text-[11px] text-slate-500 mt-1">Klik tanggal yang dibutuhkan saja (mis. Senin & Kamis). Paling jauh {MAX_AHEAD_DAYS} hari ke depan. Jam yang sama berlaku untuk semua tanggal.</span>
+                </div>
+              )}
+              {!form.dateMode && <span className="block text-[11px] text-slate-500 mt-1.5">Pilih <b>Rentang tanggal</b> untuk hari berturut-turut, atau <b>Pilih beberapa tanggal</b> bila harinya tidak berurutan.</span>}
+            </div>
             <Field label="Jam Mulai"><input type="time" value={form.start} onChange={set('start')} aria-invalid={bentrok.length > 0} className={`${inputCls} ${bentrok.length ? '!border-red-400 bg-red-50/50' : ''}`} /></Field>
             <Field label="Jam Selesai"><input type="time" value={form.end} onChange={set('end')} aria-invalid={bentrok.length > 0} className={`${inputCls} ${bentrok.length ? '!border-red-400 bg-red-50/50' : ''}`} /></Field>
-            <PanelKetersediaan form={form} cek={cek} bentrok={bentrok} />
+            <PanelKetersediaan form={form} dates={tanggal} cek={cek} bentrok={bentrok} />
             <div className="md:col-span-2">
               <span className="block text-xs font-semibold text-slate-700 mb-1.5">Surat Permohonan <span className="text-red-600">*</span></span>
               <label className="relative flex items-center gap-4 p-4 rounded-xl border border-dashed border-slate-300 bg-white cursor-pointer hover:border-dinas">
@@ -351,7 +436,8 @@ function CancelDialog({ booking, onClose, onDone, onSessionEnd }) {
           <span className="w-11 h-11 shrink-0 rounded-xl bg-red-100 text-red-600 flex items-center justify-center"><span className="material-symbols-outlined">event_busy</span></span>
           <div className="min-w-0">
             <div id="guest-cancel-title" className="font-display font-bold text-dinas-ink">Batalkan booking?</div>
-            <div className="text-sm text-slate-600 mt-1"><b>{booking.title}</b><br />{judulRuang(booking.room)} · {fmtTanggal(booking.date)}{booking.end_date !== booking.date ? ` s/d ${fmtTanggal(booking.end_date)}` : ''} · {booking.start}–{booking.end}</div>
+            <div className="text-sm text-slate-600 mt-1"><b>{booking.title}</b><br />{judulRuang(booking.room)} · {tanggalBooking(booking)} · {booking.start}–{booking.end}</div>
+            {booking.tanggal_count > 1 && <div className="text-[11px] text-slate-500 mt-1">Semua {booking.tanggal_count} tanggal dalam pengajuan ini ikut dibatalkan.</div>}
           </div>
         </div>
         <label className="block mt-4">
@@ -470,7 +556,8 @@ export default function GuestBooking() {
                     ? <span className="shrink-0 text-[11px] font-bold px-1.5 py-0.5 rounded bg-red-100 text-red-700">{b.cancelled_by_self ? 'Dibatalkan oleh Anda' : 'Dibatalkan Biro Umum'}</span>
                     : <button type="button" onClick={() => setCancelling(b)} className="shrink-0 inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-1 rounded-md border border-red-200 text-red-700 hover:bg-red-50"><span className="material-symbols-outlined text-[14px]">event_busy</span>Batalkan</button>}
                 </div>
-                <div className="text-xs text-slate-500 mt-0.5">{judulRuang(b.room)} · {fmtTanggal(b.date)}{b.end_date !== b.date ? ` s/d ${fmtTanggal(b.end_date)}` : ''} · {b.start}–{b.end}</div>
+                <div className="text-xs text-slate-500 mt-0.5">{judulRuang(b.room)} · {b.start}–{b.end}{b.tanggal_count > 1 ? ` · ${b.tanggal_count} tanggal` : ''}</div>
+                <div className="text-xs text-slate-600 mt-0.5">{tanggalBooking(b)}</div>
                 {b.cancelled && b.cancel_reason && <div className="text-[11px] text-red-700 mt-0.5">Alasan: {b.cancel_reason}</div>}
               </li>
             ))}

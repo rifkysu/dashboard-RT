@@ -320,7 +320,7 @@ export default function Pengadaan() {
             {!loading && loadError && <tr><td colSpan={14} className="py-8 text-center text-red-600">{loadError} <button type="button" onClick={load} className="ml-2 px-3 py-1 rounded-lg border border-red-200 bg-red-50 text-xs font-semibold hover:bg-red-100">Coba lagi</button></td></tr>}
             {!loading && !loadError && visibleData.length === 0 && <tr><td colSpan={14} className="py-8 text-center text-slate-400">Belum ada data.</td></tr>}
             {shownData.map((row) => <tr key={row.id} className="divide-x divide-slate-100 hover:bg-slate-50/50">
-              <td className="py-3 px-5 font-semibold text-slate-800">#{row.kode}</td>
+              <td className="py-3 px-5 font-semibold text-slate-800 whitespace-nowrap">#{row.kode}</td>
               <td className="py-3 px-5 max-w-[220px] truncate font-semibold text-slate-800">{row.nama_barang_jasa}</td>
               <td className="py-3 px-5 text-slate-500">{row.lokasi || '-'}</td>
               <td className="py-3 px-5 text-slate-500">{row.titik_lokasi || '-'}</td>
