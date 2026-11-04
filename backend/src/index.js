@@ -42,14 +42,21 @@ app.use(cors({ origin: frontendUrl, credentials: false, methods: ['GET','POST','
 // Request dengan token valid dihitung per akun (bukan per IP saja): satu kantor biasanya keluar
 // lewat satu IP (NAT/proxy), dan tiap tab yang terbuka polling beberapa kali per menit -- tanpa
 // ini puluhan pegawai sekaligus bisa kena 429. Tanpa token / token tidak valid tetap per IP.
+// Hasilnya disimpan di req: dipanggil beberapa kali per request (rate limiter, pemilih batas body,
+// error handler) -- verifikasi JWT cukup sekali.
 const rateKeyByUser = (req) => {
+  if (req.rateKeyCache !== undefined) return req.rateKeyCache;
   const header = req.headers.authorization || '';
-  if (!header.startsWith('Bearer ') || header.length > 4200) return '';
-  try {
-    const p = jwt.verify(header.slice(7).trim(), process.env.JWT_SECRET, { algorithms: ['HS256'] });
-    // Token tamu (login Google di landing page) dihitung per akun tamu, terpisah dari akun pegawai.
-    return p.gid ? `g:${p.gid}` : `u:${p.id}`;
-  } catch { return ''; }
+  let key = '';
+  if (header.startsWith('Bearer ') && header.length <= 4200) {
+    try {
+      const p = jwt.verify(header.slice(7).trim(), process.env.JWT_SECRET, { algorithms: ['HS256'] });
+      // Token tamu (login Google di landing page) dihitung per akun tamu, terpisah dari akun pegawai.
+      key = p.gid ? `g:${p.gid}` : `u:${p.id}`;
+    } catch { key = ''; }
+  }
+  req.rateKeyCache = key;
+  return key;
 };
 app.use(createRateLimiter({ windowMs: 60 * 1000, max: 180, message: 'Terlalu banyak permintaan. Coba lagi sebentar.', keyFn: rateKeyByUser }));
 // File upload disimpan sebagai Base64 di payload JSON; naikkan limit agar dokumen tidak ditolak 413.
@@ -72,7 +79,7 @@ app.use((req, res, next) => (req.path.split('/').some((s) => /^\d+$/.test(s) && 
 app.use((req, res, next) => {
   const started = Date.now();
   res.on('finish', () => {
-    logger.info('HTTP request', { request_id: req.requestId, method: req.method, path: req.path, status: res.statusCode, duration_ms: Date.now() - started, user_id: req.user?.id || null, role: req.user?.role || null });
+    logger.http({ request_id: req.requestId, method: req.method, path: req.path, status: res.statusCode, duration_ms: Date.now() - started, user_id: req.user?.id || null, role: req.user?.role || null });
   });
   next();
 });
@@ -86,7 +93,8 @@ app.get('/api/live/stream', createSseLimiter(), live.streamHandler);
 
 // Login Google untuk tamu (booking ruang rapat dari landing page) -- lihat routes/guest.js.
 app.use('/api/auth', guestRoutes.googleRouter);
-app.use('/api/auth', live.notifyOnWrite('users'), authRoutes);
+// Login/logout hanya mengubah sesi si pengguna sendiri -> tidak perlu sinyal ke semua tab.
+app.use('/api/auth', live.notifyOnWrite('users', { except: ['/login', '/logout'] }), authRoutes);
 app.use('/api/pemeliharaan', live.notifyOnWrite('pemeliharaan'), pemeliharaanRoutes);
 app.use('/api/pengadaan', live.notifyOnWrite('pengadaan'), pengadaanRoutes);
 app.use('/api/kendaraan', live.notifyOnWrite('kendaraan'), kendaraanRoutes);

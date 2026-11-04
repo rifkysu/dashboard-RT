@@ -7,6 +7,7 @@ const { requireAuth, requireRole, EDITOR_ROLES } = require('../middleware/auth')
 const { requireNotInMaintenance } = require('../middleware/maintenance');
 const { signToken } = require('../token');
 const logger = require('../logger');
+const { cacheGet } = require('../responseCache');
 const { checkFields, validStatusFilter } = require('../validate');
 const { catat, ringkas, pilihKolom } = require('../audit');
 
@@ -30,7 +31,7 @@ function generateKode(){ return `REQ-${new Date().getFullYear()}-${crypto.random
 // Kode acak 4 digit bisa bentrok dengan kode yang sudah ada (kolom kode UNIQUE) -> coba ulang dengan kode baru.
 async function createWithUniqueKode(create,makeKode){ for(let attempt=1;;attempt++){ try { return await create(makeKode()); } catch(err){ if(err.code!=='P2002'||attempt>=10) throw err; } } }
 
-router.get('/', async (req,res)=>{ try {
+router.get('/', cacheGet(), async (req,res)=>{ try {
   const {status,kategori,lokasi,search}=req.query;
   for(const [k,v] of Object.entries(req.query)){ if(!['status','kategori','lokasi','search'].includes(k) || typeof v!=='string' || v.length>150) return res.status(400).json({message:'Parameter filter tidak valid.'}); }
   const where={};

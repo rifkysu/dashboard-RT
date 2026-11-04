@@ -3,6 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const prisma = require('../prisma');
 const logger = require('../logger');
+const { cacheGet } = require('../responseCache');
 const { saveDataUrl } = require('../fileStorage');
 const { isGenuineDocumentDataUrl, maxDataUrlLength } = require('../fileSignature');
 const { requireAuth, requireRole, ADMIN_ROLES } = require('../middleware/auth');
@@ -124,7 +125,7 @@ function validFasilitas(list) {
 
 // Semua ruangan sekaligus, sesuai urutan tampil:
 // { urutan: ["BIRO UMUM", ...], data: { "SETJEN II": { satuan_kerja, kapasitas, link_foto, fasilitas: [...], foto: [...] }, ... } }.
-router.get('/', async (req, res) => {
+router.get('/', cacheGet(), async (req, res) => {
   try {
     const [fotos, profil] = await Promise.all([
       prisma.ruangFoto.findMany({ orderBy: [{ room: 'asc' }, { sort_order: 'asc' }, { id: 'asc' }] }),

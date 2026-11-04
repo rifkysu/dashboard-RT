@@ -5,6 +5,7 @@ const { isGenuineDocumentDataUrl, maxDataUrlLength } = require('../fileSignature
 const { requireAuth, requireRole, ADMIN_ROLES } = require('../middleware/auth');
 const { requireNotInMaintenance } = require('../middleware/maintenance');
 const logger = require('../logger');
+const { cacheGet } = require('../responseCache');
 const { catat, ringkas, pilihKolom } = require('../audit');
 
 const router = express.Router();
@@ -105,7 +106,7 @@ function validDocument(name, data) {
   return isGenuineDocumentDataUrl(data, maxDataUrlLength(MAX_DOCUMENT_BYTES));
 }
 
-router.get('/', async (req, res) => {
+router.get('/', cacheGet(), async (req, res) => {
   try {
     // PDF BPKB/STNK tidak ikut di daftar (bisa belasan MB per kendaraan); diambil lewat GET /:id saat detail dibuka.
     const rows = await prisma.kendaraan.findMany({

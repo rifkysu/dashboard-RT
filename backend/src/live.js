@@ -19,10 +19,21 @@ function broadcast(topic) {
 
 // Dipasang di depan router modul: setiap POST/PUT/PATCH/DELETE yang berhasil (< 400)
 // mengirim sinyal topik modul itu ke semua tab yang terhubung.
-function notifyOnWrite(topic) {
+// `except`: path (relatif terhadap mount) yang tidak mengubah data yang dilihat orang lain, mis.
+// /login & /logout -- tanpa ini SETIAP login memicu refetch di SEMUA tab yang terbuka (saat jam masuk
+// kantor: ribuan login x ribuan tab) dan mengosongkan semua cache server.
+// Sinyal dikirim tepat sebelum respons dikirim (bukan setelah 'finish'): cache server (responseCache,
+// user, maintenance) sudah kosong sebelum tab yang menyimpan sempat memuat ulang datanya.
+function notifyOnWrite(topic, { except = [] } = {}) {
   return (req, res, next) => {
     if (req.method === 'GET' || req.method === 'HEAD' || req.method === 'OPTIONS') return next();
-    res.on('finish', () => { if (res.statusCode < 400) broadcast(topic); });
+    if (except.includes(req.path)) return next();
+    const end = res.end;
+    res.end = function endWithBroadcast(...args) {
+      res.end = end;
+      if (res.statusCode < 400) broadcast(topic);
+      return end.apply(this, args);
+    };
     next();
   };
 }

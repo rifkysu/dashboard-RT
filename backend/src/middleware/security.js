@@ -40,7 +40,13 @@ function createRateLimiter({ windowMs, max, message, keyFn }) {
 // Endpoint SSE (/stream) publik dan koneksinya terbuka lama -> batasi jumlah
 // koneksi bersamaan per IP & total, supaya tidak bisa dipakai menghabiskan resource server.
 // Batas per IP dibuat longgar karena satu kantor biasanya berbagi satu IP (tiap tab = 1 koneksi).
-function createSseLimiter({ maxPerIp = 200, maxTotal = 1000 } = {}) {
+// Load test 2026-11-04: batas lama 1000 total -> tab ke-1001 ditolak 429 dan tidak dapat update live.
+// Koneksi SSE yang diam hanya makan beberapa KB memori, jadi batas dinaikkan; bisa diatur lewat .env.
+// Di belakang Nginx, worker_connections juga harus cukup (tiap koneksi SSE = 2 koneksi di Nginx).
+function createSseLimiter({
+  maxPerIp = Number(process.env.SSE_MAX_PER_IP) || 3000,
+  maxTotal = Number(process.env.SSE_MAX_TOTAL) || 5000,
+} = {}) {
   const perIp = new Map();
   let total = 0;
   return (req, res, next) => {

@@ -11,6 +11,7 @@ import { useFeedback } from '../components/Feedback';
 import { requireFields, positiveAmount, validatePayment } from '../utils/validation';
 import useLive from '../hooks/useLive';
 import MenuStats from '../components/MenuStats';
+import useIncrementalRows from '../hooks/useIncrementalRows';
 
 const FILE_SIGNATURE_REJECT_MESSAGE = 'File yang diupload tidak terdeteksi sebagai dokumen/gambar asli (kemungkinan file diubah namanya atau berupa script). Harap upload dokumen PDF/JPG/PNG asli.';
 
@@ -239,6 +240,8 @@ export default function Pengadaan() {
     const tanggalSelesaiMatch = !filters.tanggal_selesai || String(row.tanggal_selesai || '').slice(0, 10) === filters.tanggal_selesai;
     return categoryMatch && locationMatch && pointMatch && statusMatch && idMatch && nameMatch && picMatch && vendorMatch && transaksiMatch && invoiceMatch && tanggalInputMatch && tanggalSelesaiMatch;
   });
+  // Render bertahap: tabel tetap ringan walau datanya ribuan (lihat hooks/useIncrementalRows).
+  const { shown: shownData, moreRow } = useIncrementalRows(visibleData);
 
   function exportExcel() {
     const exportData = visibleData.filter((row) => {
@@ -316,7 +319,7 @@ export default function Pengadaan() {
             {loading && <tr><td colSpan={14} className="py-8 text-center text-slate-400">Memuat data...</td></tr>}
             {!loading && loadError && <tr><td colSpan={14} className="py-8 text-center text-red-600">{loadError} <button type="button" onClick={load} className="ml-2 px-3 py-1 rounded-lg border border-red-200 bg-red-50 text-xs font-semibold hover:bg-red-100">Coba lagi</button></td></tr>}
             {!loading && !loadError && visibleData.length === 0 && <tr><td colSpan={14} className="py-8 text-center text-slate-400">Belum ada data.</td></tr>}
-            {visibleData.map((row) => <tr key={row.id} className="divide-x divide-slate-100 hover:bg-slate-50/50">
+            {shownData.map((row) => <tr key={row.id} className="divide-x divide-slate-100 hover:bg-slate-50/50">
               <td className="py-3 px-5 font-semibold text-slate-800">#{row.kode}</td>
               <td className="py-3 px-5 max-w-[220px] truncate font-semibold text-slate-800">{row.nama_barang_jasa}</td>
               <td className="py-3 px-5 text-slate-500">{row.lokasi || '-'}</td>
@@ -351,6 +354,7 @@ export default function Pengadaan() {
                 )}
               </td>
             </tr>)}
+            {moreRow(14)}
           </tbody>
         </table></div>
       </div>

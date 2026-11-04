@@ -3,6 +3,7 @@ const { EventEmitter } = require('events');
 const prisma = require('../prisma');
 const { requireAuth, requireRole, ADMIN_ROLES } = require('../middleware/auth');
 const logger = require('../logger');
+const { cacheGet } = require('../responseCache');
 const { createSseLimiter } = require('../middleware/security');
 
 const router = express.Router();
@@ -41,9 +42,9 @@ async function publicStatus(key, res) {
     res.json({ data: { is_active: false, message: null } });
   }
 }
-router.get('/landing-status', (req, res) => publicStatus('landing', res));
+router.get('/landing-status', cacheGet(), (req, res) => publicStatus('landing', res));
 // Sama untuk halaman publik lain: GET /maintenance/public-status/kiosk (kiosk /jadwal-rapat).
-router.get('/public-status/:key', (req, res) => {
+router.get('/public-status/:key', cacheGet(), (req, res) => {
   if (!PUBLIC_KEYS.includes(req.params.key)) return res.status(404).json({ message: 'Halaman tidak dikenal.' });
   return publicStatus(req.params.key, res);
 });
@@ -51,7 +52,7 @@ router.get('/public-status/:key', (req, res) => {
 router.use(requireAuth);
 
 // Semua role login boleh baca status maintenance (dipakai untuk gating UI sendiri-sendiri).
-router.get('/', async (req, res) => {
+router.get('/', cacheGet(), async (req, res) => {
   try {
     const rows = await prisma.maintenanceMode.findMany({ orderBy: { menu_key: 'asc' } });
     res.json({ data: rows });

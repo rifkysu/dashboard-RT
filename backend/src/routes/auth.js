@@ -1,9 +1,10 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
+const passwordHasher = require('../password'); // hash/cek sandi di worker thread (lihat src/password.js)
 const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 const prisma = require('../prisma');
-const { requireAuth, ACCOUNT_BANNED, ACCOUNT_BANNED_MESSAGE } = require('../middleware/auth');
+const { requireAuth, forgetUser, ACCOUNT_BANNED, ACCOUNT_BANNED_MESSAGE } = require('../middleware/auth');
 const { createRateLimiter, normalizeEmail, isSafeText, ALLOWED_EMAIL_DOMAIN, isAllowedEmailDomain } = require('../middleware/security');
 const { signToken, hashResetToken, createResetToken, createVerifyToken } = require('../token');
 const { isMailConfigured, sendResetPasswordEmail, sendVerifyEmail } = require('../mailer');
@@ -49,9 +50,12 @@ const loginLimiter = createRateLimiter({
   keyFn: (req) => String(normalizeEmail(req.body?.email) || '').slice(0, 254),
 });
 // Batas longgar per IP untuk menahan percobaan banyak email sekaligus dari satu sumber.
+// Satu kantor (NAT) = satu IP: batas lama 30/menit membuat pegawai ke-31 yang login di jam masuk
+// kantor tertahan 1 menit. 120/menit masih jauh di bawah kemampuan cek sandi server (~3 login/detik
+// per core, bcryptjs cost 12 ~300 ms), jadi tetap menahan banjir percobaan login. Atur lewat .env.
 const loginIpLimiter = createRateLimiter({
   windowMs: 60 * 1000,
-  max: 30,
+  max: Number(process.env.LOGIN_IP_MAX_PER_MIN) || 120,
   message: 'Terlalu banyak percobaan login dari jaringan ini. Silakan tunggu 1 menit.',
 });
 
@@ -167,7 +171,7 @@ router.post('/register', registerLimiter, async (req, res) => {
       return res.status(409).json({ message: 'Email sudah terdaftar. Silakan login.' });
     }
 
-    const password_hash = await bcrypt.hash(password, 12);
+    const password_hash = await passwordHasher.hash(password, 12);
     const data = { nama_lengkap, password_hash, no_hp, unit_kerja, role, email_verified_at: null };
     const user = timpa
       ? await prisma.user.update({ where: { id: existing.id }, data: { ...data, token_version: { increment: 1 } } })
@@ -213,7 +217,7 @@ router.post('/login', loginIpLimiter, loginLimiter, async (req, res) => {
 
     const user = await prisma.user.findFirst({ where: emailWhere(email) });
 
-    const match = await bcrypt.compare(password, user?.password_hash || DUMMY_PASSWORD_HASH);
+    const match = await passwordHasher.compare(password, user?.password_hash || DUMMY_PASSWORD_HASH);
     if (!user || !user.password_hash || !match) {
       return res.status(401).json({ message: 'Email atau kata sandi salah.' });
     }
@@ -263,7 +267,7 @@ router.post('/verify-email', verifyEmailLimiter, async (req, res) => {
     if (!user) {
       return res.status(400).json({ message: 'Link verifikasi tidak valid atau sudah kedaluwarsa. Login untuk mengirim ulang link-nya.' });
     }
-    if (!user.password_hash || !(await bcrypt.compare(password, user.password_hash))) {
+    if (!user.password_hash || !(await passwordHasher.compare(password, user.password_hash))) {
       return res.status(400).json({
         code: PASSWORD_MISMATCH,
         message: 'Kata sandi tidak cocok dengan pendaftaran terakhir untuk email ini. Kalau Anda yakin sandinya benar, berarti '
@@ -367,7 +371,7 @@ router.post('/reset-password', resetPasswordLimiter, async (req, res) => {
       return res.status(400).json({ message: 'Token reset tidak valid atau sudah kedaluwarsa. Silakan minta link reset baru.' });
     }
 
-    const password_hash = await bcrypt.hash(password, 12);
+    const password_hash = await passwordHasher.hash(password, 12);
     await prisma.user.update({
       where: { id: user.id },
       // token_version naik -> semua sesi lama (mis. milik orang yang mencuri sandi) langsung diputus.
@@ -389,6 +393,7 @@ router.post('/reset-password', resetPasswordLimiter, async (req, res) => {
 router.post('/logout', requireAuth, async (req, res) => {
   try {
     await prisma.user.update({ where: { id: req.user.id }, data: { token_version: { increment: 1 } } });
+    forgetUser(req.user.id); // logout tidak di-broadcast (lihat index.js) -> token lama langsung ditolak
     res.json({ message: 'Berhasil logout.' });
   } catch (err) {
     logger.error('POST logout gagal', { error: err, user_id: req.user.id });

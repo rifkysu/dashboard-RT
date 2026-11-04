@@ -9,18 +9,33 @@ const live = require('../live');
 // paling lambat terbaca setelah USER_CACHE_MS.
 const USER_CACHE_MS = 5000;
 const userCache = new Map();
-live.onChange(() => userCache.clear());
+// Request akun yang sama yang datang bersamaan (mis. tepat setelah cache dikosongkan) menunggu satu
+// query yang sama, bukan masing-masing membaca database. `generation` naik setiap cache dikosongkan:
+// hasil query yang dimulai sebelumnya tidak disimpan (bisa sudah basi, mis. role baru diubah).
+const userInflight = new Map();
+let generation = 0;
+function clearUsers() { generation += 1; userCache.clear(); userInflight.clear(); }
+live.onChange(clearUsers);
+// Untuk perubahan akun yang sengaja tidak di-broadcast ke semua tab (logout): buang cache akun itu saja.
+const forgetUser = (id) => { generation += 1; userCache.delete(id); userInflight.delete(id); };
 
-async function loadUser(id, fresh) {
+function loadUser(id, fresh) {
   const hit = userCache.get(id);
-  if (!fresh && hit && Date.now() - hit.at < USER_CACHE_MS) return hit.user;
-  const user = await prisma.user.findUnique({
+  if (!fresh && hit && Date.now() - hit.at < USER_CACHE_MS) return Promise.resolve(hit.user);
+  if (!fresh && userInflight.has(id)) return userInflight.get(id);
+  const startGeneration = generation;
+  const query = prisma.user.findUnique({
     where: { id },
     select: { role: true, is_active: true, nama_lengkap: true, email: true, token_version: true },
-  });
-  if (userCache.size > 5000) userCache.clear();
-  userCache.set(id, { user, at: Date.now() });
-  return user;
+  }).then((user) => {
+    if (generation === startGeneration) {
+      if (userCache.size > 5000) userCache.clear();
+      userCache.set(id, { user, at: Date.now() });
+    }
+    return user;
+  }).finally(() => { if (userInflight.get(id) === query) userInflight.delete(id); });
+  if (!fresh) userInflight.set(id, query);
+  return query;
 }
 
 // Kode & pesan untuk akun yang di-ban admin (is_active = false). Frontend
@@ -95,4 +110,4 @@ const EDITOR_ROLES = ['kabag', 'pic', 'admin'];
 const ADMIN_ROLES = ['admin', 'kabag'];
 const isAdminRole = (role) => ADMIN_ROLES.includes(role);
 
-module.exports = { requireAuth, requireRole, EDITOR_ROLES, ADMIN_ROLES, isAdminRole, ACCOUNT_BANNED, ACCOUNT_BANNED_MESSAGE };
+module.exports = { requireAuth, requireRole, forgetUser, EDITOR_ROLES, ADMIN_ROLES, isAdminRole, ACCOUNT_BANNED, ACCOUNT_BANNED_MESSAGE };

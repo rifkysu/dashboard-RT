@@ -9,6 +9,13 @@
 #
 #  Header keamanan halaman web ada di security-headers.conf (di-include di bawah).
 #  Salin ke /etc/nginx/snippets/biro-umum-security-headers.conf.
+#
+#  Kapasitas: tiap tab yang terbuka memegang 1 koneksi live (SSE) terus-menerus, dan
+#  Nginx memakai 2 koneksi untuk tiap koneksi yang di-proxy. Default Ubuntu
+#  (worker_connections 768) habis di ~380 tab per worker. Untuk ribuan pengguna, di
+#  /etc/nginx/nginx.conf atur:
+#    worker_rlimit_nofile 20000;
+#    events { worker_connections 10000; }
 # =====================================================================
 
 # Sembunyikan versi Nginx di header & halaman error.

@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { useFeedback } from '../components/Feedback';
 import useLive from '../hooks/useLive';
 import MenuStats from '../components/MenuStats';
+import useIncrementalRows from '../hooks/useIncrementalRows';
 import GuestAccounts from '../components/GuestAccounts';
 
 const roleLabel = { karyawan: 'Karyawan', kabag: 'Kepala Bagian', pic: 'PIC', admin: 'Admin' };
@@ -147,6 +148,8 @@ export default function Akun() {
 
   const pendingResets = data.filter((u) => u.reset_requested_at && u.is_active);
   const belumVerifikasi = data.filter((u) => !u.email_verified_at && u.is_active);
+  // Render bertahap: daftar akun bisa ribuan (lihat hooks/useIncrementalRows).
+  const { shown: shownUsers, moreRow } = useIncrementalRows(data);
 
   if (user && !isAdmin) return <Navigate to="/dashboard" replace />;
 
@@ -210,7 +213,7 @@ export default function Akun() {
             <tbody className="divide-y divide-slate-100">
               {loading && <tr><td colSpan={10} className="py-8 text-center text-slate-400">Memuat data...</td></tr>}
               {!loading && data.length === 0 && <tr><td colSpan={10} className="py-8 text-center text-slate-400">Belum ada akun.</td></tr>}
-              {data.map((u) => {
+              {shownUsers.map((u) => {
                 const isSelf = u.id === user?.id;
                 // Akun Admin hanya bisa dikelola Admin (ban, link reset, verifikasi) -- sama dengan aturan di backend.
                 const terkunci = u.role === 'admin' && user?.role !== 'admin';
@@ -277,6 +280,7 @@ export default function Akun() {
                 </tr>
                 );
               })}
+              {moreRow(10)}
             </tbody>
           </table>
         </div>

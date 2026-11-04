@@ -1,3 +1,4 @@
+const { cacheGet } = require('../responseCache');
 const express=require('express');const crypto=require('crypto');const {EventEmitter}=require('events');const prisma=require('../prisma');const {saveDataUrl,hideFilePaths}=require('../fileStorage');const {isGenuineDocumentDataUrl,maxDataUrlLength}=require('../fileSignature');const {requireAuth}=require('../middleware/auth');const {requireNotInMaintenance}=require('../middleware/maintenance');const logger=require('../logger');const {createSseLimiter}=require('../middleware/security');const fs=require('fs');const nodePath=require('path');const {UPLOAD_ROOT}=require('../fileStorage');const {createZip}=require('../zip');const {csvCell}=require('../csv');
 const router=express.Router();
 // Bus internal untuk broadcast SSE (Server-Sent Events) tiap ada booking berubah,
@@ -58,7 +59,7 @@ function dateRange(q){const today=new Date(new Date().toISOString().slice(0,10)+
 const publicSelect={id:true,agenda:true,room:true,pic:true,booking_date:true,end_date:true,start_time:true,end_time:true,surat_status:true};
 
 // Public read-only schedule. No token required and only schedule information is returned.
-router.get('/public-schedule',async(req,res)=>{try{const range=dateRange(req.query);if(!range)return res.status(400).json({message:'Rentang tanggal tidak valid.'});const rows=await prisma.ruangRapat.findMany({where:range,select:publicSelect,orderBy:[{booking_date:'asc'},{start_time:'asc'},{id:'asc'}]});res.json({data:rows.map(out)});}catch(err){logger.error('GET public ruang rapat gagal',{error:err});res.status(500).json({message:'Gagal mengambil jadwal ruang rapat.'});}});
+router.get('/public-schedule',cacheGet(),async(req,res)=>{try{const range=dateRange(req.query);if(!range)return res.status(400).json({message:'Rentang tanggal tidak valid.'});const rows=await prisma.ruangRapat.findMany({where:range,select:publicSelect,orderBy:[{booking_date:'asc'},{start_time:'asc'},{id:'asc'}]});res.json({data:rows.map(out)});}catch(err){logger.error('GET public ruang rapat gagal',{error:err});res.status(500).json({message:'Gagal mengambil jadwal ruang rapat.'});}});
 
 // SSE stream: cuma sinyal "ada perubahan" (bukan data booking itu sendiri),
 // jadi aman dibuat publik -- browser EventSource native tidak bisa kirim
@@ -76,7 +77,7 @@ router.get('/stream',createSseLimiter(),(req,res)=>{
 router.use(requireAuth);
 router.use(requireNotInMaintenance('ruang-rapat'));
 // ?include_cancelled=1 -> booking berstatus batal ikut dikirim (toggle "Tampilkan yang dibatalkan").
-router.get('/',async(req,res)=>{try{const range=dateRange(req.query);if(!range)return res.status(400).json({message:'Rentang tanggal tidak valid.'});if(req.query.include_cancelled==='1')delete range.cancelled_at;const rows=await prisma.ruangRapat.findMany({where:range,omit:{surat_file_data:true},include:{updatedBy:{select:{nama_lengkap:true}},cancelledBy:{select:{nama_lengkap:true}},...guestInclude},orderBy:[{booking_date:'asc'},{start_time:'asc'},{id:'asc'}]});res.json({data:rows.map(out)});}catch(err){logger.error('GET ruang rapat gagal',{error:err});res.status(500).json({message:'Gagal mengambil jadwal ruang rapat.'});}});
+router.get('/',cacheGet(),async(req,res)=>{try{const range=dateRange(req.query);if(!range)return res.status(400).json({message:'Rentang tanggal tidak valid.'});if(req.query.include_cancelled==='1')delete range.cancelled_at;const rows=await prisma.ruangRapat.findMany({where:range,omit:{surat_file_data:true},include:{updatedBy:{select:{nama_lengkap:true}},cancelledBy:{select:{nama_lengkap:true}},...guestInclude},orderBy:[{booking_date:'asc'},{start_time:'asc'},{id:'asc'}]});res.json({data:rows.map(out)});}catch(err){logger.error('GET ruang rapat gagal',{error:err});res.status(500).json({message:'Gagal mengambil jadwal ruang rapat.'});}});
 // Export file surat booking (ZIP) untuk rentang tanggal ?from=&to=. Booking batal diabaikan.
 // Nomor surat yang sama cukup diambil satu file saja; booking tanpa nomor surat dibedakan per file
 // (salinan dari cancel sebagian memakai file yang sama sehingga juga cukup satu).

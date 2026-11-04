@@ -33,7 +33,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 LOGO = os.path.join(ROOT, "frontend", "public", "logo-kemnaker.png")
 
-TANGGAL = "3 November 2026"
+TANGGAL = "4 November 2026"
 SISTEM = "Sistem Layanan Biro Umum & Rumah Tangga"
 
 PW, PH = A4
@@ -926,7 +926,8 @@ def isi_aplikasi():
             "rapat dari halaman kiosk /jadwal-rapat (tabel `guest_accounts`, tidak bisa masuk aplikasi internal). Akun lama "
             "dengan domain lain tetap bisa login dengan email & kata sandi.",
             "Proteksi percobaan login: 5 kali per menit per kombinasi IP + email, dengan hitung mundur di "
-            "layar."),
+            "layar; plus batas longgar 120 percobaan per menit per IP (`LOGIN_IP_MAX_PER_MIN`), karena satu kantor "
+            "biasanya keluar lewat satu IP."),
         h2("3.3 Dashboard"),
         *bullets(
             "Panel sapaan bergradasi biru dinas berisi tanggal, jam berjalan, dan ringkasan singkat (jumlah hal "
@@ -1155,6 +1156,8 @@ def isi_aplikasi():
             "**live.js** + hook **useLive**: satu koneksi SSE bersama per tab; halaman berlangganan topik "
             "modulnya dan memuat ulang data tanpa kedip saat ada perubahan dari pengguna lain. Tab yang sedang "
             "tersembunyi menunda muat ulang sampai dibuka lagi; polling berkala (utils/visibleInterval.js) juga berhenti selama tab tersembunyi.",
+            "Hook **useIncrementalRows**: tabel Pemeliharaan, Pengadaan, dan Akun merender 50 baris dulu lalu menambah 50 "
+            "baris otomatis saat digulir (ada tombol \"Tampilkan 50 lagi\"); filter, angka ringkasan, dan Export tetap memakai semua data.",
             "**App.jsx**: code splitting per halaman (React.lazy) -- pembukaan pertama hanya mengunduh halaman yang dibuka, "
             "halaman lain di-prefetch saat browser senggang; library (React, router, axios) dipisah ke berkas vendor yang tetap ter-cache antar-deploy.",
             "**Feedback**: popup konfirmasi/peringatan dan notifikasi toast yang seragam.",
@@ -1375,10 +1378,27 @@ def isi_infra():
             "Pembaruan real-time memakai **Server-Sent Events** (koneksi HTTP satu arah yang tetap terbuka): "
             "satu koneksi per tab ke `/api/live/stream` untuk semua modul (Pemeliharaan, Pengadaan, Kendaraan, "
             "Ruang Rapat, Maintenance, Akun). Setiap perubahan data yang berhasil mengirim sinyal nama modul, "
-            "lalu halaman yang terbuka mengambil ulang datanya. Heartbeat 25 detik, reconnect otomatis 3 detik, "
+            "lalu halaman yang terbuka mengambil ulang datanya setelah jeda acak 0-2 detik per tab (supaya ribuan tab "
+            "tidak refetch serentak). Heartbeat 25 detik, reconnect otomatis 3 detik, "
             "dan setelah reconnect semua halaman memuat ulang sekali.",
             "Syarat deploy real-time: backend dijalankan sebagai satu proses (bukan cluster/beberapa instance), "
             "reverse proxy tidak mem-buffer `/api/live/stream`, dan TRUST_PROXY=true bila di belakang proxy.",
+            "Kapasitas: maks. 5.000 koneksi live total dan 3.000 per IP (`SSE_MAX_TOTAL`, `SSE_MAX_PER_IP`); "
+            "Nginx perlu `worker_connections` besar (tiap koneksi live = 2 koneksi Nginx). Log request ditulis async "
+            "ke `logs/app.log` (log error tetap sinkron; `LOG_HTTP_CONSOLE=false` di production supaya baris per request "
+            "tidak ikut dicetak ke console).",
+            "**Cache respons bersama** (`backend/src/responseCache.js`, `RESPONSE_CACHE_MS`, default 5 detik) untuk daftar yang "
+            "isinya sama bagi semua pengguna: Pemeliharaan, Pengadaan, Kendaraan, jadwal Ruang Rapat (internal & publik), "
+            "Dashboard, status maintenance, dan info ruang. Dipasang setelah cek login/role/maintenance; setiap perubahan "
+            "data lewat aplikasi langsung mengosongkan cache; request bersamaan untuk URL yang sama menunggu satu query; "
+            "isi disimpan juga dalam bentuk gzip (daftar ribuan baris beberapa MB terkirim ratusan KB).",
+            "Login/logout tidak lagi mengirim sinyal live ke semua tab (kolom \"Terakhir Login\" di menu Akun terbarui saat "
+            "halaman dibuka ulang). Cek kata sandi (bcryptjs) berjalan di worker thread (`backend/src/password.js`) sehingga "
+            "lonjakan login tidak memperlambat pengguna lain.",
+            "Load test lokal 4 Nov 2026 (data uji 4.000 pemeliharaan, 4.000 pengadaan, 23.555 booking; ada penyimpanan data "
+            "tiap 2 detik): 500 pengguna aktif terus-menerus -> median 15 ms, 0 gagal; 1.000 -> median 80 ms; 2.000 -> "
+            "median 0,37 detik, ~1.000 request/detik; 2.000 pengunjung landing page -> median 5 ms, 0 gagal; 3.000 koneksi "
+            "live tersambung semua. Sebelum optimasi, 200 pengguna saja sudah median 9 detik.",
             "Hemat beban server: tab yang tersembunyi tidak polling dan menunda muat ulang dari sinyal SSE; Nginx "
             "mengompres (gzip) JS/CSS/JSON/CSV kecuali stream SSE; berkas `/assets/` ber-hash di-cache 30 hari; frontend "
             "dipecah per halaman sehingga unduhan pertama sekitar setengah dari sebelumnya.",
