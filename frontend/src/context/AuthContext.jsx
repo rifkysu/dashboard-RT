@@ -27,18 +27,35 @@ export function AuthProvider({ children }) {
   const [loggedOut, setLoggedOut] = useState(false);
 
   function refreshResetRequests() {
-    const current = (() => { try { return JSON.parse(localStorage.getItem('user') || 'null'); } catch { return null; } })();
-    if (!localStorage.getItem('token') || !isAdminRole(current?.role)) { setResetRequestCount(0); return; }
-    api.get('/users/reset-requests/count').then((res) => setResetRequestCount(res.data.count || 0)).catch(() => {});
+    const current = (() => {
+      try {
+        return JSON.parse(localStorage.getItem('user') || 'null');
+      } catch {
+        return null;
+      }
+    })();
+    if (!localStorage.getItem('token') || !isAdminRole(current?.role)) {
+      setResetRequestCount(0);
+      return;
+    }
+    api
+      .get('/users/reset-requests/count')
+      .then((res) => setResetRequestCount(res.data.count || 0))
+      .catch(() => {});
   }
 
   function refreshMaintenance() {
     if (!localStorage.getItem('token')) return;
-    api.get('/maintenance').then((res) => {
-      const map = {};
-      (res.data.data || []).forEach((row) => { map[row.menu_key] = row; });
-      setMaintenance(map);
-    }).catch(() => {});
+    api
+      .get('/maintenance')
+      .then((res) => {
+        const map = {};
+        (res.data.data || []).forEach((row) => {
+          map[row.menu_key] = row;
+        });
+        setMaintenance(map);
+      })
+      .catch(() => {});
   }
 
   // Refetch role/data user terkini dari server. Dipanggil saat mount dan
@@ -46,10 +63,15 @@ export function AuthProvider({ children }) {
   // langsung kebaca di UI tanpa perlu logout/login ulang.
   function refreshUser({ onError } = {}) {
     if (!localStorage.getItem('token')) return Promise.resolve();
-    return api.get('/auth/me').then((res) => {
-      setUser(res.data.user);
-      localStorage.setItem('user', JSON.stringify(res.data.user));
-    }).catch((err) => { if (onError) onError(err); });
+    return api
+      .get('/auth/me')
+      .then((res) => {
+        setUser(res.data.user);
+        localStorage.setItem('user', JSON.stringify(res.data.user));
+      })
+      .catch((err) => {
+        if (onError) onError(err);
+      });
   }
 
   useEffect(() => {
@@ -75,10 +97,16 @@ export function AuthProvider({ children }) {
   // reload halaman (sebelumnya timer hanya dibuat kalau token sudah ada saat app dibuka).
   useEffect(() => {
     if (!user?.id) return undefined;
-    return visibleInterval(() => { refreshUser(); refreshMaintenance(); refreshResetRequests(); }, 30000);
+    return visibleInterval(() => {
+      refreshUser();
+      refreshMaintenance();
+      refreshResetRequests();
+    }, 30000);
   }, [user?.id]);
 
-  useEffect(() => { refreshResetRequests(); }, [user?.id, user?.role]);
+  useEffect(() => {
+    refreshResetRequests();
+  }, [user?.id, user?.role]);
 
   // Live-reload lewat koneksi live bersama (src/live.js):
   // - "maintenance": admin toggle maintenance -> menu langsung ke-blokir/ke-buka untuk semua user.
@@ -91,10 +119,16 @@ export function AuthProvider({ children }) {
       if (topic === 'maintenance' || topic === '*') refreshMaintenance();
       if (topic === 'users' || topic === '*') {
         clearTimeout(timer);
-        timer = setTimeout(() => { refreshUser(); refreshResetRequests(); }, 400);
+        timer = setTimeout(() => {
+          refreshUser();
+          refreshResetRequests();
+        }, 400);
       }
     });
-    return () => { clearTimeout(timer); unsubscribe(); };
+    return () => {
+      clearTimeout(timer);
+      unsubscribe();
+    };
   }, [user?.id]);
 
   function login(token, userData) {
@@ -113,7 +147,10 @@ export function AuthProvider({ children }) {
     // Cabut token di server juga (token_version naik), supaya token yang sempat tersalin
     // tidak bisa dipakai lagi. Header diisi manual karena token langsung dihapus di bawah.
     const token = localStorage.getItem('token');
-    if (token) api.post('/auth/logout', null, { headers: { Authorization: `Bearer ${token}` } }).catch(() => {});
+    if (token)
+      api
+        .post('/auth/logout', null, { headers: { Authorization: `Bearer ${token}` } })
+        .catch(() => {});
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     setLoggedOut(true);
@@ -156,7 +193,25 @@ export function AuthProvider({ children }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, isAdmin: isAdminRole(user?.role), loggedOut, loading, login, logout, refreshAuth, refreshUser, canEdit, canEditRow, maintenance, refreshMaintenance, isMenuDown, resetRequestCount, refreshResetRequests }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        isAdmin: isAdminRole(user?.role),
+        loggedOut,
+        loading,
+        login,
+        logout,
+        refreshAuth,
+        refreshUser,
+        canEdit,
+        canEditRow,
+        maintenance,
+        refreshMaintenance,
+        isMenuDown,
+        resetRequestCount,
+        refreshResetRequests,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

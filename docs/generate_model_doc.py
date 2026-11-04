@@ -477,7 +477,7 @@ def d_alur_permintaan(g):
 
 
 def d_alur_booking(g):
-    g.box(59, 319.7, 88, 48, "Isi Form", ["ruang, agenda, PIC,", "tanggal s/d, jam"], "blue", SZ_L)
+    g.box(59, 319.7, 88, 48, "Isi Form", ["ruang, agenda, PIC,", "tanggal, jam"], "blue", SZ_L)
     g.box(167, 319.7, 95, 48, "Validasi", ["frontend + backend", "maks. 90 hari"], "blue", SZ_L)
     g.box(282, 319.7, 110, 48, "Kunci Ruangan", ["advisory lock per ruang", "cek bentrok tanggal+jam"],
           "indigo", SZ_L)
@@ -752,6 +752,51 @@ def fc_rapat(f):
     f.link("simpan", "r", "sse", "r", via=[(476, 286), (476, 400)])
 
 
+def fc_tamu(f):
+    f.node("buka", "start", 220, 14, "Buka kiosk /jadwal-rapat", w=150)
+    f.node("mt", "dec", 220, 62, "Kiosk maintenance", "& bukan admin/kabag?", w=160, h=46)
+    f.node("mtp", "bad", 400, 62, "Halaman pemeliharaan", "+ pesan admin", w=120)
+    f.node("hero", "proc", 220, 118, "Status ruangan saat ini", "jam, ringkasan, kartu, pita agenda", w=170)
+    f.node("kal", "info", 400, 118, "Kalender booking", "baca saja, putar 30 dtk", w=120)
+    f.node("sesi", "dec", 220, 174, "Sudah login", "Google?", w=130)
+    f.node("google", "proc", 62, 174, "Login Google", "OAuth 2.0 + PKCE", w=110)
+    f.node("blk", "dec", 62, 232, "Akun diblokir /", "login gagal?", w=110, h=44)
+    f.node("blkx", "bad", 62, 290, "Popup pesan", "login ditolak", w=110)
+    f.node("form", "proc", 220, 232, "Isi form booking", "semua kolom wajib + surat", w=150)
+    f.node("tgl", "proc", 220, 290, "Pilih tanggal (wajib 1 cara)", "rentang maks. 7 hari / beberapa tgl", w=170)
+    f.node("cek", "dec", 220, 348, "Bentrok di cek", "ketersediaan?", w=140, h=44)
+    f.node("cx", "bad", 400, 348, "Jam terisi merah,", "tombol Kirim dikunci", w=120)
+    f.node("cap", "proc", 220, 404, "Kirim + captcha 6 angka", "berlaku 5 menit", w=150)
+    f.node("srv", "dec", 220, 462, "Server: anti-spam, captcha", "& bentrok lolos?", w=170, h=46)
+    f.node("sx", "bad", 400, 462, "429 / 409 / captcha salah", "captcha baru dimuat", w=120)
+    f.node("ok", "proc", 220, 520, "Booking tersimpan (201)", "1 pengajuan = booking_group", w=150)
+    f.node("sse", "info", 62, 520, "Sinyal SSE", "kiosk, landing, Ruang Rapat", w=110)
+    f.node("mine", "proc", 220, 576, "Booking Anda", "1 kartu per pengajuan", w=150)
+    f.node("batal", "start", 400, 576, "Batalkan pengajuan", "semua tanggal ikut batal", w=120)
+    f.link("buka", "b", "mt", "t")
+    f.link("mt", "r", "mtp", "l", "Ya")
+    f.link("mt", "b", "hero", "t", "Tidak")
+    f.link("hero", "r", "kal", "l")
+    f.link("hero", "b", "sesi", "t")
+    f.link("sesi", "l", "google", "r", "Belum")
+    f.link("google", "b", "blk", "t")
+    f.link("blk", "b", "blkx", "t", "Ya")
+    f.link("blk", "r", "form", "l", "Tidak")
+    f.link("sesi", "b", "form", "t", "Sudah")
+    f.link("form", "b", "tgl", "t")
+    f.link("tgl", "b", "cek", "t")
+    f.link("cek", "r", "cx", "l", "Ya")
+    f.link("cx", "t", "tgl", "r")
+    f.link("cek", "b", "cap", "t", "Tidak")
+    f.link("cap", "b", "srv", "t")
+    f.link("srv", "r", "sx", "l", "Tidak")
+    f.link("sx", "t", "cap", "r")
+    f.link("srv", "b", "ok", "t", "Ya")
+    f.link("ok", "l", "sse", "r")
+    f.link("ok", "b", "mine", "t")
+    f.link("mine", "r", "batal", "l")
+
+
 def fc_admin(f):
     f.node("adm", "start", 240, 14, "Admin / Kabag", w=150)
     f.node("set", "proc", 110, 70, "Settings", "Mode Maintenance", w=160)
@@ -855,14 +900,19 @@ def isi_aplikasi():
             "berikon besar samar; bagian *Cara mengajukan* berupa pita gelap. Bila OS meminta gerakan dikurangi "
             "(mis. Windows *Animation effects* mati), gerakan besar dimatikan tetapi efek halus (fade, kilau, kelip) tetap jalan.",
             "Halaman kiosk **/jadwal-rapat** menampilkan jadwal yang sama dalam mode baca saja untuk layar di "
-            "dekat ruang rapat. Bagian atasnya berupa hero gelap bermotif kawung: jam & tanggal live, ringkasan hari ini "
-            "(rapat hari ini, sedang berlangsung, ruangan tersedia), tombol layar penuh & tautan layar per ruangan, serta "
-            "papan *Status ruangan saat ini* berisi kartu tiap ruangan (foto sampul, status Tersedia / Segera dipakai "
-            "(<= 15 menit) / Sedang dipakai, agenda berjalan atau berikutnya + progres & sisa waktu rapat berjalan, timeline mini 07-19 berisi blok rapat "
-            "dan penanda waktu sekarang; klik = foto & fasilitas), sapaan sesuai jam, dan pita bergeser *Agenda hari ini* "
-            "(rapat yang sedang/akan berlangsung di semua ruangan). Layar dijaga tetap menyala (Screen Wake Lock). Bila jadwal gagal dimuat, indikator Live berganti *Offline* (jam data terakhir), "
+            "dekat ruang rapat, dengan latar krem. Bagian atasnya berupa hero gelap bermotif kawung berlabel *Kiosk informasi*: "
+            "judul *Jadwal Ruang Rapat*, jam live (jam:menit + detik) & tanggal lengkap, sapaan sesuai jam (pagi/siang/sore/malam), "
+            "ringkasan hari ini (*Rapat hari ini*, *Sedang berlangsung*, *Ruangan tersedia* x/total), indikator *Live*, "
+            "tombol *Layar per ruangan* (ke /ruang) & tombol layar penuh, serta papan *Status ruangan saat ini* (dengan keterangan warna "
+            "dan tab bagian) berisi kartu tiap ruangan: foto sampul, kapasitas kursi, label Maintenance bila diblokir, status Tersedia / Segera dipakai "
+            "(<= 15 menit) / Sedang dipakai, agenda berjalan + progres & sisa waktu atau agenda berikutnya (*Mulai dalam N menit*), "
+            "timeline mini 07-19 (melebar otomatis bila ada rapat di luar jam itu, sama untuk semua kartu supaya sejajar) berisi blok rapat "
+            "(lewat redup, berjalan merah, nanti emas) dan penanda waktu sekarang, serta jumlah *rapat tersisa hari ini*; klik kartu = foto & fasilitas. "
+            "Di bawah papan ada pita bergeser *Agenda hari ini* (rapat yang sedang/akan berlangsung di semua ruangan, label *Berlangsung*, berhenti saat disentuh/hover). "
+            "Data hari ini ikut sinyal real-time, dimuat ulang tiap menit & saat tanggal berganti. Layar dijaga tetap menyala (Screen Wake Lock). Bila jadwal gagal dimuat, indikator Live berganti *Offline* (jam data terakhir), "
             "kartu menampilkan *Status tidak diketahui* (tidak pernah ditebak Tersedia), dan dicoba ulang tiap 15 detik. "
-            "Di bawahnya panel booking tamu, *Kalender booking* dengan keterangan warna status surat, dan footer. "
+            "Di bawahnya panel booking tamu (login Google), *Kalender booking* dengan keterangan warna status surat (merah *Belum ada surat*, "
+            "biru *Surat ditinjau*, hijau *Surat diterima*), catatan bahwa jadwal hanya untuk dilihat, dan footer (tautan *Beranda*, *Layar ruangan*, *Masuk pegawai*). "
             "Tabel kalender di kiosk bertampilan khusus: header gelap dengan garis warna tema layar tiap ruangan, latar sel bermotif kawung "
             "(bukan putih polos), pemisah bulan biru-emas, dan kartu booking bergaris kiri sewarna status surat; landing & menu Ruang Rapat tetap tampilan biasa.",
             "Kiosk **/jadwal-rapat** berputar otomatis: ruangan berganti sendiri tiap 30 detik (Semua -> tiap ruangan) "
@@ -885,7 +935,9 @@ def isi_aplikasi():
             "(`GET /ruang-info`) dan dikelola Admin/Kabag di menu **Foto & Fasilitas Ruang** (lihat 3.9); "
             "perubahan langsung tampil di layar lewat SSE (topik ruang-info).",
             "**Booking ruang rapat untuk tamu** (tanpa akun pegawai): tombol *Login dengan Google untuk booking* "
-            "di halaman kiosk **/jadwal-rapat** (di atas jadwal; landing page hanya menautkan ke sana). Setelah login Google (OAuth 2.0 + PKCE), tamu mengisi form booking "
+            "di halaman kiosk **/jadwal-rapat** (di atas jadwal; landing page hanya menautkan ke sana). Setelah login Google (OAuth 2.0 + PKCE), "
+            "panel menampilkan foto & nama akun Google, email, masa berlaku sesi, tombol *Isi form booking* dan *Keluar*. Tamu mengisi form booking "
+            "(popup; Esc atau tombol X menutup, klik di luar popup sengaja tidak menutup supaya isian & surat tidak hilang; Nama PIC terisi otomatis dari akun Google) "
             "yang **semua kolomnya wajib** (agenda, nomor surat, PIC, No. HP PIC, ruangan, tanggal, "
             "jam, file surat permohonan). **Tanggal wajib diisi lewat salah satu dari dua cara**: *Rentang tanggal* (hari berturut-turut, "
             "maks. 7 hari / 1 minggu) atau *Pilih beberapa tanggal* di kalender (boleh loncat-loncat, mis. Senin & Kamis saja, maks. 7 tanggal; "
@@ -895,11 +947,14 @@ def isi_aplikasi():
             "Begitu ruangan, tanggal & jam dipilih, form langsung **mengecek ketersediaan** (jadwal publik, ikut real-time): "
             "daftar *Jam terisi* di ruangan itu ditampilkan, jam yang bentrok ditandai merah dan tombol Kirim dikunci; "
             "bila tersedia muncul tanda *Ruangan tersedia*. Server tetap mengecek ulang bentrok di dalam transaksi dengan kunci "
-            "per ruangan (dua pengajuan bersamaan tidak bisa sama-sama lolos); bila keduluan (409), daftar jam terisi di form diperbarui.",
+            "per ruangan (dua pengajuan bersamaan tidak bisa sama-sama lolos); bila keduluan (409), daftar jam terisi di form diperbarui. "
+            "Pilihan ruangan menampilkan pratinjau ruangan (foto, kapasitas, fasilitas). File surat dicek isi aslinya (PDF/JPG/PNG, maks. 8 MB) "
+            "sebelum dikirim. Captcha menampilkan hitung mundur masa berlaku dan tombol *Ganti captcha*; setiap pengajuan gagal otomatis memuat captcha baru.",
             "Sesi akun Google tamu **berlaku 7 hari**. Anti-spam: jeda 60 detik antar pengajuan, maks. 3 pengajuan "
             "per 24 jam dan 5 booking aktif per akun (dihitung per pengajuan, bukan per tanggal), satu pengajuan maks. 7 hari berturut-turut (rentang) atau 7 tanggal (pilih) & maks. 90 hari "
             "ke depan, rate limit per akun & IP, serta akun bisa diblokir admin. Daftar *Booking Anda* tampil di "
-            "panel yang sama: satu kartu per pengajuan berisi semua tanggalnya.",
+            "panel yang sama: satu kartu per pengajuan berisi ruangan, jam, jumlah & daftar tanggalnya, dengan tombol *Batalkan* "
+            "atau label *Dibatalkan oleh Anda* / *Dibatalkan Biro Umum* + alasannya. Alur lengkap kiosk & booking tamu ada di Gambar 12 (9.7).",
             "Tamu bisa **membatalkan booking miliknya sendiri** (alasan opsional) selama booking belum lewat; semua tanggal "
             "pengajuan yang belum lewat ikut dibatalkan; data "
             "tidak dihapus, pembatal dicatat di `cancelled_by_guest_id` dan tampil \"Dibatalkan oleh nama (tamu)\" di menu Ruang Rapat.",
@@ -1314,11 +1369,18 @@ def isi_aplikasi():
         flowchart(415, fc_rapat),
         caption("Gambar 11. Flowchart booking ruang rapat dan cancel per tanggal"),
         PageBreak(),
-        h2("9.7 Mode Maintenance & Akun"),
+        h2("9.7 Kiosk & Booking Tamu"),
+        p("Kiosk /jadwal-rapat terbuka untuk publik. Tamu tanpa akun pegawai booking lewat login Google; "
+          "tanggal wajib dipilih lewat salah satu cara (rentang atau beberapa tanggal), dan server mengecek ulang "
+          "anti-spam, captcha, dan bentrok sebelum menyimpan."),
+        flowchart(600, fc_tamu),
+        caption("Gambar 12. Flowchart kiosk jadwal rapat dan booking ruang rapat oleh tamu (login Google)"),
+        PageBreak(),
+        h2("9.8 Mode Maintenance & Akun"),
         p("Settings dan Akun & Akses hanya untuk admin dan kabag. Peran admin hanya dapat diberikan manual "
           "melalui pgAdmin 4."),
         flowchart(362, fc_admin),
-        caption("Gambar 12. Flowchart Mode Maintenance dan pengelolaan akun"),
+        caption("Gambar 13. Flowchart Mode Maintenance dan pengelolaan akun"),
     ]
 
 

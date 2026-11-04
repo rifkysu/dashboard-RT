@@ -29,19 +29,32 @@ function publish(next) {
 
 function reload() {
   if (!inflight) {
-    inflight = api.get('/ruang-info')
+    inflight = api
+      .get('/ruang-info')
       .then((r) => {
         const data = r.data.data || {};
-        for (const room of Object.keys(data)) data[room].foto = data[room].foto.map((f) => ({ ...f, src: fotoSrc(f.id) }));
-        publish({ info: data, urutan: r.data.urutan || Object.keys(data), error: false, loaded: true });
+        for (const room of Object.keys(data))
+          data[room].foto = data[room].foto.map((f) => ({ ...f, src: fotoSrc(f.id) }));
+        publish({
+          info: data,
+          urutan: r.data.urutan || Object.keys(data),
+          error: false,
+          loaded: true,
+        });
       })
       .catch(() => publish({ ...shared, info: shared.info || {}, error: true }))
-      .finally(() => { inflight = null; });
+      .finally(() => {
+        inflight = null;
+      });
     return inflight;
   }
   // Masih ada muat ulang yang berjalan, dimulai sebelum perubahan terakhir (mis. upload/urutan baru
   // saja disimpan) -> hasilnya bisa data lama. Muat sekali lagi setelahnya.
-  if (!lagi) lagi = inflight.then(() => { lagi = null; return reload(); });
+  if (!lagi)
+    lagi = inflight.then(() => {
+      lagi = null;
+      return reload();
+    });
   return lagi;
 }
 
@@ -50,8 +63,12 @@ function reload() {
 let midnightTimer = null;
 function jadwalTengahMalam() {
   clearTimeout(midnightTimer);
-  const besok = new Date(); besok.setHours(24, 0, 30, 0);
-  midnightTimer = setTimeout(() => { reload(); jadwalTengahMalam(); }, besok - Date.now());
+  const besok = new Date();
+  besok.setHours(24, 0, 30, 0);
+  midnightTimer = setTimeout(() => {
+    reload();
+    jadwalTengahMalam();
+  }, besok - Date.now());
 }
 
 export default function useRuangInfo() {
@@ -72,10 +89,21 @@ export default function useRuangInfo() {
     }
     return () => {
       listeners.delete(setState);
-      if (!listeners.size && unsubscribeLive) { unsubscribeLive(); unsubscribeLive = null; clearTimeout(liveTimer); clearTimeout(midnightTimer); }
+      if (!listeners.size && unsubscribeLive) {
+        unsubscribeLive();
+        unsubscribeLive = null;
+        clearTimeout(liveTimer);
+        clearTimeout(midnightTimer);
+      }
     };
   }, []);
-  return { info: state.info, urutan: state.urutan, error: state.error, loaded: state.loaded, reload };
+  return {
+    info: state.info,
+    urutan: state.urutan,
+    error: state.error,
+    loaded: state.loaded,
+    reload,
+  };
 }
 
 // Daftar ruangan yang bisa dibooking + pengelompokannya per satuan kerja (bagian).

@@ -11,14 +11,20 @@ export default function BrandMark({ size = 'sm', className = '' }) {
 
   if (failed) {
     return (
-      <div className={`${boxSize} rounded-xl bg-[#1e3a5f] flex items-center justify-center text-white shadow-sm shrink-0 ${className}`}>
-        <span className={`material-symbols-outlined ${ICON_SIZE[size] || ICON_SIZE.sm}`}>account_balance</span>
+      <div
+        className={`${boxSize} rounded-xl bg-[#1e3a5f] flex items-center justify-center text-white shadow-sm shrink-0 ${className}`}
+      >
+        <span className={`material-symbols-outlined ${ICON_SIZE[size] || ICON_SIZE.sm}`}>
+          account_balance
+        </span>
       </div>
     );
   }
 
   return (
-    <div className={`${boxSize} rounded-xl bg-white border border-slate-200 shadow-sm flex items-center justify-center overflow-hidden shrink-0 ${className}`}>
+    <div
+      className={`${boxSize} rounded-xl bg-white border border-slate-200 shadow-sm flex items-center justify-center overflow-hidden shrink-0 ${className}`}
+    >
       <img
         src="/logo-kemnaker.png"
         alt="Logo Kementerian Ketenagakerjaan"

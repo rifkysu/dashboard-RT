@@ -5,8 +5,15 @@ import { Outlet, useLocation } from 'react-router-dom';
 // Biasanya tidak terlihat karena semua halaman sudah di-prefetch saat browser senggang.
 function PageLoading() {
   return (
-    <div className="min-h-[50vh] flex items-center justify-center" role="status" aria-label="Memuat halaman">
-      <span className="w-8 h-8 rounded-full border-[3px] border-slate-200 border-t-dinas animate-spin" aria-hidden="true"></span>
+    <div
+      className="min-h-[50vh] flex items-center justify-center"
+      role="status"
+      aria-label="Memuat halaman"
+    >
+      <span
+        className="w-8 h-8 rounded-full border-[3px] border-slate-200 border-t-dinas animate-spin"
+        aria-hidden="true"
+      ></span>
     </div>
   );
 }
@@ -17,11 +24,21 @@ function PageLoading() {
 // di tengah-tengah bekas scroll halaman sebelumnya.
 export default function PageTransition({ children }) {
   const { pathname } = useLocation();
-  useLayoutEffect(() => { window.scrollTo(0, 0); }, [pathname]);
-  return <div key={pathname} className="page-enter"><Suspense fallback={<PageLoading />}>{children}</Suspense></div>;
+  useLayoutEffect(() => {
+    window.scrollTo(0, 0);
+  }, [pathname]);
+  return (
+    <div key={pathname} className="page-enter">
+      <Suspense fallback={<PageLoading />}>{children}</Suspense>
+    </div>
+  );
 }
 
 // Layout route untuk halaman publik (landing, login, daftar, dst.).
 export function PublicLayout() {
-  return <PageTransition><Outlet /></PageTransition>;
+  return (
+    <PageTransition>
+      <Outlet />
+    </PageTransition>
+  );
 }

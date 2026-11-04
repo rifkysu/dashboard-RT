@@ -23,5 +23,5 @@ ReactDOM.createRoot(document.getElementById('root')).render(
         </FeedbackProvider>
       </BrowserRouter>
     </AppErrorBoundary>
-  </React.StrictMode>
+  </React.StrictMode>,
 );

@@ -6,7 +6,11 @@ const KUALITAS = 0.85;
 
 async function bukaGambar(file) {
   if (typeof createImageBitmap === 'function') {
-    try { return await createImageBitmap(file, { imageOrientation: 'from-image' }); } catch { /* lanjut cara lama */ }
+    try {
+      return await createImageBitmap(file, { imageOrientation: 'from-image' });
+    } catch {
+      /* lanjut cara lama */
+    }
   }
   const url = URL.createObjectURL(file);
   try {

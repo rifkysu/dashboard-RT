@@ -17,7 +17,13 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (res) => res,
   (err) => {
-    console.error('[API ERROR]', { method: err.config?.method, url: err.config?.url, status: err.response?.status, response: err.response?.data, message: err.message });
+    console.error('[API ERROR]', {
+      method: err.config?.method,
+      url: err.config?.url,
+      status: err.response?.status,
+      response: err.response?.data,
+      message: err.message,
+    });
     if (err.response && err.response.status === 401) {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
@@ -25,22 +31,30 @@ api.interceptors.response.use(
       // untuk siapa saja (login atau tidak), jadi token basi yang gagal saat
       // background-check (mis. /auth/me, /maintenance) tidak boleh memaksa
       // redirect ke /login dan membajak pengalaman landing page.
-      const publicPath = ['/login', '/jadwal-rapat', '/', '/ruang'].includes(window.location.pathname) || window.location.pathname.startsWith('/ruang/');
+      const publicPath =
+        ['/login', '/jadwal-rapat', '/', '/ruang'].includes(window.location.pathname) ||
+        window.location.pathname.startsWith('/ruang/');
       const url = String(err.config?.url || '');
-      const isBackgroundCheck = url.includes('/auth/me') || url.includes('/auth/logout') || url.includes('/ruang-rapat/public-schedule') || url.includes('/maintenance');
+      const isBackgroundCheck =
+        url.includes('/auth/me') ||
+        url.includes('/auth/logout') ||
+        url.includes('/ruang-rapat/public-schedule') ||
+        url.includes('/maintenance');
       // Akun di-ban admin saat sedang login -> langsung keluarkan (termasuk dari
       // polling /auth/me) dan tampilkan popup pemberitahuan ban di halaman Login.
       if (err.response.data?.code === 'ACCOUNT_BANNED') {
         // Penanda cadangan: ProtectedRoute bisa lebih dulu mengarahkan ke /login
         // tanpa ?banned=1 (user dikosongkan AuthContext), popup tetap harus muncul.
-        try { sessionStorage.setItem('accountBanned', '1'); } catch {}
+        try {
+          sessionStorage.setItem('accountBanned', '1');
+        } catch {}
         if (!publicPath) window.location.href = '/login?banned=1';
       } else if (!publicPath && !isBackgroundCheck) {
         window.location.href = '/login';
       }
     }
     return Promise.reject(err);
-  }
+  },
 );
 
 export default api;

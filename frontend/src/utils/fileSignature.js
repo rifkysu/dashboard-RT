@@ -45,15 +45,36 @@ const OFFICE_MIME = {
 // Word & Excel punya magic number yang sama (OLE2 / ZIP), jadi jenisnya diambil dari ekstensi.
 export async function detectFileMime(file) {
   let arr;
-  try { arr = new Uint8Array(await file.slice(0, 16).arrayBuffer()); } catch { return ''; }
+  try {
+    arr = new Uint8Array(await file.slice(0, 16).arrayBuffer());
+  } catch {
+    return '';
+  }
   const [pdf, jpeg, png, webp, ole, zip] = SIGNATURES.map((sig) => matchesSignature(arr, sig));
   if (pdf) return 'application/pdf';
   if (jpeg) return 'image/jpeg';
   if (png) return 'image/png';
   if (webp) return 'image/webp';
-  const ext = String(file.name || '').split('.').pop().toLowerCase();
-  if (ole) return ext === 'xls' ? OFFICE_MIME.xls : ext === 'doc' ? OFFICE_MIME.doc : file.type === OFFICE_MIME.xls || file.type === OFFICE_MIME.doc ? file.type : '';
-  if (zip) return ext === 'xlsx' ? OFFICE_MIME.xlsx : ext === 'docx' ? OFFICE_MIME.docx : file.type === OFFICE_MIME.xlsx || file.type === OFFICE_MIME.docx ? file.type : '';
+  const ext = String(file.name || '')
+    .split('.')
+    .pop()
+    .toLowerCase();
+  if (ole)
+    return ext === 'xls'
+      ? OFFICE_MIME.xls
+      : ext === 'doc'
+        ? OFFICE_MIME.doc
+        : file.type === OFFICE_MIME.xls || file.type === OFFICE_MIME.doc
+          ? file.type
+          : '';
+  if (zip)
+    return ext === 'xlsx'
+      ? OFFICE_MIME.xlsx
+      : ext === 'docx'
+        ? OFFICE_MIME.docx
+        : file.type === OFFICE_MIME.xlsx || file.type === OFFICE_MIME.docx
+          ? file.type
+          : '';
   return '';
 }
 

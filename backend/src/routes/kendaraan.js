@@ -18,7 +18,17 @@ const MAX_DOCUMENT_BYTES = 12 * 1024 * 1024; // dokumen BPKB/STNK (PDF hasil sca
 const STATUS = ['Tersedia', 'Digunakan', 'Servis'];
 const JENIS = ['Roda 2', 'Roda 4', 'Roda 6'];
 // Kategori "Nama Barang" mengikuti nomenklatur BMN untuk alat angkutan darat bermotor.
-const NAMA_BARANG = ['Sedan', 'Jeep', 'Station Wagon', 'Micro Bus', 'Mini Bus', 'Pick Up', 'Mobil Ambulance', 'Kendaraan Bermotor Khusus Lainnya', 'Sepeda Motor'];
+const NAMA_BARANG = [
+  'Sedan',
+  'Jeep',
+  'Station Wagon',
+  'Micro Bus',
+  'Mini Bus',
+  'Pick Up',
+  'Mobil Ambulance',
+  'Kendaraan Bermotor Khusus Lainnya',
+  'Sepeda Motor',
+];
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 // Dokumen PDF per kendaraan: <prefix>_document_name / _file_data / _file_path.
 // Riwayat service + invoice-nya disimpan di tabel kendaraan_service (lihat bagian bawah file).
@@ -27,14 +37,21 @@ const DOCUMENTS = [
   { prefix: 'stnk', label: 'STNK', folder: 'kendaraan/stnk' },
 ];
 
-const text = (v, m, req = false) => (v == null || v === '') ? !req : typeof v === 'string' && v.trim().length > 0 && v.length <= m;
+const text = (v, m, req = false) =>
+  v == null || v === '' ? !req : typeof v === 'string' && v.trim().length > 0 && v.length <= m;
 const validDate = (v) => v == null || v === '' || realDate(v); // realDate: tolak tanggal yang tidak ada (2026-02-31, 2026-13-01)
-const toDate = (v) => (v == null || v === '') ? null : new Date(`${v}T00:00:00Z`);
-const dateOnly = (v) => v == null ? null : v.toISOString().slice(0, 10);
+const toDate = (v) => (v == null || v === '' ? null : new Date(`${v}T00:00:00Z`));
+const dateOnly = (v) => (v == null ? null : v.toISOString().slice(0, 10));
 const todayJakarta = () => new Date(Date.now() + 7 * 3600 * 1000).toISOString().slice(0, 10);
 // Tanggal YYYY-MM-DD yang benar-benar ada di kalender (tolak 2026-02-31 dsb).
 // Tahun dibatasi 1950-2100 (input date di browser bisa mengirim tahun aneh). Sama dengan frontend utils/validation.js.
-const realDate = (v) => typeof v === 'string' && DATE_RE.test(v) && !Number.isNaN(Date.parse(`${v}T00:00:00Z`)) && new Date(`${v}T00:00:00Z`).toISOString().slice(0, 10) === v && v >= '1950-01-01' && v <= '2100-12-31';
+const realDate = (v) =>
+  typeof v === 'string' &&
+  DATE_RE.test(v) &&
+  !Number.isNaN(Date.parse(`${v}T00:00:00Z`)) &&
+  new Date(`${v}T00:00:00Z`).toISOString().slice(0, 10) === v &&
+  v >= '1950-01-01' &&
+  v <= '2100-12-31';
 // Masa berlaku STNK & waktu pajak tidak boleh sebelum tanggal perolehan. Nilai string YYYY-MM-DD / kosong.
 function dateOrderError(perolehan, stnk, pajak) {
   if (!perolehan) return null;
@@ -43,20 +60,42 @@ function dateOrderError(perolehan, stnk, pajak) {
   return null;
 }
 // Data kendaraan di riwayat aktivitas: kode = nomor polisi, label = merk & tipe.
-const refKendaraan = (k) => ({ id: k.id, kode: k.plate, label: [k.merk, k.tipe].filter(Boolean).join(' ') || k.nama_barang });
-const parseId = (v) => { const n = Number(v); return Number.isInteger(n) && n > 0 && n <= 2147483647 ? n : null; };
+const refKendaraan = (k) => ({
+  id: k.id,
+  kode: k.plate,
+  label: [k.merk, k.tipe].filter(Boolean).join(' ') || k.nama_barang,
+});
+const parseId = (v) => {
+  const n = Number(v);
+  return Number.isInteger(n) && n > 0 && n <= 2147483647 ? n : null;
+};
 
 function parsePhotos(row) {
   let photos = [];
-  try { photos = row.photos ? JSON.parse(row.photos) : []; } catch { photos = []; }
+  try {
+    photos = row.photos ? JSON.parse(row.photos) : [];
+  } catch {
+    photos = [];
+  }
   return photos;
 }
 // Path file di disk tidak pernah dikirim ke client.
-const serializeService = (row) => row ? ({ ...row, tanggal_service: dateOnly(row.tanggal_service), invoice_document_file_path: undefined }) : row;
+const serializeService = (row) =>
+  row
+    ? {
+        ...row,
+        tanggal_service: dateOnly(row.tanggal_service),
+        invoice_document_file_path: undefined,
+      }
+    : row;
 // Service terakhir + jumlah riwayat, ditampilkan di tabel daftar kendaraan.
 // Nama pembuat & pengedit terakhir ikut dikirim untuk keterangan "Terakhir diedit oleh" di Detail.
 const WITH_SERVICE_SUMMARY = {
-  services: { select: { id: true, tanggal_service: true }, orderBy: [{ tanggal_service: 'desc' }, { id: 'desc' }], take: 1 },
+  services: {
+    select: { id: true, tanggal_service: true },
+    orderBy: [{ tanggal_service: 'desc' }, { id: 'desc' }],
+    take: 1,
+  },
   _count: { select: { services: true } },
   createdBy: { select: { nama_lengkap: true } },
   updatedBy: { select: { nama_lengkap: true } },
@@ -91,7 +130,8 @@ function validatePhotos(photos) {
   for (const p of photos) {
     if (!p || typeof p.name !== 'string' || p.name.length > 255) return { ok: false };
     // Hanya gambar: isGenuineDocumentDataUrl juga menerima PDF/Word/Excel, yang bukan foto.
-    if (typeof p.data !== 'string' || !/^data:image\/(jpeg|png|webp);base64,/i.test(p.data)) return { ok: false };
+    if (typeof p.data !== 'string' || !/^data:image\/(jpeg|png|webp);base64,/i.test(p.data))
+      return { ok: false };
     if (!isGenuineDocumentDataUrl(p.data, MAX_PHOTO_BYTES)) return { ok: false };
   }
   return { ok: true, items: photos };
@@ -137,46 +177,89 @@ router.get('/:id', async (req, res) => {
 // Tambah/ubah/hapus kendaraan & service hanya Admin/Kabag; karyawan & PIC hanya bisa melihat data dan detail.
 router.post('/', requireRole(ADMIN_ROLES), async (req, res) => {
   try {
-    const { nama_barang, merk, tipe, no_bpkb, plate, plat_khusus, jenis, sub, status, tanggal_perolehan, masa_berlaku_stnk, waktu_pajak, photos } = req.body;
+    const {
+      nama_barang,
+      merk,
+      tipe,
+      no_bpkb,
+      plate,
+      plat_khusus,
+      jenis,
+      sub,
+      status,
+      tanggal_perolehan,
+      masa_berlaku_stnk,
+      waktu_pajak,
+      photos,
+    } = req.body;
 
-    if (!text(nama_barang, 150, true) || !text(merk, 100, true) || !text(tipe, 100, true) || !text(plate, 30, true) || !text(jenis, 30, true)) {
-      return res.status(400).json({ message: 'Nama barang, merk, tipe, nomor polisi, dan jenis wajib diisi.' });
+    if (
+      !text(nama_barang, 150, true) ||
+      !text(merk, 100, true) ||
+      !text(tipe, 100, true) ||
+      !text(plate, 30, true) ||
+      !text(jenis, 30, true)
+    ) {
+      return res
+        .status(400)
+        .json({ message: 'Nama barang, merk, tipe, nomor polisi, dan jenis wajib diisi.' });
     }
-    if (!NAMA_BARANG.includes(nama_barang)) return res.status(400).json({ message: 'Nama barang tidak valid.' });
-    if (!STATUS.includes(status || 'Tersedia')) return res.status(400).json({ message: 'Status kendaraan tidak valid.' });
-    if (no_bpkb != null && !text(no_bpkb, 50)) return res.status(400).json({ message: 'Nomor BPKB tidak valid.' });
-    if (plat_khusus != null && !text(plat_khusus, 30)) return res.status(400).json({ message: 'Plat khusus tidak valid.' });
-    if (sub != null && !text(sub, 150)) return res.status(400).json({ message: 'Keterangan maksimal 150 karakter.' });
+    if (!NAMA_BARANG.includes(nama_barang))
+      return res.status(400).json({ message: 'Nama barang tidak valid.' });
+    if (!STATUS.includes(status || 'Tersedia'))
+      return res.status(400).json({ message: 'Status kendaraan tidak valid.' });
+    if (no_bpkb != null && !text(no_bpkb, 50))
+      return res.status(400).json({ message: 'Nomor BPKB tidak valid.' });
+    if (plat_khusus != null && !text(plat_khusus, 30))
+      return res.status(400).json({ message: 'Plat khusus tidak valid.' });
+    if (sub != null && !text(sub, 150))
+      return res.status(400).json({ message: 'Keterangan maksimal 150 karakter.' });
     if (!validDate(tanggal_perolehan) || !validDate(masa_berlaku_stnk) || !validDate(waktu_pajak)) {
       return res.status(400).json({ message: 'Format tanggal tidak valid.' });
     }
-    if (!JENIS.includes(jenis)) return res.status(400).json({ message: 'Jenis kendaraan tidak valid.' });
+    if (!JENIS.includes(jenis))
+      return res.status(400).json({ message: 'Jenis kendaraan tidak valid.' });
     const orderError = dateOrderError(tanggal_perolehan, masa_berlaku_stnk, waktu_pajak);
     if (orderError) return res.status(400).json({ message: orderError });
     const photoCheck = validatePhotos(photos);
-    if (!photoCheck.ok) return res.status(400).json({ message: 'Foto kendaraan tidak valid (maksimal 6 foto, harus gambar asli).' });
+    if (!photoCheck.ok)
+      return res
+        .status(400)
+        .json({ message: 'Foto kendaraan tidak valid (maksimal 6 foto, harus gambar asli).' });
     const photoItems = photoCheck.items || [];
     for (const doc of DOCUMENTS) {
-      if (!validDocument(req.body[`${doc.prefix}_document_name`], req.body[`${doc.prefix}_document_file_data`])) {
-        return res.status(400).json({ message: `Dokumen ${doc.label} tidak valid (harus PDF asli).` });
+      if (
+        !validDocument(
+          req.body[`${doc.prefix}_document_name`],
+          req.body[`${doc.prefix}_document_file_data`],
+        )
+      ) {
+        return res
+          .status(400)
+          .json({ message: `Dokumen ${doc.label} tidak valid (harus PDF asli).` });
       }
     }
 
     // Cek nomor polisi ganda SEBELUM foto/dokumen ditulis ke disk, supaya tidak ada file yatim.
     // (Unique constraint DB tetap jadi pengaman terakhir kalau dua request bersamaan.)
-    if (await prisma.kendaraan.findUnique({ where: { plate: plate.trim() }, select: { id: true } })) {
+    if (
+      await prisma.kendaraan.findUnique({ where: { plate: plate.trim() }, select: { id: true } })
+    ) {
       return res.status(409).json({ message: 'Nomor polisi sudah terdaftar.' });
     }
 
     const savedPaths = [];
-    for (const p of photoItems) savedPaths.push({ name: p.name, path: await saveDataUrl(p.data, p.name, 'kendaraan') });
+    for (const p of photoItems)
+      savedPaths.push({ name: p.name, path: await saveDataUrl(p.data, p.name, 'kendaraan') });
     const docData = {};
     for (const doc of DOCUMENTS) {
       const name = req.body[`${doc.prefix}_document_name`];
       const fileData = req.body[`${doc.prefix}_document_file_data`];
       docData[`${doc.prefix}_document_name`] = fileData ? name : null;
       docData[`${doc.prefix}_document_file_data`] = fileData || null;
-      docData[`${doc.prefix}_document_file_path`] = fileData ? await saveDataUrl(fileData, name, doc.folder) : null;
+      docData[`${doc.prefix}_document_file_path`] = fileData
+        ? await saveDataUrl(fileData, name, doc.folder)
+        : null;
     }
 
     const row = await prisma.kendaraan.create({
@@ -201,10 +284,16 @@ router.post('/', requireRole(ADMIN_ROLES), async (req, res) => {
         updated_by: req.user.id,
       },
     });
-    await catat(req, { modul: 'kendaraan', aksi: 'tambah', ref: refKendaraan(row), perubahan: ringkas('kendaraan', row) });
+    await catat(req, {
+      modul: 'kendaraan',
+      aksi: 'tambah',
+      ref: refKendaraan(row),
+      perubahan: ringkas('kendaraan', row),
+    });
     res.status(201).json({ data: serialize(row) });
   } catch (err) {
-    if (err.code === 'P2002') return res.status(409).json({ message: 'Nomor polisi sudah terdaftar.' });
+    if (err.code === 'P2002')
+      return res.status(409).json({ message: 'Nomor polisi sudah terdaftar.' });
     logger.error('POST kendaraan gagal', { error: err });
     res.status(500).json({ message: 'Gagal menambahkan kendaraan.' });
   }
@@ -216,41 +305,84 @@ router.put('/:id', requireRole(ADMIN_ROLES), async (req, res) => {
     if (!id) return res.status(400).json({ message: 'ID kendaraan tidak valid.' });
     const body = { ...req.body };
 
-    if (body.status !== undefined && !STATUS.includes(body.status)) return res.status(400).json({ message: 'Status kendaraan tidak valid.' });
-    if (body.no_bpkb !== undefined && body.no_bpkb != null && !text(body.no_bpkb, 50)) return res.status(400).json({ message: 'Nomor BPKB tidak valid.' });
-    if (body.plat_khusus !== undefined && body.plat_khusus != null && !text(body.plat_khusus, 30)) return res.status(400).json({ message: 'Plat khusus tidak valid.' });
-    if (body.sub !== undefined && body.sub != null && !text(body.sub, 150)) return res.status(400).json({ message: 'Keterangan maksimal 150 karakter.' });
+    if (body.status !== undefined && !STATUS.includes(body.status))
+      return res.status(400).json({ message: 'Status kendaraan tidak valid.' });
+    if (body.no_bpkb !== undefined && body.no_bpkb != null && !text(body.no_bpkb, 50))
+      return res.status(400).json({ message: 'Nomor BPKB tidak valid.' });
+    if (body.plat_khusus !== undefined && body.plat_khusus != null && !text(body.plat_khusus, 30))
+      return res.status(400).json({ message: 'Plat khusus tidak valid.' });
+    if (body.sub !== undefined && body.sub != null && !text(body.sub, 150))
+      return res.status(400).json({ message: 'Keterangan maksimal 150 karakter.' });
     for (const f of ['tanggal_perolehan', 'masa_berlaku_stnk', 'waktu_pajak']) {
-      if (body[f] !== undefined && !validDate(body[f])) return res.status(400).json({ message: 'Format tanggal tidak valid.' });
+      if (body[f] !== undefined && !validDate(body[f]))
+        return res.status(400).json({ message: 'Format tanggal tidak valid.' });
     }
     const photoCheck = validatePhotos(body.photos);
-    if (!photoCheck.ok) return res.status(400).json({ message: 'Foto kendaraan tidak valid (maksimal 6 foto, harus gambar asli).' });
+    if (!photoCheck.ok)
+      return res
+        .status(400)
+        .json({ message: 'Foto kendaraan tidak valid (maksimal 6 foto, harus gambar asli).' });
     for (const doc of DOCUMENTS) {
-      if (!validDocument(body[`${doc.prefix}_document_name`], body[`${doc.prefix}_document_file_data`])) {
-        return res.status(400).json({ message: `Dokumen ${doc.label} tidak valid (harus PDF asli).` });
+      if (
+        !validDocument(
+          body[`${doc.prefix}_document_name`],
+          body[`${doc.prefix}_document_file_data`],
+        )
+      ) {
+        return res
+          .status(400)
+          .json({ message: `Dokumen ${doc.label} tidak valid (harus PDF asli).` });
       }
     }
 
     const data = {};
-    for (const f of ['nama_barang', 'merk', 'tipe', 'no_bpkb', 'plate', 'plat_khusus', 'jenis', 'sub', 'status']) {
-      if (body[f] !== undefined) data[f] = typeof body[f] === 'string' ? body[f].trim() || null : body[f];
+    for (const f of [
+      'nama_barang',
+      'merk',
+      'tipe',
+      'no_bpkb',
+      'plate',
+      'plat_khusus',
+      'jenis',
+      'sub',
+      'status',
+    ]) {
+      if (body[f] !== undefined)
+        data[f] = typeof body[f] === 'string' ? body[f].trim() || null : body[f];
     }
     for (const f of ['tanggal_perolehan', 'masa_berlaku_stnk', 'waktu_pajak']) {
       if (body[f] !== undefined) data[f] = toDate(body[f]);
     }
-    if (data.nama_barang !== undefined && (!text(data.nama_barang, 150, true) || !NAMA_BARANG.includes(data.nama_barang))) return res.status(400).json({ message: 'Nama barang tidak valid.' });
-    if (data.merk !== undefined && !text(data.merk, 100, true)) return res.status(400).json({ message: 'Merk tidak valid.' });
-    if (data.tipe !== undefined && !text(data.tipe, 100, true)) return res.status(400).json({ message: 'Tipe tidak valid.' });
-    if (data.plate !== undefined && !text(data.plate, 30, true)) return res.status(400).json({ message: 'Nomor polisi tidak valid.' });
-    if (data.jenis !== undefined && (!text(data.jenis, 30, true) || !JENIS.includes(data.jenis))) return res.status(400).json({ message: 'Jenis kendaraan tidak valid.' });
+    if (
+      data.nama_barang !== undefined &&
+      (!text(data.nama_barang, 150, true) || !NAMA_BARANG.includes(data.nama_barang))
+    )
+      return res.status(400).json({ message: 'Nama barang tidak valid.' });
+    if (data.merk !== undefined && !text(data.merk, 100, true))
+      return res.status(400).json({ message: 'Merk tidak valid.' });
+    if (data.tipe !== undefined && !text(data.tipe, 100, true))
+      return res.status(400).json({ message: 'Tipe tidak valid.' });
+    if (data.plate !== undefined && !text(data.plate, 30, true))
+      return res.status(400).json({ message: 'Nomor polisi tidak valid.' });
+    if (data.jenis !== undefined && (!text(data.jenis, 30, true) || !JENIS.includes(data.jenis)))
+      return res.status(400).json({ message: 'Jenis kendaraan tidak valid.' });
 
     // Urutan tanggal dicek terhadap nilai yang akan tersimpan (gabungan body + data lama).
     const DATE_FIELDS = ['tanggal_perolehan', 'masa_berlaku_stnk', 'waktu_pajak'];
     if (DATE_FIELDS.some((f) => body[f] !== undefined)) {
-      const current = await prisma.kendaraan.findUnique({ where: { id }, select: { tanggal_perolehan: true, masa_berlaku_stnk: true, waktu_pajak: true } });
+      const current = await prisma.kendaraan.findUnique({
+        where: { id },
+        select: { tanggal_perolehan: true, masa_berlaku_stnk: true, waktu_pajak: true },
+      });
       if (!current) return res.status(404).json({ message: 'Kendaraan tidak ditemukan.' });
-      const next = Object.fromEntries(DATE_FIELDS.map((f) => [f, body[f] !== undefined ? (body[f] || null) : dateOnly(current[f])]));
-      const orderError = dateOrderError(next.tanggal_perolehan, next.masa_berlaku_stnk, next.waktu_pajak);
+      const next = Object.fromEntries(
+        DATE_FIELDS.map((f) => [f, body[f] !== undefined ? body[f] || null : dateOnly(current[f])]),
+      );
+      const orderError = dateOrderError(
+        next.tanggal_perolehan,
+        next.masa_berlaku_stnk,
+        next.waktu_pajak,
+      );
       if (orderError) return res.status(400).json({ message: orderError });
     }
 
@@ -261,7 +393,8 @@ router.put('/:id', requireRole(ADMIN_ROLES), async (req, res) => {
     }
     if (photoCheck.items !== undefined) {
       const savedPaths = [];
-      for (const p of photoCheck.items) savedPaths.push({ name: p.name, path: await saveDataUrl(p.data, p.name, 'kendaraan') });
+      for (const p of photoCheck.items)
+        savedPaths.push({ name: p.name, path: await saveDataUrl(p.data, p.name, 'kendaraan') });
       data.photos = photoCheck.items.length ? JSON.stringify(photoCheck.items) : null;
       data.photo_file_paths = savedPaths.length ? JSON.stringify(savedPaths) : null;
     }
@@ -271,19 +404,36 @@ router.put('/:id', requireRole(ADMIN_ROLES), async (req, res) => {
       const name = body[`${doc.prefix}_document_name`];
       data[`${doc.prefix}_document_name`] = fileData ? name : null;
       data[`${doc.prefix}_document_file_data`] = fileData || null;
-      data[`${doc.prefix}_document_file_path`] = fileData ? await saveDataUrl(fileData, name, doc.folder) : null;
+      data[`${doc.prefix}_document_file_path`] = fileData
+        ? await saveDataUrl(fileData, name, doc.folder)
+        : null;
     }
 
-    if (!Object.keys(data).length) return res.status(400).json({ message: 'Tidak ada field yang diubah.' });
+    if (!Object.keys(data).length)
+      return res.status(400).json({ message: 'Tidak ada field yang diubah.' });
     data.updated_by = req.user.id;
     // Foto disimpan ulang seluruhnya tiap perubahan -> isi foto lama ikut dibaca supaya riwayat menulis yang benar-benar berubah.
-    const sebelum = await prisma.kendaraan.findUnique({ where: { id }, select: pilihKolom('kendaraan', {}, { isi: photoCheck.items !== undefined }) });
-    const row = await prisma.kendaraan.update({ where: { id }, data, include: WITH_SERVICE_SUMMARY });
-    await catat(req, { modul: 'kendaraan', aksi: 'ubah', ref: refKendaraan(row), bandingkanDengan: { modul: 'kendaraan', sebelum, sesudah: row } });
+    const sebelum = await prisma.kendaraan.findUnique({
+      where: { id },
+      select: pilihKolom('kendaraan', {}, { isi: photoCheck.items !== undefined }),
+    });
+    const row = await prisma.kendaraan.update({
+      where: { id },
+      data,
+      include: WITH_SERVICE_SUMMARY,
+    });
+    await catat(req, {
+      modul: 'kendaraan',
+      aksi: 'ubah',
+      ref: refKendaraan(row),
+      bandingkanDengan: { modul: 'kendaraan', sebelum, sesudah: row },
+    });
     res.json({ data: serialize(row) });
   } catch (err) {
-    if (err.code === 'P2025') return res.status(404).json({ message: 'Kendaraan tidak ditemukan.' });
-    if (err.code === 'P2002') return res.status(409).json({ message: 'Nomor polisi sudah terdaftar.' });
+    if (err.code === 'P2025')
+      return res.status(404).json({ message: 'Kendaraan tidak ditemukan.' });
+    if (err.code === 'P2002')
+      return res.status(409).json({ message: 'Nomor polisi sudah terdaftar.' });
     logger.error('PUT kendaraan gagal', { error: err });
     res.status(500).json({ message: 'Gagal memperbarui kendaraan.' });
   }
@@ -294,14 +444,24 @@ router.delete('/:id', requireRole(ADMIN_ROLES), async (req, res) => {
     const id = parseId(req.params.id);
     if (!id) return res.status(400).json({ message: 'ID kendaraan tidak valid.' });
     // Isi terakhir (+ jumlah riwayat service yang ikut terhapus) disimpan di riwayat aktivitas.
-    const sebelum = await prisma.kendaraan.findUnique({ where: { id }, select: { ...pilihKolom('kendaraan', { id: true }), _count: { select: { services: true } } } });
+    const sebelum = await prisma.kendaraan.findUnique({
+      where: { id },
+      select: { ...pilihKolom('kendaraan', { id: true }), _count: { select: { services: true } } },
+    });
     if (!sebelum) return res.status(404).json({ message: 'Kendaraan tidak ditemukan.' });
     await prisma.kendaraan.delete({ where: { id } });
     const nService = sebelum._count.services;
-    await catat(req, { modul: 'kendaraan', aksi: 'hapus', ref: refKendaraan(sebelum), perubahan: ringkas('kendaraan', sebelum, 'dari'), keterangan: nService ? `${nService} riwayat service ikut terhapus.` : undefined });
+    await catat(req, {
+      modul: 'kendaraan',
+      aksi: 'hapus',
+      ref: refKendaraan(sebelum),
+      perubahan: ringkas('kendaraan', sebelum, 'dari'),
+      keterangan: nService ? `${nService} riwayat service ikut terhapus.` : undefined,
+    });
     res.json({ message: 'Kendaraan berhasil dihapus.' });
   } catch (err) {
-    if (err.code === 'P2025') return res.status(404).json({ message: 'Kendaraan tidak ditemukan.' });
+    if (err.code === 'P2025')
+      return res.status(404).json({ message: 'Kendaraan tidak ditemukan.' });
     logger.error('DELETE kendaraan gagal', { error: err });
     res.status(500).json({ message: 'Gagal menghapus kendaraan.' });
   }
@@ -320,12 +480,14 @@ const SERVICE_RESPONSE = {
 
 // Perubahan riwayat service juga dihitung sebagai edit kendaraan: updated_by & updated_at
 // kendaraan ikut diperbarui supaya keterangan "Terakhir diedit oleh" di Detail ikut berubah.
-const touchVehicle = (id, userId) => prisma.kendaraan.update({ where: { id }, data: { updated_by: userId } }).catch(() => {});
+const touchVehicle = (id, userId) =>
+  prisma.kendaraan.update({ where: { id }, data: { updated_by: userId } }).catch(() => {});
 
 // Invoice wajib PDF asli + nama file. Mengembalikan pesan error atau null.
 function invoiceError(name, data) {
   if (typeof data !== 'string' || !data) return 'File invoice PDF wajib dipilih.';
-  if (!validDocument(name, data)) return 'Invoice service tidak valid (harus PDF asli, maks. 12MB).';
+  if (!validDocument(name, data))
+    return 'Invoice service tidak valid (harus PDF asli, maks. 12MB).';
   return null;
 }
 
@@ -353,37 +515,75 @@ router.post('/:id/services', requireRole(ADMIN_ROLES), async (req, res) => {
     if (!id) return res.status(400).json({ message: 'ID kendaraan tidak valid.' });
     const body = req.body || {};
     const tanggal = body.tanggal_service;
-    if (!realDate(tanggal)) return res.status(400).json({ message: 'Tanggal service wajib diisi dengan tanggal yang valid.' });
-    if (tanggal > todayJakarta()) return res.status(400).json({ message: 'Tanggal service tidak boleh melebihi hari ini.' });
-    if (!text(body.bagian_service, 255, true)) return res.status(400).json({ message: 'Bagian yang diservis wajib diisi (maksimal 255 karakter).' });
+    if (!realDate(tanggal))
+      return res
+        .status(400)
+        .json({ message: 'Tanggal service wajib diisi dengan tanggal yang valid.' });
+    if (tanggal > todayJakarta())
+      return res.status(400).json({ message: 'Tanggal service tidak boleh melebihi hari ini.' });
+    if (!text(body.bagian_service, 255, true))
+      return res
+        .status(400)
+        .json({ message: 'Bagian yang diservis wajib diisi (maksimal 255 karakter).' });
     // Invoice opsional saat tambah service; kalau dikirim harus PDF asli.
-    const withInvoice = body.invoice_document_file_data != null && body.invoice_document_file_data !== '';
+    const withInvoice =
+      body.invoice_document_file_data != null && body.invoice_document_file_data !== '';
     if (withInvoice) {
       const bad = invoiceError(body.invoice_document_name, body.invoice_document_file_data);
       if (bad) return res.status(400).json({ message: bad });
     }
-    const vehicle = await prisma.kendaraan.findUnique({ where: { id }, select: { id: true, plate: true, merk: true, tipe: true, nama_barang: true } });
+    const vehicle = await prisma.kendaraan.findUnique({
+      where: { id },
+      select: { id: true, plate: true, merk: true, tipe: true, nama_barang: true },
+    });
     if (!vehicle) return res.status(404).json({ message: 'Kendaraan tidak ditemukan.' });
-    const duplicate = await prisma.kendaraanService.findFirst({ where: { kendaraan_id: id, tanggal_service: toDate(tanggal) }, select: { id: true } });
-    if (duplicate) return res.status(409).json({ message: 'Service pada tanggal tersebut sudah tercatat.' });
+    const duplicate = await prisma.kendaraanService.findFirst({
+      where: { kendaraan_id: id, tanggal_service: toDate(tanggal) },
+      select: { id: true },
+    });
+    if (duplicate)
+      return res.status(409).json({ message: 'Service pada tanggal tersebut sudah tercatat.' });
 
-    const invoice = withInvoice ? {
-      invoice_document_name: body.invoice_document_name.trim(),
-      invoice_document_file_data: body.invoice_document_file_data,
-      invoice_document_file_path: await saveDataUrl(body.invoice_document_file_data, body.invoice_document_name, SERVICE_FOLDER),
-    } : {};
+    const invoice = withInvoice
+      ? {
+          invoice_document_name: body.invoice_document_name.trim(),
+          invoice_document_file_data: body.invoice_document_file_data,
+          invoice_document_file_path: await saveDataUrl(
+            body.invoice_document_file_data,
+            body.invoice_document_name,
+            SERVICE_FOLDER,
+          ),
+        }
+      : {};
     const row = await prisma.kendaraanService.create({
-      data: { kendaraan_id: id, tanggal_service: toDate(tanggal), bagian_service: body.bagian_service.trim(), ...invoice, created_by: req.user.id, updated_by: req.user.id },
+      data: {
+        kendaraan_id: id,
+        tanggal_service: toDate(tanggal),
+        bagian_service: body.bagian_service.trim(),
+        ...invoice,
+        created_by: req.user.id,
+        updated_by: req.user.id,
+      },
       ...SERVICE_RESPONSE,
     });
     await touchVehicle(id, req.user.id);
-    await catat(req, { modul: 'kendaraan', aksi: 'service-tambah', ref: refKendaraan(vehicle), perubahan: ringkas('kendaraan-service', { ...row, invoice_document_file_path: invoice.invoice_document_file_path }) });
+    await catat(req, {
+      modul: 'kendaraan',
+      aksi: 'service-tambah',
+      ref: refKendaraan(vehicle),
+      perubahan: ringkas('kendaraan-service', {
+        ...row,
+        invoice_document_file_path: invoice.invoice_document_file_path,
+      }),
+    });
     res.status(201).json({ data: serializeService(row) });
   } catch (err) {
     // Kendaraan dihapus di antara pengecekan & insert -> FK gagal.
-    if (err.code === 'P2003') return res.status(404).json({ message: 'Kendaraan tidak ditemukan.' });
+    if (err.code === 'P2003')
+      return res.status(404).json({ message: 'Kendaraan tidak ditemukan.' });
     // Dua request bersamaan untuk tanggal yang sama -> ditahan unique constraint DB.
-    if (err.code === 'P2002') return res.status(409).json({ message: 'Service pada tanggal tersebut sudah tercatat.' });
+    if (err.code === 'P2002')
+      return res.status(409).json({ message: 'Service pada tanggal tersebut sudah tercatat.' });
     logger.error('POST riwayat service gagal', { error: err });
     res.status(500).json({ message: 'Gagal menambahkan riwayat service.' });
   }
@@ -400,7 +600,8 @@ router.get('/:id/services/:serviceId/invoice', async (req, res) => {
       select: { invoice_document_name: true, invoice_document_file_data: true },
     });
     if (!row) return res.status(404).json({ message: 'Riwayat service tidak ditemukan.' });
-    if (!row.invoice_document_file_data) return res.status(404).json({ message: 'Riwayat service ini belum punya invoice PDF.' });
+    if (!row.invoice_document_file_data)
+      return res.status(404).json({ message: 'Riwayat service ini belum punya invoice PDF.' });
     res.set('Cache-Control', 'no-store');
     res.json({ data: row });
   } catch (err) {
@@ -418,7 +619,13 @@ router.put('/:id/services/:serviceId/invoice', requireRole(ADMIN_ROLES), async (
     const { invoice_document_name: name, invoice_document_file_data: data } = req.body || {};
     const bad = invoiceError(name, data);
     if (bad) return res.status(400).json({ message: bad });
-    const existing = await prisma.kendaraanService.findFirst({ where: { id: serviceId, kendaraan_id: id }, select: { ...pilihKolom('kendaraan-service', { id: true }), kendaraan: { select: { id: true, plate: true, merk: true, tipe: true, nama_barang: true } } } });
+    const existing = await prisma.kendaraanService.findFirst({
+      where: { id: serviceId, kendaraan_id: id },
+      select: {
+        ...pilihKolom('kendaraan-service', { id: true }),
+        kendaraan: { select: { id: true, plate: true, merk: true, tipe: true, nama_barang: true } },
+      },
+    });
     if (!existing) return res.status(404).json({ message: 'Riwayat service tidak ditemukan.' });
 
     const row = await prisma.kendaraanService.update({
@@ -432,11 +639,21 @@ router.put('/:id/services/:serviceId/invoice', requireRole(ADMIN_ROLES), async (
       ...SERVICE_RESPONSE,
     });
     await touchVehicle(id, req.user.id);
-    const sesudah = await prisma.kendaraanService.findUnique({ where: { id: serviceId }, select: pilihKolom('kendaraan-service') });
-    await catat(req, { modul: 'kendaraan', aksi: 'service-ubah', ref: refKendaraan(existing.kendaraan), bandingkanDengan: { modul: 'kendaraan-service', sebelum: existing, sesudah }, keterangan: `Invoice service tanggal ${row.tanggal_service.toISOString().slice(0, 10)}.` });
+    const sesudah = await prisma.kendaraanService.findUnique({
+      where: { id: serviceId },
+      select: pilihKolom('kendaraan-service'),
+    });
+    await catat(req, {
+      modul: 'kendaraan',
+      aksi: 'service-ubah',
+      ref: refKendaraan(existing.kendaraan),
+      bandingkanDengan: { modul: 'kendaraan-service', sebelum: existing, sesudah },
+      keterangan: `Invoice service tanggal ${row.tanggal_service.toISOString().slice(0, 10)}.`,
+    });
     res.json({ data: serializeService(row) });
   } catch (err) {
-    if (err.code === 'P2025') return res.status(404).json({ message: 'Riwayat service tidak ditemukan.' });
+    if (err.code === 'P2025')
+      return res.status(404).json({ message: 'Riwayat service tidak ditemukan.' });
     logger.error('PUT invoice riwayat service gagal', { error: err });
     res.status(500).json({ message: 'Gagal menyimpan invoice service.' });
   }
@@ -447,11 +664,25 @@ router.delete('/:id/services/:serviceId', requireRole(ADMIN_ROLES), async (req, 
     const id = parseId(req.params.id);
     const serviceId = parseId(req.params.serviceId);
     if (!id || !serviceId) return res.status(400).json({ message: 'ID tidak valid.' });
-    const sebelum = await prisma.kendaraanService.findFirst({ where: { id: serviceId, kendaraan_id: id }, select: { ...pilihKolom('kendaraan-service'), kendaraan: { select: { id: true, plate: true, merk: true, tipe: true, nama_barang: true } } } });
-    const { count } = await prisma.kendaraanService.deleteMany({ where: { id: serviceId, kendaraan_id: id } });
+    const sebelum = await prisma.kendaraanService.findFirst({
+      where: { id: serviceId, kendaraan_id: id },
+      select: {
+        ...pilihKolom('kendaraan-service'),
+        kendaraan: { select: { id: true, plate: true, merk: true, tipe: true, nama_barang: true } },
+      },
+    });
+    const { count } = await prisma.kendaraanService.deleteMany({
+      where: { id: serviceId, kendaraan_id: id },
+    });
     if (!count) return res.status(404).json({ message: 'Riwayat service tidak ditemukan.' });
     await touchVehicle(id, req.user.id);
-    if (sebelum) await catat(req, { modul: 'kendaraan', aksi: 'service-hapus', ref: refKendaraan(sebelum.kendaraan), perubahan: ringkas('kendaraan-service', sebelum, 'dari') });
+    if (sebelum)
+      await catat(req, {
+        modul: 'kendaraan',
+        aksi: 'service-hapus',
+        ref: refKendaraan(sebelum.kendaraan),
+        perubahan: ringkas('kendaraan-service', sebelum, 'dari'),
+      });
     res.json({ message: 'Riwayat service berhasil dihapus.' });
   } catch (err) {
     logger.error('DELETE riwayat service gagal', { error: err });

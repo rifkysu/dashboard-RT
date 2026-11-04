@@ -17,6 +17,9 @@ export default function useLive(topics, onChange) {
       clearTimeout(timer);
       timer = setTimeout(() => cbRef.current(), 400);
     });
-    return () => { clearTimeout(timer); unsubscribe(); };
+    return () => {
+      clearTimeout(timer);
+      unsubscribe();
+    };
   }, [key]);
 }

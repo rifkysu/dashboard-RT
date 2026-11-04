@@ -44,4 +44,6 @@
   overflow: hidden;
   flex-shrink: 0;
 }
-html:not(.icons-ready) .material-symbols-outlined { color: transparent !important; }
+html:not(.icons-ready) .material-symbols-outlined {
+  color: transparent !important;
+}

@@ -1,0 +1,10 @@
+node_modules/
+**/dist/
+**/public/
+backend/uploads/
+backend/logs/
+foto ruang rapat/
+dok/
+docs/
+*.md
+*.json

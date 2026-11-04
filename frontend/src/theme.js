@@ -5,11 +5,17 @@
 const KEY = 'tema';
 
 export function readTheme() {
-  try { return localStorage.getItem(KEY) === 'dark' ? 'dark' : 'light'; } catch { return 'light'; }
+  try {
+    return localStorage.getItem(KEY) === 'dark' ? 'dark' : 'light';
+  } catch {
+    return 'light';
+  }
 }
 
 export function saveTheme(theme) {
-  try { localStorage.setItem(KEY, theme); } catch {}
+  try {
+    localStorage.setItem(KEY, theme);
+  } catch {}
 }
 
 export function applyTheme(theme) {

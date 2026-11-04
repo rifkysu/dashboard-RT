@@ -8,6 +8,11 @@ export default function SlideTransition({ index, children, className = '' }) {
   const [state, setState] = useState({ index, dir: '' });
   // Arah dihitung saat index berubah dan disimpan di state (bukan ref), supaya kelas animasinya
   // tidak hilang di render berikutnya (mis. saat mengetik) lalu memutus animasi di tengah jalan.
-  if (state.index !== index) setState({ index, dir: index > state.index ? 'slide-in-next' : 'slide-in-prev' });
-  return <div key={index} className={`${state.dir} ${className}`}>{children}</div>;
+  if (state.index !== index)
+    setState({ index, dir: index > state.index ? 'slide-in-next' : 'slide-in-prev' });
+  return (
+    <div key={index} className={`${state.dir} ${className}`}>
+      {children}
+    </div>
+  );
 }

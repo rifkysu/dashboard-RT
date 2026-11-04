@@ -12,7 +12,12 @@ export default defineConfig({
         // Library (React, router, axios) dipisah dari kode aplikasi: jarang berubah, jadi tetap
         // tersimpan di cache browser walau aplikasi di-update -> unduhan setelah deploy lebih kecil.
         codeSplitting: {
-          groups: [{ name: 'vendor', test: /node_modules[\\/](react|react-dom|react-router|react-router-dom|scheduler|axios)[\\/]/ }],
+          groups: [
+            {
+              name: 'vendor',
+              test: /node_modules[\\/](react|react-dom|react-router|react-router-dom|scheduler|axios)[\\/]/,
+            },
+          ],
         },
       },
     },

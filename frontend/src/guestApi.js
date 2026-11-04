@@ -6,8 +6,19 @@ import axios from 'axios';
 export const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api';
 export const GUEST_TOKEN_KEY = 'guestToken';
 
-export const getGuestToken = () => { try { return localStorage.getItem(GUEST_TOKEN_KEY); } catch { return null; } };
-export const setGuestToken = (t) => { try { if (t) localStorage.setItem(GUEST_TOKEN_KEY, t); else localStorage.removeItem(GUEST_TOKEN_KEY); } catch {} };
+export const getGuestToken = () => {
+  try {
+    return localStorage.getItem(GUEST_TOKEN_KEY);
+  } catch {
+    return null;
+  }
+};
+export const setGuestToken = (t) => {
+  try {
+    if (t) localStorage.setItem(GUEST_TOKEN_KEY, t);
+    else localStorage.removeItem(GUEST_TOKEN_KEY);
+  } catch {}
+};
 
 // Tombol "Login dengan Google" cukup membuka alamat ini (redirect penuh ke Google, lalu kembali ke landing page).
 export const googleLoginUrl = `${API_URL}/auth/google`;

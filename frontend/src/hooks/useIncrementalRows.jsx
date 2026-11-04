@@ -13,9 +13,12 @@ export default function useIncrementalRows(rows, step = 50) {
   useEffect(() => {
     const el = sentinelRef.current;
     if (!hasMore || !el || typeof IntersectionObserver === 'undefined') return undefined;
-    const io = new IntersectionObserver((entries) => {
-      if (entries.some((e) => e.isIntersecting)) setLimit((l) => l + step);
-    }, { rootMargin: '600px 0px' });
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) setLimit((l) => l + step);
+      },
+      { rootMargin: '600px 0px' },
+    );
     io.observe(el);
     return () => io.disconnect();
   }, [hasMore, limit, step]);
@@ -24,16 +27,21 @@ export default function useIncrementalRows(rows, step = 50) {
   const shown = hasMore ? rows.slice(0, limit) : rows;
 
   // Baris penutup tabel: memicu muat berikutnya saat terlihat; tombol sebagai cadangan.
-  const moreRow = (colSpan) => (hasMore ? (
-    <tr ref={sentinelRef}>
-      <td colSpan={colSpan} className="py-3 text-center text-xs text-slate-500">
-        Menampilkan {limit} dari {total} baris.{' '}
-        <button type="button" onClick={showMore} className="ml-1 px-3 py-1 rounded-lg border border-slate-200 hover:bg-slate-50 font-semibold text-slate-700">
-          Tampilkan {Math.min(step, total - limit)} lagi
-        </button>
-      </td>
-    </tr>
-  ) : null);
+  const moreRow = (colSpan) =>
+    hasMore ? (
+      <tr ref={sentinelRef}>
+        <td colSpan={colSpan} className="py-3 text-center text-xs text-slate-500">
+          Menampilkan {limit} dari {total} baris.{' '}
+          <button
+            type="button"
+            onClick={showMore}
+            className="ml-1 px-3 py-1 rounded-lg border border-slate-200 hover:bg-slate-50 font-semibold text-slate-700"
+          >
+            Tampilkan {Math.min(step, total - limit)} lagi
+          </button>
+        </td>
+      </tr>
+    ) : null;
 
   return { shown, moreRow };
 }

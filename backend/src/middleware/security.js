@@ -53,7 +53,9 @@ function createSseLimiter({
     const ip = req.ip || req.socket.remoteAddress || 'unknown';
     const count = perIp.get(ip) || 0;
     if (count >= maxPerIp || total >= maxTotal) {
-      return res.status(429).json({ message: 'Terlalu banyak koneksi live. Tutup beberapa tab lalu coba lagi.' });
+      return res
+        .status(429)
+        .json({ message: 'Terlalu banyak koneksi live. Tutup beberapa tab lalu coba lagi.' });
     }
     perIp.set(ip, count + 1);
     total += 1;
@@ -63,7 +65,8 @@ function createSseLimiter({
       released = true;
       total -= 1;
       const left = (perIp.get(ip) || 1) - 1;
-      if (left > 0) perIp.set(ip, left); else perIp.delete(ip);
+      if (left > 0) perIp.set(ip, left);
+      else perIp.delete(ip);
     });
     next();
   };
@@ -77,7 +80,10 @@ function requestHardening(req, res, next) {
   res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
   res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
   res.setHeader('Cross-Origin-Resource-Policy', 'same-origin');
-  res.setHeader('Content-Security-Policy', "default-src 'self'; frame-ancestors 'none'; base-uri 'self'; object-src 'none'");
+  res.setHeader(
+    'Content-Security-Policy',
+    "default-src 'self'; frame-ancestors 'none'; base-uri 'self'; object-src 'none'",
+  );
   next();
 }
 

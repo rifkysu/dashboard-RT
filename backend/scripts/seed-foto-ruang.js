@@ -38,8 +38,14 @@ const DATA = {
   // Dari link dokumentasi di spreadsheet data ruang rapat (Google Drive tiap satuan kerja).
   'Ruang Rapat Biro Perencanaan': {
     foto: [
-      ['biro-perencanaan-1.jpeg', 'Meja rapat panjang dengan kursi biru & mikrofon meja, layar TV di ujung ruangan'],
-      ['biro-perencanaan-2.jpeg', 'Ruangan memanjang berdinding kaca dengan deretan kursi tamu merah'],
+      [
+        'biro-perencanaan-1.jpeg',
+        'Meja rapat panjang dengan kursi biru & mikrofon meja, layar TV di ujung ruangan',
+      ],
+      [
+        'biro-perencanaan-2.jpeg',
+        'Ruangan memanjang berdinding kaca dengan deretan kursi tamu merah',
+      ],
       ['biro-perencanaan-3.jpeg', 'Meja rapat utama menghadap layar presentasi'],
     ],
   },
@@ -58,13 +64,19 @@ const DATA = {
     ],
   },
   'Ruang Rapat Dalam Biro Kerja Sama': {
-    foto: [['kerja-sama-dalam-1.jpeg', 'Meja rapat putih dengan mikrofon & layar video conference']],
+    foto: [
+      ['kerja-sama-dalam-1.jpeg', 'Meja rapat putih dengan mikrofon & layar video conference'],
+    ],
   },
   'Ruang Rapat Luar Biro Kerja Sama': {
-    foto: [['kerja-sama-luar-1.jpeg', 'Meja rapat memanjang dengan mikrofon & layar di ujung ruangan']],
+    foto: [
+      ['kerja-sama-luar-1.jpeg', 'Meja rapat memanjang dengan mikrofon & layar di ujung ruangan'],
+    ],
   },
   'Ruang Rapat Pimpinan PPSDM Ketenagakerjaan': {
-    foto: [['ppsdm-pimpinan-1.jpeg', 'Meja rapat panjang dengan kursi oranye, layar TV & papan tulis']],
+    foto: [
+      ['ppsdm-pimpinan-1.jpeg', 'Meja rapat panjang dengan kursi oranye, layar TV & papan tulis'],
+    ],
   },
   'Ruang Rapat Kolaborasi PPSDM Ketenagakerjaan': {
     foto: [['ppsdm-kolaborasi-1.jpeg', 'Meja tata letak U berlapis kain hitam menghadap layar TV']],
@@ -87,11 +99,16 @@ const DATA = {
   try {
     ensureUploadRoot();
     for (const [room, { foto }] of Object.entries(DATA)) {
-      if (await prisma.ruangFoto.count({ where: { room } })) { console.log(`- ${room}: sudah ada foto, dilewati.`); continue; }
+      if (await prisma.ruangFoto.count({ where: { room } })) {
+        console.log(`- ${room}: sudah ada foto, dilewati.`);
+        continue;
+      }
       for (const [i, [file, caption]] of foto.entries()) {
         const dataUrl = `data:image/jpeg;base64,${fs.readFileSync(path.join(SEED_DIR, file)).toString('base64')}`;
         const file_path = await saveDataUrl(dataUrl, file, 'ruang-foto');
-        await prisma.ruangFoto.create({ data: { room, caption, file_path, file_mime: 'image/jpeg', sort_order: i } });
+        await prisma.ruangFoto.create({
+          data: { room, caption, file_path, file_mime: 'image/jpeg', sort_order: i },
+        });
       }
       console.log(`+ ${room}: ${foto.length} foto ditambahkan.`);
     }

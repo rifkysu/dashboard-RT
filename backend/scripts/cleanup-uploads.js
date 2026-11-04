@@ -16,8 +16,19 @@ const BACKEND_ROOT = path.resolve(__dirname, '..');
 const ORPHAN_DIR = '_orphaned';
 
 const PATH_COLUMNS = {
-  pemeliharaan: ['request_document_file_path', 'stage1_boq_file_path', 'stage1_document_file_path', 'stage2_invoice_document_file_path'],
-  pengadaan: ['request_document_file_path', 'stage2_invoice_document_file_path', 'stage2_invoice_file_path', 'stage2_payment_proof_file_path', 'stage3_final_document_file_path'],
+  pemeliharaan: [
+    'request_document_file_path',
+    'stage1_boq_file_path',
+    'stage1_document_file_path',
+    'stage2_invoice_document_file_path',
+  ],
+  pengadaan: [
+    'request_document_file_path',
+    'stage2_invoice_document_file_path',
+    'stage2_invoice_file_path',
+    'stage2_payment_proof_file_path',
+    'stage3_final_document_file_path',
+  ],
   kendaraan: ['bpkb_document_file_path', 'stnk_document_file_path'],
   kendaraanService: ['invoice_document_file_path'],
   ruangRapat: ['surat_file_path'],
@@ -43,7 +54,9 @@ async function referencedFiles() {
         if (!row[c]) continue;
         try {
           for (const item of JSON.parse(row[c])) if (item?.path) refs.add(normalize(item.path));
-        } catch { /* JSON rusak -> abaikan baris ini */ }
+        } catch {
+          /* JSON rusak -> abaikan baris ini */
+        }
       }
     }
   }
@@ -74,15 +87,23 @@ async function main() {
 
   console.log(`File di uploads        : ${files.length}`);
   console.log(`Direferensikan database: ${files.length - orphans.length}`);
-  console.log(`File yatim             : ${orphans.length} (${(bytes / 1024 / 1024).toFixed(1)} MB)`);
+  console.log(
+    `File yatim             : ${orphans.length} (${(bytes / 1024 / 1024).toFixed(1)} MB)`,
+  );
 
   if (!orphans.length) return;
   if (!apply) {
-    console.log('\nMode laporan (dry-run). Jalankan dengan "-- --apply" untuk memindahkan file yatim ke uploads/_orphaned/.');
+    console.log(
+      '\nMode laporan (dry-run). Jalankan dengan "-- --apply" untuk memindahkan file yatim ke uploads/_orphaned/.',
+    );
     return;
   }
 
-  const target = path.join(UPLOAD_ROOT, ORPHAN_DIR, new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-'));
+  const target = path.join(
+    UPLOAD_ROOT,
+    ORPHAN_DIR,
+    new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-'),
+  );
   for (const f of orphans) {
     const dest = path.join(target, path.relative(UPLOAD_ROOT, f));
     fs.mkdirSync(path.dirname(dest), { recursive: true });
@@ -92,5 +113,8 @@ async function main() {
 }
 
 main()
-  .catch((err) => { console.error(err); process.exitCode = 1; })
+  .catch((err) => {
+    console.error(err);
+    process.exitCode = 1;
+  })
   .finally(() => prisma.$disconnect());

@@ -7,7 +7,15 @@ const { cacheGet } = require('../responseCache');
 const { createSseLimiter } = require('../middleware/security');
 
 const router = express.Router();
-const MENU_KEYS = ['dashboard', 'pemeliharaan', 'pengadaan', 'kendaraan', 'ruang-rapat', 'landing', 'kiosk'];
+const MENU_KEYS = [
+  'dashboard',
+  'pemeliharaan',
+  'pengadaan',
+  'kendaraan',
+  'ruang-rapat',
+  'landing',
+  'kiosk',
+];
 // Halaman publik (tanpa login) yang status maintenance-nya boleh dibaca siapa saja.
 const PUBLIC_KEYS = ['landing', 'kiosk'];
 
@@ -22,12 +30,27 @@ const broadcastChange = () => bus.emit('change');
 // dibuat publik -- EventSource browser native tidak bisa kirim header
 // Authorization. Data asli tetap lewat GET '/' yang ber-otentikasi.
 router.get('/stream', createSseLimiter(), (req, res) => {
-  res.writeHead(200, { 'Content-Type': 'text/event-stream; charset=utf-8', 'Cache-Control': 'no-cache, no-transform', 'Connection': 'keep-alive' });
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream; charset=utf-8',
+    'Cache-Control': 'no-cache, no-transform',
+    Connection: 'keep-alive',
+  });
   res.write('retry: 3000\n\n');
-  const send = () => { try { res.write(`data: ${Date.now()}\n\n`); } catch {} };
+  const send = () => {
+    try {
+      res.write(`data: ${Date.now()}\n\n`);
+    } catch {}
+  };
   bus.on('change', send);
-  const heartbeat = setInterval(() => { try { res.write(': heartbeat\n\n'); } catch {} }, 25000);
-  req.on('close', () => { clearInterval(heartbeat); bus.off('change', send); });
+  const heartbeat = setInterval(() => {
+    try {
+      res.write(': heartbeat\n\n');
+    } catch {}
+  }, 25000);
+  req.on('close', () => {
+    clearInterval(heartbeat);
+    bus.off('change', send);
+  });
 });
 
 // Status maintenance landing page ('/') harus bisa dibaca pengunjung yang
@@ -45,7 +68,8 @@ async function publicStatus(key, res) {
 router.get('/landing-status', cacheGet(), (req, res) => publicStatus('landing', res));
 // Sama untuk halaman publik lain: GET /maintenance/public-status/kiosk (kiosk /jadwal-rapat).
 router.get('/public-status/:key', cacheGet(), (req, res) => {
-  if (!PUBLIC_KEYS.includes(req.params.key)) return res.status(404).json({ message: 'Halaman tidak dikenal.' });
+  if (!PUBLIC_KEYS.includes(req.params.key))
+    return res.status(404).json({ message: 'Halaman tidak dikenal.' });
   return publicStatus(req.params.key, res);
 });
 
@@ -66,11 +90,18 @@ router.get('/', cacheGet(), async (req, res) => {
 router.put('/:menu_key', requireRole(ADMIN_ROLES), async (req, res) => {
   try {
     const { menu_key } = req.params;
-    if (!MENU_KEYS.includes(menu_key)) return res.status(400).json({ message: 'Menu tidak dikenal.' });
+    if (!MENU_KEYS.includes(menu_key))
+      return res.status(400).json({ message: 'Menu tidak dikenal.' });
 
     const { is_active, message } = req.body;
-    if (is_active !== undefined && typeof is_active !== 'boolean') return res.status(400).json({ message: 'is_active harus boolean.' });
-    if (message !== undefined && message !== null && (typeof message !== 'string' || message.length > 255)) return res.status(400).json({ message: 'Pesan maksimal 255 karakter.' });
+    if (is_active !== undefined && typeof is_active !== 'boolean')
+      return res.status(400).json({ message: 'is_active harus boolean.' });
+    if (
+      message !== undefined &&
+      message !== null &&
+      (typeof message !== 'string' || message.length > 255)
+    )
+      return res.status(400).json({ message: 'Pesan maksimal 255 karakter.' });
 
     const data = { updated_by: req.user.id };
     if (is_active !== undefined) data.is_active = is_active;
@@ -79,7 +110,12 @@ router.put('/:menu_key', requireRole(ADMIN_ROLES), async (req, res) => {
     const row = await prisma.maintenanceMode.upsert({
       where: { menu_key },
       update: data,
-      create: { menu_key, is_active: is_active ?? false, message: message || null, updated_by: req.user.id },
+      create: {
+        menu_key,
+        is_active: is_active ?? false,
+        message: message || null,
+        updated_by: req.user.id,
+      },
     });
     broadcastChange();
     res.json({ data: row });

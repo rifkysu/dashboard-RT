@@ -4,8 +4,19 @@ const passwordHasher = require('../password'); // hash/cek sandi di worker threa
 const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 const prisma = require('../prisma');
-const { requireAuth, forgetUser, ACCOUNT_BANNED, ACCOUNT_BANNED_MESSAGE } = require('../middleware/auth');
-const { createRateLimiter, normalizeEmail, isSafeText, ALLOWED_EMAIL_DOMAIN, isAllowedEmailDomain } = require('../middleware/security');
+const {
+  requireAuth,
+  forgetUser,
+  ACCOUNT_BANNED,
+  ACCOUNT_BANNED_MESSAGE,
+} = require('../middleware/auth');
+const {
+  createRateLimiter,
+  normalizeEmail,
+  isSafeText,
+  ALLOWED_EMAIL_DOMAIN,
+  isAllowedEmailDomain,
+} = require('../middleware/security');
 const { signToken, hashResetToken, createResetToken, createVerifyToken } = require('../token');
 const { isMailConfigured, sendResetPasswordEmail, sendVerifyEmail } = require('../mailer');
 const logger = require('../logger');
@@ -99,11 +110,18 @@ const EMAIL_UNVERIFIED = 'EMAIL_UNVERIFIED';
 // Buat token baru, simpan hash-nya, lalu kirim link. -> true bila email terkirim.
 async function kirimLinkVerifikasi(user) {
   const { rawToken, hash, expires } = createVerifyToken();
-  await prisma.user.update({ where: { id: user.id }, data: { verify_token: hash, verify_token_expires: expires } });
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { verify_token: hash, verify_token_expires: expires },
+  });
   if (!isMailConfigured()) return false;
   try {
     // Token di #fragment: tidak ikut terkirim ke server, jadi tidak tercatat di log Nginx/proxy.
-    await sendVerifyEmail({ to: user.email, nama: user.nama_lengkap, verifyUrl: `${process.env.FRONTEND_URL}/verifikasi-email#token=${rawToken}` });
+    await sendVerifyEmail({
+      to: user.email,
+      nama: user.nama_lengkap,
+      verifyUrl: `${process.env.FRONTEND_URL}/verifikasi-email#token=${rawToken}`,
+    });
     return true;
   } catch (err) {
     logger.error('Kirim email verifikasi gagal', { error: err, user_id: user.id });
@@ -111,13 +129,20 @@ async function kirimLinkVerifikasi(user) {
   }
 }
 
-
 // Hash pembanding untuk email yang tidak terdaftar: bcrypt tetap dijalankan supaya lama
 // respons login sama, sehingga orang tidak bisa menebak email mana yang terdaftar dari waktunya.
 const DUMMY_PASSWORD_HASH = bcrypt.hashSync(crypto.randomBytes(16).toString('hex'), 12);
 
 function sanitizeUser(user) {
-  const { password_hash, reset_token, reset_token_expires, reset_requested_at, verify_token, verify_token_expires, ...rest } = user;
+  const {
+    password_hash,
+    reset_token,
+    reset_token_expires,
+    reset_requested_at,
+    verify_token,
+    verify_token_expires,
+    ...rest
+  } = user;
   return rest;
 }
 
@@ -126,13 +151,23 @@ function sanitizeUser(user) {
 // ---------------------------------------------------------
 router.post('/register', registerLimiter, async (req, res) => {
   try {
-    const { nama_lengkap: rawNama, email: rawEmail, password, no_hp: rawHp, unit_kerja, role } = req.body;
+    const {
+      nama_lengkap: rawNama,
+      email: rawEmail,
+      password,
+      no_hp: rawHp,
+      unit_kerja,
+      role,
+    } = req.body;
     const email = normalizeEmail(rawEmail);
     const nama_lengkap = typeof rawNama === 'string' ? rawNama.trim() : rawNama;
     const no_hp = typeof rawHp === 'string' ? rawHp.replace(/[\s-]/g, '') : rawHp;
 
     if (!isSafeText(nama_lengkap, 150) || nama_lengkap.length < 3 || !NAME_RE.test(nama_lengkap)) {
-      return res.status(400).json({ message: 'Nama lengkap minimal 3 karakter dan hanya boleh berisi huruf, spasi, titik, koma, apostrof, dan tanda hubung.' });
+      return res.status(400).json({
+        message:
+          'Nama lengkap minimal 3 karakter dan hanya boleh berisi huruf, spasi, titik, koma, apostrof, dan tanda hubung.',
+      });
     }
     if (!isSafeText(email, 254) || !EMAIL_RE.test(email)) {
       return res.status(400).json({ message: 'Format email tidak valid.' });
@@ -141,10 +176,14 @@ router.post('/register', registerLimiter, async (req, res) => {
       return res.status(400).json({ message: `Email maksimal ${EMAIL_MAX} karakter.` });
     }
     if (!isAllowedEmailDomain(email)) {
-      return res.status(400).json({ message: `Pendaftaran hanya untuk email kedinasan @${ALLOWED_EMAIL_DOMAIN}.` });
+      return res
+        .status(400)
+        .json({ message: `Pendaftaran hanya untuk email kedinasan @${ALLOWED_EMAIL_DOMAIN}.` });
     }
     if (typeof no_hp !== 'string' || !HP_RE.test(no_hp)) {
-      return res.status(400).json({ message: 'Nomor HP tidak valid (contoh: 081234567890 atau +6281234567890).' });
+      return res
+        .status(400)
+        .json({ message: 'Nomor HP tidak valid (contoh: 081234567890 atau +6281234567890).' });
     }
     if (!UNIT_KERJA.includes(unit_kerja)) {
       return res.status(400).json({ message: 'Unit kerja / bagian wajib dipilih.' });
@@ -161,12 +200,16 @@ router.post('/register', registerLimiter, async (req, res) => {
       });
     }
 
-    const existing = await prisma.user.findFirst({ where: emailWhere(email), select: { id: true, email_verified_at: true, is_active: true, role: true } });
+    const existing = await prisma.user.findFirst({
+      where: emailWhere(email),
+      select: { id: true, email_verified_at: true, is_active: true, role: true },
+    });
     // Email sudah dipakai akun yang belum diverifikasi (mis. didaftarkan orang lain): pemilik asli tetap bisa
     // mendaftar -- data & kata sandi akun tertunda itu diganti, dan link verifikasi baru dikirim ke kotak masuk
     // pemilik email. Pendaftar palsu tidak pernah bisa memakainya karena tidak menerima link-nya.
     // Akun yang sudah diverifikasi, di-ban, atau sudah diberi role lain oleh admin tidak disentuh.
-    const timpa = existing && !existing.email_verified_at && existing.is_active && existing.role === 'karyawan';
+    const timpa =
+      existing && !existing.email_verified_at && existing.is_active && existing.role === 'karyawan';
     if (existing && !timpa) {
       return res.status(409).json({ message: 'Email sudah terdaftar. Silakan login.' });
     }
@@ -174,13 +217,21 @@ router.post('/register', registerLimiter, async (req, res) => {
     const password_hash = await passwordHasher.hash(password, 12);
     const data = { nama_lengkap, password_hash, no_hp, unit_kerja, role, email_verified_at: null };
     const user = timpa
-      ? await prisma.user.update({ where: { id: existing.id }, data: { ...data, token_version: { increment: 1 } } })
+      ? await prisma.user.update({
+          where: { id: existing.id },
+          data: { ...data, token_version: { increment: 1 } },
+        })
       : await prisma.user.create({ data: { ...data, email } });
 
     // Sengaja TIDAK mengembalikan token: akun baru bisa login setelah email diverifikasi.
     const terkirim = await kirimLinkVerifikasi(user);
-    await catat(req, { modul: 'akun', aksi: timpa ? 'daftar-ulang' : 'daftar', ref: { id: user.id, kode: user.email, label: user.nama_lengkap }, aktor: aktorAkun(user),
-      keterangan: `${timpa ? 'Mendaftar ulang email yang belum diverifikasi (data akun tertunda diganti). ' : ''}${terkirim ? 'Link verifikasi dikirim ke email.' : 'Email verifikasi belum terkirim; menunggu verifikasi admin.'}` });
+    await catat(req, {
+      modul: 'akun',
+      aksi: timpa ? 'daftar-ulang' : 'daftar',
+      ref: { id: user.id, kode: user.email, label: user.nama_lengkap },
+      aktor: aktorAkun(user),
+      keterangan: `${timpa ? 'Mendaftar ulang email yang belum diverifikasi (data akun tertunda diganti). ' : ''}${terkirim ? 'Link verifikasi dikirim ke email.' : 'Email verifikasi belum terkirim; menunggu verifikasi admin.'}`,
+    });
     res.status(201).json({
       verify: terkirim ? 'email' : 'admin',
       email: user.email,
@@ -190,7 +241,8 @@ router.post('/register', registerLimiter, async (req, res) => {
     });
   } catch (err) {
     // Dua pendaftaran bersamaan dengan email sama (mis. klik Daftar dua kali) -> ditahan UNIQUE.
-    if (err.code === 'P2002') return res.status(409).json({ message: 'Email sudah terdaftar. Silakan login.' });
+    if (err.code === 'P2002')
+      return res.status(409).json({ message: 'Email sudah terdaftar. Silakan login.' });
     console.error(err);
     res.status(500).json({ message: 'Terjadi kesalahan server saat mendaftar.' });
   }
@@ -205,7 +257,12 @@ router.post('/login', loginIpLimiter, loginLimiter, async (req, res) => {
     const { password } = req.body;
     // "Ingat saya": hanya boolean true yang dihitung (string/angka/objek = tidak diingat).
     const remember = req.body.remember === true;
-    if (typeof email !== 'string' || email.length > 254 || typeof password !== 'string' || password.length > 128) {
+    if (
+      typeof email !== 'string' ||
+      email.length > 254 ||
+      typeof password !== 'string' ||
+      password.length > 128
+    ) {
       return res.status(400).json({ message: 'Format login tidak valid.' });
     }
     if (!email || !password) {
@@ -217,7 +274,10 @@ router.post('/login', loginIpLimiter, loginLimiter, async (req, res) => {
 
     const user = await prisma.user.findFirst({ where: emailWhere(email) });
 
-    const match = await passwordHasher.compare(password, user?.password_hash || DUMMY_PASSWORD_HASH);
+    const match = await passwordHasher.compare(
+      password,
+      user?.password_hash || DUMMY_PASSWORD_HASH,
+    );
     if (!user || !user.password_hash || !match) {
       return res.status(401).json({ message: 'Email atau kata sandi salah.' });
     }
@@ -235,7 +295,10 @@ router.post('/login', loginIpLimiter, loginLimiter, async (req, res) => {
       });
     }
 
-    const updated = await prisma.user.update({ where: { id: user.id }, data: { last_login_at: new Date() } });
+    const updated = await prisma.user.update({
+      where: { id: user.id },
+      data: { last_login_at: new Date() },
+    });
     const token = signToken(updated, { remember });
     res.json({ token, user: sanitizeUser(updated), remember });
   } catch (err) {
@@ -258,24 +321,39 @@ router.post('/verify-email', verifyEmailLimiter, async (req, res) => {
       return res.status(400).json({ message: 'Link verifikasi tidak valid.' });
     }
     if (typeof password !== 'string' || !password || password.length > 128) {
-      return res.status(400).json({ message: 'Masukkan kata sandi yang Anda buat saat mendaftar.' });
+      return res
+        .status(400)
+        .json({ message: 'Masukkan kata sandi yang Anda buat saat mendaftar.' });
     }
     const user = await prisma.user.findFirst({
       where: { verify_token: hashResetToken(token), verify_token_expires: { gt: new Date() } },
       select: { id: true, email: true, nama_lengkap: true, role: true, password_hash: true },
     });
     if (!user) {
-      return res.status(400).json({ message: 'Link verifikasi tidak valid atau sudah kedaluwarsa. Login untuk mengirim ulang link-nya.' });
+      return res.status(400).json({
+        message:
+          'Link verifikasi tidak valid atau sudah kedaluwarsa. Login untuk mengirim ulang link-nya.',
+      });
     }
     if (!user.password_hash || !(await passwordHasher.compare(password, user.password_hash))) {
       return res.status(400).json({
         code: PASSWORD_MISMATCH,
-        message: 'Kata sandi tidak cocok dengan pendaftaran terakhir untuk email ini. Kalau Anda yakin sandinya benar, berarti '
-          + 'email Anda didaftarkan ulang orang lain: daftar ulang dengan kata sandi Anda sendiri, lalu buka link verifikasi terbaru di email.',
+        message:
+          'Kata sandi tidak cocok dengan pendaftaran terakhir untuk email ini. Kalau Anda yakin sandinya benar, berarti ' +
+          'email Anda didaftarkan ulang orang lain: daftar ulang dengan kata sandi Anda sendiri, lalu buka link verifikasi terbaru di email.',
       });
     }
-    await prisma.user.update({ where: { id: user.id }, data: { email_verified_at: new Date(), verify_token: null, verify_token_expires: null } });
-    await catat(req, { modul: 'akun', aksi: 'verifikasi-email', ref: { id: user.id, kode: user.email, label: user.nama_lengkap }, aktor: aktorAkun(user), keterangan: 'Email diverifikasi lewat link di email.' });
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { email_verified_at: new Date(), verify_token: null, verify_token_expires: null },
+    });
+    await catat(req, {
+      modul: 'akun',
+      aksi: 'verifikasi-email',
+      ref: { id: user.id, kode: user.email, label: user.nama_lengkap },
+      aktor: aktorAkun(user),
+      keterangan: 'Email diverifikasi lewat link di email.',
+    });
     res.json({ message: 'Email berhasil diverifikasi. Silakan login.', email: user.email });
   } catch (err) {
     console.error(err);
@@ -294,12 +372,27 @@ router.post('/resend-verification', registerLimiter, resendVerifyLimiter, async 
     if (typeof email !== 'string' || email.length > 254 || !EMAIL_RE.test(email)) {
       return res.status(400).json({ message: 'Format email tidak valid.' });
     }
-    const user = await prisma.user.findFirst({ where: emailWhere(email), select: { id: true, email: true, nama_lengkap: true, is_active: true, email_verified_at: true } });
-    res.json({ message: 'Kalau email itu terdaftar dan belum diverifikasi, link verifikasi baru sudah dikirim. Periksa juga folder Spam.' });
-    if (user && user.is_active && !user.email_verified_at) kirimLinkVerifikasi(user).catch(() => {});
+    const user = await prisma.user.findFirst({
+      where: emailWhere(email),
+      select: {
+        id: true,
+        email: true,
+        nama_lengkap: true,
+        is_active: true,
+        email_verified_at: true,
+      },
+    });
+    res.json({
+      message:
+        'Kalau email itu terdaftar dan belum diverifikasi, link verifikasi baru sudah dikirim. Periksa juga folder Spam.',
+    });
+    if (user && user.is_active && !user.email_verified_at)
+      kirimLinkVerifikasi(user).catch(() => {});
   } catch (err) {
     console.error(err);
-    res.status(500).json({ message: 'Terjadi kesalahan server saat mengirim ulang link verifikasi.' });
+    res
+      .status(500)
+      .json({ message: 'Terjadi kesalahan server saat mengirim ulang link verifikasi.' });
   }
 });
 
@@ -318,31 +411,56 @@ router.post('/resend-verification', registerLimiter, resendVerifyLimiter, async 
 router.post('/forgot-password', forgotPasswordLimiter, async (req, res) => {
   try {
     const email = normalizeEmail(req.body.email);
-    if (typeof email !== 'string' || email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    if (
+      typeof email !== 'string' ||
+      email.length > 254 ||
+      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
+    ) {
       return res.status(400).json({ message: 'Format email tidak valid.' });
     }
 
-    const user = await prisma.user.findFirst({ where: { ...emailWhere(email), is_active: true }, select: { id: true, email: true, nama_lengkap: true } });
+    const user = await prisma.user.findFirst({
+      where: { ...emailWhere(email), is_active: true },
+      select: { id: true, email: true, nama_lengkap: true },
+    });
 
     if (!isMailConfigured()) {
-      if (user) await prisma.user.update({ where: { id: user.id }, data: { reset_requested_at: new Date() } });
+      if (user)
+        await prisma.user.update({
+          where: { id: user.id },
+          data: { reset_requested_at: new Date() },
+        });
       return res.json({
-        message: 'Permintaan reset kata sandi diterima. Silakan hubungi Admin Biro Umum untuk mendapatkan link reset kata sandi akun Anda (link berlaku 1 jam).',
+        message:
+          'Permintaan reset kata sandi diterima. Silakan hubungi Admin Biro Umum untuk mendapatkan link reset kata sandi akun Anda (link berlaku 1 jam).',
       });
     }
 
     res.json({
-      message: 'Jika email tersebut terdaftar, link reset kata sandi sudah dikirim ke email itu (berlaku 1 jam). Cek juga folder Spam. Kalau tidak menerima email dalam beberapa menit, hubungi Admin Biro Umum.',
+      message:
+        'Jika email tersebut terdaftar, link reset kata sandi sudah dikirim ke email itu (berlaku 1 jam). Cek juga folder Spam. Kalau tidak menerima email dalam beberapa menit, hubungi Admin Biro Umum.',
     });
 
     if (user) {
       const { rawToken, hash, expires } = createResetToken();
-      prisma.user.update({ where: { id: user.id }, data: { reset_token: hash, reset_token_expires: expires } })
-        .then(() => sendResetPasswordEmail({ to: user.email, nama: user.nama_lengkap, resetUrl: `${process.env.FRONTEND_URL}/reset-password#token=${rawToken}` }))
+      prisma.user
+        .update({
+          where: { id: user.id },
+          data: { reset_token: hash, reset_token_expires: expires },
+        })
+        .then(() =>
+          sendResetPasswordEmail({
+            to: user.email,
+            nama: user.nama_lengkap,
+            resetUrl: `${process.env.FRONTEND_URL}/reset-password#token=${rawToken}`,
+          }),
+        )
         .catch(async (err) => {
           // Email gagal terkirim -> jangan sampai pengguna terlantar: masuk ke notifikasi admin.
           logger.error('Kirim email reset password gagal', { error: err, user_id: user.id });
-          await prisma.user.update({ where: { id: user.id }, data: { reset_requested_at: new Date() } }).catch(() => {});
+          await prisma.user
+            .update({ where: { id: user.id }, data: { reset_requested_at: new Date() } })
+            .catch(() => {});
         });
     }
   } catch (err) {
@@ -368,14 +486,22 @@ router.post('/reset-password', resetPasswordLimiter, async (req, res) => {
       where: { reset_token: hashResetToken(token), reset_token_expires: { gt: new Date() } },
     });
     if (!user) {
-      return res.status(400).json({ message: 'Token reset tidak valid atau sudah kedaluwarsa. Silakan minta link reset baru.' });
+      return res.status(400).json({
+        message: 'Token reset tidak valid atau sudah kedaluwarsa. Silakan minta link reset baru.',
+      });
     }
 
     const password_hash = await passwordHasher.hash(password, 12);
     await prisma.user.update({
       where: { id: user.id },
       // token_version naik -> semua sesi lama (mis. milik orang yang mencuri sandi) langsung diputus.
-      data: { password_hash, reset_token: null, reset_token_expires: null, reset_requested_at: null, token_version: { increment: 1 } },
+      data: {
+        password_hash,
+        reset_token: null,
+        reset_token_expires: null,
+        reset_requested_at: null,
+        token_version: { increment: 1 },
+      },
     });
 
     res.json({ message: 'Kata sandi berhasil diubah. Silakan login dengan kata sandi baru.' });
@@ -392,7 +518,10 @@ router.post('/reset-password', resetPasswordLimiter, async (req, res) => {
 // ---------------------------------------------------------
 router.post('/logout', requireAuth, async (req, res) => {
   try {
-    await prisma.user.update({ where: { id: req.user.id }, data: { token_version: { increment: 1 } } });
+    await prisma.user.update({
+      where: { id: req.user.id },
+      data: { token_version: { increment: 1 } },
+    });
     forgetUser(req.user.id); // logout tidak di-broadcast (lihat index.js) -> token lama langsung ditolak
     res.json({ message: 'Berhasil logout.' });
   } catch (err) {
@@ -406,7 +535,19 @@ router.post('/logout', requireAuth, async (req, res) => {
 // ---------------------------------------------------------
 router.get('/me', requireAuth, async (req, res) => {
   try {
-    const user = await prisma.user.findUnique({ where: { id: Number(req.user.id) }, select: { id: true, nama_lengkap: true, email: true, no_hp: true, unit_kerja: true, role: true, sso_provider: true, created_at: true } });
+    const user = await prisma.user.findUnique({
+      where: { id: Number(req.user.id) },
+      select: {
+        id: true,
+        nama_lengkap: true,
+        email: true,
+        no_hp: true,
+        unit_kerja: true,
+        role: true,
+        sso_provider: true,
+        created_at: true,
+      },
+    });
     if (!user) {
       return res.status(404).json({ message: 'User tidak ditemukan.' });
     }
@@ -428,16 +569,30 @@ router.put('/me', requireAuth, async (req, res) => {
     const no_hp = typeof rawHp === 'string' ? rawHp.replace(/[\s-]/g, '') : rawHp;
 
     if (!isSafeText(nama_lengkap, 150) || nama_lengkap.length < 3 || !NAME_RE.test(nama_lengkap)) {
-      return res.status(400).json({ message: 'Nama lengkap minimal 3 karakter dan hanya boleh berisi huruf, spasi, titik, koma, apostrof, dan tanda hubung.' });
+      return res.status(400).json({
+        message:
+          'Nama lengkap minimal 3 karakter dan hanya boleh berisi huruf, spasi, titik, koma, apostrof, dan tanda hubung.',
+      });
     }
     if (typeof no_hp !== 'string' || !HP_RE.test(no_hp)) {
-      return res.status(400).json({ message: 'Nomor HP tidak valid (contoh: 081234567890 atau +6281234567890).' });
+      return res
+        .status(400)
+        .json({ message: 'Nomor HP tidak valid (contoh: 081234567890 atau +6281234567890).' });
     }
 
     const user = await prisma.user.update({
       where: { id: Number(req.user.id) },
       data: { nama_lengkap, no_hp },
-      select: { id: true, nama_lengkap: true, email: true, no_hp: true, unit_kerja: true, role: true, sso_provider: true, created_at: true },
+      select: {
+        id: true,
+        nama_lengkap: true,
+        email: true,
+        no_hp: true,
+        unit_kerja: true,
+        role: true,
+        sso_provider: true,
+        created_at: true,
+      },
     });
     logger.info('Profil akun diubah', { user_id: user.id });
     res.json({ message: 'Profil berhasil disimpan.', user });

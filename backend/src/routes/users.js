@@ -51,7 +51,9 @@ router.get('/', async (req, res) => {
 // badge notifikasi menu "Akun & Akses" di sidebar admin.
 router.get('/reset-requests/count', async (req, res) => {
   try {
-    const count = await prisma.user.count({ where: { reset_requested_at: { not: null }, is_active: true } });
+    const count = await prisma.user.count({
+      where: { reset_requested_at: { not: null }, is_active: true },
+    });
     res.json({ count });
   } catch (err) {
     logger.error('GET reset request count gagal', { error: err });
@@ -69,17 +71,41 @@ router.put('/:id/status', async (req, res) => {
     const id = Number(req.params.id);
     if (!Number.isInteger(id)) return res.status(400).json({ message: 'ID akun tidak valid.' });
     const { is_active } = req.body;
-    if (typeof is_active !== 'boolean') return res.status(400).json({ message: 'is_active harus boolean.' });
-    if (id === req.user.id) return res.status(400).json({ message: 'Tidak bisa mem-ban/menonaktifkan akun sendiri.' });
+    if (typeof is_active !== 'boolean')
+      return res.status(400).json({ message: 'is_active harus boolean.' });
+    if (id === req.user.id)
+      return res.status(400).json({ message: 'Tidak bisa mem-ban/menonaktifkan akun sendiri.' });
 
     // Saat di-ban, token_version naik supaya token lama tidak hidup lagi kalau akun nanti diaktifkan ulang.
-    const data = is_active ? { is_active } : { is_active, reset_token: null, reset_token_expires: null, reset_requested_at: null, token_version: { increment: 1 } };
-    const before = await prisma.user.findUnique({ where: { id }, select: { is_active: true, role: true } });
+    const data = is_active
+      ? { is_active }
+      : {
+          is_active,
+          reset_token: null,
+          reset_token_expires: null,
+          reset_requested_at: null,
+          token_version: { increment: 1 },
+        };
+    const before = await prisma.user.findUnique({
+      where: { id },
+      select: { is_active: true, role: true },
+    });
     if (!before) return res.status(404).json({ message: 'Akun tidak ditemukan.' });
     if (!bolehKelola(req, before)) return res.status(403).json({ message: ADMIN_ONLY_MESSAGE });
     const user = await prisma.user.update({ where: { id }, data });
     if (before && before.is_active !== is_active) {
-      await catat(req, { modul: 'akun', aksi: is_active ? 'aktifkan' : 'ban', ref: refAkun(user), perubahan: [{ label: 'Status akun', dari: before.is_active ? 'Aktif' : 'Di-ban', ke: is_active ? 'Aktif' : 'Di-ban' }] });
+      await catat(req, {
+        modul: 'akun',
+        aksi: is_active ? 'aktifkan' : 'ban',
+        ref: refAkun(user),
+        perubahan: [
+          {
+            label: 'Status akun',
+            dari: before.is_active ? 'Aktif' : 'Di-ban',
+            ke: is_active ? 'Aktif' : 'Di-ban',
+          },
+        ],
+      });
     }
     res.json({ data: { id: user.id, is_active: user.is_active } });
   } catch (err) {
@@ -101,18 +127,32 @@ router.put('/:id/role', async (req, res) => {
     if (!Number.isInteger(id)) return res.status(400).json({ message: 'ID akun tidak valid.' });
     const { role } = req.body;
     if (!ROLES.includes(role)) return res.status(400).json({ message: 'Role tidak valid.' });
-    if (id === req.user.id) return res.status(400).json({ message: 'Tidak bisa mengubah role akun sendiri.' });
+    if (id === req.user.id)
+      return res.status(400).json({ message: 'Tidak bisa mengubah role akun sendiri.' });
 
     const target = await prisma.user.findUnique({ where: { id }, select: { role: true } });
     if (!target) return res.status(404).json({ message: 'Akun tidak ditemukan.' });
     if ((role === 'admin' || target.role === 'admin') && req.user.role !== 'admin') {
-      return res.status(403).json({ message: 'Hanya Admin yang bisa memberi atau mencabut role Admin.' });
+      return res
+        .status(403)
+        .json({ message: 'Hanya Admin yang bisa memberi atau mencabut role Admin.' });
     }
     if (target.role === role) return res.json({ data: { id, role } });
 
     const user = await prisma.user.update({ where: { id }, data: { role } });
     logger.info('Role akun diubah', { by: req.user.id, user_id: id, from: target.role, to: role });
-    await catat(req, { modul: 'akun', aksi: 'role', ref: refAkun(user), perubahan: [{ label: 'Role', dari: ROLE_LABEL[target.role] || target.role, ke: ROLE_LABEL[role] || role }] });
+    await catat(req, {
+      modul: 'akun',
+      aksi: 'role',
+      ref: refAkun(user),
+      perubahan: [
+        {
+          label: 'Role',
+          dari: ROLE_LABEL[target.role] || target.role,
+          ke: ROLE_LABEL[role] || role,
+        },
+      ],
+    });
     res.json({ data: { id: user.id, role: user.role } });
   } catch (err) {
     if (err.code === 'P2025') return res.status(404).json({ message: 'Akun tidak ditemukan.' });
@@ -128,14 +168,30 @@ router.post('/:id/reset-link', async (req, res) => {
   try {
     const id = Number(req.params.id);
     if (!Number.isInteger(id)) return res.status(400).json({ message: 'ID akun tidak valid.' });
-    const target = await prisma.user.findUnique({ where: { id }, select: { id: true, is_active: true, nama_lengkap: true, no_hp: true, email: true, role: true } });
+    const target = await prisma.user.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        is_active: true,
+        nama_lengkap: true,
+        no_hp: true,
+        email: true,
+        role: true,
+      },
+    });
     if (!target) return res.status(404).json({ message: 'Akun tidak ditemukan.' });
     if (!bolehKelola(req, target)) return res.status(403).json({ message: ADMIN_ONLY_MESSAGE });
-    if (!target.is_active) return res.status(400).json({ message: 'Akun sedang di-ban. Aktifkan dulu sebelum membuat link reset.' });
+    if (!target.is_active)
+      return res
+        .status(400)
+        .json({ message: 'Akun sedang di-ban. Aktifkan dulu sebelum membuat link reset.' });
 
     const { rawToken, hash, expires } = createResetToken();
     // Permintaan dianggap sudah ditangani begitu admin membuat link-nya.
-    await prisma.user.update({ where: { id }, data: { reset_token: hash, reset_token_expires: expires, reset_requested_at: null } });
+    await prisma.user.update({
+      where: { id },
+      data: { reset_token: hash, reset_token_expires: expires, reset_requested_at: null },
+    });
     // Token di #fragment: tidak ikut terkirim ke server, jadi tidak tercatat di log Nginx/proxy.
     const resetUrl = `${process.env.FRONTEND_URL}/reset-password#token=${rawToken}`;
 
@@ -152,8 +208,23 @@ router.post('/:id/reset-link', async (req, res) => {
         email_error = 'Email gagal dikirim. Kirim link secara manual (Salin / WhatsApp).';
       }
     }
-    await catat(req, { modul: 'akun', aksi: 'link-reset', ref: refAkun(target), keterangan: emailed ? 'Link reset kata sandi dibuat & dikirim ke email pemilik akun.' : 'Link reset kata sandi dibuat (dikirim manual oleh admin).' });
-    res.json({ resetUrl, expires_at: expires, nama_lengkap: target.nama_lengkap, no_hp: target.no_hp, email: target.email, emailed, email_error });
+    await catat(req, {
+      modul: 'akun',
+      aksi: 'link-reset',
+      ref: refAkun(target),
+      keterangan: emailed
+        ? 'Link reset kata sandi dibuat & dikirim ke email pemilik akun.'
+        : 'Link reset kata sandi dibuat (dikirim manual oleh admin).',
+    });
+    res.json({
+      resetUrl,
+      expires_at: expires,
+      nama_lengkap: target.nama_lengkap,
+      no_hp: target.no_hp,
+      email: target.email,
+      emailed,
+      email_error,
+    });
   } catch (err) {
     logger.error('POST user reset-link gagal', { error: err });
     res.status(500).json({ message: 'Gagal membuat link reset password.' });
@@ -166,14 +237,33 @@ router.post('/:id/verify-email', async (req, res) => {
   try {
     const id = Number(req.params.id);
     if (!Number.isInteger(id)) return res.status(400).json({ message: 'ID akun tidak valid.' });
-    const target = await prisma.user.findUnique({ where: { id }, select: { id: true, email_verified_at: true, email: true, nama_lengkap: true, role: true } });
+    const target = await prisma.user.findUnique({
+      where: { id },
+      select: { id: true, email_verified_at: true, email: true, nama_lengkap: true, role: true },
+    });
     if (!target) return res.status(404).json({ message: 'Akun tidak ditemukan.' });
     if (!bolehKelola(req, target)) return res.status(403).json({ message: ADMIN_ONLY_MESSAGE });
-    if (target.email_verified_at) return res.json({ email_verified_at: target.email_verified_at, message: 'Email akun ini sudah terverifikasi.' });
-    const updated = await prisma.user.update({ where: { id }, data: { email_verified_at: new Date(), verify_token: null, verify_token_expires: null }, select: { email_verified_at: true } });
+    if (target.email_verified_at)
+      return res.json({
+        email_verified_at: target.email_verified_at,
+        message: 'Email akun ini sudah terverifikasi.',
+      });
+    const updated = await prisma.user.update({
+      where: { id },
+      data: { email_verified_at: new Date(), verify_token: null, verify_token_expires: null },
+      select: { email_verified_at: true },
+    });
     logger.info('Email akun diverifikasi manual', { user_id: id, by: req.user.id });
-    await catat(req, { modul: 'akun', aksi: 'verifikasi-email', ref: refAkun(target), keterangan: 'Email diverifikasi manual oleh admin (tanpa link email).' });
-    res.json({ email_verified_at: updated.email_verified_at, message: 'Email akun berhasil diverifikasi.' });
+    await catat(req, {
+      modul: 'akun',
+      aksi: 'verifikasi-email',
+      ref: refAkun(target),
+      keterangan: 'Email diverifikasi manual oleh admin (tanpa link email).',
+    });
+    res.json({
+      email_verified_at: updated.email_verified_at,
+      message: 'Email akun berhasil diverifikasi.',
+    });
   } catch (err) {
     logger.error('POST user verify-email gagal', { error: err });
     res.status(500).json({ message: 'Gagal memverifikasi email akun.' });

@@ -6,7 +6,9 @@ const live = require('../live');
 // memori. Diubah lewat menu Settings -> cache langsung dikosongkan (live.onChange).
 const CACHE_MS = 10000;
 let cache = null;
-live.onChange(() => { cache = null; });
+live.onChange(() => {
+  cache = null;
+});
 
 async function maintenanceRow(menuKey) {
   if (!cache || Date.now() - cache.at > CACHE_MS) {
@@ -26,7 +28,8 @@ function requireNotInMaintenance(menuKey) {
       const row = await maintenanceRow(menuKey);
       if (row?.is_active) {
         return res.status(503).json({
-          message: row.message || 'Menu ini sedang dalam mode maintenance. Silakan coba lagi nanti.',
+          message:
+            row.message || 'Menu ini sedang dalam mode maintenance. Silakan coba lagi nanti.',
           maintenance: true,
         });
       }

@@ -14,32 +14,64 @@ export function useBagian(grup) {
   const [params, setParams] = useSearchParams();
   const raw = params.get('bagian');
   const dariRuang = grup.find((g) => g.rooms.includes(params.get('ruang')))?.bagian;
-  const bagian = raw === SEMUA ? '' : grup.some((g) => g.bagian === raw) ? raw : dariRuang ?? grup[0]?.bagian ?? '';
-  const setBagian = (b) => setParams((prev) => {
-    const next = new URLSearchParams(prev);
-    next.set('bagian', b || SEMUA);
-    next.delete('ruang');
-    return next;
-  }, { replace: true, preventScrollReset: true });
-  const rooms = bagian ? grup.find((g) => g.bagian === bagian)?.rooms || [] : grup.flatMap((g) => g.rooms);
+  const bagian =
+    raw === SEMUA
+      ? ''
+      : grup.some((g) => g.bagian === raw)
+        ? raw
+        : (dariRuang ?? grup[0]?.bagian ?? '');
+  const setBagian = (b) =>
+    setParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        next.set('bagian', b || SEMUA);
+        next.delete('ruang');
+        return next;
+      },
+      { replace: true, preventScrollReset: true },
+    );
+  const rooms = bagian
+    ? grup.find((g) => g.bagian === bagian)?.rooms || []
+    : grup.flatMap((g) => g.rooms);
   return [bagian, setBagian, rooms];
 }
 
 // Deretan tombol bagian. dark = untuk latar gelap (kiosk).
 export default function BagianTabs({ grup, value, onChange, dark = false, className = '' }) {
   const total = grup.reduce((n, g) => n + g.rooms.length, 0);
-  const opsi = [{ bagian: '', label: 'Semua bagian', n: total }, ...grup.map((g) => ({ bagian: g.bagian, label: g.bagian, n: g.rooms.length }))];
-  const cls = (on) => (dark
-    ? on ? 'bg-[#e4c27f] text-dinas-ink ring-[#e4c27f]' : 'bg-white/[.06] text-white/75 ring-white/15 hover:bg-white/10 hover:text-white'
-    : on ? 'bg-dinas text-white ring-dinas' : 'bg-dinas-soft text-dinas ring-dinas/15 hover:ring-dinas/40');
+  const opsi = [
+    { bagian: '', label: 'Semua bagian', n: total },
+    ...grup.map((g) => ({ bagian: g.bagian, label: g.bagian, n: g.rooms.length })),
+  ];
+  const cls = (on) =>
+    dark
+      ? on
+        ? 'bg-[#e4c27f] text-dinas-ink ring-[#e4c27f]'
+        : 'bg-white/[.06] text-white/75 ring-white/15 hover:bg-white/10 hover:text-white'
+      : on
+        ? 'bg-dinas text-white ring-dinas'
+        : 'bg-dinas-soft text-dinas ring-dinas/15 hover:ring-dinas/40';
   return (
-    <div className={`flex gap-1.5 overflow-x-auto pb-1 -mx-1 px-1 min-w-0 ${className}`} role="group" aria-label="Pilih bagian / satuan kerja">
+    <div
+      className={`flex gap-1.5 overflow-x-auto pb-1 -mx-1 px-1 min-w-0 ${className}`}
+      role="group"
+      aria-label="Pilih bagian / satuan kerja"
+    >
       {opsi.map((o) => (
-        <button key={o.bagian || SEMUA} type="button" onClick={() => onChange(o.bagian)} aria-pressed={value === o.bagian}
-          className={`shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full ring-1 text-xs font-semibold transition ${cls(value === o.bagian)}`}>
+        <button
+          key={o.bagian || SEMUA}
+          type="button"
+          onClick={() => onChange(o.bagian)}
+          aria-pressed={value === o.bagian}
+          className={`shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full ring-1 text-xs font-semibold transition ${cls(value === o.bagian)}`}
+        >
           {!o.bagian && <span className="material-symbols-outlined text-[15px]">apartment</span>}
           {o.label}
-          <span className={`tabular-nums text-[11px] font-bold px-1.5 rounded-full ${value === o.bagian ? (dark ? 'bg-dinas-ink/15' : 'bg-white/20') : (dark ? 'bg-white/10' : 'bg-dinas/10')}`}>{o.n}</span>
+          <span
+            className={`tabular-nums text-[11px] font-bold px-1.5 rounded-full ${value === o.bagian ? (dark ? 'bg-dinas-ink/15' : 'bg-white/20') : dark ? 'bg-white/10' : 'bg-dinas/10'}`}
+          >
+            {o.n}
+          </span>
         </button>
       ))}
     </div>
@@ -62,7 +94,16 @@ export function RuangOptions({ grup, value }) {
             const d = info?.[r];
             const periode = d?.maintenance ? periodeMaintenance(d) : '';
             const tutup = d?.maintenance && !periode;
-            return <option key={r} value={r} disabled={tutup && r !== value}>{judulRuang(r)}{tutup ? ' — Maintenance (tidak bisa dibooking)' : periode ? ` — Maintenance ${periode}` : ''}</option>;
+            return (
+              <option key={r} value={r} disabled={tutup && r !== value}>
+                {judulRuang(r)}
+                {tutup
+                  ? ' — Maintenance (tidak bisa dibooking)'
+                  : periode
+                    ? ` — Maintenance ${periode}`
+                    : ''}
+              </option>
+            );
           })}
         </optgroup>
       ))}

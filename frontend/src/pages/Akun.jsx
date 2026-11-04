@@ -23,10 +23,25 @@ const avatarTone = {
   kabag: 'bg-violet-100 text-violet-700',
   admin: 'bg-amber-100 text-amber-700',
 };
-const initials = (nama) => String(nama || '?').trim().split(/\s+/).slice(0, 2).map((w) => w[0]).join('').toUpperCase();
+const initials = (nama) =>
+  String(nama || '?')
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((w) => w[0])
+    .join('')
+    .toUpperCase();
 
 function fmt(v) {
-  return v ? new Date(v).toLocaleString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-';
+  return v
+    ? new Date(v).toLocaleString('id-ID', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      })
+    : '-';
 }
 
 // Nomor HP lokal (08xx) -> format internasional untuk link wa.me (628xx).
@@ -50,27 +65,58 @@ export default function Akun() {
   // silent = muat ulang dari sinyal live: tanpa status "memuat" dan tanpa pesan error.
   function load(silent = false) {
     if (silent !== true) setLoading(true);
-    api.get('/users').then((res) => { setData(res.data.data || []); setError(''); })
-      .catch((err) => { if (silent !== true) setError(err.response?.data?.message || 'Gagal memuat daftar akun.'); })
-      .finally(() => { if (silent !== true) setLoading(false); });
+    api
+      .get('/users')
+      .then((res) => {
+        setData(res.data.data || []);
+        setError('');
+      })
+      .catch((err) => {
+        if (silent !== true) setError(err.response?.data?.message || 'Gagal memuat daftar akun.');
+      })
+      .finally(() => {
+        if (silent !== true) setLoading(false);
+      });
   }
   // Bukan admin -> halaman langsung dialihkan ke Dashboard (lihat bawah), jadi jangan minta daftar akun (pasti 403).
-  useEffect(() => { if (isAdmin) load(); }, [isAdmin]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (isAdmin) load();
+  }, [isAdmin]); // eslint-disable-line react-hooks/exhaustive-deps
   // Realtime: akun baru daftar, login, ban/aktifkan, atau minta reset langsung terlihat.
-  useLive('users', () => { if (isAdmin) load(true); });
+  useLive('users', () => {
+    if (isAdmin) load(true);
+  });
 
   async function toggleBan(target) {
     const nextActive = !target.is_active;
     const ok = nextActive
-      ? await confirm({ title: 'Aktifkan kembali akun?', message: `Akun "${target.nama_lengkap}" (${target.email}) akan bisa login dan mengakses sistem lagi.`, confirmText: 'Ya, Aktifkan', tone: 'success', icon: 'how_to_reg' })
-      : await confirm({ title: 'Ban akun ini?', message: `Akun "${target.nama_lengkap}" (${target.email}) langsung keluar dari sistem dan tidak bisa login sampai diaktifkan kembali.`, confirmText: 'Ya, Ban Akun', tone: 'danger', icon: 'block' });
+      ? await confirm({
+          title: 'Aktifkan kembali akun?',
+          message: `Akun "${target.nama_lengkap}" (${target.email}) akan bisa login dan mengakses sistem lagi.`,
+          confirmText: 'Ya, Aktifkan',
+          tone: 'success',
+          icon: 'how_to_reg',
+        })
+      : await confirm({
+          title: 'Ban akun ini?',
+          message: `Akun "${target.nama_lengkap}" (${target.email}) langsung keluar dari sistem dan tidak bisa login sampai diaktifkan kembali.`,
+          confirmText: 'Ya, Ban Akun',
+          tone: 'danger',
+          icon: 'block',
+        });
     if (!ok) return;
     setBusyId(target.id);
     setError('');
     try {
       await api.put(`/users/${target.id}/status`, { is_active: nextActive });
-      setData((current) => current.map((u) => (u.id === target.id ? { ...u, is_active: nextActive } : u)));
-      toast(nextActive ? `Akun ${target.nama_lengkap} diaktifkan kembali.` : `Akun ${target.nama_lengkap} berhasil di-ban.`);
+      setData((current) =>
+        current.map((u) => (u.id === target.id ? { ...u, is_active: nextActive } : u)),
+      );
+      toast(
+        nextActive
+          ? `Akun ${target.nama_lengkap} diaktifkan kembali.`
+          : `Akun ${target.nama_lengkap} berhasil di-ban.`,
+      );
       refreshResetRequests();
     } catch (err) {
       setError(err.response?.data?.message || 'Gagal memperbarui status akun.');
@@ -104,15 +150,33 @@ export default function Akun() {
   }
 
   async function makeResetLink(target) {
-    if (!(await confirm({ title: 'Kirim link reset kata sandi?', message: `Link reset untuk "${target.nama_lengkap}" (${target.email}) berlaku 1 jam. Pastikan permintaan ini benar dari pemilik akun.`, confirmText: 'Ya, Kirim Link', tone: 'info', icon: 'lock_reset' }))) return;
+    if (
+      !(await confirm({
+        title: 'Kirim link reset kata sandi?',
+        message: `Link reset untuk "${target.nama_lengkap}" (${target.email}) berlaku 1 jam. Pastikan permintaan ini benar dari pemilik akun.`,
+        confirmText: 'Ya, Kirim Link',
+        tone: 'info',
+        icon: 'lock_reset',
+      }))
+    )
+      return;
     setBusyId(target.id);
     setError('');
     try {
       const res = await api.post(`/users/${target.id}/reset-link`);
-      setResetLink({ url: res.data.resetUrl, nama: target.nama_lengkap, no_hp: target.no_hp, email: target.email, emailed: res.data.emailed, emailError: res.data.email_error });
+      setResetLink({
+        url: res.data.resetUrl,
+        nama: target.nama_lengkap,
+        no_hp: target.no_hp,
+        email: target.email,
+        emailed: res.data.emailed,
+        emailError: res.data.email_error,
+      });
       setCopied(false);
       // Permintaan dianggap sudah ditangani -> hilangkan penanda & perbarui badge sidebar.
-      setData((current) => current.map((u) => (u.id === target.id ? { ...u, reset_requested_at: null } : u)));
+      setData((current) =>
+        current.map((u) => (u.id === target.id ? { ...u, reset_requested_at: null } : u)),
+      );
       refreshResetRequests();
     } catch (err) {
       setError(err.response?.data?.message || 'Gagal membuat link reset.');
@@ -123,12 +187,25 @@ export default function Akun() {
 
   // Verifikasi email manual: untuk akun yang tidak menerima email verifikasi (SMTP mati / email tidak masuk).
   async function verifyEmail(target) {
-    if (!(await confirm({ title: 'Verifikasi email akun ini?', message: `Akun "${target.nama_lengkap}" (${target.email}) akan langsung bisa login. Pastikan dulu akun ini benar didaftarkan oleh pemilik email tersebut (mis. konfirmasi langsung ke pegawainya).`, confirmText: 'Ya, Verifikasi', tone: 'info', icon: 'mark_email_read' }))) return;
+    if (
+      !(await confirm({
+        title: 'Verifikasi email akun ini?',
+        message: `Akun "${target.nama_lengkap}" (${target.email}) akan langsung bisa login. Pastikan dulu akun ini benar didaftarkan oleh pemilik email tersebut (mis. konfirmasi langsung ke pegawainya).`,
+        confirmText: 'Ya, Verifikasi',
+        tone: 'info',
+        icon: 'mark_email_read',
+      }))
+    )
+      return;
     setBusyId(target.id);
     setError('');
     try {
       const res = await api.post(`/users/${target.id}/verify-email`);
-      setData((current) => current.map((u) => (u.id === target.id ? { ...u, email_verified_at: res.data.email_verified_at } : u)));
+      setData((current) =>
+        current.map((u) =>
+          u.id === target.id ? { ...u, email_verified_at: res.data.email_verified_at } : u,
+        ),
+      );
       toast(`Email ${target.nama_lengkap} terverifikasi. Akun sekarang bisa login.`);
     } catch (err) {
       setError(err.response?.data?.message || 'Gagal memverifikasi email akun.');
@@ -159,33 +236,79 @@ export default function Akun() {
         <div>
           <span className="menu-kicker">Biro Umum / Akun &amp; Akses</span>
           <h1 className="text-2xl font-bold">Akun & Akses Pengguna</h1>
-          <p className="text-sm mt-1">Pantau siapa saja yang punya akses ke sistem, role, dan kapan terakhir login.</p>
+          <p className="text-sm mt-1">
+            Pantau siapa saja yang punya akses ke sistem, role, dan kapan terakhir login.
+          </p>
         </div>
-        <div className="menu-hero-icon"><span className="material-symbols-outlined">group</span></div>
+        <div className="menu-hero-icon">
+          <span className="material-symbols-outlined">group</span>
+        </div>
       </div>
 
-      <MenuStats items={[
-        { key: 'total', icon: 'group', label: 'Total Akun', value: loading && !data.length ? null : data.length, hint: `${data.filter((u) => u.role === 'admin').length} admin · ${data.filter((u) => u.role === 'kabag').length} kabag · ${data.filter((u) => u.role === 'pic').length} PIC`, tone: 'dinas' },
-        { key: 'aktif', icon: 'verified_user', label: 'Akun Aktif', value: loading && !data.length ? null : data.filter((u) => u.is_active).length, hint: 'Bisa login', tone: 'emerald' },
-        { key: 'ban', icon: 'block', label: 'Di-ban', value: loading && !data.length ? null : data.filter((u) => !u.is_active).length, hint: 'Tidak bisa login', tone: 'red' },
-        { key: 'reset', icon: 'lock_reset', label: 'Minta Reset Sandi', value: loading && !data.length ? null : pendingResets.length, hint: pendingResets.length ? 'Perlu ditindaklanjuti' : 'Tidak ada permintaan', tone: 'amber' },
-      ]} />
+      <MenuStats
+        items={[
+          {
+            key: 'total',
+            icon: 'group',
+            label: 'Total Akun',
+            value: loading && !data.length ? null : data.length,
+            hint: `${data.filter((u) => u.role === 'admin').length} admin · ${data.filter((u) => u.role === 'kabag').length} kabag · ${data.filter((u) => u.role === 'pic').length} PIC`,
+            tone: 'dinas',
+          },
+          {
+            key: 'aktif',
+            icon: 'verified_user',
+            label: 'Akun Aktif',
+            value: loading && !data.length ? null : data.filter((u) => u.is_active).length,
+            hint: 'Bisa login',
+            tone: 'emerald',
+          },
+          {
+            key: 'ban',
+            icon: 'block',
+            label: 'Di-ban',
+            value: loading && !data.length ? null : data.filter((u) => !u.is_active).length,
+            hint: 'Tidak bisa login',
+            tone: 'red',
+          },
+          {
+            key: 'reset',
+            icon: 'lock_reset',
+            label: 'Minta Reset Sandi',
+            value: loading && !data.length ? null : pendingResets.length,
+            hint: pendingResets.length ? 'Perlu ditindaklanjuti' : 'Tidak ada permintaan',
+            tone: 'amber',
+          },
+        ]}
+      />
 
       <div className="flex items-center justify-between gap-4 mb-5">
         <div className="text-sm text-slate-600">{data.length} akun terdaftar</div>
-        <button onClick={load} className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-lg border border-slate-300 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-50">
+        <button
+          onClick={load}
+          className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-lg border border-slate-300 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-50"
+        >
           <span className="material-symbols-outlined text-[16px]">refresh</span>Refresh
         </button>
       </div>
 
-      {error && <div className="mb-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-xs text-red-700">{error}</div>}
+      {error && (
+        <div className="mb-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-xs text-red-700">
+          {error}
+        </div>
+      )}
 
       {belumVerifikasi.length > 0 && (
         <div className="mb-4 rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900 flex items-start gap-3">
           <span className="material-symbols-outlined text-sky-600">mark_email_unread</span>
           <div>
-            <b>{belumVerifikasi.length} akun belum verifikasi email:</b> {belumVerifikasi.map((u) => u.nama_lengkap).join(', ')}.
-            <div className="text-xs mt-0.5">Akun ini belum bisa login sampai pemiliknya mengklik link di emailnya. Bila email tidak sampai, pastikan akun benar milik pegawai tersebut lalu klik <b>Verifikasi</b> pada barisnya.</div>
+            <b>{belumVerifikasi.length} akun belum verifikasi email:</b>{' '}
+            {belumVerifikasi.map((u) => u.nama_lengkap).join(', ')}.
+            <div className="text-xs mt-0.5">
+              Akun ini belum bisa login sampai pemiliknya mengklik link di emailnya. Bila email
+              tidak sampai, pastikan akun benar milik pegawai tersebut lalu klik <b>Verifikasi</b>{' '}
+              pada barisnya.
+            </div>
           </div>
         </div>
       )}
@@ -194,8 +317,12 @@ export default function Akun() {
         <div className="mb-4 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 flex items-start gap-3">
           <span className="material-symbols-outlined text-amber-600">notifications_active</span>
           <div>
-            <b>{pendingResets.length} akun meminta reset kata sandi:</b> {pendingResets.map((u) => u.nama_lengkap).join(', ')}.
-            <div className="text-xs mt-0.5">Pastikan permintaan memang dari pemilik akun, lalu klik <b>Kirim Link</b> pada barisnya.</div>
+            <b>{pendingResets.length} akun meminta reset kata sandi:</b>{' '}
+            {pendingResets.map((u) => u.nama_lengkap).join(', ')}.
+            <div className="text-xs mt-0.5">
+              Pastikan permintaan memang dari pemilik akun, lalu klik <b>Kirim Link</b> pada
+              barisnya.
+            </div>
           </div>
         </div>
       )}
@@ -205,79 +332,193 @@ export default function Akun() {
           <table className="w-full text-sm">
             <thead className="bg-slate-50 border-b-2 border-slate-200">
               <tr className="divide-x divide-slate-200">
-                {['Nama Lengkap', 'Email', 'Role', 'No. HP', 'Unit Kerja', 'Login Via', 'Status', 'Tanggal Daftar', 'Terakhir Login', 'Aksi'].map((h) => (
-                  <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase whitespace-nowrap">{h}</th>
+                {[
+                  'Nama Lengkap',
+                  'Email',
+                  'Role',
+                  'No. HP',
+                  'Unit Kerja',
+                  'Login Via',
+                  'Status',
+                  'Tanggal Daftar',
+                  'Terakhir Login',
+                  'Aksi',
+                ].map((h) => (
+                  <th
+                    key={h}
+                    className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase whitespace-nowrap"
+                  >
+                    {h}
+                  </th>
                 ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {loading && <tr><td colSpan={10} className="py-8 text-center text-slate-400">Memuat data...</td></tr>}
-              {!loading && data.length === 0 && <tr><td colSpan={10} className="py-8 text-center text-slate-400">Belum ada akun.</td></tr>}
+              {loading && (
+                <tr>
+                  <td colSpan={10} className="py-8 text-center text-slate-400">
+                    Memuat data...
+                  </td>
+                </tr>
+              )}
+              {!loading && data.length === 0 && (
+                <tr>
+                  <td colSpan={10} className="py-8 text-center text-slate-400">
+                    Belum ada akun.
+                  </td>
+                </tr>
+              )}
               {shownUsers.map((u) => {
                 const isSelf = u.id === user?.id;
                 // Akun Admin hanya bisa dikelola Admin (ban, link reset, verifikasi) -- sama dengan aturan di backend.
                 const terkunci = u.role === 'admin' && user?.role !== 'admin';
                 return (
-                <tr key={u.id} className="divide-x divide-slate-100 hover:bg-slate-50/50">
-                  <td className="px-4 py-3 font-semibold text-slate-800"><div className="flex items-start gap-2.5"><span className={`shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold ${u.is_active ? (avatarTone[u.role] || avatarTone.karyawan) : 'bg-red-100 text-red-700'}`}>{initials(u.nama_lengkap)}</span><div className="min-w-0"><div className="whitespace-nowrap">{u.nama_lengkap}{isSelf && <span className="ml-1.5 text-[11px] font-bold text-slate-500">(Kamu)</span>}</div>{u.reset_requested_at && u.is_active && <div className="mt-1 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 text-[11px] font-bold whitespace-nowrap"><span className="material-symbols-outlined text-[12px]">lock_reset</span>Minta reset · {fmt(u.reset_requested_at)}</div>}</div></div></td>
-                  <td className="px-4 py-3 text-slate-600">{u.email}</td>
-                  <td className="px-4 py-3">
-                    {/* Role admin hanya bisa diberi/dicabut oleh Admin; role akun sendiri tidak bisa diubah. */}
-                    {isSelf || (u.role === 'admin' && user?.role !== 'admin') ? (
-                      <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-semibold whitespace-nowrap ${roleBadge[u.role] || roleBadge.karyawan}`} title={isSelf ? 'Role akun sendiri tidak bisa diubah' : 'Hanya Admin yang bisa mengubah role Admin'}>{roleLabel[u.role] || u.role}</span>
-                    ) : (
-                      <select value={u.role} disabled={busyId === u.id} onChange={(e) => changeRole(u, e.target.value)} aria-label={`Role ${u.nama_lengkap}`} title="Ubah role"
-                        data-role={u.role} className="role-select h-8 pl-2.5 pr-7 rounded-full border text-xs font-semibold cursor-pointer disabled:opacity-60">
-                        {ROLE_OPTIONS.filter((r) => r !== 'admin' || user?.role === 'admin').map((r) => <option key={r} value={r}>{roleLabel[r]}</option>)}
-                      </select>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-slate-600 whitespace-nowrap">{u.no_hp || '-'}</td>
-                  <td className="px-4 py-3 text-slate-600">{u.unit_kerja || '-'}</td>
-                  <td className="px-4 py-3 text-slate-600 capitalize whitespace-nowrap">{u.sso_provider ? `SSO (${u.sso_provider})` : 'Email/Password'}</td>
-                  <td className="px-4 py-3">
-                    <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-semibold whitespace-nowrap ${u.is_active ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>
-                      {u.is_active ? 'Aktif' : 'Di-ban'}
-                    </span>
-                    {!u.email_verified_at && <div className="mt-1 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-sky-100 text-sky-800 text-[11px] font-bold whitespace-nowrap" title="Belum bisa login sampai email diverifikasi"><span className="material-symbols-outlined text-[12px]">mark_email_unread</span>Belum verifikasi email</div>}
-                  </td>
-                  <td className="px-4 py-3 text-slate-500 whitespace-nowrap">{fmt(u.created_at)}</td>
-                  <td className="px-4 py-3 text-slate-500 whitespace-nowrap">{u.last_login_at ? fmt(u.last_login_at) : <span className="text-slate-400 italic">Belum pernah login</span>}</td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-2">
-                    {terkunci && !isSelf && <span className="text-[11px] text-slate-400 italic whitespace-nowrap" title="Ban, link reset, dan verifikasi akun Admin hanya bisa dilakukan Admin">Dikelola Admin</span>}
-                    {!terkunci && u.is_active && !u.email_verified_at && (
-                      <button type="button" onClick={() => verifyEmail(u)} disabled={busyId === u.id} title="Verifikasi email akun ini secara manual"
-                        className="px-3 py-1.5 rounded-lg text-xs font-semibold border border-sky-300 bg-sky-600 text-white hover:bg-sky-700 disabled:opacity-60 whitespace-nowrap">
-                        Verifikasi
-                      </button>
-                    )}
-                    {!terkunci && u.is_active && (
-                      <button
-                        type="button"
-                        onClick={() => makeResetLink(u)}
-                        disabled={busyId === u.id}
-                        title="Buat & kirim link reset kata sandi"
-                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold border disabled:opacity-60 whitespace-nowrap ${u.reset_requested_at ? 'border-amber-400 bg-amber-500 text-white hover:bg-amber-600' : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'}`}
+                  <tr key={u.id} className="divide-x divide-slate-100 hover:bg-slate-50/50">
+                    <td className="px-4 py-3 font-semibold text-slate-800">
+                      <div className="flex items-start gap-2.5">
+                        <span
+                          className={`shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold ${u.is_active ? avatarTone[u.role] || avatarTone.karyawan : 'bg-red-100 text-red-700'}`}
+                        >
+                          {initials(u.nama_lengkap)}
+                        </span>
+                        <div className="min-w-0">
+                          <div className="whitespace-nowrap">
+                            {u.nama_lengkap}
+                            {isSelf && (
+                              <span className="ml-1.5 text-[11px] font-bold text-slate-500">
+                                (Kamu)
+                              </span>
+                            )}
+                          </div>
+                          {u.reset_requested_at && u.is_active && (
+                            <div className="mt-1 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 text-[11px] font-bold whitespace-nowrap">
+                              <span className="material-symbols-outlined text-[12px]">
+                                lock_reset
+                              </span>
+                              Minta reset · {fmt(u.reset_requested_at)}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 text-slate-600">{u.email}</td>
+                    <td className="px-4 py-3">
+                      {/* Role admin hanya bisa diberi/dicabut oleh Admin; role akun sendiri tidak bisa diubah. */}
+                      {isSelf || (u.role === 'admin' && user?.role !== 'admin') ? (
+                        <span
+                          className={`inline-flex px-2.5 py-1 rounded-full text-xs font-semibold whitespace-nowrap ${roleBadge[u.role] || roleBadge.karyawan}`}
+                          title={
+                            isSelf
+                              ? 'Role akun sendiri tidak bisa diubah'
+                              : 'Hanya Admin yang bisa mengubah role Admin'
+                          }
+                        >
+                          {roleLabel[u.role] || u.role}
+                        </span>
+                      ) : (
+                        <select
+                          value={u.role}
+                          disabled={busyId === u.id}
+                          onChange={(e) => changeRole(u, e.target.value)}
+                          aria-label={`Role ${u.nama_lengkap}`}
+                          title="Ubah role"
+                          data-role={u.role}
+                          className="role-select h-8 pl-2.5 pr-7 rounded-full border text-xs font-semibold cursor-pointer disabled:opacity-60"
+                        >
+                          {ROLE_OPTIONS.filter((r) => r !== 'admin' || user?.role === 'admin').map(
+                            (r) => (
+                              <option key={r} value={r}>
+                                {roleLabel[r]}
+                              </option>
+                            ),
+                          )}
+                        </select>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-slate-600 whitespace-nowrap">{u.no_hp || '-'}</td>
+                    <td className="px-4 py-3 text-slate-600">{u.unit_kerja || '-'}</td>
+                    <td className="px-4 py-3 text-slate-600 capitalize whitespace-nowrap">
+                      {u.sso_provider ? `SSO (${u.sso_provider})` : 'Email/Password'}
+                    </td>
+                    <td className="px-4 py-3">
+                      <span
+                        className={`inline-flex px-2.5 py-1 rounded-full text-xs font-semibold whitespace-nowrap ${u.is_active ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-red-50 text-red-700 border border-red-200'}`}
                       >
-                        Kirim Link
-                      </button>
-                    )}
-                    {isSelf ? (
-                      <span className="text-[11px] text-slate-400 italic">Akun sendiri</span>
-                    ) : terkunci ? null : (
-                      <button
-                        type="button"
-                        onClick={() => toggleBan(u)}
-                        disabled={busyId === u.id}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold border disabled:opacity-60 transition ${u.is_active ? 'border-red-200 bg-red-50 text-red-700 hover:bg-red-100' : 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100'}`}
-                      >
-                        {busyId === u.id ? 'Memproses...' : u.is_active ? 'Ban Akun' : 'Aktifkan'}
-                      </button>
-                    )}
-                    </div>
-                  </td>
-                </tr>
+                        {u.is_active ? 'Aktif' : 'Di-ban'}
+                      </span>
+                      {!u.email_verified_at && (
+                        <div
+                          className="mt-1 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-sky-100 text-sky-800 text-[11px] font-bold whitespace-nowrap"
+                          title="Belum bisa login sampai email diverifikasi"
+                        >
+                          <span className="material-symbols-outlined text-[12px]">
+                            mark_email_unread
+                          </span>
+                          Belum verifikasi email
+                        </div>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-slate-500 whitespace-nowrap">
+                      {fmt(u.created_at)}
+                    </td>
+                    <td className="px-4 py-3 text-slate-500 whitespace-nowrap">
+                      {u.last_login_at ? (
+                        fmt(u.last_login_at)
+                      ) : (
+                        <span className="text-slate-400 italic">Belum pernah login</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        {terkunci && !isSelf && (
+                          <span
+                            className="text-[11px] text-slate-400 italic whitespace-nowrap"
+                            title="Ban, link reset, dan verifikasi akun Admin hanya bisa dilakukan Admin"
+                          >
+                            Dikelola Admin
+                          </span>
+                        )}
+                        {!terkunci && u.is_active && !u.email_verified_at && (
+                          <button
+                            type="button"
+                            onClick={() => verifyEmail(u)}
+                            disabled={busyId === u.id}
+                            title="Verifikasi email akun ini secara manual"
+                            className="px-3 py-1.5 rounded-lg text-xs font-semibold border border-sky-300 bg-sky-600 text-white hover:bg-sky-700 disabled:opacity-60 whitespace-nowrap"
+                          >
+                            Verifikasi
+                          </button>
+                        )}
+                        {!terkunci && u.is_active && (
+                          <button
+                            type="button"
+                            onClick={() => makeResetLink(u)}
+                            disabled={busyId === u.id}
+                            title="Buat & kirim link reset kata sandi"
+                            className={`px-3 py-1.5 rounded-lg text-xs font-semibold border disabled:opacity-60 whitespace-nowrap ${u.reset_requested_at ? 'border-amber-400 bg-amber-500 text-white hover:bg-amber-600' : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'}`}
+                          >
+                            Kirim Link
+                          </button>
+                        )}
+                        {isSelf ? (
+                          <span className="text-[11px] text-slate-400 italic">Akun sendiri</span>
+                        ) : terkunci ? null : (
+                          <button
+                            type="button"
+                            onClick={() => toggleBan(u)}
+                            disabled={busyId === u.id}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-semibold border disabled:opacity-60 transition ${u.is_active ? 'border-red-200 bg-red-50 text-red-700 hover:bg-red-100' : 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100'}`}
+                          >
+                            {busyId === u.id
+                              ? 'Memproses...'
+                              : u.is_active
+                                ? 'Ban Akun'
+                                : 'Aktifkan'}
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
                 );
               })}
               {moreRow(10)}
@@ -290,20 +531,53 @@ export default function Akun() {
       <GuestAccounts className="mt-6" />
 
       {resetLink && (
-        <div className="fixed inset-0 z-50 bg-slate-900/55 backdrop-blur-sm flex overflow-y-auto overscroll-contain p-4" onMouseDown={(e) => { if (e.target === e.currentTarget) setResetLink(null); }}>
+        <div
+          className="fixed inset-0 z-50 bg-slate-900/55 backdrop-blur-sm flex overflow-y-auto overscroll-contain p-4"
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) setResetLink(null);
+          }}
+        >
           <div className="m-auto w-full max-w-lg bg-white rounded-2xl shadow-2xl p-6">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <h2 className="text-lg font-bold text-slate-900">Link Reset Kata Sandi</h2>
-                <p className="text-xs text-slate-500 mt-1">Untuk <b>{resetLink.nama}</b> · berlaku 1 jam · hanya bisa dipakai sekali.</p>
+                <p className="text-xs text-slate-500 mt-1">
+                  Untuk <b>{resetLink.nama}</b> · berlaku 1 jam · hanya bisa dipakai sekali.
+                </p>
               </div>
-              <button type="button" onClick={() => setResetLink(null)} className="w-9 h-9 rounded-lg hover:bg-slate-100 text-slate-500"><span className="material-symbols-outlined">close</span></button>
+              <button
+                type="button"
+                onClick={() => setResetLink(null)}
+                className="w-9 h-9 rounded-lg hover:bg-slate-100 text-slate-500"
+              >
+                <span className="material-symbols-outlined">close</span>
+              </button>
             </div>
-            {resetLink.emailed && <div className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-800">✓ Link sudah dikirim ke email <b>{resetLink.email}</b>. Salin / WhatsApp di bawah hanya cadangan kalau email tidak masuk.</div>}
-            {resetLink.emailError && <div className="mt-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">{resetLink.emailError}</div>}
-            <input readOnly value={resetLink.url} onFocus={(e) => e.target.select()} className="mt-4 w-full px-3 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-700 outline-none" />
+            {resetLink.emailed && (
+              <div className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-800">
+                ✓ Link sudah dikirim ke email <b>{resetLink.email}</b>. Salin / WhatsApp di bawah
+                hanya cadangan kalau email tidak masuk.
+              </div>
+            )}
+            {resetLink.emailError && (
+              <div className="mt-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+                {resetLink.emailError}
+              </div>
+            )}
+            <input
+              readOnly
+              value={resetLink.url}
+              onFocus={(e) => e.target.select()}
+              className="mt-4 w-full px-3 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-700 outline-none"
+            />
             <div className="mt-4 flex flex-wrap gap-2 justify-end">
-              <button type="button" onClick={copyResetLink} className="px-4 py-2.5 rounded-lg bg-slate-900 text-white text-xs font-semibold">{copied ? 'Tersalin ✓' : 'Salin Link'}</button>
+              <button
+                type="button"
+                onClick={copyResetLink}
+                className="px-4 py-2.5 rounded-lg bg-slate-900 text-white text-xs font-semibold"
+              >
+                {copied ? 'Tersalin ✓' : 'Salin Link'}
+              </button>
               {waNumber(resetLink.no_hp) && (
                 <a
                   href={`https://wa.me/${waNumber(resetLink.no_hp)}?text=${encodeURIComponent(`Halo ${resetLink.nama}, berikut link untuk mengatur ulang kata sandi akun Biro Umum Anda (berlaku 1 jam):
@@ -316,7 +590,12 @@ ${resetLink.url}`)}`}
                 </a>
               )}
             </div>
-            {!waNumber(resetLink.no_hp) && <p className="text-[11px] text-slate-500 mt-3">Akun ini belum punya nomor HP, jadi salin link lalu kirim lewat kanal lain (Slack/Teams/langsung).</p>}
+            {!waNumber(resetLink.no_hp) && (
+              <p className="text-[11px] text-slate-500 mt-3">
+                Akun ini belum punya nomor HP, jadi salin link lalu kirim lewat kanal lain
+                (Slack/Teams/langsung).
+              </p>
+            )}
           </div>
         </div>
       )}

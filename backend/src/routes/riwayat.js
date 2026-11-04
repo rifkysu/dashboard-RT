@@ -25,9 +25,14 @@ async function namaRuangan(nama) {
   const semua = new Set([nama]);
   let cari = [nama];
   for (let i = 0; i < 10 && cari.length; i++) {
-    const rows = await prisma.riwayatAktivitas.findMany({ where: { modul: 'ruangan', aksi: 'ubah', ref_grup: { in: cari } }, select: { perubahan: true } });
-    const lama = rows.flatMap((r) => (Array.isArray(r.perubahan) ? r.perubahan : []))
-      .filter((p) => p.label === 'Nama ruangan' && p.dari && !semua.has(p.dari)).map((p) => p.dari);
+    const rows = await prisma.riwayatAktivitas.findMany({
+      where: { modul: 'ruangan', aksi: 'ubah', ref_grup: { in: cari } },
+      select: { perubahan: true },
+    });
+    const lama = rows
+      .flatMap((r) => (Array.isArray(r.perubahan) ? r.perubahan : []))
+      .filter((p) => p.label === 'Nama ruangan' && p.dari && !semua.has(p.dari))
+      .map((p) => p.dari);
     lama.forEach((n) => semua.add(n));
     cari = lama;
   }
@@ -37,9 +42,17 @@ async function namaRuangan(nama) {
 function filterDari(q) {
   const where = {};
   for (const [k, v] of Object.entries(q)) {
-    if (!['modul', 'aksi', 'aktor', 'q', 'dari', 'sampai', 'ref', 'grup', 'page'].includes(k) || typeof v !== 'string' || v.length > 150) return { error: 'Parameter filter tidak valid.' };
+    if (
+      !['modul', 'aksi', 'aktor', 'q', 'dari', 'sampai', 'ref', 'grup', 'page'].includes(k) ||
+      typeof v !== 'string' ||
+      v.length > 150
+    )
+      return { error: 'Parameter filter tidak valid.' };
   }
-  if (q.modul) { if (!MODUL.includes(q.modul)) return { error: 'Modul tidak valid.' }; where.modul = q.modul; }
+  if (q.modul) {
+    if (!MODUL.includes(q.modul)) return { error: 'Modul tidak valid.' };
+    where.modul = q.modul;
+  }
   if (q.aksi) {
     const list = q.aksi.split(',');
     if (!list.every((a) => AKSI_RE.test(a))) return { error: 'Aksi tidak valid.' };
@@ -53,18 +66,27 @@ function filterDari(q) {
     if (m[2]) where.aktor_id = Number(m[2]);
   }
   // ref = id data tertentu (dipakai bersama modul) -> riwayat lengkap satu data.
-  if (q.ref) { if (!/^\d{1,10}$/.test(q.ref) || !q.modul) return { error: 'Filter data tidak valid.' }; where.ref_id = Number(q.ref); }
+  if (q.ref) {
+    if (!/^\d{1,10}$/.test(q.ref) || !q.modul) return { error: 'Filter data tidak valid.' };
+    where.ref_id = Number(q.ref);
+  }
   // grup = booking_group / nama ruangan -> riwayat satu pengajuan booking / satu ruangan.
-  if (q.grup) { if (!q.modul || q.grup.length > 150) return { error: 'Filter data tidak valid.' }; where.ref_grup = q.grup; }
+  if (q.grup) {
+    if (!q.modul || q.grup.length > 150) return { error: 'Filter data tidak valid.' };
+    where.ref_grup = q.grup;
+  }
   if (q.dari || q.sampai) {
-    if ((q.dari && !DATE_RE.test(q.dari)) || (q.sampai && !DATE_RE.test(q.sampai))) return { error: 'Format tanggal tidak valid.' };
+    if ((q.dari && !DATE_RE.test(q.dari)) || (q.sampai && !DATE_RE.test(q.sampai)))
+      return { error: 'Format tanggal tidak valid.' };
     where.waktu = {};
     if (q.dari) where.waktu.gte = awalHari(q.dari);
     if (q.sampai) where.waktu.lt = new Date(+awalHari(q.sampai) + 86400000);
   }
   const cari = q.q?.trim();
   if (cari) {
-    where.OR = ['ref_kode', 'ref_label', 'aktor_nama', 'aktor_email', 'keterangan'].map((f) => ({ [f]: { contains: cari, mode: 'insensitive' } }));
+    where.OR = ['ref_kode', 'ref_label', 'aktor_nama', 'aktor_email', 'keterangan'].map((f) => ({
+      [f]: { contains: cari, mode: 'insensitive' },
+    }));
   }
   return { where };
 }
@@ -73,11 +95,17 @@ router.get('/', async (req, res) => {
   try {
     const { where, error } = filterDari(req.query);
     if (error) return res.status(400).json({ message: error });
-    if (where.ref_grup && where.modul === 'ruangan') where.ref_grup = { in: await namaRuangan(where.ref_grup) };
+    if (where.ref_grup && where.modul === 'ruangan')
+      where.ref_grup = { in: await namaRuangan(where.ref_grup) };
     const page = Math.max(1, Math.min(10000, Number(req.query.page) || 1));
     const [total, rows] = await Promise.all([
       prisma.riwayatAktivitas.count({ where }),
-      prisma.riwayatAktivitas.findMany({ where, orderBy: [{ waktu: 'desc' }, { id: 'desc' }], skip: (page - 1) * PER_HALAMAN, take: PER_HALAMAN }),
+      prisma.riwayatAktivitas.findMany({
+        where,
+        orderBy: [{ waktu: 'desc' }, { id: 'desc' }],
+        skip: (page - 1) * PER_HALAMAN,
+        take: PER_HALAMAN,
+      }),
     ]);
     res.json({ data: rows, total, page, per_page: PER_HALAMAN });
   } catch (err) {
@@ -96,10 +124,25 @@ router.get('/ringkasan', async (req, res) => {
     const [hari, minggu, hapus, pelaku] = await Promise.all([
       prisma.riwayatAktivitas.count({ where: { waktu: { gte: hariIni } } }),
       prisma.riwayatAktivitas.count({ where: { waktu: { gte: tujuhHari } } }),
-      prisma.riwayatAktivitas.count({ where: { waktu: { gte: tigaPuluhHari }, aksi: { in: ['hapus', 'batal', 'batal-sebagian', 'service-hapus', 'foto-hapus'] } } }),
-      prisma.riwayatAktivitas.groupBy({ by: ['aktor_tipe', 'aktor_id'], where: { waktu: { gte: tujuhHari } } }),
+      prisma.riwayatAktivitas.count({
+        where: {
+          waktu: { gte: tigaPuluhHari },
+          aksi: { in: ['hapus', 'batal', 'batal-sebagian', 'service-hapus', 'foto-hapus'] },
+        },
+      }),
+      prisma.riwayatAktivitas.groupBy({
+        by: ['aktor_tipe', 'aktor_id'],
+        where: { waktu: { gte: tujuhHari } },
+      }),
     ]);
-    res.json({ data: { hari_ini: hari, tujuh_hari: minggu, hapus_batal_30_hari: hapus, pelaku_7_hari: pelaku.length } });
+    res.json({
+      data: {
+        hari_ini: hari,
+        tujuh_hari: minggu,
+        hapus_batal_30_hari: hapus,
+        pelaku_7_hari: pelaku.length,
+      },
+    });
   } catch (err) {
     logger.error('GET ringkasan riwayat gagal', { error: err });
     res.status(500).json({ message: 'Gagal mengambil ringkasan riwayat.' });
@@ -121,10 +164,20 @@ router.get('/aktor', async (req, res) => {
     for (const r of rows) {
       const key = r.aktor_id == null ? r.aktor_tipe : `${r.aktor_tipe}:${r.aktor_id}`;
       const cur = map.get(key);
-      if (!cur) map.set(key, { key, tipe: r.aktor_tipe, id: r.aktor_id, nama: r.aktor_nama, email: r.aktor_email, jumlah: r._count._all, terakhir: r._max.waktu });
+      if (!cur)
+        map.set(key, {
+          key,
+          tipe: r.aktor_tipe,
+          id: r.aktor_id,
+          nama: r.aktor_nama,
+          email: r.aktor_email,
+          jumlah: r._count._all,
+          terakhir: r._max.waktu,
+        });
       else {
         cur.jumlah += r._count._all;
-        if (r._max.waktu > cur.terakhir) Object.assign(cur, { nama: r.aktor_nama, email: r.aktor_email, terakhir: r._max.waktu });
+        if (r._max.waktu > cur.terakhir)
+          Object.assign(cur, { nama: r.aktor_nama, email: r.aktor_email, terakhir: r._max.waktu });
       }
     }
     res.json({ data: [...map.values()].sort((a, b) => b.jumlah - a.jumlah) });
@@ -135,7 +188,14 @@ router.get('/aktor', async (req, res) => {
 });
 
 // Unduh CSV (bisa dibuka di Excel) sesuai filter yang sedang dipakai.
-const MODUL_LABEL = { pemeliharaan: 'Pemeliharaan', pengadaan: 'Pengadaan', kendaraan: 'Kendaraan', 'ruang-rapat': 'Ruang Rapat', ruangan: 'Ruangan & Foto', akun: 'Akun' };
+const MODUL_LABEL = {
+  pemeliharaan: 'Pemeliharaan',
+  pengadaan: 'Pengadaan',
+  kendaraan: 'Kendaraan',
+  'ruang-rapat': 'Ruang Rapat',
+  ruangan: 'Ruangan & Foto',
+  akun: 'Akun',
+};
 const fmtWaktu = (d) => {
   const w = new Date(+d + 7 * 3600000).toISOString();
   return `${w.slice(8, 10)}/${w.slice(5, 7)}/${w.slice(0, 4)} ${w.slice(11, 19)}`;
@@ -144,14 +204,56 @@ router.get('/export', async (req, res) => {
   try {
     const { where, error } = filterDari(req.query);
     if (error) return res.status(400).json({ message: error });
-    if (where.ref_grup && where.modul === 'ruangan') where.ref_grup = { in: await namaRuangan(where.ref_grup) };
-    const rows = await prisma.riwayatAktivitas.findMany({ where, orderBy: [{ waktu: 'desc' }, { id: 'desc' }], take: MAX_EXPORT });
+    if (where.ref_grup && where.modul === 'ruangan')
+      where.ref_grup = { in: await namaRuangan(where.ref_grup) };
+    const rows = await prisma.riwayatAktivitas.findMany({
+      where,
+      orderBy: [{ waktu: 'desc' }, { id: 'desc' }],
+      take: MAX_EXPORT,
+    });
     const csv = csvCell; // nilai diawali = + - @ tidak dibaca Excel sebagai rumus (lihat src/csv.js)
-    const detail = (p) => (Array.isArray(p) ? p.map((x) => ('dari' in x && 'ke' in x ? `${x.label}: ${x.dari ?? '(kosong)'} -> ${x.ke ?? '(kosong)'}` : `${x.label}: ${x.ke ?? x.dari ?? '(kosong)'}`)).join('; ') : '');
+    const detail = (p) =>
+      Array.isArray(p)
+        ? p
+            .map((x) =>
+              'dari' in x && 'ke' in x
+                ? `${x.label}: ${x.dari ?? '(kosong)'} -> ${x.ke ?? '(kosong)'}`
+                : `${x.label}: ${x.ke ?? x.dari ?? '(kosong)'}`,
+            )
+            .join('; ')
+        : '';
     const lines = [
-      ['Waktu (WIB)', 'Modul', 'Aksi', 'Kode / Ref', 'Data', 'Pelaku', 'Tipe Pelaku', 'Role', 'Email Pelaku', 'Detail', 'Keterangan', 'IP'],
-      ...rows.map((r) => [fmtWaktu(r.waktu), MODUL_LABEL[r.modul] || r.modul, r.aksi, r.ref_kode, r.ref_label, r.aktor_nama, r.aktor_tipe, r.aktor_role, r.aktor_email, detail(r.perubahan), r.keterangan, r.ip]),
-    ].map((r) => r.map(csv).join(',')).join('\r\n');
+      [
+        'Waktu (WIB)',
+        'Modul',
+        'Aksi',
+        'Kode / Ref',
+        'Data',
+        'Pelaku',
+        'Tipe Pelaku',
+        'Role',
+        'Email Pelaku',
+        'Detail',
+        'Keterangan',
+        'IP',
+      ],
+      ...rows.map((r) => [
+        fmtWaktu(r.waktu),
+        MODUL_LABEL[r.modul] || r.modul,
+        r.aksi,
+        r.ref_kode,
+        r.ref_label,
+        r.aktor_nama,
+        r.aktor_tipe,
+        r.aktor_role,
+        r.aktor_email,
+        detail(r.perubahan),
+        r.keterangan,
+        r.ip,
+      ]),
+    ]
+      .map((r) => r.map(csv).join(','))
+      .join('\r\n');
     const tgl = new Date(Date.now() + 7 * 3600000).toISOString().slice(0, 10);
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', `attachment; filename="riwayat_aktivitas_${tgl}.csv"`);

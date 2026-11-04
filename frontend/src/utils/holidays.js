@@ -23,28 +23,47 @@ const FIXED_NATIONAL_HOLIDAYS = {
   '12-25': 'Hari Raya Natal',
 };
 
-function pad(n) { return String(n).padStart(2, '0'); }
-function toISO(d) { return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}`; }
+function pad(n) {
+  return String(n).padStart(2, '0');
+}
+function toISO(d) {
+  return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}`;
+}
 
 // Paskah Masehi (algoritma Meeus/Jones/Butcher, standar & akurat untuk
 // kalender Gregorian) -> dasar hitung Wafat Isa Almasih (Paskah - 2 hari)
 // dan Kenaikan Isa Almasih (Paskah + 39 hari) untuk tahun berapa pun.
 function easterUTC(year) {
-  const a = year % 19, b = Math.floor(year / 100), c = year % 100;
-  const d = Math.floor(b / 4), e = b % 4, f = Math.floor((b + 8) / 25), g = Math.floor((b - f + 1) / 3);
-  const h = (19 * a + b - d - g + 15) % 30, i = Math.floor(c / 4), k = c % 4;
-  const l = (32 + 2 * e + 2 * i - h - k) % 7, m = Math.floor((a + 11 * h + 22 * l) / 451);
-  const month = Math.floor((h + l - 7 * m + 114) / 31), day = ((h + l - 7 * m + 114) % 31) + 1;
+  const a = year % 19,
+    b = Math.floor(year / 100),
+    c = year % 100;
+  const d = Math.floor(b / 4),
+    e = b % 4,
+    f = Math.floor((b + 8) / 25),
+    g = Math.floor((b - f + 1) / 3);
+  const h = (19 * a + b - d - g + 15) % 30,
+    i = Math.floor(c / 4),
+    k = c % 4;
+  const l = (32 + 2 * e + 2 * i - h - k) % 7,
+    m = Math.floor((a + 11 * h + 22 * l) / 451);
+  const month = Math.floor((h + l - 7 * m + 114) / 31),
+    day = ((h + l - 7 * m + 114) % 31) + 1;
   return new Date(Date.UTC(year, month - 1, day));
 }
 
 // Konversi kalender Hijriah & Imlek pakai data ICU bawaan browser/Node
 // (bukan rumus buatan sendiri) -> jauh lebih bisa diandalkan.
-const islamicFmt = new Intl.DateTimeFormat('en-u-ca-islamic-umalqura', { month: 'numeric', day: 'numeric' });
+const islamicFmt = new Intl.DateTimeFormat('en-u-ca-islamic-umalqura', {
+  month: 'numeric',
+  day: 'numeric',
+});
 const chineseFmt = new Intl.DateTimeFormat('en-u-ca-chinese', { month: 'numeric', day: 'numeric' });
 function calendarParts(fmt, date) {
   const parts = fmt.formatToParts(date);
-  return { month: Number(parts.find(p => p.type === 'month').value), day: Number(parts.find(p => p.type === 'day').value) };
+  return {
+    month: Number(parts.find((p) => p.type === 'month').value),
+    day: Number(parts.find((p) => p.type === 'day').value),
+  };
 }
 
 const movableCache = new Map();
@@ -58,12 +77,18 @@ function computeMovableHolidays(year) {
   const map = {};
 
   const easter = easterUTC(year);
-  const goodFriday = new Date(easter); goodFriday.setUTCDate(goodFriday.getUTCDate() - 2);
-  const ascension = new Date(easter); ascension.setUTCDate(ascension.getUTCDate() + 39);
+  const goodFriday = new Date(easter);
+  goodFriday.setUTCDate(goodFriday.getUTCDate() - 2);
+  const ascension = new Date(easter);
+  ascension.setUTCDate(ascension.getUTCDate() + 39);
   map[toISO(goodFriday)] = 'Wafat Isa Almasih';
   map[toISO(ascension)] = 'Kenaikan Isa Almasih';
 
-  for (let day = new Date(Date.UTC(year, 0, 1)); day.getUTCFullYear() === year; day.setUTCDate(day.getUTCDate() + 1)) {
+  for (
+    let day = new Date(Date.UTC(year, 0, 1));
+    day.getUTCFullYear() === year;
+    day.setUTCDate(day.getUTCDate() + 1)
+  ) {
     const dt = new Date(day);
     const hijri = calendarParts(islamicFmt, dt);
     if (hijri.month === 10 && hijri.day === 1) map[toISO(dt)] = 'Idul Fitri (perkiraan)';

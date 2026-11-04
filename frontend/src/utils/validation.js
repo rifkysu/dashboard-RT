@@ -22,7 +22,8 @@ export function validatePayment(draft) {
     const max = method === 'TUP' ? 10 : 20;
     const n = Number(draft.stage2_payment_number);
     if (isBlank(draft.stage2_payment_number)) errors.push(`Nomor ${method} wajib dipilih.`);
-    else if (!Number.isInteger(n) || n < 1 || n > max) errors.push(`Nomor ${method} harus 1–${max}.`);
+    else if (!Number.isInteger(n) || n < 1 || n > max)
+      errors.push(`Nomor ${method} harus 1–${max}.`);
   }
   if (method === 'LS' && isBlank(draft.stage2_ls_date)) errors.push('Tanggal LS wajib diisi.');
   if (isBlank(draft.stage2_budget_source)) errors.push('Asal anggaran wajib dipilih.');
@@ -48,9 +49,24 @@ export const UNIT_KERJA = ['rt', 'perlengkapan', 'kendaraan', 'protokol', 'lainn
 // Hanya untuk sandi baru: login dengan sandi lama yang tidak memenuhi syarat ini tetap bisa.
 export const PASSWORD_MIN = 7;
 export const PASSWORD_RULES = [
-  { key: 'awal', label: 'Diawali huruf besar (A-Z)', pesan: 'Kata sandi harus diawali huruf besar (A-Z).', test: (pw) => /^[A-Z]/.test(pw) },
-  { key: 'angka', label: 'Berisi minimal 1 angka (0-9)', pesan: 'Kata sandi harus berisi minimal 1 angka.', test: (pw) => /\d/.test(pw) },
-  { key: 'panjang', label: `Minimal ${PASSWORD_MIN} karakter`, pesan: `Kata sandi minimal ${PASSWORD_MIN} karakter.`, test: (pw) => pw.length >= PASSWORD_MIN },
+  {
+    key: 'awal',
+    label: 'Diawali huruf besar (A-Z)',
+    pesan: 'Kata sandi harus diawali huruf besar (A-Z).',
+    test: (pw) => /^[A-Z]/.test(pw),
+  },
+  {
+    key: 'angka',
+    label: 'Berisi minimal 1 angka (0-9)',
+    pesan: 'Kata sandi harus berisi minimal 1 angka.',
+    test: (pw) => /\d/.test(pw),
+  },
+  {
+    key: 'panjang',
+    label: `Minimal ${PASSWORD_MIN} karakter`,
+    pesan: `Kata sandi minimal ${PASSWORD_MIN} karakter.`,
+    test: (pw) => pw.length >= PASSWORD_MIN,
+  },
 ];
 
 // Mengembalikan pesan error pertama atau ''.
@@ -67,15 +83,20 @@ export function validateRegister(f) {
   if (!nama) e.nama_lengkap = 'Nama lengkap wajib diisi.';
   else if (nama.length < 3) e.nama_lengkap = 'Nama lengkap minimal 3 karakter.';
   else if (nama.length > 150) e.nama_lengkap = 'Nama lengkap maksimal 150 karakter.';
-  else if (!NAME_RE.test(nama)) e.nama_lengkap = 'Nama hanya boleh berisi huruf, spasi, titik, koma, apostrof, dan tanda hubung.';
+  else if (!NAME_RE.test(nama))
+    e.nama_lengkap =
+      'Nama hanya boleh berisi huruf, spasi, titik, koma, apostrof, dan tanda hubung.';
   const email = f.email.trim();
   if (!email) e.email = 'Email wajib diisi.';
-  else if (!EMAIL_RE.test(email)) e.email = 'Format email tidak valid (contoh: nama@kemnaker.go.id).';
+  else if (!EMAIL_RE.test(email))
+    e.email = 'Format email tidak valid (contoh: nama@kemnaker.go.id).';
   else if (email.length > 150) e.email = 'Email maksimal 150 karakter.';
-  else if (!email.toLowerCase().endsWith(`@${ALLOWED_EMAIL_DOMAIN}`)) e.email = `Gunakan email kedinasan @${ALLOWED_EMAIL_DOMAIN}.`;
+  else if (!email.toLowerCase().endsWith(`@${ALLOWED_EMAIL_DOMAIN}`))
+    e.email = `Gunakan email kedinasan @${ALLOWED_EMAIL_DOMAIN}.`;
   const hp = normalizePhone(f.no_hp);
   if (!hp) e.no_hp = 'Nomor WhatsApp / HP wajib diisi.';
-  else if (!HP_RE.test(hp)) e.no_hp = 'Nomor HP tidak valid (contoh: 081234567890 atau +6281234567890).';
+  else if (!HP_RE.test(hp))
+    e.no_hp = 'Nomor HP tidak valid (contoh: 081234567890 atau +6281234567890).';
   if (!UNIT_KERJA.includes(f.unit_kerja)) e.unit_kerja = 'Pilih unit kerja / bagian.';
   if (f.role !== 'karyawan') e.role = 'Pilih peran.';
   const pw = passwordIssue(f.password);
@@ -110,12 +131,18 @@ export function realDateInRange(v) {
 // Masa Berlaku STNK & Waktu Pajak: format valid dan tidak sebelum Tanggal Perolehan.
 export function validateVehicleDates({ tanggal_perolehan, masa_berlaku_stnk, waktu_pajak }) {
   const errors = [];
-  const fields = [['Tanggal perolehan', tanggal_perolehan], ['Masa berlaku STNK', masa_berlaku_stnk], ['Waktu pajak', waktu_pajak]];
+  const fields = [
+    ['Tanggal perolehan', tanggal_perolehan],
+    ['Masa berlaku STNK', masa_berlaku_stnk],
+    ['Waktu pajak', waktu_pajak],
+  ];
   for (const [label, v] of fields) {
     if (!isBlank(v) && !realDateInRange(v)) errors.push(`${label} tidak valid (tahun 1950–2100).`);
   }
   if (errors.length || isBlank(tanggal_perolehan)) return errors;
-  if (!isBlank(masa_berlaku_stnk) && masa_berlaku_stnk < tanggal_perolehan) errors.push('Masa berlaku STNK tidak boleh sebelum tanggal perolehan.');
-  if (!isBlank(waktu_pajak) && waktu_pajak < tanggal_perolehan) errors.push('Waktu pajak tidak boleh sebelum tanggal perolehan.');
+  if (!isBlank(masa_berlaku_stnk) && masa_berlaku_stnk < tanggal_perolehan)
+    errors.push('Masa berlaku STNK tidak boleh sebelum tanggal perolehan.');
+  if (!isBlank(waktu_pajak) && waktu_pajak < tanggal_perolehan)
+    errors.push('Waktu pajak tidak boleh sebelum tanggal perolehan.');
   return errors;
 }

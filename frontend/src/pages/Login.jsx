@@ -8,7 +8,14 @@ import LoginSplash from '../components/LoginSplash';
 
 // "Ingat saya": email terakhir disimpan di perangkat ini supaya terisi otomatis (kata sandi TIDAK pernah disimpan).
 const REMEMBER_KEY = 'rememberEmail';
-const readRememberedEmail = () => { try { const v = localStorage.getItem(REMEMBER_KEY); return typeof v === 'string' && v.length <= 254 ? v : ''; } catch { return ''; } };
+const readRememberedEmail = () => {
+  try {
+    const v = localStorage.getItem(REMEMBER_KEY);
+    return typeof v === 'string' && v.length <= 254 ? v : '';
+  } catch {
+    return '';
+  }
+};
 
 const BANNED_MESSAGE =
   'Akun Anda telah diblokir oleh admin karena terdeteksi melanggar ketentuan penggunaan atau melakukan spam berlebihan. Hubungi admin Biro Umum jika menurut Anda ini sebuah kesalahan.';
@@ -17,11 +24,21 @@ export default function Login() {
   const location = useLocation();
   // Datang dari halaman Daftar Akun -> tampilkan pesan sukses & isi email otomatis.
   const registered = location.state?.registered === true;
-  const [email, setEmail] = useState(() => (registered && typeof location.state?.email === 'string' ? location.state.email : readRememberedEmail()));
+  const [email, setEmail] = useState(() =>
+    registered && typeof location.state?.email === 'string'
+      ? location.state.email
+      : readRememberedEmail(),
+  );
   const [remember, setRemember] = useState(() => !!readRememberedEmail());
   const [fieldErrors, setFieldErrors] = useState({});
   // Setelah daftar: akun belum bisa dipakai sebelum email diverifikasi (pesan dari backend).
-  const [success, setSuccess] = useState(registered ? (typeof location.state?.message === 'string' ? location.state.message : 'Akun dibuat. Verifikasi email Anda lewat link yang kami kirim, lalu masuk.') : '');
+  const [success, setSuccess] = useState(
+    registered
+      ? typeof location.state?.message === 'string'
+        ? location.state.message
+        : 'Akun dibuat. Verifikasi email Anda lewat link yang kami kirim, lalu masuk.'
+      : '',
+  );
   // Login ditolak karena email belum diverifikasi (kode EMAIL_UNVERIFIED) -> { message, email } + tombol kirim ulang.
   const [unverified, setUnverified] = useState(null);
   const [resend, setResend] = useState({ busy: false, done: '' });
@@ -33,7 +50,10 @@ export default function Login() {
   // di-ban saat sedang login (?banned=1, lihat api.js).
   const [banned, setBanned] = useState(() => {
     let flagged = false;
-    try { flagged = sessionStorage.getItem('accountBanned') === '1'; sessionStorage.removeItem('accountBanned'); } catch {}
+    try {
+      flagged = sessionStorage.getItem('accountBanned') === '1';
+      sessionStorage.removeItem('accountBanned');
+    } catch {}
     return flagged || searchParams.get('banned') === '1' ? BANNED_MESSAGE : '';
   });
   const [loading, setLoading] = useState(false);
@@ -46,7 +66,9 @@ export default function Login() {
   const { user, login } = useAuth();
   const navigate = useNavigate();
   // Bersihkan state navigasi supaya pesan sukses tidak muncul lagi saat halaman di-refresh.
-  useEffect(() => { if (registered) navigate(location.pathname + location.search, { replace: true, state: null }); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (registered) navigate(location.pathname + location.search, { replace: true, state: null });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!lockedUntil) return;
@@ -77,7 +99,10 @@ export default function Login() {
     try {
       const cleanEmail = email.trim().toLowerCase();
       const res = await api.post('/auth/login', { email: cleanEmail, password, remember });
-      try { if (remember) localStorage.setItem(REMEMBER_KEY, cleanEmail); else localStorage.removeItem(REMEMBER_KEY); } catch {}
+      try {
+        if (remember) localStorage.setItem(REMEMBER_KEY, cleanEmail);
+        else localStorage.removeItem(REMEMBER_KEY);
+      } catch {}
       login(res.data.token, res.data.user);
       setSplash({ name: res.data.user?.nama_lengkap || '' });
     } catch (err) {
@@ -85,7 +110,10 @@ export default function Login() {
         const retrySeconds = Number(err.response.headers?.['retry-after']) || 60;
         setLockedUntil(Date.now() + retrySeconds * 1000);
         setNow(Date.now());
-        setError(err.response?.data?.message || `Terlalu banyak percobaan login. Coba lagi dalam ${retrySeconds} detik.`);
+        setError(
+          err.response?.data?.message ||
+            `Terlalu banyak percobaan login. Coba lagi dalam ${retrySeconds} detik.`,
+        );
       } else if (err.response?.data?.code === 'EMAIL_UNVERIFIED') {
         setUnverified({ message: err.response.data.message, email: email.trim().toLowerCase() });
         setResend({ busy: false, done: '' });
@@ -93,7 +121,9 @@ export default function Login() {
         setBanned(err.response.data.message || BANNED_MESSAGE);
       } else if (!err.response) {
         // Backend mati / alamat API salah (mis. VITE_API_URL masih localhost saat dibuka dari PC lain).
-        setError('Tidak dapat terhubung ke server. Periksa koneksi jaringan Anda atau hubungi admin Biro Umum.');
+        setError(
+          'Tidak dapat terhubung ke server. Periksa koneksi jaringan Anda atau hubungi admin Biro Umum.',
+        );
       } else {
         setError(err.response?.data?.message || 'Gagal login. Periksa email/kata sandi Anda.');
       }
@@ -119,7 +149,10 @@ export default function Login() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#f2f4f7] p-4 sm:p-6">
       <div className="w-full max-w-4xl">
-        <Link to="/" className="inline-flex items-center gap-1.5 text-sm text-slate-600 hover:text-slate-900 font-semibold py-2 -my-2 mb-2">
+        <Link
+          to="/"
+          className="inline-flex items-center gap-1.5 text-sm text-slate-600 hover:text-slate-900 font-semibold py-2 -my-2 mb-2"
+        >
           <span className="material-symbols-outlined text-[18px]">arrow_back</span>
           Kembali ke beranda
         </Link>
@@ -130,12 +163,16 @@ export default function Login() {
             <div className="flex items-center gap-3 mb-8">
               <BrandMark size="sm" />
               <div>
-                <h1 className="font-display text-sm font-extrabold text-dinas-ink leading-tight">Biro Umum dan Rumah Tangga</h1>
+                <h1 className="font-display text-sm font-extrabold text-dinas-ink leading-tight">
+                  Biro Umum dan Rumah Tangga
+                </h1>
                 <p className="text-[11px] text-slate-500 mt-0.5">Kementerian Ketenagakerjaan</p>
               </div>
             </div>
 
-            <h2 className="font-display text-[28px] font-extrabold text-dinas-ink tracking-tight">Masuk</h2>
+            <h2 className="font-display text-[28px] font-extrabold text-dinas-ink tracking-tight">
+              Masuk
+            </h2>
             <p className="text-sm text-slate-500 mt-1.5 mb-7">
               Akses layanan pemeliharaan, pengadaan, kendaraan, dan jadwal ruang rapat.
             </p>
@@ -156,75 +193,105 @@ export default function Login() {
             {unverified && !error && (
               <div className="mb-4 px-4 py-3 bg-amber-50 border border-amber-200 text-amber-900 text-sm rounded-md">
                 <div className="flex items-start gap-2">
-                  <span className="material-symbols-outlined text-[18px] text-amber-600">mark_email_unread</span>
+                  <span className="material-symbols-outlined text-[18px] text-amber-600">
+                    mark_email_unread
+                  </span>
                   <span>{unverified.message}</span>
                 </div>
                 {resend.done ? (
                   <p className="mt-2 ml-7 text-xs text-emerald-700">{resend.done}</p>
                 ) : (
-                  <button type="button" disabled={resend.busy} onClick={kirimUlangVerifikasi}
-                    className="mt-2 ml-7 inline-flex items-center gap-1 text-xs font-semibold text-[#1e3a5f] hover:underline disabled:opacity-60">
+                  <button
+                    type="button"
+                    disabled={resend.busy}
+                    onClick={kirimUlangVerifikasi}
+                    className="mt-2 ml-7 inline-flex items-center gap-1 text-xs font-semibold text-[#1e3a5f] hover:underline disabled:opacity-60"
+                  >
                     <span className="material-symbols-outlined text-[16px]">forward_to_inbox</span>
                     {resend.busy ? 'Mengirim...' : 'Kirim ulang link verifikasi'}
                   </button>
                 )}
-                <p className="mt-1 ml-7 text-[11px] text-amber-800/80">Email tidak masuk? Periksa folder Spam, atau hubungi admin Biro Umum untuk verifikasi manual.</p>
+                <p className="mt-1 ml-7 text-[11px] text-amber-800/80">
+                  Email tidak masuk? Periksa folder Spam, atau hubungi admin Biro Umum untuk
+                  verifikasi manual.
+                </p>
               </div>
             )}
 
             <form noValidate className="space-y-4" onSubmit={handleSubmit}>
               <div>
-              <div className="relative">
-                <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-[20px]">
-                  mail
-                </span>
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => { setEmail(e.target.value); setFieldErrors((f) => ({ ...f, email: undefined })); }}
-                  placeholder="Email"
-                  autoComplete="email"
-                  aria-invalid={!!fieldErrors.email}
-                  className={`w-full pl-12 pr-4 py-3 bg-white border rounded-md ${fieldErrors.email ? 'border-red-400' : 'border-slate-300'} text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]/15 focus:border-[#1e3a5f] transition`}
-                />
-              </div>
-                {fieldErrors.email && <p className="text-[11px] text-red-600 mt-1 ml-1">{fieldErrors.email}</p>}
+                <div className="relative">
+                  <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-[20px]">
+                    mail
+                  </span>
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => {
+                      setEmail(e.target.value);
+                      setFieldErrors((f) => ({ ...f, email: undefined }));
+                    }}
+                    placeholder="Email"
+                    autoComplete="email"
+                    aria-invalid={!!fieldErrors.email}
+                    className={`w-full pl-12 pr-4 py-3 bg-white border rounded-md ${fieldErrors.email ? 'border-red-400' : 'border-slate-300'} text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]/15 focus:border-[#1e3a5f] transition`}
+                  />
+                </div>
+                {fieldErrors.email && (
+                  <p className="text-[11px] text-red-600 mt-1 ml-1">{fieldErrors.email}</p>
+                )}
               </div>
 
               <div>
-              <div className="relative">
-                <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-[20px]">
-                  key
-                </span>
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  value={password}
-                  onChange={(e) => { setPassword(e.target.value); setFieldErrors((f) => ({ ...f, password: undefined })); }}
-                  placeholder="Kata Sandi"
-                  autoComplete="current-password"
-                  aria-invalid={!!fieldErrors.password}
-                  className={`w-full pl-12 pr-12 py-3 bg-white border rounded-md ${fieldErrors.password ? 'border-red-400' : 'border-slate-300'} text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]/15 focus:border-[#1e3a5f] transition`}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword((s) => !s)}
-                  aria-label={showPassword ? 'Sembunyikan kata sandi' : 'Tampilkan kata sandi'}
-                  className="absolute right-1 top-1/2 -translate-y-1/2 w-10 h-10 rounded-md flex items-center justify-center text-slate-400 hover:text-slate-600"
-                >
-                  <span className="material-symbols-outlined text-[20px]">
-                    {showPassword ? 'visibility_off' : 'visibility'}
+                <div className="relative">
+                  <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-[20px]">
+                    key
                   </span>
-                </button>
-              </div>
-                {fieldErrors.password && <p className="text-[11px] text-red-600 mt-1 ml-1">{fieldErrors.password}</p>}
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    value={password}
+                    onChange={(e) => {
+                      setPassword(e.target.value);
+                      setFieldErrors((f) => ({ ...f, password: undefined }));
+                    }}
+                    placeholder="Kata Sandi"
+                    autoComplete="current-password"
+                    aria-invalid={!!fieldErrors.password}
+                    className={`w-full pl-12 pr-12 py-3 bg-white border rounded-md ${fieldErrors.password ? 'border-red-400' : 'border-slate-300'} text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]/15 focus:border-[#1e3a5f] transition`}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((s) => !s)}
+                    aria-label={showPassword ? 'Sembunyikan kata sandi' : 'Tampilkan kata sandi'}
+                    className="absolute right-1 top-1/2 -translate-y-1/2 w-10 h-10 rounded-md flex items-center justify-center text-slate-400 hover:text-slate-600"
+                  >
+                    <span className="material-symbols-outlined text-[20px]">
+                      {showPassword ? 'visibility_off' : 'visibility'}
+                    </span>
+                  </button>
+                </div>
+                {fieldErrors.password && (
+                  <p className="text-[11px] text-red-600 mt-1 ml-1">{fieldErrors.password}</p>
+                )}
               </div>
 
               <div className="flex items-center justify-between gap-3">
-                <label className="inline-flex items-center gap-2 cursor-pointer select-none text-xs text-slate-600" title="Tetap masuk di perangkat ini selama 30 hari. Jangan dicentang di komputer umum/bersama.">
-                  <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} className="w-4 h-4 rounded border-slate-300 accent-[#1e3a5f]" />
+                <label
+                  className="inline-flex items-center gap-2 cursor-pointer select-none text-xs text-slate-600"
+                  title="Tetap masuk di perangkat ini selama 30 hari. Jangan dicentang di komputer umum/bersama."
+                >
+                  <input
+                    type="checkbox"
+                    checked={remember}
+                    onChange={(e) => setRemember(e.target.checked)}
+                    className="w-4 h-4 rounded border-slate-300 accent-[#1e3a5f]"
+                  />
                   Ingat saya <span className="text-slate-400">(30 hari)</span>
                 </label>
-                <Link to="/forgot-password" className="inline-block py-2 -my-2 text-xs font-semibold text-[#1e3a5f] hover:underline">
+                <Link
+                  to="/forgot-password"
+                  className="inline-block py-2 -my-2 text-xs font-semibold text-[#1e3a5f] hover:underline"
+                >
                   Lupa kata sandi?
                 </Link>
               </div>
@@ -240,12 +307,9 @@ export default function Login() {
                     Coba lagi dalam {secondsLeft} detik
                   </>
                 ) : (
-                  <>
-                    {loading ? 'Memproses...' : 'Masuk'}
-                  </>
+                  <>{loading ? 'Memproses...' : 'Masuk'}</>
                 )}
               </button>
-
             </form>
 
             <p className="mt-7 text-center text-xs text-slate-500 md:hidden">
@@ -254,23 +318,32 @@ export default function Login() {
                 Daftar Akun Baru
               </Link>
             </p>
-
           </div>
 
           {/* Kanan: info daftar akun, disembunyikan di mobile */}
           <div className="hidden md:flex flex-col justify-between p-10 bg-dinas bg-kawung-gelap text-white">
             <div>
-              <div className="flex items-center gap-2 text-sm font-semibold text-[#e4c27f]"><span className="w-6 h-[2px] rounded bg-kuningan"></span>Akun pegawai</div>
-              <h3 className="font-display text-2xl font-extrabold mt-3 tracking-tight">Belum punya akun?</h3>
+              <div className="flex items-center gap-2 text-sm font-semibold text-[#e4c27f]">
+                <span className="w-6 h-[2px] rounded bg-kuningan"></span>Akun pegawai
+              </div>
+              <h3 className="font-display text-2xl font-extrabold mt-3 tracking-tight">
+                Belum punya akun?
+              </h3>
               <p className="text-sm text-white/80 mt-3 leading-relaxed">
-                Akun pegawai dipakai untuk mengajukan pemeliharaan, pengadaan, dan booking ruang rapat, serta memantau statusnya.
+                Akun pegawai dipakai untuk mengajukan pemeliharaan, pengadaan, dan booking ruang
+                rapat, serta memantau statusnya.
               </p>
-              <Link to="/register" className="inline-block mt-6 px-5 py-2.5 rounded-lg bg-white text-dinas text-sm font-bold hover:bg-[#f7efe0] transition">
+              <Link
+                to="/register"
+                className="inline-block mt-6 px-5 py-2.5 rounded-lg bg-white text-dinas text-sm font-bold hover:bg-[#f7efe0] transition"
+              >
                 Daftar akun pegawai
               </Link>
             </div>
             <div className="text-xs text-white/60 leading-relaxed mt-10">
-              Lupa kata sandi atau akun terkunci? Ajukan reset dari halaman ini, atau hubungi admin Biro Umum di <span className="select-all text-white/80">biroumum@kemnaker.go.id</span>.
+              Lupa kata sandi atau akun terkunci? Ajukan reset dari halaman ini, atau hubungi admin
+              Biro Umum di <span className="select-all text-white/80">biroumum@kemnaker.go.id</span>
+              .
             </div>
           </div>
         </div>
@@ -280,17 +353,27 @@ export default function Login() {
         </p>
       </div>
       {banned && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm" role="alertdialog" aria-modal="true" aria-labelledby="banned-title">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm"
+          role="alertdialog"
+          aria-modal="true"
+          aria-labelledby="banned-title"
+        >
           <div className="w-full max-w-sm bg-white rounded-lg shadow-xl p-7 text-center">
             <span className="inline-flex w-16 h-16 rounded-full bg-red-100 text-red-600 items-center justify-center mb-4">
               <span className="material-symbols-outlined text-[34px]">block</span>
             </span>
-            <h3 id="banned-title" className="text-xl font-extrabold text-slate-900">Akun Anda Diblokir</h3>
+            <h3 id="banned-title" className="text-xl font-extrabold text-slate-900">
+              Akun Anda Diblokir
+            </h3>
             <p className="text-sm text-slate-600 mt-2 leading-relaxed">{banned}</p>
             <button
               type="button"
               autoFocus
-              onClick={() => { setBanned(''); if (searchParams.has('banned')) navigate('/login', { replace: true }); }}
+              onClick={() => {
+                setBanned('');
+                if (searchParams.has('banned')) navigate('/login', { replace: true });
+              }}
               className="mt-6 w-full py-3 rounded-md bg-red-600 hover:bg-red-700 text-white text-sm font-semibold transition"
             >
               Saya Mengerti
@@ -298,7 +381,9 @@ export default function Login() {
           </div>
         </div>
       )}
-      {splash && <LoginSplash name={splash.name} onDone={() => navigate('/dashboard', { replace: true })} />}
+      {splash && (
+        <LoginSplash name={splash.name} onDone={() => navigate('/dashboard', { replace: true })} />
+      )}
     </div>
   );
 }

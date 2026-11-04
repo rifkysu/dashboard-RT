@@ -7,5 +7,8 @@ const RUMUS = /^[=+@\t\r]|^-./;
 export function excelCell(v) {
   let s = String(v ?? '');
   if (RUMUS.test(s)) s = `'${s}`;
-  return s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  return s.replace(
+    /[&<>"]/g,
+    (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c],
+  );
 }

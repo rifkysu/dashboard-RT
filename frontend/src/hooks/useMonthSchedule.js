@@ -6,10 +6,19 @@ import visibleInterval from '../utils/visibleInterval';
 // Maks. bulan yang dimuat lewat infinite scroll (batas backend 400 hari per request).
 export const MAX_MONTHS = 12;
 
-function pad(n) { return String(n).padStart(2, '0'); }
-export function iso(d = new Date()) { return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; }
-export function monthKey(d = new Date()) { return `${d.getFullYear()}-${pad(d.getMonth() + 1)}`; }
-export function addMonth(key, n) { const [y, m] = key.split('-').map(Number); return monthKey(new Date(y, m - 1 + n, 1)); }
+function pad(n) {
+  return String(n).padStart(2, '0');
+}
+export function iso(d = new Date()) {
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+export function monthKey(d = new Date()) {
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}`;
+}
+export function addMonth(key, n) {
+  const [y, m] = key.split('-').map(Number);
+  return monthKey(new Date(y, m - 1 + n, 1));
+}
 export function monthDays(key) {
   const [y, m] = key.split('-').map(Number);
   const last = new Date(y, m, 0).getDate();
@@ -48,16 +57,27 @@ export default function useMonthSchedule(endpoint, extraParams) {
       setError('');
       return true;
     } catch (e) {
-      if (id === reqRef.current) setError(e.response?.data?.message || 'Jadwal belum dapat dimuat.');
+      if (id === reqRef.current)
+        setError(e.response?.data?.message || 'Jadwal belum dapat dimuat.');
       return false;
     } finally {
-      if (id === reqRef.current) { setLoading(false); setLoadingMore(false); }
+      if (id === reqRef.current) {
+        setLoading(false);
+        setLoadingMore(false);
+      }
     }
   };
 
-  const setMonths = (next) => { monthsRef.current = next; setMonthsState(next); };
+  const setMonths = (next) => {
+    monthsRef.current = next;
+    setMonthsState(next);
+  };
 
-  const selectMonth = (key) => { setMonths([key]); setLoading(true); load(); };
+  const selectMonth = (key) => {
+    setMonths([key]);
+    setLoading(true);
+    load();
+  };
 
   const loadMore = () => {
     const cur = monthsRef.current;
@@ -66,11 +86,31 @@ export default function useMonthSchedule(endpoint, extraParams) {
     setMonths(next);
     setLoadingMore(true);
     // Gagal memuat -> bulan baru ditarik lagi, supaya tidak tampil kosong seolah tidak ada booking.
-    load().then((ok) => { if (!ok && monthsRef.current === next) { moreFailedAt.current = Date.now(); setMonths(cur); } });
+    load().then((ok) => {
+      if (!ok && monthsRef.current === next) {
+        moreFailedAt.current = Date.now();
+        setMonths(cur);
+      }
+    });
   };
 
-  useEffect(() => { load(); return visibleInterval(load, 60000); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    load();
+    return visibleInterval(load, 60000);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
   useRuangRapatLive(load);
 
-  return { months, items, setItems, loading, loadingMore, error, setError, selectMonth, loadMore, reload: load, hasMore: months.length < MAX_MONTHS };
+  return {
+    months,
+    items,
+    setItems,
+    loading,
+    loadingMore,
+    error,
+    setError,
+    selectMonth,
+    loadMore,
+    reload: load,
+    hasMore: months.length < MAX_MONTHS,
+  };
 }

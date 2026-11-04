@@ -2,25 +2,88 @@ require('dotenv').config();
 const prisma = require('../src/prisma');
 
 const checks = {
-  users: ['id','nama_lengkap','email','password_hash','role','is_active','last_login_at'],
-  pengadaan: ['id','kode','nama_barang_jasa','nilai_hps','request_document_file_path','stage2_invoice_document_file_path','stage2_invoice_file_path','stage2_payment_proof_file_path','stage3_final_document_file_path','created_by','updated_by'],
-  kendaraan: ['id','nama_barang','merk','tipe','no_bpkb','plate','plat_khusus','jenis','tanggal_perolehan','masa_berlaku_stnk','waktu_pajak','photos','photo_file_paths','bpkb_document_file_path','stnk_document_file_path','created_by','updated_by'],
-  kendaraan_service: ['id','kendaraan_id','tanggal_service','bagian_service','invoice_document_name','invoice_document_file_data','invoice_document_file_path','created_by','updated_by'],
-  ruang_rapat: ['id','agenda','room','pic','booking_date','end_date','start_time','end_time','surat_status','surat_file_data','surat_file_path','created_by','updated_by','cancelled_at','cancelled_by','cancel_reason']
+  users: ['id', 'nama_lengkap', 'email', 'password_hash', 'role', 'is_active', 'last_login_at'],
+  pengadaan: [
+    'id',
+    'kode',
+    'nama_barang_jasa',
+    'nilai_hps',
+    'request_document_file_path',
+    'stage2_invoice_document_file_path',
+    'stage2_invoice_file_path',
+    'stage2_payment_proof_file_path',
+    'stage3_final_document_file_path',
+    'created_by',
+    'updated_by',
+  ],
+  kendaraan: [
+    'id',
+    'nama_barang',
+    'merk',
+    'tipe',
+    'no_bpkb',
+    'plate',
+    'plat_khusus',
+    'jenis',
+    'tanggal_perolehan',
+    'masa_berlaku_stnk',
+    'waktu_pajak',
+    'photos',
+    'photo_file_paths',
+    'bpkb_document_file_path',
+    'stnk_document_file_path',
+    'created_by',
+    'updated_by',
+  ],
+  kendaraan_service: [
+    'id',
+    'kendaraan_id',
+    'tanggal_service',
+    'bagian_service',
+    'invoice_document_name',
+    'invoice_document_file_data',
+    'invoice_document_file_path',
+    'created_by',
+    'updated_by',
+  ],
+  ruang_rapat: [
+    'id',
+    'agenda',
+    'room',
+    'pic',
+    'booking_date',
+    'end_date',
+    'start_time',
+    'end_time',
+    'surat_status',
+    'surat_file_data',
+    'surat_file_path',
+    'created_by',
+    'updated_by',
+    'cancelled_at',
+    'cancelled_by',
+    'cancel_reason',
+  ],
 };
-(async()=>{
+(async () => {
   try {
     await prisma.$queryRawUnsafe('SELECT 1');
     for (const [table, cols] of Object.entries(checks)) {
-      const rows = await prisma.$queryRawUnsafe(`SELECT column_name FROM information_schema.columns WHERE table_schema='public' AND table_name='${table}'`);
-      const present = new Set(rows.map(r=>r.column_name));
-      const missing = cols.filter(c=>!present.has(c));
+      const rows = await prisma.$queryRawUnsafe(
+        `SELECT column_name FROM information_schema.columns WHERE table_schema='public' AND table_name='${table}'`,
+      );
+      const present = new Set(rows.map((r) => r.column_name));
+      const missing = cols.filter((c) => !present.has(c));
       const count = await prisma.$queryRawUnsafe(`SELECT COUNT(*)::int AS count FROM \"${table}\"`);
-      console.log(`${table}: rows=${count[0].count} missing=${missing.length ? missing.join(', ') : 'none'}`);
-      if (missing.length) process.exitCode=2;
+      console.log(
+        `${table}: rows=${count[0].count} missing=${missing.length ? missing.join(', ') : 'none'}`,
+      );
+      if (missing.length) process.exitCode = 2;
     }
   } catch (e) {
     console.error('DB VERIFY GAGAL:', e.message);
-    process.exitCode=1;
-  } finally { await prisma.$disconnect(); }
+    process.exitCode = 1;
+  } finally {
+    await prisma.$disconnect();
+  }
 })();

@@ -10,8 +10,13 @@ export function compressImage(file, { maxDimension = 1600, quality = 0.75 } = {}
       img.onload = () => {
         let { width, height } = img;
         if (width > maxDimension || height > maxDimension) {
-          if (width > height) { height = Math.round(height * (maxDimension / width)); width = maxDimension; }
-          else { width = Math.round(width * (maxDimension / height)); height = maxDimension; }
+          if (width > height) {
+            height = Math.round(height * (maxDimension / width));
+            width = maxDimension;
+          } else {
+            width = Math.round(width * (maxDimension / height));
+            height = maxDimension;
+          }
         }
         const canvas = document.createElement('canvas');
         canvas.width = width;

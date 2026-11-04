@@ -14,26 +14,39 @@ const userCache = new Map();
 // hasil query yang dimulai sebelumnya tidak disimpan (bisa sudah basi, mis. role baru diubah).
 const userInflight = new Map();
 let generation = 0;
-function clearUsers() { generation += 1; userCache.clear(); userInflight.clear(); }
+function clearUsers() {
+  generation += 1;
+  userCache.clear();
+  userInflight.clear();
+}
 live.onChange(clearUsers);
 // Untuk perubahan akun yang sengaja tidak di-broadcast ke semua tab (logout): buang cache akun itu saja.
-const forgetUser = (id) => { generation += 1; userCache.delete(id); userInflight.delete(id); };
+const forgetUser = (id) => {
+  generation += 1;
+  userCache.delete(id);
+  userInflight.delete(id);
+};
 
 function loadUser(id, fresh) {
   const hit = userCache.get(id);
   if (!fresh && hit && Date.now() - hit.at < USER_CACHE_MS) return Promise.resolve(hit.user);
   if (!fresh && userInflight.has(id)) return userInflight.get(id);
   const startGeneration = generation;
-  const query = prisma.user.findUnique({
-    where: { id },
-    select: { role: true, is_active: true, nama_lengkap: true, email: true, token_version: true },
-  }).then((user) => {
-    if (generation === startGeneration) {
-      if (userCache.size > 5000) userCache.clear();
-      userCache.set(id, { user, at: Date.now() });
-    }
-    return user;
-  }).finally(() => { if (userInflight.get(id) === query) userInflight.delete(id); });
+  const query = prisma.user
+    .findUnique({
+      where: { id },
+      select: { role: true, is_active: true, nama_lengkap: true, email: true, token_version: true },
+    })
+    .then((user) => {
+      if (generation === startGeneration) {
+        if (userCache.size > 5000) userCache.clear();
+        userCache.set(id, { user, at: Date.now() });
+      }
+      return user;
+    })
+    .finally(() => {
+      if (userInflight.get(id) === query) userInflight.delete(id);
+    });
   if (!fresh) userInflight.set(id, query);
   return query;
 }
@@ -70,15 +83,27 @@ async function requireAuth(req, res, next) {
     if (current && !current.is_active) {
       return res.status(401).json({ code: ACCOUNT_BANNED, message: ACCOUNT_BANNED_MESSAGE });
     }
-    if (!current || !current.is_active || !['karyawan', 'kabag', 'pic', 'admin'].includes(current.role)) {
-      return res.status(401).json({ message: 'Akun tidak ditemukan atau tidak aktif. Silakan login kembali.' });
+    if (
+      !current ||
+      !current.is_active ||
+      !['karyawan', 'kabag', 'pic', 'admin'].includes(current.role)
+    ) {
+      return res
+        .status(401)
+        .json({ message: 'Akun tidak ditemukan atau tidak aktif. Silakan login kembali.' });
     }
     // Token dari sebelum logout / reset kata sandi / ban -> sudah dicabut walau belum kedaluwarsa.
     if (payload.tv !== current.token_version) {
       return res.status(401).json({ message: 'Sesi Anda sudah berakhir. Silakan login kembali.' });
     }
 
-    req.user = { id, email: current.email, role: current.role, nama_lengkap: current.nama_lengkap, remember: payload.rm === true };
+    req.user = {
+      id,
+      email: current.email,
+      role: current.role,
+      nama_lengkap: current.nama_lengkap,
+      remember: payload.rm === true,
+    };
     return next();
   } catch (err) {
     return res.status(401).json({ message: 'Token tidak valid atau sudah kedaluwarsa.' });
@@ -110,4 +135,13 @@ const EDITOR_ROLES = ['kabag', 'pic', 'admin'];
 const ADMIN_ROLES = ['admin', 'kabag'];
 const isAdminRole = (role) => ADMIN_ROLES.includes(role);
 
-module.exports = { requireAuth, requireRole, forgetUser, EDITOR_ROLES, ADMIN_ROLES, isAdminRole, ACCOUNT_BANNED, ACCOUNT_BANNED_MESSAGE };
+module.exports = {
+  requireAuth,
+  requireRole,
+  forgetUser,
+  EDITOR_ROLES,
+  ADMIN_ROLES,
+  isAdminRole,
+  ACCOUNT_BANNED,
+  ACCOUNT_BANNED_MESSAGE,
+};
