@@ -51,6 +51,27 @@ const REQUIRED_KEYS = [
   'surat_file_data',
 ];
 
+// Isi form dari booking milik tamu (tombol Edit di "Booking Anda"). Satu rentang -> mode rentang;
+// beberapa rentang (tanggal loncat-loncat) -> mode pilih tanggal. File surat dikosongkan = surat lama dipakai.
+function formDariBooking(b) {
+  const segs = (b.segments || []).filter((s) => !s.cancelled);
+  const daftar = segs.flatMap((s) => listDates(s.from, s.to));
+  return {
+    ...emptyForm,
+    title: b.title || '',
+    nomor_surat: b.nomor_surat || '',
+    pic: b.pic || '',
+    pic_phone: b.pic_phone || '',
+    room: b.room || '',
+    start: b.start || '',
+    end: b.end || '',
+    surat_name: '',
+    ...(segs.length === 1
+      ? { dateMode: 'range', date: segs[0].from, end_date: segs[0].to }
+      : { dateMode: 'pick', dates: daftar }),
+  };
+}
+
 const LOGIN_ERRORS = {
   not_configured: 'Login Google belum dikonfigurasi di server. Hubungi admin Biro Umum.',
   cancelled: 'Login Google dibatalkan.',
@@ -238,10 +259,12 @@ function Captcha({ captcha, loading, onReload, value, onChange }) {
 // yang mengenai salah satu tanggal pilihan. Bentrok ditampilkan sebelum kirim & tombol Kirim dikunci.
 // Ikut sinyal live, jadi booking orang lain yang baru masuk langsung terlihat. Backend tetap memeriksa
 // ulang di dalam transaksi (sumber kebenaran).
-function useKetersediaan(room, dates) {
+// `kecualiIds` = baris booking yang sedang diedit: tidak dianggap bentrok dengan dirinya sendiri.
+function useKetersediaan(room, dates, kecualiIds = []) {
   const [state, setState] = useState({ items: null, gagal: false, memuat: false });
   const reqRef = useRef(0);
   const key = dates.join(',');
+  const kecuali = kecualiIds.join(',');
   const load = useCallback(() => {
     const id = ++reqRef.current;
     const list = key ? key.split(',') : [];
@@ -254,15 +277,18 @@ function useKetersediaan(room, dates) {
       .get('/ruang-rapat/public-schedule', { params: { from: list[0], to: list[list.length - 1] } })
       .then((r) => {
         if (id !== reqRef.current) return;
+        const sendiri = new Set(kecuali ? kecuali.split(',').map(Number) : []);
         const items = (r.data.data || [])
-          .filter((x) => x.room === room && !x.cancelled && kenaTanggal(x, list))
+          .filter(
+            (x) => x.room === room && !x.cancelled && !sendiri.has(x.id) && kenaTanggal(x, list),
+          )
           .sort((a, b) => a.date.localeCompare(b.date) || a.start.localeCompare(b.start));
         setState({ items, gagal: false, memuat: false });
       })
       .catch(() => {
         if (id === reqRef.current) setState({ items: null, gagal: true, memuat: false });
       });
-  }, [room, key]);
+  }, [room, key, kecuali]);
   useEffect(() => {
     load();
   }, [load]);
@@ -377,10 +403,14 @@ function PanelKetersediaan({ form, dates, cek, bentrok }) {
   );
 }
 
-function BookingForm({ guest, onClose, onBooked, onSessionEnd }) {
+// `editing` = booking milik tamu yang sedang diedit (null = pengajuan baru). Server tetap memeriksa
+// bahwa booking itu milik tamu yang login (guest_id), jadi tamu lain tidak bisa mengeditnya.
+function BookingForm({ guest, editing, onClose, onBooked, onSessionEnd }) {
   const { grup } = useDaftarRuang();
   const { alert } = useFeedback();
-  const [form, setForm] = useState({ ...emptyForm, pic: guest.nama || '' });
+  const [form, setForm] = useState(() =>
+    editing ? formDariBooking(editing) : { ...emptyForm, pic: guest.nama || '' },
+  );
   const [captcha, setCaptcha] = useState(null);
   const [captchaLoading, setCaptchaLoading] = useState(false);
   const [answer, setAnswer] = useState('');
@@ -389,7 +419,7 @@ function BookingForm({ guest, onClose, onBooked, onSessionEnd }) {
   const today = iso();
   const maxDate = addDays(today, MAX_AHEAD_DAYS);
   const tanggal = tanggalTerpilih(form);
-  const cek = useKetersediaan(form.room, tanggal);
+  const cek = useKetersediaan(form.room, tanggal, editing?.row_ids || []);
   const bentrok = bentrokDengan(cek.items, form, tanggal);
 
   const loadCaptcha = useCallback(async () => {
@@ -469,10 +499,12 @@ function BookingForm({ guest, onClose, onBooked, onSessionEnd }) {
   const captchaExpired = isCaptchaExpired();
   // Tombol Kirim baru aktif kalau SEMUA kolom (termasuk surat & captcha) sudah diisi.
   // Tanggal wajib diisi lewat SALAH SATU mode (rentang atau pilih beberapa tanggal).
+  // Saat edit, file surat boleh tidak diganti (surat lama tetap dipakai).
+  const wajib = editing
+    ? REQUIRED_KEYS.filter((k) => k !== 'surat_name' && k !== 'surat_file_data')
+    : REQUIRED_KEYS;
   const complete =
-    REQUIRED_KEYS.every((k) => String(form[k] || '').trim()) &&
-    tanggal.length > 0 &&
-    answer.length === 6;
+    wajib.every((k) => String(form[k] || '').trim()) && tanggal.length > 0 && answer.length === 6;
 
   function validate() {
     const errors = requireFields([
@@ -483,7 +515,7 @@ function BookingForm({ guest, onClose, onBooked, onSessionEnd }) {
       ['Ruangan', form.room],
       ['Jam mulai', form.start],
       ['Jam selesai', form.end],
-      ['File surat permohonan', form.surat_file_data],
+      ...(editing ? [] : [['File surat permohonan', form.surat_file_data]]),
     ]);
     if (!/^\d{6}$/.test(answer)) errors.push('Captcha wajib diisi (6 angka).');
     if (form.pic_phone && !HP_RE.test(normalizePhone(form.pic_phone)))
@@ -534,15 +566,20 @@ function BookingForm({ guest, onClose, onBooked, onSessionEnd }) {
     setSaving(true);
     try {
       // Mode rentang -> date & end_date; mode pilih -> dates (backend membedakan dari ada/tidaknya `dates`).
-      const { dateMode, date, end_date, dates, ...rest } = form;
+      const { dateMode, date, end_date, dates, surat_name, surat_file_data, ...rest } = form;
       const tanggalPayload =
         dateMode === 'pick' ? { dates: [...dates].sort() } : { date, end_date: end_date || date };
-      const r = await guestApi.post('/guest/bookings', {
+      const payload = {
         ...rest,
         ...tanggalPayload,
+        // Edit tanpa file baru -> surat tidak dikirim, server memakai surat lama.
+        ...(surat_file_data ? { surat_name, surat_file_data } : {}),
         pic_phone: normalizePhone(form.pic_phone),
         captcha: answer,
-      });
+      };
+      const r = editing
+        ? await guestApi.put(`/guest/bookings/${editing.id}`, payload)
+        : await guestApi.post('/guest/bookings', payload);
       onBooked(r.data);
     } catch (err) {
       const status = err.response?.status;
@@ -558,7 +595,9 @@ function BookingForm({ guest, onClose, onBooked, onSessionEnd }) {
               ? 'Jadwal bentrok'
               : status === 429
                 ? 'Tunggu sebentar'
-                : 'Gagal mengirim booking',
+                : editing
+                  ? 'Gagal menyimpan perubahan'
+                  : 'Gagal mengirim booking',
         message:
           err.response?.data?.message || 'Gagal mengirim booking. Periksa koneksi lalu coba lagi.',
         tone:
@@ -591,10 +630,10 @@ function BookingForm({ guest, onClose, onBooked, onSessionEnd }) {
             </span>
             <div className="min-w-0">
               <div id="guest-booking-title" className="font-display font-bold text-dinas-ink">
-                Form Booking Ruang Rapat
+                {editing ? 'Edit Booking Ruang Rapat' : 'Form Booking Ruang Rapat'}
               </div>
               <div className="text-[11px] text-slate-500 truncate">
-                Diajukan sebagai {guest.nama} · {guest.email}
+                {editing ? 'Booking milik' : 'Diajukan sebagai'} {guest.nama} · {guest.email}
               </div>
             </div>
           </div>
@@ -609,10 +648,19 @@ function BookingForm({ guest, onClose, onBooked, onSessionEnd }) {
           </button>
         </div>
         <form noValidate onSubmit={submit} className="p-5 sm:p-6 space-y-5">
-          <p className="text-xs text-slate-600">
-            Semua kolom bertanda <span className="text-red-600 font-bold">*</span> wajib diisi.
-            Tombol <b>Kirim Booking</b> aktif setelah semua kolom dan captcha terisi.
-          </p>
+          {editing ? (
+            <p className="text-xs text-slate-600">
+              Ubah kolom yang perlu, lalu isi captcha dan klik <b>Simpan Perubahan</b>. Perubahan
+              berlaku untuk seluruh pengajuan
+              {editing.tanggal_count > 1 ? ` (${editing.tanggal_count} tanggal)` : ''} dan dicek
+              bentrok lagi.
+            </p>
+          ) : (
+            <p className="text-xs text-slate-600">
+              Semua kolom bertanda <span className="text-red-600 font-bold">*</span> wajib diisi.
+              Tombol <b>Kirim Booking</b> aktif setelah semua kolom dan captcha terisi.
+            </p>
+          )}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Field label="Topik / Agenda">
               <input
@@ -815,7 +863,15 @@ function BookingForm({ guest, onClose, onBooked, onSessionEnd }) {
             <PanelKetersediaan form={form} dates={tanggal} cek={cek} bentrok={bentrok} />
             <div className="md:col-span-2">
               <span className="block text-xs font-semibold text-slate-700 mb-1.5">
-                Surat Permohonan <span className="text-red-600">*</span>
+                Surat Permohonan{' '}
+                {editing ? (
+                  <span className="font-normal text-slate-500">
+                    — opsional, pilih file baru hanya bila ingin mengganti
+                    {editing.surat_name ? ` (sekarang: ${editing.surat_name})` : ''}
+                  </span>
+                ) : (
+                  <span className="text-red-600">*</span>
+                )}
               </span>
               <label className="relative flex items-center gap-4 p-4 rounded-xl border border-dashed border-slate-300 bg-white cursor-pointer hover:border-dinas">
                 <span
@@ -827,7 +883,10 @@ function BookingForm({ guest, onClose, onBooked, onSessionEnd }) {
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="block text-sm font-semibold text-slate-800 truncate">
-                    {form.surat_name || 'Pilih file surat permohonan'}
+                    {form.surat_name ||
+                      (editing
+                        ? 'Tetap memakai surat lama — klik untuk mengganti'
+                        : 'Pilih file surat permohonan')}
                   </span>
                   <span className="block text-xs text-slate-500 mt-0.5">
                     PDF, JPG, atau PNG · maks. 8 MB
@@ -875,7 +934,13 @@ function BookingForm({ guest, onClose, onBooked, onSessionEnd }) {
               disabled={!complete || saving || captchaExpired || bentrok.length > 0}
               className="px-5 py-2.5 rounded-lg bg-dinas text-white text-sm font-semibold hover:bg-dinas-dark disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {saving ? 'Mengirim…' : 'Kirim Booking'}
+              {saving
+                ? editing
+                  ? 'Menyimpan…'
+                  : 'Mengirim…'
+                : editing
+                  ? 'Simpan Perubahan'
+                  : 'Kirim Booking'}
             </button>
           </div>
         </form>
@@ -885,16 +950,28 @@ function BookingForm({ guest, onClose, onBooked, onSessionEnd }) {
 }
 
 // Popup batalkan booking milik tamu sendiri; alasan opsional (maks. 500 karakter).
+// Booking lebih dari 1 tanggal: tamu mencentang tanggal yang mau dibatalkan, tanggal lain tetap aktif.
 function CancelDialog({ booking, onClose, onDone, onSessionEnd }) {
   const { alert } = useFeedback();
   const [reason, setReason] = useState('');
   const [saving, setSaving] = useState(false);
+  const today = iso();
+  const pilihan = (booking.segments || [])
+    .filter((s) => !s.cancelled)
+    .flatMap((s) => listDates(s.from, s.to))
+    .filter((d) => d >= today);
+  const banyak = pilihan.length > 1;
+  const [dipilih, setDipilih] = useState([]);
+  const semua = banyak && dipilih.length === pilihan.length;
+  const toggle = (d) =>
+    setDipilih((x) => (x.includes(d) ? x.filter((y) => y !== d) : [...x, d].sort()));
   async function submit() {
-    if (saving) return;
+    if (saving || (banyak && !dipilih.length)) return;
     setSaving(true);
     try {
       const r = await guestApi.post(`/guest/bookings/${booking.id}/cancel`, {
         reason: reason.trim() || null,
+        ...(banyak ? { dates: dipilih } : {}),
       });
       onDone(r.data.message);
     } catch (e) {
@@ -929,20 +1006,57 @@ function CancelDialog({ booking, onClose, onDone, onSessionEnd }) {
           </span>
           <div className="min-w-0">
             <div id="guest-cancel-title" className="font-display font-bold text-dinas-ink">
-              Batalkan booking?
+              {banyak ? 'Batalkan tanggal booking' : 'Batalkan booking?'}
             </div>
             <div className="text-sm text-slate-600 mt-1">
               <b>{booking.title}</b>
               <br />
               {judulRuang(booking.room)} · {tanggalBooking(booking)} · {booking.start}–{booking.end}
             </div>
-            {booking.tanggal_count > 1 && (
-              <div className="text-[11px] text-slate-500 mt-1">
-                Semua {booking.tanggal_count} tanggal dalam pengajuan ini ikut dibatalkan.
-              </div>
-            )}
           </div>
         </div>
+        {banyak && (
+          <fieldset className="mt-4">
+            <div className="flex items-center justify-between gap-2 mb-1.5">
+              <legend className="text-xs font-semibold text-slate-700">
+                Pilih tanggal yang dibatalkan <span className="text-red-600">*</span>
+              </legend>
+              <button
+                type="button"
+                onClick={() => setDipilih(semua ? [] : pilihan)}
+                className="text-[11px] font-semibold text-dinas hover:underline"
+              >
+                {semua ? 'Kosongkan' : 'Pilih semua'}
+              </button>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 max-h-56 overflow-y-auto">
+              {pilihan.map((d) => {
+                const on = dipilih.includes(d);
+                return (
+                  <label
+                    key={d}
+                    className={`flex items-center gap-2 rounded-lg border px-2.5 py-2 text-sm cursor-pointer ${on ? 'border-red-300 bg-red-50 text-red-800' : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'}`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={on}
+                      onChange={() => toggle(d)}
+                      className="accent-red-600"
+                    />
+                    {fmtTanggal(d)}
+                  </label>
+                );
+              })}
+            </div>
+            <p className="text-[11px] text-slate-500 mt-1.5">
+              {dipilih.length
+                ? semua
+                  ? 'Semua tanggal dipilih: seluruh booking dibatalkan.'
+                  : `${dipilih.length} tanggal dibatalkan, ${pilihan.length - dipilih.length} tanggal lain tetap aktif.`
+                : 'Tanggal yang tidak dicentang tetap aktif.'}
+            </p>
+          </fieldset>
+        )}
         <label className="block mt-4">
           <span className="block text-xs font-semibold text-slate-700 mb-1.5">
             Alasan pembatalan (opsional)
@@ -956,7 +1070,8 @@ function CancelDialog({ booking, onClose, onDone, onSessionEnd }) {
           />
         </label>
         <p className="text-[11px] text-slate-500 mt-1">
-          Ruangan langsung tersedia lagi untuk orang lain. Pembatalan tidak bisa diurungkan.
+          Ruangan di tanggal yang dibatalkan langsung tersedia lagi untuk orang lain. Pembatalan
+          tidak bisa diurungkan.
         </p>
         <div className="flex justify-end gap-2 mt-5">
           <button
@@ -970,10 +1085,16 @@ function CancelDialog({ booking, onClose, onDone, onSessionEnd }) {
           <button
             type="button"
             onClick={submit}
-            disabled={saving}
-            className="px-5 py-2.5 rounded-lg bg-red-600 text-white text-sm font-semibold hover:bg-red-700 disabled:opacity-60"
+            disabled={saving || (banyak && !dipilih.length)}
+            className="px-5 py-2.5 rounded-lg bg-red-600 text-white text-sm font-semibold hover:bg-red-700 disabled:opacity-60 disabled:cursor-not-allowed"
           >
-            {saving ? 'Membatalkan…' : 'Ya, batalkan'}
+            {saving
+              ? 'Membatalkan…'
+              : banyak && !semua
+                ? dipilih.length
+                  ? `Batalkan ${dipilih.length} tanggal`
+                  : 'Batalkan tanggal'
+                : 'Ya, batalkan'}
           </button>
         </div>
       </div>
@@ -988,6 +1109,7 @@ export default function GuestBooking() {
   const [showForm, setShowForm] = useState(false);
   const [mine, setMine] = useState([]);
   const [cancelling, setCancelling] = useState(null);
+  const [editing, setEditing] = useState(null);
   const panelRef = useRef(null);
 
   const loadMine = useCallback(() => {
@@ -1004,6 +1126,7 @@ export default function GuestBooking() {
       setGuest(null);
       setMine([]);
       setShowForm(false);
+      setEditing(null);
       if (message) alert({ title: 'Sesi berakhir', message, tone: 'warning' });
     },
     [alert],
@@ -1058,6 +1181,7 @@ export default function GuestBooking() {
 
   function booked(res) {
     setShowForm(false);
+    setEditing(null);
     toast(res.message || 'Booking berhasil dikirim.');
     loadMine();
   }
@@ -1163,14 +1287,26 @@ export default function GuestBooking() {
                       {b.cancelled_by_self ? 'Dibatalkan oleh Anda' : 'Dibatalkan Biro Umum'}
                     </span>
                   ) : (
-                    <button
-                      type="button"
-                      onClick={() => setCancelling(b)}
-                      className="shrink-0 inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-1 rounded-md border border-red-200 text-red-700 hover:bg-red-50"
-                    >
-                      <span className="material-symbols-outlined text-[14px]">event_busy</span>
-                      Batalkan
-                    </button>
+                    <span className="shrink-0 flex items-center gap-1.5">
+                      {b.editable && (
+                        <button
+                          type="button"
+                          onClick={() => setEditing(b)}
+                          className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-1 rounded-md border border-slate-300 text-dinas hover:bg-slate-50"
+                        >
+                          <span className="material-symbols-outlined text-[14px]">edit</span>
+                          Edit
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => setCancelling(b)}
+                        className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-1 rounded-md border border-red-200 text-red-700 hover:bg-red-50"
+                      >
+                        <span className="material-symbols-outlined text-[14px]">event_busy</span>
+                        Batalkan
+                      </button>
+                    </span>
                   )}
                 </div>
                 <div className="text-xs text-slate-500 mt-0.5">
@@ -1201,10 +1337,15 @@ export default function GuestBooking() {
           }}
         />
       )}
-      {showForm && guest && (
+      {(showForm || editing) && guest && (
         <BookingForm
+          key={editing ? `edit-${editing.id}` : 'baru'}
           guest={guest}
-          onClose={() => setShowForm(false)}
+          editing={editing}
+          onClose={() => {
+            setShowForm(false);
+            setEditing(null);
+          }}
           onBooked={booked}
           onSessionEnd={endSession}
         />

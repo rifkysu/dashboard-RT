@@ -728,6 +728,88 @@ router.get('/:id/group-dates', async (req, res) => {
     res.status(500).json({ message: 'Gagal mengambil tanggal booking.' });
   }
 });
+// Inti pembatalan per tanggal, dipakai pegawai (/:id/cancel-dates) dan tamu kiosk (routes/guest.js).
+// members = baris aktif satu pengajuan (urut tanggal), cancel = Set tanggal 'YYYY-MM-DD' yang dibatalkan.
+// Tanggal batal disimpan sebagai baris berstatus batal (`batal` = cancelled_at, pembatal, alasan); sisa tanggal
+// aktif dipecah jadi rentang berurutan dengan data yang sama dan booking_group yang sama.
+// `ubah` = kolom tambahan saat menulis (pegawai: updated_by). Mengembalikan baris aktif yang tersisa.
+async function pecahPembatalan(tx, members, cancel, { batal, group, include, ubah = {} }) {
+  const daysOf = (m) => {
+    const out = [];
+    for (let t = +m.booking_date; t <= +m.end_date; t += DAY) out.push(fmtDate(new Date(t)));
+    return out;
+  };
+  const all = new Set(members.flatMap(daysOf));
+  if ([...cancel].some((d) => !all.has(d)))
+    throw new HttpError(400, 'Ada tanggal yang tidak termasuk dalam booking ini.');
+  const rows = [];
+  for (const m of members) {
+    const days = daysOf(m);
+    if (!days.some((d) => cancel.has(d))) {
+      rows.push(m);
+      continue;
+    }
+    const segmentsOf = (pick) => {
+      const out = [];
+      for (const d of days) {
+        if (!pick(d)) continue;
+        const last = out[out.length - 1];
+        if (last && +date(d) - +date(last.to) === DAY) last.to = d;
+        else out.push({ from: d, to: d });
+      }
+      return out;
+    };
+    const keep = segmentsOf((d) => !cancel.has(d)),
+      gone = segmentsOf((d) => cancel.has(d));
+    // Semua tanggal booking ini dibatalkan -> baris ini sendiri yang berstatus batal.
+    if (!keep.length) {
+      await tx.ruangRapat.update({ where: { id: m.id }, data: { ...batal, booking_group: group } });
+      continue;
+    }
+    rows.push(
+      await tx.ruangRapat.update({
+        where: { id: m.id },
+        data: {
+          booking_date: date(keep[0].from),
+          end_date: date(keep[0].to),
+          booking_group: group,
+          ...ubah,
+        },
+        ...(include ? { include } : {}),
+      }),
+    );
+    const copy = {
+      agenda: m.agenda,
+      nomor_surat: m.nomor_surat,
+      room: m.room,
+      pic: m.pic,
+      pic_phone: m.pic_phone,
+      start_time: m.start_time,
+      end_time: m.end_time,
+      surat_status: m.surat_status,
+      surat_name: m.surat_name,
+      surat_file_data: m.surat_file_data,
+      surat_file_path: m.surat_file_path,
+      booking_group: group,
+      created_by: m.created_by,
+      guest_id: m.guest_id,
+      ...ubah,
+    };
+    for (const sg of keep.slice(1))
+      rows.push(
+        await tx.ruangRapat.create({
+          data: { ...copy, booking_date: date(sg.from), end_date: date(sg.to) },
+          ...(include ? { include } : {}),
+        }),
+      );
+    for (const sg of gone)
+      await tx.ruangRapat.create({
+        data: { ...copy, ...batal, booking_date: date(sg.from), end_date: date(sg.to) },
+      });
+  }
+  return rows;
+}
+
 // Batalkan sebagian/semua tanggal dari SATU PENGAJUAN booking TANPA menghapus data. Satu pengajuan =
 // semua booking aktif dengan booking_group sama (tanggal loncat-loncat atau pecahan cancel sebelumnya),
 // jadi tanggal mana pun di pengajuan itu bisa dicentang dari satu popup. Tanggal batal disimpan sebagai
@@ -786,83 +868,12 @@ router.post('/:id/cancel-dates', async (req, res) => {
             })
           : [b];
         const group = b.booking_group || crypto.randomUUID(); // booking lama tanpa kode: pecahannya tetap satu grup
-        const daysOf = (m) => {
-          const out = [];
-          for (let t = +m.booking_date; t <= +m.end_date; t += DAY) out.push(fmtDate(new Date(t)));
-          return out;
-        };
-        const all = new Set(members.flatMap(daysOf));
-        if ([...cancel].some((d) => !all.has(d)))
-          throw new HttpError(400, 'Ada tanggal yang tidak termasuk dalam booking ini.');
-        const batal = cancelData(req);
-        const rows = [];
-        for (const m of members) {
-          const days = daysOf(m);
-          if (!days.some((d) => cancel.has(d))) {
-            rows.push(m);
-            continue;
-          }
-          const segmentsOf = (pick) => {
-            const out = [];
-            for (const d of days) {
-              if (!pick(d)) continue;
-              const last = out[out.length - 1];
-              if (last && +date(d) - +date(last.to) === DAY) last.to = d;
-              else out.push({ from: d, to: d });
-            }
-            return out;
-          };
-          const keep = segmentsOf((d) => !cancel.has(d)),
-            gone = segmentsOf((d) => cancel.has(d));
-          // Semua tanggal booking ini dibatalkan -> baris ini sendiri yang berstatus batal.
-          if (!keep.length) {
-            await tx.ruangRapat.update({
-              where: { id: m.id },
-              data: { ...batal, booking_group: group },
-            });
-            continue;
-          }
-          rows.push(
-            await tx.ruangRapat.update({
-              where: { id: m.id },
-              data: {
-                booking_date: date(keep[0].from),
-                end_date: date(keep[0].to),
-                booking_group: group,
-                updated_by: req.user.id,
-              },
-              include,
-            }),
-          );
-          const copy = {
-            agenda: m.agenda,
-            nomor_surat: m.nomor_surat,
-            room: m.room,
-            pic: m.pic,
-            pic_phone: m.pic_phone,
-            start_time: m.start_time,
-            end_time: m.end_time,
-            surat_status: m.surat_status,
-            surat_name: m.surat_name,
-            surat_file_data: m.surat_file_data,
-            surat_file_path: m.surat_file_path,
-            booking_group: group,
-            created_by: m.created_by,
-            guest_id: m.guest_id,
-            updated_by: req.user.id,
-          };
-          for (const sg of keep.slice(1))
-            rows.push(
-              await tx.ruangRapat.create({
-                data: { ...copy, booking_date: date(sg.from), end_date: date(sg.to) },
-                include,
-              }),
-            );
-          for (const sg of gone)
-            await tx.ruangRapat.create({
-              data: { ...copy, ...batal, booking_date: date(sg.from), end_date: date(sg.to) },
-            });
-        }
+        const rows = await pecahPembatalan(tx, members, cancel, {
+          batal: cancelData(req),
+          group,
+          include,
+          ubah: { updated_by: req.user.id },
+        });
         return { cancelled: !rows.length, bookings: rows, ids: members.map((m) => m.id), group };
       },
       { timeout: 20000 },
@@ -925,6 +936,7 @@ router.delete('/:id', async (req, res) => {
 module.exports = router;
 // Dipakai juga oleh form booking tamu (routes/guest.js) supaya aturan & cek bentroknya sama persis.
 module.exports.booking = {
+  pecahPembatalan,
   dateRuns,
   validText,
   validPhone,

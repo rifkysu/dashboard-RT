@@ -3,7 +3,7 @@ const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 const prisma = require('../prisma');
 const logger = require('../logger');
-const { catat, ringkas } = require('../audit');
+const { catat, ringkas, pilihKolom } = require('../audit');
 const live = require('../live');
 const { requireAuth, requireRole, ADMIN_ROLES } = require('../middleware/auth');
 const { requireNotInMaintenance } = require('../middleware/maintenance');
@@ -274,6 +274,10 @@ router.get('/bookings', requireGuest, async (req, res) => {
         start_time: true,
         end_time: true,
         surat_status: true,
+        nomor_surat: true,
+        pic_phone: true,
+        surat_name: true,
+        booking_group: true,
         cancelled_at: true,
         cancel_reason: true,
         cancelled_by_guest_id: true,
@@ -284,7 +288,9 @@ router.get('/bookings', requireGuest, async (req, res) => {
     });
     // Satu pengajuan (booking_group) = satu kartu, walau tanggalnya loncat-loncat (beberapa baris).
     // `segments` = rentang tanggal berurutan di dalamnya; date/end_date = tanggal pertama & terakhir.
+    // Data form (nomor surat, HP, nama surat) ikut dikirim untuk tombol Edit -- hanya milik tamu ini sendiri.
     const day = (d) => d.toISOString().slice(0, 10);
+    const now = nowLocal();
     const groups = new Map();
     for (const r of rows) {
       const key = r.booking_group || `id:${r.id}`;
@@ -295,12 +301,16 @@ router.get('/bookings', requireGuest, async (req, res) => {
           title: r.agenda,
           room: r.room,
           pic: r.pic,
+          pic_phone: r.pic_phone,
+          nomor_surat: r.nomor_surat,
+          surat_name: r.surat_name,
           date: day(r.booking_date),
           end_date: day(r.end_date),
           start: r.start_time.toISOString().slice(11, 16),
           end: r.end_time.toISOString().slice(11, 16),
           status: r.surat_status,
           segments: [],
+          row_ids: [],
           cancelledAll: true,
           cancelled_by_self: false,
           cancel_reason: null,
@@ -315,20 +325,31 @@ router.get('/bookings', requireGuest, async (req, res) => {
       if (day(r.end_date) > g.end_date) g.end_date = day(r.end_date);
       if (!r.cancelled_at) {
         g.cancelledAll = false;
+        g.row_ids.push(r.id);
         if (g.id_aktif === undefined) g.id_aktif = r.id;
       } else {
         g.cancelled_by_self = g.cancelled_by_self || r.cancelled_by_guest_id === req.guest.id;
         g.cancel_reason = g.cancel_reason || r.cancel_reason;
       }
     }
-    const data = [...groups.values()].slice(0, 50).map(({ cancelledAll, id_aktif, ...g }) => ({
-      ...g,
-      id: id_aktif ?? g.id, // tombol Batalkan memakai baris yang masih aktif (membatalkan seluruh pengajuan)
-      cancelled: cancelledAll,
-      tanggal_count: g.segments
-        .filter((s) => !s.cancelled)
-        .reduce((n, s) => n + (Date.parse(s.to) - Date.parse(s.from)) / B.DAY + 1, 0),
-    }));
+    const data = [...groups.values()].slice(0, 50).map(({ cancelledAll, id_aktif, ...g }) => {
+      const aktif = g.segments.filter((s) => !s.cancelled);
+      const mulai = aktif[0]?.from;
+      return {
+        ...g,
+        id: id_aktif ?? g.id, // tombol Batalkan/Edit memakai baris yang masih aktif (seluruh pengajuan)
+        cancelled: cancelledAll,
+        // Bisa diedit selama belum berjalan (server tetap memeriksa ulang saat disimpan).
+        editable:
+          !cancelledAll &&
+          !!mulai &&
+          (mulai > now.date || (mulai === now.date && g.start > now.hm)),
+        tanggal_count: aktif.reduce(
+          (n, s) => n + (Date.parse(s.to) - Date.parse(s.from)) / B.DAY + 1,
+          0,
+        ),
+      };
+    });
     res.json({ data });
   } catch (err) {
     logger.error('GET booking tamu gagal', { error: err });
@@ -348,6 +369,147 @@ const submitGuestLimiter = createRateLimiter({
   keyFn: (req) => `g${req.guest.id}`,
 });
 
+// Validasi isi form booking tamu -- dipakai pengajuan baru (POST) dan edit (PUT) supaya aturannya sama.
+// Hasil: { error } (pesan 400) atau { v } berisi nilai yang sudah dicek + `ranges` (rentang tanggal
+// berurutan, satu baris ruang_rapat per rentang). Saat edit, file surat boleh kosong = surat lama dipakai.
+async function bacaFormBooking(body, { wajibSurat }) {
+  const {
+    title,
+    nomor_surat,
+    room,
+    pic,
+    pic_phone,
+    date: startDate,
+    end_date,
+    dates,
+    start,
+    end,
+    surat_name,
+    surat_file_data,
+  } = body || {};
+  // Dua cara memilih tanggal: rentang (date s/d end_date, berturut-turut) atau `dates` = daftar tanggal
+  // pilihan yang boleh loncat-loncat (mis. Senin, Rabu, Jumat) supaya ruangan tidak terkunci seminggu penuh.
+  const picked = dates !== undefined;
+  const adaSurat = typeof surat_file_data === 'string' && surat_file_data.trim() !== '';
+
+  const missing = [
+    ['Topik / agenda', title],
+    ['Nomor surat', nomor_surat],
+    ['Nama PIC', pic],
+    ['No. HP PIC', pic_phone],
+    ['Ruangan', room],
+    ...(picked
+      ? []
+      : [
+          ['Tanggal mulai', startDate],
+          ['Sampai tanggal', end_date],
+        ]),
+    ['Jam mulai', start],
+    ['Jam selesai', end],
+    ...(wajibSurat ? [['File surat permohonan', surat_file_data]] : []),
+  ]
+    .filter(([, v]) => typeof v !== 'string' || !v.trim())
+    .map(([label]) => `${label} wajib diisi.`);
+  if (missing.length) return { error: missing.join(' ') };
+  if (
+    picked &&
+    (!Array.isArray(dates) ||
+      !dates.length ||
+      dates.length > MAX_DATES ||
+      !dates.every(B.validDate))
+  )
+    return { error: `Pilih 1-${MAX_DATES} tanggal yang valid.` };
+
+  if (!B.validText(title, 255)) return { error: 'Topik / agenda maksimal 255 karakter.' };
+  if (!B.validNomorSurat(nomor_surat)) return { error: 'Nomor surat maksimal 100 karakter.' };
+  if (!B.validText(pic, 150)) return { error: 'Nama PIC maksimal 150 karakter.' };
+  if (!B.validPhone(pic_phone))
+    return { error: 'No. HP PIC tidak valid (contoh: 081234567890 atau +6281234567890).' };
+  if (!(await ruangValid(room))) return { error: 'Ruangan tidak valid.' };
+  if (!picked && (!B.validDate(startDate) || !B.validDate(end_date)))
+    return { error: 'Tanggal tidak valid.' };
+  if (!B.validTime(start) || !B.validTime(end)) return { error: 'Jam tidak valid.' };
+  if (start >= end) return { error: 'Jam selesai harus lebih besar dari jam mulai.' };
+  if (
+    (wajibSurat || adaSurat) &&
+    (!B.validFile(surat_file_data) || !B.validSuratName(surat_name) || !surat_name)
+  )
+    return { error: 'File surat harus PDF/JPG/PNG asli, maksimal 8 MB.' };
+
+  const today = todayIso();
+  let ranges;
+  let firstDate;
+  if (picked) {
+    const sorted = [...new Set(dates)].sort();
+    firstDate = sorted[0];
+    if (firstDate < today) return { error: 'Tanggal tidak boleh sebelum hari ini.' };
+    if ((B.date(sorted[sorted.length - 1]) - B.date(today)) / B.DAY > MAX_AHEAD_DAYS)
+      return { error: `Booking paling jauh ${MAX_AHEAD_DAYS} hari ke depan.` };
+    ranges = B.dateRuns(sorted); // tanggal berurutan digabung jadi satu rentang
+  } else {
+    const bd = B.date(startDate),
+      ed = B.date(end_date);
+    firstDate = startDate;
+    if (startDate < today) return { error: 'Tanggal mulai tidak boleh sebelum hari ini.' };
+    if ((bd - B.date(today)) / B.DAY > MAX_AHEAD_DAYS)
+      return { error: `Booking paling jauh ${MAX_AHEAD_DAYS} hari ke depan.` };
+    if (ed < bd) return { error: 'Sampai tanggal tidak boleh sebelum tanggal mulai.' };
+    if ((ed - bd) / B.DAY + 1 > MAX_SPAN_DAYS)
+      return { error: `Booking tamu maksimal ${MAX_SPAN_DAYS} hari berturut-turut.` };
+    ranges = [[bd, ed]];
+  }
+  if (firstDate === today && start < nowLocal().hm)
+    return { error: 'Jam mulai hari ini sudah lewat.' };
+
+  return {
+    v: {
+      title,
+      nomor_surat,
+      room,
+      pic,
+      pic_phone,
+      start,
+      end,
+      surat_name,
+      surat_file_data: adaSurat ? surat_file_data : null,
+      ranges,
+    },
+  };
+}
+
+// Cek bentrok semua rentang sekaligus; kalau ada satu saja yang bentrok, tidak ada yang disimpan.
+// `kecualiIds` = baris milik pengajuan yang sedang diedit (tidak dianggap bentrok dengan dirinya sendiri).
+async function cekBentrok(tx, room, ranges, start, end, kecualiIds = []) {
+  const conflicts = [];
+  for (const [bd, ed] of ranges) {
+    const c = await tx.ruangRapat.findFirst({
+      where: {
+        ...B.conflictWhere(room, bd, ed, B.time(start), B.time(end)),
+        ...(kecualiIds.length ? { id: { notIn: kecualiIds } } : {}),
+      },
+      orderBy: [{ booking_date: 'asc' }, { start_time: 'asc' }],
+    });
+    if (c) conflicts.push(c);
+  }
+  if (conflicts.length)
+    throw new B.HttpError(
+      409,
+      B.conflictMessage(conflicts[0]) +
+        (conflicts.length > 1 ? ` (dan ${conflicts.length - 1} tanggal lain juga bentrok)` : ''),
+    );
+}
+
+const fmtHari = (d) => d.toISOString().slice(0, 10);
+const teksTanggal = (rows) =>
+  rows
+    .map((r) =>
+      +r.end_date !== +r.booking_date
+        ? `${fmtHari(r.booking_date)} s/d ${fmtHari(r.end_date)}`
+        : fmtHari(r.booking_date),
+    )
+    .join(', ');
+const jumlahHari = (ranges) => ranges.reduce((n, [bd, ed]) => n + (ed - bd) / B.DAY + 1, 0);
+
 // Semua kolom WAJIB diisi (termasuk nomor surat & file surat), lalu captcha dicek.
 router.post(
   '/bookings',
@@ -358,118 +520,25 @@ router.post(
   requireNotInMaintenance('kiosk'),
   async (req, res) => {
     try {
+      // Captcha dicek paling awal & selalu hangus setelah dicek (benar/salah).
+      const captchaError = verifyCaptcha(`guest:${req.guest.id}`, req.body?.captcha);
+      if (captchaError) return res.status(400).json({ code: 'CAPTCHA', message: captchaError });
+
+      const form = await bacaFormBooking(req.body, { wajibSurat: true });
+      if (form.error) return res.status(400).json({ message: form.error });
       const {
         title,
         nomor_surat,
         room,
         pic,
         pic_phone,
-        date: startDate,
-        end_date,
-        dates,
         start,
         end,
         surat_name,
         surat_file_data,
-        captcha,
-      } = req.body || {};
-      // Dua cara memilih tanggal: rentang (date s/d end_date, berturut-turut) atau `dates` = daftar tanggal
-      // pilihan yang boleh loncat-loncat (mis. Senin, Rabu, Jumat) supaya ruangan tidak terkunci seminggu penuh.
-      const picked = dates !== undefined;
-
-      // Captcha dicek paling awal & selalu hangus setelah dicek (benar/salah).
-      const captchaError = verifyCaptcha(`guest:${req.guest.id}`, captcha);
-      if (captchaError) return res.status(400).json({ code: 'CAPTCHA', message: captchaError });
-
-      const missing = [
-        ['Topik / agenda', title],
-        ['Nomor surat', nomor_surat],
-        ['Nama PIC', pic],
-        ['No. HP PIC', pic_phone],
-        ['Ruangan', room],
-        ...(picked
-          ? []
-          : [
-              ['Tanggal mulai', startDate],
-              ['Sampai tanggal', end_date],
-            ]),
-        ['Jam mulai', start],
-        ['Jam selesai', end],
-        ['File surat permohonan', surat_file_data],
-      ]
-        .filter(([, v]) => typeof v !== 'string' || !v.trim())
-        .map(([label]) => `${label} wajib diisi.`);
-      if (missing.length) return res.status(400).json({ message: missing.join(' ') });
-      if (
-        picked &&
-        (!Array.isArray(dates) ||
-          !dates.length ||
-          dates.length > MAX_DATES ||
-          !dates.every(B.validDate))
-      ) {
-        return res.status(400).json({ message: `Pilih 1-${MAX_DATES} tanggal yang valid.` });
-      }
-
-      if (!B.validText(title, 255))
-        return res.status(400).json({ message: 'Topik / agenda maksimal 255 karakter.' });
-      if (!B.validNomorSurat(nomor_surat))
-        return res.status(400).json({ message: 'Nomor surat maksimal 100 karakter.' });
-      if (!B.validText(pic, 150))
-        return res.status(400).json({ message: 'Nama PIC maksimal 150 karakter.' });
-      if (!B.validPhone(pic_phone))
-        return res
-          .status(400)
-          .json({ message: 'No. HP PIC tidak valid (contoh: 081234567890 atau +6281234567890).' });
-      if (!(await ruangValid(room)))
-        return res.status(400).json({ message: 'Ruangan tidak valid.' });
-      if (!picked && (!B.validDate(startDate) || !B.validDate(end_date)))
-        return res.status(400).json({ message: 'Tanggal tidak valid.' });
-      if (!B.validTime(start) || !B.validTime(end))
-        return res.status(400).json({ message: 'Jam tidak valid.' });
-      if (start >= end)
-        return res.status(400).json({ message: 'Jam selesai harus lebih besar dari jam mulai.' });
-      if (!B.validFile(surat_file_data) || !B.validSuratName(surat_name) || !surat_name)
-        return res
-          .status(400)
-          .json({ message: 'File surat harus PDF/JPG/PNG asli, maksimal 8 MB.' });
-
+        ranges,
+      } = form.v;
       const today = todayIso();
-      let ranges;
-      let firstDate;
-      if (picked) {
-        const sorted = [...new Set(dates)].sort();
-        firstDate = sorted[0];
-        if (firstDate < today)
-          return res.status(400).json({ message: 'Tanggal tidak boleh sebelum hari ini.' });
-        if ((B.date(sorted[sorted.length - 1]) - B.date(today)) / B.DAY > MAX_AHEAD_DAYS)
-          return res
-            .status(400)
-            .json({ message: `Booking paling jauh ${MAX_AHEAD_DAYS} hari ke depan.` });
-        ranges = B.dateRuns(sorted); // tanggal berurutan digabung jadi satu rentang
-      } else {
-        const bd = B.date(startDate),
-          ed = B.date(end_date);
-        firstDate = startDate;
-        if (startDate < today)
-          return res.status(400).json({ message: 'Tanggal mulai tidak boleh sebelum hari ini.' });
-        if ((bd - B.date(today)) / B.DAY > MAX_AHEAD_DAYS)
-          return res
-            .status(400)
-            .json({ message: `Booking paling jauh ${MAX_AHEAD_DAYS} hari ke depan.` });
-        if (ed < bd)
-          return res
-            .status(400)
-            .json({ message: 'Sampai tanggal tidak boleh sebelum tanggal mulai.' });
-        if ((ed - bd) / B.DAY + 1 > MAX_SPAN_DAYS)
-          return res
-            .status(400)
-            .json({ message: `Booking tamu maksimal ${MAX_SPAN_DAYS} hari berturut-turut.` });
-        ranges = [[bd, ed]];
-      }
-      if (firstDate === today) {
-        if (start < nowLocal().hm)
-          return res.status(400).json({ message: 'Jam mulai hari ini sudah lewat.' });
-      }
 
       const guestId = req.guest.id;
       const group = crypto.randomUUID(); // semua tanggal pengajuan ini = satu booking
@@ -511,23 +580,7 @@ router.post(
           await B.lockRoom(tx, room);
           const mt = await cekMaintenance(tx, room, ranges);
           if (mt) throw new B.HttpError(409, mt);
-          // Semua tanggal dicek dulu; kalau ada satu saja yang bentrok, tidak ada yang disimpan.
-          const conflicts = [];
-          for (const [bd, ed] of ranges) {
-            const c = await tx.ruangRapat.findFirst({
-              where: B.conflictWhere(room, bd, ed, B.time(start), B.time(end)),
-              orderBy: [{ booking_date: 'asc' }, { start_time: 'asc' }],
-            });
-            if (c) conflicts.push(c);
-          }
-          if (conflicts.length)
-            throw new B.HttpError(
-              409,
-              B.conflictMessage(conflicts[0]) +
-                (conflicts.length > 1
-                  ? ` (dan ${conflicts.length - 1} tanggal lain juga bentrok)`
-                  : ''),
-            );
+          await cekBentrok(tx, room, ranges, start, end);
 
           const path = await saveDataUrl(surat_file_data, surat_name, 'ruang-rapat');
           const created = [];
@@ -560,15 +613,7 @@ router.post(
       );
 
       const row = rows[0];
-      const day = (d) => d.toISOString().slice(0, 10);
-      const teks = rows
-        .map((r) =>
-          +r.end_date !== +r.booking_date
-            ? `${day(r.booking_date)} s/d ${day(r.end_date)}`
-            : day(r.booking_date),
-        )
-        .join(', ');
-      const jumlahHari = ranges.reduce((n, [bd, ed]) => n + (ed - bd) / B.DAY + 1, 0);
+      const hari = jumlahHari(ranges);
       logger.info('Booking ruang rapat oleh tamu', {
         guest_id: guestId,
         booking_ids: rows.map((r) => r.id),
@@ -578,21 +623,21 @@ router.post(
         aksi: 'tambah',
         ref: { id: row.id, kode: row.room, label: row.agenda, grup: row.booking_group },
         perubahan: ringkas('ruang-rapat', row),
-        keterangan: `Diajukan tamu lewat kiosk (login Google).${rows.length > 1 ? ` ${jumlahHari} tanggal: ${teks}.` : ''}`,
+        keterangan: `Diajukan tamu lewat kiosk (login Google).${rows.length > 1 ? ` ${hari} tanggal: ${teksTanggal(rows)}.` : ''}`,
       });
       B.broadcastChange();
       res.status(201).json({
         message:
-          jumlahHari > 1
-            ? `Ruangan ${row.room} berhasil dibooking untuk ${jumlahHari} tanggal.`
+          hari > 1
+            ? `Ruangan ${row.room} berhasil dibooking untuk ${hari} tanggal.`
             : `Ruangan ${row.room} berhasil dibooking.`,
         data: {
           id: row.id,
           title: row.agenda,
           room: row.room,
-          date: day(row.booking_date),
-          end_date: day(rows[rows.length - 1].end_date),
-          dates: rows.map((r) => ({ from: day(r.booking_date), to: day(r.end_date) })),
+          date: fmtHari(row.booking_date),
+          end_date: fmtHari(rows[rows.length - 1].end_date),
+          dates: rows.map((r) => ({ from: fmtHari(r.booking_date), to: fmtHari(r.end_date) })),
           start,
           end,
         },
@@ -605,9 +650,268 @@ router.post(
   },
 );
 
-// Tamu membatalkan booking MILIKNYA SENDIRI (seluruh booking). Data tidak dihapus: sama seperti
-// pembatalan oleh pegawai, cancelled_at + alasan diisi, dan pembatalnya dicatat di cancelled_by_guest_id.
-// Booking yang sudah lewat tidak bisa dibatalkan.
+// Tamu mengedit booking MILIKNYA SENDIRI: seluruh pengajuan (semua baris dengan booking_group yang sama)
+// diganti dengan isi form baru -- agenda, nomor surat, PIC, ruangan, tanggal, jam, dan (opsional) file surat.
+// - Hanya pemilik: setiap query memakai guest_id tamu yang login, jadi tamu lain mendapat 404 walau
+//   menebak ID booking.
+// - Hanya sebelum booking berjalan: tanggal & jam pertama belum lewat.
+// - Aturan sama dengan pengajuan baru (bacaFormBooking + captcha), dicek bentrok tanpa menghitung baris
+//   pengajuan itu sendiri. Batas pengajuan per hari / booking aktif tidak berubah karena pengajuannya sama.
+// - Jumlah rentang tanggal bisa berubah: baris lama dipakai ulang berurutan, kekurangan dibuat baru,
+//   kelebihan dihapus (perubahannya tercatat di riwayat aktivitas).
+router.put(
+  '/bookings/:id',
+  submitIpLimiter,
+  requireGuest,
+  submitGuestLimiter,
+  requireNotInMaintenance('ruang-rapat'),
+  requireNotInMaintenance('kiosk'),
+  async (req, res) => {
+    try {
+      const id = Number(req.params.id);
+      if (!Number.isInteger(id))
+        return res.status(400).json({ message: 'ID booking tidak valid.' });
+      const captchaError = verifyCaptcha(`guest:${req.guest.id}`, req.body?.captcha);
+      if (captchaError) return res.status(400).json({ code: 'CAPTCHA', message: captchaError });
+
+      const form = await bacaFormBooking(req.body, { wajibSurat: false });
+      if (form.error) return res.status(400).json({ message: form.error });
+      const {
+        title,
+        nomor_surat,
+        room,
+        pic,
+        pic_phone,
+        start,
+        end,
+        surat_name,
+        surat_file_data,
+        ranges,
+      } = form.v;
+      const guestId = req.guest.id;
+      const today = todayIso();
+
+      const target = await prisma.ruangRapat.findFirst({
+        where: { id, guest_id: guestId },
+        select: { booking_group: true },
+      });
+      if (!target)
+        return res.status(404).json({ message: 'Booking tidak ditemukan atau bukan milik Anda.' });
+      const grupWhere = {
+        ...(target.booking_group ? { booking_group: target.booking_group } : { id }),
+        guest_id: guestId,
+        cancelled_at: null,
+      };
+      const sebelum = await prisma.ruangRapat.findFirst({
+        where: grupWhere,
+        orderBy: { booking_date: 'asc' },
+        select: pilihKolom('ruang-rapat'),
+      });
+
+      const { hasil, lama } = await prisma.$transaction(
+        async (tx) => {
+          await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${'guest_booking:' + guestId}))`;
+          const pre = await tx.ruangRapat.findMany({
+            where: grupWhere,
+            select: { id: true, room: true },
+          });
+          if (!pre.length)
+            throw new B.HttpError(404, 'Booking tidak ditemukan atau sudah dibatalkan.');
+          // Kunci ruangan lama & baru dengan urutan tetap (sama seperti edit pegawai) supaya tidak deadlock,
+          // lalu baca ulang: booking bisa saja baru dibatalkan / dipindah Biro Umum sebelum kunci didapat.
+          for (const r of [...new Set([...pre.map((x) => x.room), room])].sort())
+            await B.lockRoom(tx, r);
+          const lama = await tx.ruangRapat.findMany({
+            where: grupWhere,
+            orderBy: [{ booking_date: 'asc' }, { id: 'asc' }],
+          });
+          const sama =
+            lama.length === pre.length &&
+            lama.every((r) => pre.some((p) => p.id === r.id && p.room === r.room));
+          if (!sama)
+            throw new B.HttpError(409, 'Booking baru saja berubah. Muat ulang lalu coba lagi.');
+
+          const mulai = lama[0];
+          const mulaiTgl = fmtHari(mulai.booking_date);
+          const mulaiJam = mulai.start_time.toISOString().slice(11, 16);
+          if (mulaiTgl < today || (mulaiTgl === today && mulaiJam <= nowLocal().hm))
+            throw new B.HttpError(
+              409,
+              'Booking yang sudah berjalan tidak bisa diedit. Batalkan lalu ajukan booking baru bila perlu.',
+            );
+
+          // Blokir maintenance hanya dicek bila ruangan atau tanggal berubah (edit agenda/jam di tanggal
+          // yang sama tetap boleh), sama seperti edit pegawai.
+          const jadwalSama =
+            room === mulai.room &&
+            ranges.length === lama.length &&
+            ranges.every(
+              ([bd, ed], i) => +bd === +lama.at(i).booking_date && +ed === +lama.at(i).end_date,
+            );
+          if (!jadwalSama) {
+            const mt = await cekMaintenance(tx, room, ranges);
+            if (mt) throw new B.HttpError(409, mt);
+          }
+          await cekBentrok(
+            tx,
+            room,
+            ranges,
+            start,
+            end,
+            lama.map((r) => r.id),
+          );
+
+          // Surat baru (opsional) disimpan paling akhir, setelah semua validasi & cek bentrok lolos.
+          const surat = surat_file_data
+            ? {
+                surat_name,
+                surat_file_data,
+                surat_file_path: await saveDataUrl(surat_file_data, surat_name, 'ruang-rapat'),
+                surat_status: B.suratStatus(surat_file_data),
+              }
+            : {
+                surat_name: mulai.surat_name,
+                surat_file_data: mulai.surat_file_data,
+                surat_file_path: mulai.surat_file_path,
+                surat_status: mulai.surat_status,
+              };
+          const isi = {
+            agenda: title.trim(),
+            nomor_surat: nomor_surat.trim(),
+            room,
+            pic: pic.trim(),
+            pic_phone: B.normPhone(pic_phone),
+            start_time: B.time(start),
+            end_time: B.time(end),
+            booking_group: mulai.booking_group || crypto.randomUUID(),
+            ...surat,
+          };
+          const hasil = [];
+          for (const [i, [bd, ed]] of ranges.entries()) {
+            const data = { ...isi, booking_date: bd, end_date: ed };
+            const baris = lama.at(i);
+            hasil.push(
+              baris
+                ? await tx.ruangRapat.update({ where: { id: baris.id }, data })
+                : await tx.ruangRapat.create({ data: { ...data, guest_id: guestId } }),
+            );
+          }
+          const sisa = lama.slice(ranges.length).map((r) => r.id);
+          if (sisa.length)
+            await tx.ruangRapat.deleteMany({ where: { id: { in: sisa }, guest_id: guestId } });
+          return { hasil, lama };
+        },
+        { timeout: 20000 },
+      );
+
+      const row = hasil[0];
+      const tglBaru = teksTanggal(hasil),
+        tglLama = teksTanggal(lama);
+      logger.info('Booking ruang rapat diedit tamu', {
+        guest_id: guestId,
+        booking_ids: hasil.map((r) => r.id),
+      });
+      await catat(req, {
+        modul: 'ruang-rapat',
+        aksi: 'ubah',
+        ref: { id: row.id, kode: row.room, label: row.agenda, grup: row.booking_group },
+        bandingkanDengan: { modul: 'ruang-rapat', sebelum, sesudah: row },
+        keterangan: `Diubah sendiri oleh tamu pengaju lewat kiosk. Tanggal: ${tglBaru}${tglBaru !== tglLama ? ` (sebelumnya ${tglLama})` : ''}.`,
+      });
+      B.broadcastChange();
+      res.json({ message: 'Booking berhasil diperbarui.', data: { id: row.id } });
+    } catch (err) {
+      if (err instanceof B.HttpError) return res.status(err.status).json({ message: err.message });
+      logger.error('PUT booking tamu gagal', { error: err });
+      res.status(500).json({ message: 'Gagal memperbarui booking.' });
+    }
+  },
+);
+
+// Tamu membatalkan booking MILIKNYA SENDIRI. Data tidak dihapus: sama seperti pembatalan oleh pegawai,
+// cancelled_at + alasan diisi, dan pembatalnya dicatat di cancelled_by_guest_id.
+// - body.dates (opsional) = tanggal 'YYYY-MM-DD' yang dipilih untuk dibatalkan; tanggal lain di pengajuan
+//   itu tetap aktif (rentang dipecah, logika sama dengan pegawai: B.pecahPembatalan).
+// - Tanpa body.dates = seluruh pengajuan yang belum lewat dibatalkan.
+// Tanggal yang sudah lewat tidak bisa dibatalkan. Semua query memakai guest_id tamu yang login.
+async function batalSebagian(req, res, id, target) {
+  const dates = req.body.dates;
+  if (
+    !Array.isArray(dates) ||
+    !dates.length ||
+    dates.length > 400 ||
+    !dates.every((d) => typeof d === 'string' && B.validDate(d))
+  )
+    return res.status(400).json({ message: 'Pilih minimal satu tanggal yang valid.' });
+  const cancel = new Set(dates);
+  const today = todayIso();
+  if ([...cancel].some((d) => d < today))
+    return res.status(400).json({ message: 'Tanggal yang sudah lewat tidak bisa dibatalkan.' });
+  if (!target)
+    return res.status(404).json({ message: 'Booking tidak ditemukan atau bukan milik Anda.' });
+  const guestId = req.guest.id;
+  const grupWhere = {
+    ...(target.booking_group ? { booking_group: target.booking_group } : { id }),
+    guest_id: guestId,
+    cancelled_at: null,
+  };
+  const reason = req.body?.reason?.trim() || 'Dibatalkan sendiri oleh tamu pengaju.';
+  try {
+    const { sisa, info } = await prisma.$transaction(
+      async (tx) => {
+        const pre = await tx.ruangRapat.findMany({
+          where: grupWhere,
+          select: { id: true, room: true },
+        });
+        if (!pre.length)
+          throw new B.HttpError(404, 'Booking tidak ditemukan atau sudah dibatalkan.');
+        for (const r of [...new Set(pre.map((x) => x.room))].sort()) await B.lockRoom(tx, r);
+        const members = await tx.ruangRapat.findMany({
+          where: grupWhere,
+          orderBy: { booking_date: 'asc' },
+        });
+        if (members.length !== pre.length || !members.every((m) => pre.some((p) => p.id === m.id)))
+          throw new B.HttpError(409, 'Booking baru saja berubah. Muat ulang lalu coba lagi.');
+        const sisa = await B.pecahPembatalan(tx, members, cancel, {
+          batal: {
+            cancelled_at: new Date(),
+            cancelled_by_guest_id: guestId,
+            cancel_reason: reason,
+          },
+          group: members[0].booking_group || crypto.randomUUID(),
+          include: undefined,
+        });
+        return { sisa, info: members[0] };
+      },
+      { timeout: 20000 },
+    );
+    const semua = !sisa.length;
+    const daftar = [...cancel].sort().join(', ');
+    logger.info('Tanggal booking dibatalkan tamu', {
+      guest_id: guestId,
+      booking_id: id,
+      dates: daftar,
+    });
+    await catat(req, {
+      modul: 'ruang-rapat',
+      aksi: semua ? 'batal' : 'batal-sebagian',
+      ref: { id, kode: info.room, label: info.agenda, grup: info.booking_group },
+      keterangan: `Dibatalkan sendiri oleh tamu pengaju. Tanggal (${cancel.size}): ${daftar}. Alasan: ${reason}`,
+    });
+    B.broadcastChange();
+    res.json({
+      message: semua
+        ? 'Booking berhasil dibatalkan.'
+        : `${cancel.size} tanggal berhasil dibatalkan.`,
+      data: { cancelled: semua },
+    });
+  } catch (err) {
+    if (err instanceof B.HttpError) return res.status(err.status).json({ message: err.message });
+    logger.error('Cancel sebagian booking tamu gagal', { error: err });
+    res.status(500).json({ message: 'Gagal membatalkan tanggal booking.' });
+  }
+}
+
 const cancelGuestLimiter = createRateLimiter({
   windowMs: 10 * 60 * 1000,
   max: 10,
@@ -635,6 +939,7 @@ router.post(
         where: { id, guest_id: req.guest.id },
         select: { booking_group: true },
       });
+      if (req.body?.dates !== undefined) return batalSebagian(req, res, id, target);
       const { count } = await prisma.ruangRapat.updateMany({
         where: {
           ...(target?.booking_group ? { booking_group: target.booking_group } : { id }),

@@ -772,7 +772,8 @@ def fc_tamu(f):
     f.node("ok", "proc", 220, 520, "Booking tersimpan (201)", "1 pengajuan = booking_group", w=150)
     f.node("sse", "info", 62, 520, "Sinyal SSE", "kiosk, landing, Ruang Rapat", w=110)
     f.node("mine", "proc", 220, 576, "Booking Anda", "1 kartu per pengajuan", w=150)
-    f.node("batal", "start", 400, 576, "Batalkan pengajuan", "semua tanggal ikut batal", w=120)
+    f.node("batal", "start", 400, 576, "Batalkan tanggal", "centang tanggal yang batal", w=120)
+    f.node("edit", "start", 62, 576, "Edit pengajuan", "hanya milik sendiri,", "sebelum berjalan", w=110)
     f.link("buka", "b", "mt", "t")
     f.link("mt", "r", "mtp", "l", "Ya")
     f.link("mt", "b", "hero", "t", "Tidak")
@@ -795,6 +796,7 @@ def fc_tamu(f):
     f.link("ok", "l", "sse", "r")
     f.link("ok", "b", "mine", "t")
     f.link("mine", "r", "batal", "l")
+    f.link("mine", "l", "edit", "r")
 
 
 def fc_admin(f):
@@ -955,8 +957,17 @@ def isi_aplikasi():
             "ke depan, rate limit per akun & IP, serta akun bisa diblokir admin. Daftar *Booking Anda* tampil di "
             "panel yang sama: satu kartu per pengajuan berisi ruangan, jam, jumlah & daftar tanggalnya, dengan tombol *Batalkan* "
             "atau label *Dibatalkan oleh Anda* / *Dibatalkan Biro Umum* + alasannya. Alur lengkap kiosk & booking tamu ada di Gambar 12 (9.7).",
-            "Tamu bisa **membatalkan booking miliknya sendiri** (alasan opsional) selama booking belum lewat; semua tanggal "
-            "pengajuan yang belum lewat ikut dibatalkan; data "
+            "Tamu bisa **mengedit booking miliknya sendiri** (tombol *Edit* di kartu *Booking Anda*) selama booking belum berjalan: "
+            "semua kolom bisa diubah (agenda, nomor surat, PIC, No. HP, ruangan, tanggal dengan dua cara yang sama, jam, dan file surat; "
+            "surat boleh tidak diganti), wajib captcha, dan berlaku untuk seluruh pengajuan. Server memeriksa pemilik lewat `guest_id`, "
+            "jadi tamu lain yang login mendapat 404 walau menebak ID booking. Perubahan dicek bentrok seperti booking baru "
+            "(tanpa menghitung pengajuan itu sendiri), ikut batas anti-spam 6 pengiriman per 10 menit per akun, "
+            "dan tercatat di riwayat aktivitas sebagai *ubah* oleh tamu. Jumlah rentang tanggal boleh berubah: baris lama dipakai ulang, "
+            "kekurangan dibuat, kelebihan dihapus.",
+            "Tamu bisa **membatalkan booking miliknya sendiri** (alasan opsional) selama booking belum lewat. Booking lebih dari "
+            "1 tanggal: popup menampilkan daftar tanggal yang belum lewat untuk **dicentang** (ada *Pilih semua*); hanya tanggal "
+            "yang dicentang yang batal, sisanya tetap aktif (rentang dipecah dengan logika yang sama dengan cancel per tanggal pegawai, "
+            "satu `booking_group`), dan ruangan di tanggal itu langsung bisa dibooking orang lain. Booking 1 tanggal langsung batal; data "
             "tidak dihapus, pembatal dicatat di `cancelled_by_guest_id` dan tampil \"Dibatalkan oleh nama (tamu)\" di menu Ruang Rapat.",
             "Mengikuti Mode Maintenance menu *landing*; status dibaca dari endpoint publik tanpa login."),
         h2("3.2 Autentikasi"),
@@ -1252,8 +1263,8 @@ def isi_aplikasi():
             ["", "GET / , GET /:id, POST /, PUT /:id, DELETE /:id", "Login", "Kelola booking"],
             ["", "GET /:id/group-dates; POST /:id/cancel-dates", "Login", "Tanggal satu pengajuan; batalkan tanggal tertentu"],
             ["Tamu (Google)", "GET /auth/google, GET /auth/google/callback", "Publik", "Login Google tamu (OAuth 2.0 + PKCE)"],
-            ["", "GET /guest/me, /guest/captcha, /guest/bookings; POST /guest/bookings, /guest/bookings/:id/cancel, /guest/logout", "Tamu (token Google 7 hari)",
-             "Sesi, captcha 5 menit, booking milik sendiri, ajukan & batalkan booking sendiri, keluar"],
+            ["", "GET /guest/me, /guest/captcha, /guest/bookings; POST /guest/bookings, /guest/bookings/:id/cancel, /guest/logout; PUT /guest/bookings/:id", "Tamu (token Google 7 hari)",
+             "Sesi, captcha 5 menit, booking milik sendiri, ajukan, edit & batalkan booking sendiri (semua atau tanggal terpilih), keluar"],
             ["", "GET /guest/admin/accounts; PUT /guest/admin/accounts/:id/block", "Admin/Kabag",
              "Daftar semua akun tamu Google & blokir"],
             ["Foto ruang", "GET /ruang-info, GET /ruang-info/foto/:id/file", "Publik", "Daftar ruang rapat per bagian + kapasitas, link foto, foto & fasilitas"],
