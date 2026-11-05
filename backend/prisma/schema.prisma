@@ -278,6 +278,10 @@ model RuangRapat {
   guest_id        Int?
   // Diisi kalau booking dibatalkan sendiri oleh tamu pengajunya (cancelled_by tetap NULL).
   cancelled_by_guest_id Int?
+  // Pengingat email ke tamu pengaju (H-1 & beberapa jam sebelum mulai): terisi = sudah dikirim.
+  // Direset (null) saat jadwal booking diedit. Lihat src/reminders.js.
+  reminder_h1_at  DateTime?
+  reminder_jam_at DateTime?
   created_at      DateTime  @default(now())
   updated_at      DateTime  @default(now()) @updatedAt
 

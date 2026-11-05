@@ -26,6 +26,7 @@ const suratStatus = (fileData) => (fileData ? 'diterima' : 'belum');
 // Daftar ruangan dari tabel ruang_profil (dikelola admin), bukan konstanta.
 const { ruangValid, cekMaintenance } = require('../ruangList');
 const { catat, ringkas, pilihKolom, tampil } = require('../audit');
+const { emailBooking, teksTanggal, jam } = require('../bookingMail');
 // Riwayat aktivitas: kode = ruangan, label = agenda. Daftar tanggal ditulis "3 Nov 2026" / "3 Nov 2026 - 5 Nov 2026".
 // grup = booking_group: satu pengajuan tetap satu riwayat walau booking-nya dipecah (batal sebagian, tanggal loncat-loncat).
 const refBooking = (b, id, grup) => ({
@@ -667,7 +668,14 @@ router.put('/:id', async (req, res) => {
             orderBy: [{ booking_date: 'asc' }, { start_time: 'asc' }],
           });
           if (conflict) throw new HttpError(409, conflictMessage(conflict));
-          Object.assign(data, { booking_date: bd, end_date: ed, start_time: st, end_time: et });
+          Object.assign(data, {
+            booking_date: bd,
+            end_date: ed,
+            start_time: st,
+            end_time: et,
+            reminder_h1_at: null, // jadwal berubah -> pengingat email ke tamu dihitung ulang
+            reminder_jam_at: null,
+          });
         }
         // File surat disimpan paling akhir, setelah semua validasi & cek bentrok lolos.
         if (b.surat_file_data !== undefined) {
@@ -773,6 +781,9 @@ async function pecahPembatalan(tx, members, cancel, { batal, group, include, uba
           booking_date: date(keep[0].from),
           end_date: date(keep[0].to),
           booking_group: group,
+          ...(+date(keep[0].from) !== +m.booking_date
+            ? { reminder_h1_at: null, reminder_jam_at: null }
+            : {}),
           ...ubah,
         },
         ...(include ? { include } : {}),
@@ -835,7 +846,14 @@ router.post('/:id/cancel-dates', async (req, res) => {
     const include = { updatedBy: { select: { nama_lengkap: true } } };
     const info = await prisma.ruangRapat.findUnique({
       where: { id },
-      select: { room: true, agenda: true, booking_group: true },
+      select: {
+        room: true,
+        agenda: true,
+        booking_group: true,
+        start_time: true,
+        end_time: true,
+        guest: { select: { id: true, nama: true, email: true } },
+      },
     });
     const result = await prisma.$transaction(
       async (tx) => {
@@ -890,6 +908,19 @@ router.post('/:id/cancel-dates', async (req, res) => {
           .join(', ')}.${teksAlasan(req)}`,
       });
     broadcastChange();
+    if (info?.guest)
+      emailBooking(info.guest, 'batal-biro', {
+        rincian: [
+          ['Agenda', info.agenda],
+          ['Ruangan', info.room],
+          ['Tanggal dibatalkan', [...cancel].sort().join(', ')],
+          ['Jam', `${jam(info.start_time)}–${jam(info.end_time)}`],
+          ['Alasan', req.body?.reason?.trim() || '-'],
+        ],
+        catatan: result.cancelled
+          ? 'Hubungi Biro Umum bila ada pertanyaan, atau ajukan booking baru lewat kiosk.'
+          : 'Tanggal lain dalam pengajuan ini tetap berlaku.',
+      });
     res.json({
       data: { cancelled: result.cancelled, bookings: result.bookings.map(out), ids: result.ids },
       message: result.cancelled
@@ -917,7 +948,16 @@ router.delete('/:id', async (req, res) => {
       return res.status(404).json({ message: 'Booking tidak ditemukan atau sudah dibatalkan.' });
     const info = await prisma.ruangRapat.findUnique({
       where: { id },
-      select: { room: true, agenda: true, booking_date: true, end_date: true, booking_group: true },
+      select: {
+        room: true,
+        agenda: true,
+        booking_date: true,
+        end_date: true,
+        booking_group: true,
+        start_time: true,
+        end_time: true,
+        guest: { select: { id: true, nama: true, email: true } },
+      },
     });
     if (info)
       await catat(req, {
@@ -927,6 +967,17 @@ router.delete('/:id', async (req, res) => {
         keterangan: `Seluruh booking dibatalkan (${teksRentang(info.booking_date, info.end_date)}).${teksAlasan(req)}`,
       });
     broadcastChange();
+    if (info?.guest)
+      emailBooking(info.guest, 'batal-biro', {
+        rincian: [
+          ['Agenda', info.agenda],
+          ['Ruangan', info.room],
+          ['Tanggal dibatalkan', teksTanggal([info])],
+          ['Jam', `${jam(info.start_time)}–${jam(info.end_time)}`],
+          ['Alasan', req.body?.reason?.trim() || '-'],
+        ],
+        catatan: 'Hubungi Biro Umum bila ada pertanyaan, atau ajukan booking baru lewat kiosk.',
+      });
     res.json({ message: 'Booking dibatalkan.' });
   } catch (err) {
     logger.error('DELETE ruang rapat gagal', { error: err });

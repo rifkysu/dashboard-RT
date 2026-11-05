@@ -26,7 +26,11 @@ function getTransporter() {
   return transporter;
 }
 
-const escapeHtml = (v) => String(v).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const escapeHtml = (v) =>
+  String(v).replace(
+    /[&<>"']/g,
+    (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c],
+  );
 
 async function sendResetPasswordEmail({ to, nama, resetUrl }) {
   const from = process.env.MAIL_FROM || `"Biro Umum" <${process.env.SMTP_USER}>`;
@@ -55,7 +59,13 @@ async function sendResetPasswordEmail({ to, nama, resetUrl }) {
       <p style="font-size:13px;color:#475569;margin-top:24px">Biro Umum dan Rumah Tangga</p>
     </div>`;
 
-  await getTransporter().sendMail({ from, to, subject: 'Reset Kata Sandi Akun Biro Umum', text, html });
+  await getTransporter().sendMail({
+    from,
+    to,
+    subject: 'Reset Kata Sandi Akun Biro Umum',
+    text,
+    html,
+  });
   logger.info('Email reset password terkirim', { to });
 }
 
@@ -88,8 +98,96 @@ async function sendVerifyEmail({ to, nama, verifyUrl }) {
       <p style="font-size:13px;color:#475569;margin-top:24px">Biro Umum dan Rumah Tangga</p>
     </div>`;
 
-  await getTransporter().sendMail({ from, to, subject: 'Verifikasi Email Akun Biro Umum', text, html });
+  await getTransporter().sendMail({
+    from,
+    to,
+    subject: 'Verifikasi Email Akun Biro Umum',
+    text,
+    html,
+  });
   logger.info('Email verifikasi terkirim', { to });
 }
 
-module.exports = { isMailConfigured, sendResetPasswordEmail, sendVerifyEmail };
+// Email booking ruang rapat untuk tamu (kiosk): ajukan / edit / batal.
+// `rincian` = daftar [label, nilai] yang ditampilkan sebagai tabel; `sebelumnya` (opsional, untuk edit)
+// = daftar [label, nilai] data lama supaya tamu melihat apa yang berubah.
+const JENIS_BOOKING = {
+  baru: {
+    subjek: 'Booking Ruang Rapat Berhasil Diajukan',
+    judul: 'Booking Berhasil Diajukan',
+    warna: '#0f172a',
+    intro: 'Booking ruang rapat Anda sudah kami terima. Berikut rinciannya:',
+  },
+  edit: {
+    subjek: 'Booking Ruang Rapat Berhasil Diubah',
+    judul: 'Booking Berhasil Diubah',
+    warna: '#0f172a',
+    intro: 'Perubahan booking ruang rapat Anda sudah tersimpan. Berikut data terbarunya:',
+  },
+  batal: {
+    subjek: 'Booking Ruang Rapat Dibatalkan',
+    judul: 'Booking Dibatalkan',
+    warna: '#b91c1c',
+    intro: 'Booking ruang rapat berikut sudah dibatalkan:',
+  },
+  'batal-biro': {
+    subjek: 'Booking Ruang Rapat Anda Dibatalkan oleh Biro Umum',
+    judul: 'Booking Dibatalkan oleh Biro Umum',
+    warna: '#b91c1c',
+    intro: 'Mohon maaf, booking ruang rapat Anda dibatalkan oleh Biro Umum:',
+  },
+  'ingat-h1': {
+    subjek: 'Pengingat: Booking Ruang Rapat Besok',
+    judul: 'Pengingat Booking Besok',
+    warna: '#0f172a',
+    intro: 'Pengingat: Anda memiliki booking ruang rapat besok.',
+  },
+  'ingat-jam': {
+    subjek: 'Pengingat: Booking Ruang Rapat Segera Dimulai',
+    judul: 'Booking Segera Dimulai',
+    warna: '#0f172a',
+    intro: 'Pengingat: booking ruang rapat Anda akan segera dimulai.',
+  },
+};
+
+async function sendBookingEmail({ to, nama, jenis, rincian, sebelumnya, catatan }) {
+  const j = JENIS_BOOKING[jenis];
+  if (!j) throw new Error(`Jenis email booking tidak dikenal: ${jenis}`);
+  const from = process.env.MAIL_FROM || `"Biro Umum" <${process.env.SMTP_USER}>`;
+  const text = [
+    `Halo ${nama},`,
+    '',
+    j.intro,
+    '',
+    ...rincian.map(([k, v]) => `${k}: ${v}`),
+    ...(sebelumnya?.length
+      ? ['', 'Data sebelumnya:', ...sebelumnya.map(([k, v]) => `${k}: ${v}`)]
+      : []),
+    ...(catatan ? ['', catatan] : []),
+    '',
+    'Email ini dikirim otomatis, mohon tidak membalas.',
+    'Biro Umum dan Rumah Tangga',
+  ].join('\n');
+  const tabel = (baris) =>
+    `<table style="border-collapse:collapse;width:100%;font-size:14px">${baris
+      .map(
+        ([k, v]) =>
+          `<tr><td style="padding:6px 12px 6px 0;color:#475569;vertical-align:top;white-space:nowrap">${escapeHtml(k)}</td><td style="padding:6px 0;font-weight:bold">${escapeHtml(v)}</td></tr>`,
+      )
+      .join('')}</table>`;
+  const html = `
+    <div style="font-family:Arial,Helvetica,sans-serif;max-width:520px;margin:auto;color:#0f172a">
+      <h2 style="margin:0 0 12px;color:${j.warna}">${escapeHtml(j.judul)}</h2>
+      <p>Halo <b>${escapeHtml(nama)}</b>,</p>
+      <p>${escapeHtml(j.intro)}</p>
+      ${tabel(rincian)}
+      ${sebelumnya?.length ? `<p style="margin:16px 0 4px;font-size:13px;color:#475569">Data sebelumnya:</p>${tabel(sebelumnya)}` : ''}
+      ${catatan ? `<p style="font-size:13px;color:#475569">${escapeHtml(catatan)}</p>` : ''}
+      <p style="font-size:12px;color:#94a3b8;margin-top:24px">Email ini dikirim otomatis, mohon tidak membalas.<br>Biro Umum dan Rumah Tangga</p>
+    </div>`;
+
+  await getTransporter().sendMail({ from, to, subject: j.subjek, text, html });
+  logger.info('Email booking tamu terkirim', { to, jenis });
+}
+
+module.exports = { isMailConfigured, sendResetPasswordEmail, sendVerifyEmail, sendBookingEmail };

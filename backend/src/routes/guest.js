@@ -12,6 +12,7 @@ const { saveDataUrl } = require('../fileStorage');
 const { createCaptcha, verifyCaptcha } = require('../captcha');
 const { booking: B } = require('./ruangRapat');
 const { ruangValid, cekMaintenance } = require('../ruangList');
+const { emailBooking, rincianBooking, teksTanggal, fmtHari, jam } = require('../bookingMail');
 const { nowLocal } = require('../clock');
 
 // =====================================================================
@@ -506,17 +507,7 @@ async function cekBentrok(tx, room, ranges, start, end, kecualiIds = []) {
 const kirimHttpError = (res, err) =>
   res.status(err.status).json({ message: err.message, ...(err.code ? { code: err.code } : {}) });
 
-const fmtHari = (d) => d.toISOString().slice(0, 10);
-const teksTanggal = (rows) =>
-  rows
-    .map((r) =>
-      +r.end_date !== +r.booking_date
-        ? `${fmtHari(r.booking_date)} s/d ${fmtHari(r.end_date)}`
-        : fmtHari(r.booking_date),
-    )
-    .join(', ');
 const jumlahHari = (ranges) => ranges.reduce((n, [bd, ed]) => n + (ed - bd) / B.DAY + 1, 0);
-
 // Semua kolom WAJIB diisi (termasuk nomor surat & file surat), lalu captcha dicek.
 router.post(
   '/bookings',
@@ -633,6 +624,11 @@ router.post(
         keterangan: `Diajukan tamu lewat kiosk (login Google).${rows.length > 1 ? ` ${hari} tanggal: ${teksTanggal(rows)}.` : ''}`,
       });
       B.broadcastChange();
+      emailBooking(req.guest, 'baru', {
+        rincian: rincianBooking(rows, [['PIC', row.pic]]),
+        catatan:
+          'Booking masih bisa diubah atau dibatalkan dari kartu "Booking Anda" di kiosk selama belum berjalan.',
+      });
       res.status(201).json({
         message:
           hari > 1
@@ -797,6 +793,8 @@ router.put(
             start_time: B.time(start),
             end_time: B.time(end),
             booking_group: mulai.booking_group || crypto.randomUUID(),
+            reminder_h1_at: null,
+            reminder_jam_at: null,
             ...surat,
           };
           const hasil = [];
@@ -832,6 +830,10 @@ router.put(
         keterangan: `Diubah sendiri oleh tamu pengaju lewat kiosk. Tanggal: ${tglBaru}${tglBaru !== tglLama ? ` (sebelumnya ${tglLama})` : ''}.`,
       });
       B.broadcastChange();
+      emailBooking(req.guest, 'edit', {
+        rincian: rincianBooking(hasil, [['PIC', row.pic]]),
+        sebelumnya: rincianBooking(lama),
+      });
       res.json({ message: 'Booking berhasil diperbarui.', data: { id: row.id } });
     } catch (err) {
       if (err instanceof B.HttpError) return kirimHttpError(res, err);
@@ -912,6 +914,16 @@ async function batalSebagian(req, res, id, target) {
       keterangan: `Dibatalkan sendiri oleh tamu pengaju. Tanggal (${cancel.size}): ${daftar}. Alasan: ${reason}`,
     });
     B.broadcastChange();
+    emailBooking(req.guest, 'batal', {
+      rincian: [
+        ['Agenda', info.agenda],
+        ['Ruangan', info.room],
+        ['Tanggal dibatalkan', daftar],
+        ['Jam', `${jam(info.start_time)}–${jam(info.end_time)}`],
+        ['Alasan', reason],
+      ],
+      catatan: semua ? null : 'Tanggal lain dalam pengajuan ini tetap berlaku.',
+    });
     res.json({
       message: semua
         ? 'Booking berhasil dibatalkan.'
@@ -953,13 +965,27 @@ router.post(
         select: { booking_group: true },
       });
       if (req.body?.dates !== undefined) return batalSebagian(req, res, id, target);
-      const { count } = await prisma.ruangRapat.updateMany({
-        where: {
-          ...(target?.booking_group ? { booking_group: target.booking_group } : { id }),
-          guest_id: req.guest.id,
-          cancelled_at: null,
-          end_date: { gte: B.date(todayIso()) },
+      const batalWhere = {
+        ...(target?.booking_group ? { booking_group: target.booking_group } : { id }),
+        guest_id: req.guest.id,
+        cancelled_at: null,
+        end_date: { gte: B.date(todayIso()) },
+      };
+      // Dibaca sebelum diubah, untuk isi email pembatalan.
+      const akanBatal = await prisma.ruangRapat.findMany({
+        where: batalWhere,
+        orderBy: { booking_date: 'asc' },
+        select: {
+          agenda: true,
+          room: true,
+          booking_date: true,
+          end_date: true,
+          start_time: true,
+          end_time: true,
         },
+      });
+      const { count } = await prisma.ruangRapat.updateMany({
+        where: batalWhere,
         data: {
           cancelled_at: new Date(),
           cancelled_by_guest_id: req.guest.id,
@@ -986,6 +1012,16 @@ router.post(
           keterangan: `Dibatalkan sendiri oleh tamu pengaju. Alasan: ${info.cancel_reason}`,
         });
       B.broadcastChange();
+      if (akanBatal.length)
+        emailBooking(req.guest, 'batal', {
+          rincian: [
+            ['Agenda', akanBatal[0].agenda],
+            ['Ruangan', akanBatal[0].room],
+            ['Tanggal dibatalkan', teksTanggal(akanBatal)],
+            ['Jam', `${jam(akanBatal[0].start_time)}–${jam(akanBatal[0].end_time)}`],
+            ['Alasan', reason?.trim() || 'Dibatalkan sendiri oleh tamu pengaju.'],
+          ],
+        });
       res.json({ message: 'Booking berhasil dibatalkan.' });
     } catch (err) {
       logger.error('Cancel booking tamu gagal', { error: err });

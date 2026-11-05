@@ -290,6 +290,8 @@ CREATE TABLE "ruang_rapat" (
   "booking_group"   VARCHAR(36),              -- kode pengajuan (satu kali booking)
   "guest_id"        INTEGER,                  -- terisi = diajukan akun tamu (login Google)
   "cancelled_by_guest_id" INTEGER,            -- terisi = dibatalkan sendiri oleh tamu pengaju
+  "reminder_h1_at"  TIMESTAMP(3),             -- terisi = email pengingat H-1 ke tamu sudah dikirim
+  "reminder_jam_at" TIMESTAMP(3),             -- terisi = email pengingat beberapa jam sebelum mulai sudah dikirim
   "created_at"      TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "updated_at"      TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT "ruang_rapat_pkey" PRIMARY KEY ("id"),

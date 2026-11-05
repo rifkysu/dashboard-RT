@@ -6,7 +6,7 @@ const required = {
   pemeliharaan: ['id','kode','judul','status','tahap1_status','tahap2_status','tahap3_status','tanggal_selesai'],
   pengadaan: ['id','kode','nama_barang_jasa','nilai_hps','status','tahap1_status','tahap2_status','tahap3_status','tanggal_selesai'],
   kendaraan: ['id','name','plate','type','status','photo_file_path'],
-  ruang_rapat: ['id','agenda','room','pic','booking_date','end_date','start_time','end_time','surat_status','surat_file_path','cancelled_at','cancel_reason','guest_id'],
+  ruang_rapat: ['id','agenda','room','pic','booking_date','end_date','start_time','end_time','surat_status','surat_file_path','cancelled_at','cancel_reason','guest_id','reminder_h1_at','reminder_jam_at'],
   guest_accounts: ['id','google_sub','email','nama','is_blocked','token_version'],
   ruang_foto: ['id','room','caption','file_path','file_mime','sort_order'],
   ruang_profil: ['room','fasilitas'],

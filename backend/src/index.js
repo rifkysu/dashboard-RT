@@ -139,4 +139,7 @@ const PORT = Number(process.env.PORT) || 4000;
 // dan lolos dari batas percobaan login. Tanpa proxy (dev/LAN) tetap semua interface seperti sebelumnya.
 // HOST di .env bisa menimpa (mis. Nginx di server lain -> HOST=0.0.0.0 + firewall yang hanya mengizinkan Nginx).
 const HOST = process.env.HOST || (process.env.TRUST_PROXY === 'true' ? '127.0.0.1' : '0.0.0.0');
-app.listen(PORT, HOST, () => console.log(`✅ Backend Biro Umum berjalan di http://${HOST === '0.0.0.0' ? 'localhost' : HOST}:${PORT}`));
+app.listen(PORT, HOST, () => {
+  console.log(`✅ Backend Biro Umum berjalan di http://${HOST === '0.0.0.0' ? 'localhost' : HOST}:${PORT}`);
+  require('./reminders').mulaiPengingat(); // email pengingat booking tamu (butuh SMTP di .env)
+});
