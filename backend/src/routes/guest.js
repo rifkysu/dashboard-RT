@@ -491,13 +491,20 @@ async function cekBentrok(tx, room, ranges, start, end, kecualiIds = []) {
     });
     if (c) conflicts.push(c);
   }
-  if (conflicts.length)
-    throw new B.HttpError(
+  if (conflicts.length) {
+    const err = new B.HttpError(
       409,
       B.conflictMessage(conflicts[0]) +
         (conflicts.length > 1 ? ` (dan ${conflicts.length - 1} tanggal lain juga bentrok)` : ''),
     );
+    // Penanda bentrok jadwal sungguhan -> frontend memberi judul "Jadwal bentrok" hanya untuk ini
+    // (409 lain, mis. booking sudah berjalan / ruangan maintenance, punya judul sendiri).
+    err.code = 'BENTROK';
+    throw err;
+  }
 }
+const kirimHttpError = (res, err) =>
+  res.status(err.status).json({ message: err.message, ...(err.code ? { code: err.code } : {}) });
 
 const fmtHari = (d) => d.toISOString().slice(0, 10);
 const teksTanggal = (rows) =>
@@ -643,7 +650,7 @@ router.post(
         },
       });
     } catch (err) {
-      if (err instanceof B.HttpError) return res.status(err.status).json({ message: err.message });
+      if (err instanceof B.HttpError) return kirimHttpError(res, err);
       logger.error('POST booking tamu gagal', { error: err });
       res.status(500).json({ message: 'Gagal menyimpan booking.' });
     }
@@ -697,10 +704,16 @@ router.put(
       });
       if (!target)
         return res.status(404).json({ message: 'Booking tidak ditemukan atau bukan milik Anda.' });
+      // Hanya tanggal yang belum lewat (end_date >= hari ini) yang diedit -- sama dengan yang tampil di
+      // "Booking Anda". Tanggal pengajuan yang sudah lewat (mis. 4 Nov dari pengajuan 4 & 6 Nov) dibiarkan
+      // apa adanya sebagai riwayat; tanpa ini booking dianggap "sudah berjalan" lalu ditolak, dan baris
+      // lamanya bisa ikut tertimpa. Rentang yang sedang berjalan (mulai < hari ini <= selesai) tetap
+      // ikut terambil sehingga tetap ditolak di bawah.
       const grupWhere = {
         ...(target.booking_group ? { booking_group: target.booking_group } : { id }),
         guest_id: guestId,
         cancelled_at: null,
+        end_date: { gte: B.date(today) },
       };
       const sebelum = await prisma.ruangRapat.findFirst({
         where: grupWhere,
@@ -821,7 +834,7 @@ router.put(
       B.broadcastChange();
       res.json({ message: 'Booking berhasil diperbarui.', data: { id: row.id } });
     } catch (err) {
-      if (err instanceof B.HttpError) return res.status(err.status).json({ message: err.message });
+      if (err instanceof B.HttpError) return kirimHttpError(res, err);
       logger.error('PUT booking tamu gagal', { error: err });
       res.status(500).json({ message: 'Gagal memperbarui booking.' });
     }

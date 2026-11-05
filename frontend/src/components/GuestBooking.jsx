@@ -591,13 +591,17 @@ function BookingForm({ guest, editing, onClose, onBooked, onSessionEnd }) {
         title:
           err.response?.data?.code === 'CAPTCHA'
             ? 'Captcha salah'
-            : status === 409
+            : err.response?.data?.code === 'BENTROK'
               ? 'Jadwal bentrok'
-              : status === 429
-                ? 'Tunggu sebentar'
-                : editing
-                  ? 'Gagal menyimpan perubahan'
-                  : 'Gagal mengirim booking',
+              : status === 409
+                ? editing
+                  ? 'Booking tidak bisa diedit'
+                  : 'Booking tidak bisa dikirim'
+                : status === 429
+                  ? 'Tunggu sebentar'
+                  : editing
+                    ? 'Gagal menyimpan perubahan'
+                    : 'Gagal mengirim booking',
         message:
           err.response?.data?.message || 'Gagal mengirim booking. Periksa koneksi lalu coba lagi.',
         tone:
@@ -608,7 +612,7 @@ function BookingForm({ guest, editing, onClose, onBooked, onSessionEnd }) {
       // Captcha selalu hangus setelah dicek server -> muat yang baru.
       loadCaptcha();
       // Bentrok dari server (mis. keduluan orang lain) -> segarkan daftar jam terisi supaya terlihat di form.
-      if (status === 409) cek.reload();
+      if (err.response?.data?.code === 'BENTROK') cek.reload();
     } finally {
       setSaving(false);
     }

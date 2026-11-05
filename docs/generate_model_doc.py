@@ -959,7 +959,9 @@ def isi_aplikasi():
             "atau label *Dibatalkan oleh Anda* / *Dibatalkan Biro Umum* + alasannya. Alur lengkap kiosk & booking tamu ada di Gambar 12 (9.7).",
             "Tamu bisa **mengedit booking miliknya sendiri** (tombol *Edit* di kartu *Booking Anda*) selama booking belum berjalan: "
             "semua kolom bisa diubah (agenda, nomor surat, PIC, No. HP, ruangan, tanggal dengan dua cara yang sama, jam, dan file surat; "
-            "surat boleh tidak diganti), wajib captcha, dan berlaku untuk seluruh pengajuan. Server memeriksa pemilik lewat `guest_id`, "
+            "surat boleh tidak diganti), wajib captcha, dan berlaku untuk seluruh tanggal pengajuan yang belum lewat "
+            "(tanggal yang sudah lewat, mis. 4 Nov dari pengajuan 4 & 6 Nov, dibiarkan sebagai riwayat). "
+            "Judul *Jadwal bentrok* hanya muncul untuk bentrok jadwal sungguhan; penolakan lain punya judulnya sendiri. Server memeriksa pemilik lewat `guest_id`, "
             "jadi tamu lain yang login mendapat 404 walau menebak ID booking. Perubahan dicek bentrok seperti booking baru "
             "(tanpa menghitung pengajuan itu sendiri), ikut batas anti-spam 6 pengiriman per 10 menit per akun, "
             "dan tercatat di riwayat aktivitas sebagai *ubah* oleh tamu. Jumlah rentang tanggal boleh berubah: baris lama dipakai ulang, "
