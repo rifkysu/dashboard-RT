@@ -32,13 +32,71 @@ export function monthLabel(key) {
 }
 
 // Quick filter bulan: pilih tahun lalu klik bulan -> jadwal mulai dari bulan tsb.
-export function MonthFilter({ months, onSelect }) {
+export function MonthFilter({ months, onSelect, compact = false }) {
   const anchor = months[0];
   const [year, setYear] = useState(() => Number(anchor.slice(0, 4)));
   useEffect(() => {
     setYear(Number(anchor.slice(0, 4)));
   }, [anchor]);
   const current = monthKey();
+  // Varian ringkas (halaman publik): panah bulan sebelumnya/berikutnya + satu pilihan bulan, bukan 12 tombol.
+  if (compact) {
+    const [ay, am] = anchor.split('-').map(Number);
+    const geser = (n) => {
+      const d = new Date(ay, am - 1 + n, 1);
+      onSelect(monthKey(d));
+    };
+    const tahun = new Date().getFullYear();
+    const opsi = [];
+    for (let y = tahun - 1; y <= tahun + 2; y++)
+      for (let m = 1; m <= 12; m++) opsi.push(`${y}-${String(m).padStart(2, '0')}`);
+    if (!opsi.includes(anchor)) opsi.push(anchor);
+    const btn =
+      'w-9 h-9 inline-flex items-center justify-center text-slate-600 hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-dinas/30';
+    return (
+      <div className="flex items-center gap-2">
+        <div className="inline-flex items-center rounded-lg border border-slate-300 bg-white overflow-hidden divide-x divide-slate-200">
+          <button
+            type="button"
+            onClick={() => geser(-1)}
+            aria-label="Bulan sebelumnya"
+            className={btn}
+          >
+            <span className="material-symbols-outlined text-[20px]">chevron_left</span>
+          </button>
+          <select
+            value={anchor}
+            onChange={(e) => onSelect(e.target.value)}
+            aria-label="Pilih bulan"
+            className="h-9 px-3 text-sm font-semibold text-slate-800 bg-white focus:outline-none cursor-pointer"
+          >
+            {opsi.map((k) => (
+              <option key={k} value={k}>
+                {monthLabel(k)}
+              </option>
+            ))}
+          </select>
+          <button
+            type="button"
+            onClick={() => geser(1)}
+            aria-label="Bulan berikutnya"
+            className={btn}
+          >
+            <span className="material-symbols-outlined text-[20px]">chevron_right</span>
+          </button>
+        </div>
+        {anchor !== current && (
+          <button
+            type="button"
+            onClick={() => onSelect(current)}
+            className="h-9 px-3 rounded-lg border border-slate-300 bg-white text-sm font-semibold text-dinas hover:bg-slate-50"
+          >
+            Bulan ini
+          </button>
+        )}
+      </div>
+    );
+  }
   return (
     <div className="flex flex-col sm:flex-row sm:items-center gap-2">
       <div className="flex items-center gap-1 shrink-0">
@@ -347,9 +405,9 @@ export default function RoomDateGrid({
                 return (
                   <th
                     key={room}
-                    title={judulRuang(room)}
+                    title={`${judulRuang(room)} · klik untuk foto & fasilitas`}
                     style={aksen ? { boxShadow: `inset 0 3px 0 ${aksen}` } : undefined}
-                    className={`sticky top-0 z-20 border-b-2 border-l text-left px-3 py-2 text-[11px] font-bold align-top ${kiosk ? 'bg-dinas-ink text-white border-dinas-ink border-l-white/10' : 'bg-slate-100 text-slate-700 border-slate-200'}`}
+                    className={`sticky top-0 z-20 border-b-2 border-l text-left px-3 py-2.5 text-xs font-bold align-middle ${kiosk ? 'bg-dinas-ink text-white border-dinas-ink border-l-white/10' : 'bg-slate-100 text-slate-700 border-slate-200'}`}
                   >
                     {/* Klik = popup foto & fasilitas ruangan (dikelola admin di menu Foto & Fasilitas Ruang) */}
                     <RuangFotoButton
@@ -369,11 +427,6 @@ export default function RoomDateGrid({
                       <span className="min-w-0">
                         <span className="line-clamp-2 leading-snug">{judulRuang(room)}</span>
                         <RuangMaintenanceTag room={room} dark={kiosk} className="mt-0.5" />
-                        <span
-                          className={`block text-[11px] font-semibold normal-case tracking-normal ${kiosk ? 'text-white/50 group-hover:text-[#e4c27f]' : 'text-slate-500 group-hover:text-dinas'}`}
-                        >
-                          Lihat foto & fasilitas
-                        </span>
                       </span>
                     </RuangFotoButton>
                   </th>

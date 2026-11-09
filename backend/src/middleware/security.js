@@ -87,10 +87,49 @@ function requestHardening(req, res, next) {
   next();
 }
 
+// Lapisan pengaman global untuk semua input (body JSON & query string), sebelum sampai ke route:
+// - Semua query database lewat Prisma (ter-parameter), jadi teks berisi ' OR 1=1 -- dsb. tidak pernah
+//   dieksekusi sebagai SQL. Celah yang tersisa untuk ORM adalah "operator injection": nilai yang
+//   seharusnya teks dikirim sebagai objek (mis. {"email": {"not": ""}}) lalu ikut masuk ke `where`.
+//   Route sudah mengecek tipe per field; di sini ditambah batas umum supaya route baru juga terlindungi.
+// - Kunci berbahaya (__proto__/constructor/prototype) ditolak -> mencegah prototype pollution.
+// - Karakter NUL (\u0000) ditolak -> PostgreSQL tidak bisa menyimpannya (dulu jadi error 500).
+// - Kedalaman objek dibatasi -> payload bersarang ribuan level tidak menghabiskan CPU/stack.
+const FORBIDDEN_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
+const MAX_DEPTH = 8;
+
+function inputIssue(value, depth = 0) {
+  if (typeof value === 'string') return value.includes('\u0000') ? 'karakter tidak valid' : null;
+  if (value === null || typeof value !== 'object') return null;
+  if (depth >= MAX_DEPTH) return 'struktur data terlalu dalam';
+  if (Array.isArray(value)) {
+    for (const v of value) {
+      const issue = inputIssue(v, depth + 1);
+      if (issue) return issue;
+    }
+    return null;
+  }
+  for (const key of Object.keys(value)) {
+    if (FORBIDDEN_KEYS.has(key) || key.includes('\u0000')) return 'nama field tidak valid';
+    const issue = inputIssue(value[key], depth + 1);
+    if (issue) return issue;
+  }
+  return null;
+}
+
 function validateCommonInput(req, res, next) {
   if (req.body !== undefined && (typeof req.body !== 'object' || Array.isArray(req.body))) {
     return res.status(400).json({ message: 'Format data tidak valid.' });
   }
+  // Query string (parser 'simple' di index.js) hanya berisi teks atau daftar teks -- bukan objek bersarang.
+  for (const v of Object.values(req.query || {})) {
+    const list = Array.isArray(v) ? v : [v];
+    if (!list.every((x) => typeof x === 'string')) {
+      return res.status(400).json({ message: 'Parameter tidak valid.' });
+    }
+  }
+  const issue = inputIssue(req.body) || inputIssue(req.query);
+  if (issue) return res.status(400).json({ message: `Format data tidak valid (${issue}).` });
   next();
 }
 

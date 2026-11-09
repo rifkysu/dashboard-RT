@@ -67,14 +67,15 @@ const checks = {
 };
 (async () => {
   try {
-    await prisma.$queryRawUnsafe('SELECT 1');
+    await prisma.$queryRaw`SELECT 1`;
     for (const [table, cols] of Object.entries(checks)) {
-      const rows = await prisma.$queryRawUnsafe(
-        `SELECT column_name FROM information_schema.columns WHERE table_schema='public' AND table_name='${table}'`,
-      );
+      // Nilai tabel dikirim sebagai parameter ($1), bukan disambung ke teks SQL.
+      const rows = await prisma.$queryRaw`SELECT column_name FROM information_schema.columns WHERE table_schema='public' AND table_name=${table}`;
       const present = new Set(rows.map((r) => r.column_name));
       const missing = cols.filter((c) => !present.has(c));
-      const count = await prisma.$queryRawUnsafe(`SELECT COUNT(*)::int AS count FROM \"${table}\"`);
+      // Nama tabel tidak bisa jadi parameter SQL -> hanya nama dari daftar `checks` di atas yang dipakai.
+      if (!/^[a-z_]+$/.test(table)) throw new Error(`Nama tabel tidak valid: ${table}`);
+      const count = await prisma.$queryRawUnsafe(`SELECT COUNT(*)::int AS count FROM "${table}"`);
       console.log(
         `${table}: rows=${count[0].count} missing=${missing.length ? missing.join(', ') : 'none'}`,
       );

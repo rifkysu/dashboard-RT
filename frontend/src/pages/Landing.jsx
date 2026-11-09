@@ -3,6 +3,7 @@ import { Link, Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import BrandMark from '../components/BrandMark';
 import RuangRapatSchedule from '../components/RuangRapatSchedule';
+import BagianTabs from '../components/BagianTabs';
 import useRuangRapatLive from '../hooks/useRuangRapatLive';
 import { iso } from '../hooks/useMonthSchedule';
 import api from '../api';
@@ -520,40 +521,37 @@ function LayarTile({ room }) {
   return (
     <Link
       to={`/ruang/${slugRuang(room)}`}
-      onMouseMove={trackPointer}
-      className="card-spotlight group relative overflow-hidden rounded-2xl bg-gradient-to-br from-dinas to-dinas-ink text-white p-4 min-h-[9.5rem] flex flex-col shadow-[0_12px_30px_-18px_rgba(14,30,51,.7)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_20px_40px_-18px_rgba(14,30,51,.8)]"
+      className="group flex flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition duration-300 hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-dinas/40"
     >
-      {sampul ? (
-        <img
-          src={sampul.src}
-          alt=""
-          loading="lazy"
-          className="absolute inset-0 w-full h-full object-cover transition duration-700 group-hover:scale-110"
-        />
-      ) : (
-        <div className="absolute inset-0 bg-kawung-gelap opacity-60" aria-hidden="true"></div>
-      )}
-      {sampul && (
-        <div
-          className="absolute inset-0 bg-gradient-to-t from-dinas-ink via-dinas-ink/55 to-dinas-ink/10"
-          aria-hidden="true"
-        ></div>
-      )}
-      <span className="relative material-symbols-outlined text-[22px] text-[#e4c27f] drop-shadow">
-        meeting_room
-      </span>
-      <div className="relative mt-auto pt-6">
-        <div className="font-display font-bold leading-tight drop-shadow-[0_1px_4px_rgba(0,0,0,.5)]">
+      <div className="relative aspect-[16/10] overflow-hidden bg-gradient-to-br from-dinas to-dinas-ink">
+        {sampul ? (
+          <img
+            src={sampul.src}
+            alt=""
+            loading="lazy"
+            className="absolute inset-0 w-full h-full object-cover transition duration-700 group-hover:scale-105"
+          />
+        ) : (
+          <>
+            <div className="absolute inset-0 bg-kawung-gelap opacity-60" aria-hidden="true"></div>
+            <span className="absolute inset-0 flex items-center justify-center material-symbols-outlined text-[36px] text-[#e4c27f]/80">
+              meeting_room
+            </span>
+          </>
+        )}
+        {nFoto > 0 && (
+          <span className="absolute right-2 top-2 inline-flex items-center gap-1 rounded-full bg-black/55 px-2 py-0.5 text-[11px] font-semibold text-white backdrop-blur-sm">
+            <span className="material-symbols-outlined text-[13px]">photo_library</span>
+            {nFoto}
+          </span>
+        )}
+      </div>
+      <div className="flex flex-1 flex-col gap-1 p-3">
+        <div className="font-display text-sm font-bold leading-snug text-dinas-ink line-clamp-2 min-h-[2.5rem]">
           {judulRuang(room)}
         </div>
-        <RuangMaintenanceTag room={room} dark className="mt-1" />
-        {nFoto > 0 && (
-          <div className="text-[11px] text-white/70 mt-0.5 flex items-center gap-1">
-            <span className="material-symbols-outlined text-[13px]">photo_library</span>
-            {nFoto} foto
-          </div>
-        )}
-        <div className="mt-2 flex items-center gap-1 text-xs font-semibold text-white/80 group-hover:text-white">
+        <RuangMaintenanceTag room={room} className="self-start" />
+        <div className="mt-1 flex items-center gap-1 text-xs font-semibold text-dinas">
           Buka layar
           <span className="material-symbols-outlined text-[15px] transition-transform group-hover:translate-x-1">
             arrow_forward
@@ -654,6 +652,12 @@ function LandingMaintenanceNotice({ message }) {
 export default function Landing() {
   const { user, loading } = useAuth();
   const { rooms: semuaRuang, grup } = useDaftarRuang();
+  // Pilihan bagian untuk "Layar per ruangan" (lokal, terpisah dari filter jadwal). null = bagian pertama.
+  const [layarBagian, setLayarBagian] = useState(null);
+  const layarPilih =
+    layarBagian === '' || grup.some((g) => g.bagian === layarBagian)
+      ? layarBagian
+      : (grup[0]?.bagian ?? '');
   const [landingDown, setLandingDown] = useState(null);
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -1124,7 +1128,7 @@ export default function Landing() {
             <Reveal delay={100} className="mt-8">
               <RuangRapatSchedule />
             </Reveal>
-            <Reveal delay={150} className="mt-10">
+            <Reveal delay={150} className="mt-12 pt-10 border-t border-slate-200">
               <div className="flex items-center gap-2 font-display font-bold text-dinas-ink">
                 <span className="material-symbols-outlined text-[20px] text-kuningan">
                   tablet_mac
@@ -1135,18 +1139,30 @@ export default function Landing() {
                 Buka di tablet atau monitor depan ruangan: status Tersedia/Digunakan, rapat
                 berlangsung, agenda hari ini, serta foto & fasilitas ruangan, diperbarui otomatis.
               </p>
-              {grup.map((g) => (
-                <div key={g.bagian} className="mt-5">
-                  <div className="text-xs font-bold uppercase tracking-wider text-slate-500">
-                    {g.bagian} <span className="text-slate-400">· {g.rooms.length} ruangan</span>
+              <BagianTabs
+                grup={grup}
+                value={layarPilih}
+                onChange={setLayarBagian}
+                className="mt-4"
+              />
+              {grup
+                .filter((g) => !layarPilih || g.bagian === layarPilih)
+                .map((g) => (
+                  <div key={g.bagian} className="mt-4">
+                    <div className="flex items-center gap-3 text-xs font-bold uppercase tracking-wider text-slate-600">
+                      <span>{g.bagian}</span>
+                      <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold normal-case tracking-normal text-slate-500">
+                        {g.rooms.length} ruangan
+                      </span>
+                      <span className="h-px flex-1 bg-slate-200" aria-hidden="true"></span>
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 2xl:grid-cols-6 gap-4 mt-3">
+                      {g.rooms.map((r) => (
+                        <LayarTile key={r} room={r} />
+                      ))}
+                    </div>
                   </div>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 2xl:grid-cols-6 gap-3 mt-2">
-                    {g.rooms.map((r) => (
-                      <LayarTile key={r} room={r} />
-                    ))}
-                  </div>
-                </div>
-              ))}
+                ))}
             </Reveal>
           </div>
         </section>
@@ -1375,6 +1391,10 @@ export default function Landing() {
         </div>
         <div className="relative border-t border-white/10 py-4 text-center text-xs text-white/45">
           © {new Date().getFullYear()} Biro Umum dan Rumah Tangga
+          <span className="mx-2 text-white/25" aria-hidden="true">
+            ·
+          </span>
+          Dibuat oleh <span className="font-semibold text-[#e4c27f]">@michaelrba</span>
         </div>
       </footer>
 

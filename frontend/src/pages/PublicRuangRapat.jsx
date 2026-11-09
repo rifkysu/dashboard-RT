@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import visibleInterval from '../utils/visibleInterval';
 import api from '../api';
@@ -149,12 +149,6 @@ function useLayarTetapMenyala() {
     };
   }, []);
 }
-// Warna kartu booking di tabel (sama dengan STATUS di RuangRapatSchedule).
-const KETERANGAN = [
-  { label: 'Belum ada surat', cls: 'bg-red-50 border-red-300' },
-  { label: 'Surat ditinjau', cls: 'bg-blue-50 border-blue-300' },
-  { label: 'Surat diterima', cls: 'bg-green-50 border-green-300' },
-];
 
 function useJam() {
   const [now, setNow] = useState(() => new Date());
@@ -289,9 +283,6 @@ function KartuRuang({ room, list, menit, memuat, galat, foto, kapasitas, delay, 
           <span className="flex items-start justify-between gap-2">
             <span className="font-display font-extrabold text-base leading-tight">
               {judulRuang(room)}
-            </span>
-            <span className="material-symbols-outlined text-[18px] text-white/40 transition group-hover:text-[#e4c27f]">
-              photo_library
             </span>
           </span>
           <RuangMaintenanceTag room={room} dark className="mt-1 self-start" />
@@ -442,6 +433,71 @@ function TickerAgenda({ list, menit, memuat, galat }) {
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+// Baris kartu yang digeser ke samping (bukan turun ke bawah): dipakai saat "Semua bagian" dipilih, karena
+// puluhan ruangan dalam grid membuat hero kiosk sangat panjang. Geser dengan jari/trackpad/shift+scroll,
+// atau tombol panah (muncul hanya bila masih ada kartu di sisi itu; disembunyikan di layar sentuh kecil).
+function BarisGulir({ children, label }) {
+  const ref = useRef(null);
+  const [tepi, setTepi] = useState({ kiri: false, kanan: false });
+  const jumlah = React.Children.count(children);
+  const ukur = useCallback(() => {
+    const el = ref.current;
+    if (!el) return;
+    setTepi({
+      kiri: el.scrollLeft > 4,
+      kanan: el.scrollLeft + el.clientWidth < el.scrollWidth - 4,
+    });
+  }, []);
+  useEffect(() => {
+    ukur();
+    const el = ref.current;
+    if (!el || typeof ResizeObserver === 'undefined') return undefined;
+    const ro = new ResizeObserver(ukur);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [ukur, jumlah]);
+  const geser = (arah) =>
+    ref.current?.scrollBy({
+      left: arah * Math.max(240, ref.current.clientWidth * 0.8),
+      behavior: 'smooth',
+    });
+  const tombol =
+    'hidden md:flex absolute top-1/2 -translate-y-1/2 z-10 w-10 h-10 items-center justify-center rounded-full bg-[#0b1626]/85 text-white ring-1 ring-white/25 shadow-lg backdrop-blur transition hover:bg-[#e4c27f] hover:text-dinas-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-[#e4c27f]';
+  return (
+    <div className="relative">
+      <div
+        ref={ref}
+        onScroll={ukur}
+        role="region"
+        aria-label={label}
+        className="flex gap-3 overflow-x-auto overscroll-x-contain snap-x snap-mandatory scroll-px-1 pb-3 -mx-1 px-1 [scrollbar-width:thin] [scrollbar-color:rgba(255,255,255,.3)_transparent]"
+      >
+        {children}
+      </div>
+      {tepi.kiri && (
+        <button
+          type="button"
+          onClick={() => geser(-1)}
+          aria-label="Geser ke kiri"
+          className={`${tombol} -left-3`}
+        >
+          <span className="material-symbols-outlined">chevron_left</span>
+        </button>
+      )}
+      {tepi.kanan && (
+        <button
+          type="button"
+          onClick={() => geser(1)}
+          aria-label="Geser ke kanan"
+          className={`${tombol} -right-3`}
+        >
+          <span className="material-symbols-outlined">chevron_right</span>
+        </button>
+      )}
     </div>
   );
 }
@@ -625,8 +681,7 @@ function KioskHero() {
             </div>
           </div>
           <div className="hero-in lg:text-right" style={{ '--d': '200ms' }}>
-            <div className="mb-3 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 ring-1 ring-white/15 text-xs font-semibold text-[#e4c27f]">
-              <span className="material-symbols-outlined text-[16px]">{salam.icon}</span>
+            <div className="mb-1 text-xs font-semibold uppercase tracking-[0.2em] text-[#e4c27f]">
               {salam.teks}
             </div>
             <div className="font-display font-extrabold tabular-nums leading-none text-[clamp(2.75rem,6vw,5rem)]">
@@ -656,8 +711,8 @@ function KioskHero() {
             </div>
           </div>
           <BagianTabs grup={grup} value={bagian} onChange={setBagian} dark className="mb-3" />
-          <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3">
-            {rooms.map((r, i) => (
+          {(() => {
+            const kartu = rooms.map((r, i) => (
               <KartuRuang
                 key={r}
                 room={r}
@@ -670,8 +725,21 @@ function KioskHero() {
                 delay={300 + Math.min(i, 10) * 70}
                 rentang={rentang}
               />
-            ))}
-          </div>
+            ));
+            // Semua bagian maupun satu bagian: satu baris yang digeser ke samping.
+            return (
+              <BarisGulir label="Status ruangan, geser ke kiri atau kanan">
+                {kartu.map((k) => (
+                  <div
+                    key={k.key}
+                    className="shrink-0 snap-start w-[72%] sm:w-[240px] xl:w-[262px] [&>.hero-in]:h-full"
+                  >
+                    {k}
+                  </div>
+                ))}
+              </BarisGulir>
+            );
+          })()}
           <TickerAgenda list={list} menit={menit} memuat={memuat} galat={galat} />
         </div>
       </div>
@@ -711,24 +779,11 @@ export default function PublicRuangRapat() {
         <div className="mb-6">
           <GuestBooking />
         </div>
-        <div className="mb-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 px-1">
-          <div className="flex items-center gap-2 min-w-0">
-            <span className="w-1 h-6 rounded-full bg-kuningan" aria-hidden="true"></span>
-            <h2 className="font-display text-lg font-extrabold text-dinas-ink">Kalender booking</h2>
-            <span className="hidden md:inline text-xs text-slate-500">
-              · ruangan berganti otomatis tiap 30 detik, tabel selalu kembali ke hari ini
-            </span>
-          </div>
-          <div className="flex flex-wrap items-center gap-3 text-[11px] font-semibold text-slate-600">
-            {KETERANGAN.map((k) => (
-              <span key={k.label} className="inline-flex items-center gap-1.5">
-                <span className={`w-3.5 h-3.5 rounded border ${k.cls}`}></span>
-                {k.label}
-              </span>
-            ))}
-          </div>
+        <div className="mb-3 flex items-center gap-2 px-1">
+          <span className="w-1 h-6 rounded-full bg-kuningan" aria-hidden="true"></span>
+          <h2 className="font-display text-lg font-extrabold text-dinas-ink">Kalender booking</h2>
         </div>
-        <div className="rounded-lg shadow-[0_16px_40px_-28px_rgba(14,30,51,.5)]">
+        <div className="rounded-xl shadow-[0_16px_40px_-28px_rgba(14,30,51,.5)]">
           <RuangRapatSchedule autoRotate />
         </div>
         <div className="mt-4 flex items-start gap-2 text-xs text-slate-500">
@@ -766,6 +821,9 @@ export default function PublicRuangRapat() {
               <span className="material-symbols-outlined text-[16px]">login</span>Masuk pegawai
             </Link>
           </div>
+        </div>
+        <div className="border-t border-white/10 py-3 text-center text-xs text-white/45">
+          Dibuat oleh <span className="font-semibold text-[#e4c27f]">@michaelrba</span>
         </div>
       </footer>
     </div>

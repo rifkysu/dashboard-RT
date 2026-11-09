@@ -131,10 +131,10 @@ function PilihRuang({ salah }) {
   return (
     <div className="min-h-screen landing-hero text-white flex items-center justify-center px-4 py-12">
       <div className="w-full max-w-3xl">
-        <div className="flex items-center gap-3">
+        <Link to="/" className="inline-flex items-center gap-3" aria-label="Ke beranda">
           <BrandMark size="sm" className="!border-white/20" />
           <div className="text-sm text-white/70">Biro Umum dan Rumah Tangga</div>
-        </div>
+        </Link>
         <h1 className="font-display text-3xl md:text-4xl font-extrabold mt-6 tracking-tight">
           Pilih layar ruang rapat
         </h1>
@@ -583,7 +583,7 @@ function Layar({ room }) {
 
       {/* Kepala */}
       <header className="relative flex items-center justify-between gap-4 px-5 md:px-10 pt-5 md:pt-7">
-        <div className="flex items-center gap-3 min-w-0">
+        <Link to="/" className="flex items-center gap-3 min-w-0" aria-label="Ke beranda">
           <BrandMark size="sm" className="!border-white/20" />
           <div className="min-w-0">
             <div className="font-display text-sm font-extrabold leading-tight truncate">
@@ -593,7 +593,7 @@ function Layar({ room }) {
               Kementerian Ketenagakerjaan
             </div>
           </div>
-        </div>
+        </Link>
         <div
           className={`flex items-center gap-2 transition-opacity duration-500 ${idle ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
         >

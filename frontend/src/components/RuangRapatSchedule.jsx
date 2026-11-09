@@ -18,6 +18,11 @@ const STATUS_KIOSK = {
   ditinjau: 'border-l-blue-500',
   diterima: 'border-l-green-500',
 };
+const LEGENDA = [
+  { label: 'Belum ada surat', dot: 'bg-red-500' },
+  { label: 'Surat ditinjau', dot: 'bg-blue-500' },
+  { label: 'Surat diterima', dot: 'bg-green-500' },
+];
 // Booking multi-hari: tampil di setiap hari dari `date` s/d `end_date`.
 const endOf = (x) => x.end_date || x.date;
 const dayCount = (a, b) =>
@@ -117,83 +122,100 @@ export default function RuangRapatSchedule({ autoRotate = false }) {
 
   return (
     <div
-      className="bg-white rounded-lg border border-slate-200 overflow-hidden text-slate-800"
+      className="bg-white rounded-xl border border-slate-200 overflow-hidden text-slate-800 shadow-sm"
       onPointerDown={jeda}
       onWheel={jeda}
     >
-      <div className="p-4 border-b border-slate-200 flex flex-col xl:flex-row justify-between gap-3 xl:items-center">
-        <div>
-          <div className="font-bold text-sm text-slate-800">
-            Jadwal Ruang Rapat{bagian && ` · ${bagian}`}
-            {picked && ` · ${judulRuang(picked)}`}
-          </div>
-          <div className="text-xs text-slate-500 mt-1 inline-flex flex-wrap items-center gap-1.5">
+      <div className="px-4 md:px-5 py-4 border-b border-slate-200 flex flex-col md:flex-row md:items-center justify-between gap-3">
+        <div className="min-w-0">
+          <h3 className="font-display font-extrabold text-base text-slate-900 leading-tight">
             {monthLabel(s.months[0])}
-            {last !== s.months[0] && ` – ${monthLabel(last)}`} &middot; gulir ke bawah untuk bulan
-            berikutnya &middot;
-            <span>diperbarui otomatis</span>
+            {last !== s.months[0] && ` – ${monthLabel(last)}`}
+          </h3>
+          <div className="text-xs text-slate-500 mt-1 truncate">
+            Jadwal Ruang Rapat{bagian && ` · ${bagian}`}
+            {picked && ` · ${judulRuang(picked)}`} &middot; diperbarui otomatis
           </div>
         </div>
-        <MonthFilter months={s.months} onSelect={s.selectMonth} />
+        <MonthFilter compact months={s.months} onSelect={s.selectMonth} />
       </div>
-      <div className="px-4 pt-3 pb-2 border-b border-slate-100 flex flex-wrap items-center gap-2">
-        <span className="shrink-0 text-xs font-semibold text-slate-500 w-16">Bagian</span>
-        <BagianTabs
-          grup={grup}
-          value={bagian}
-          onChange={(b) => {
-            setBagian(b);
-            setAutoRoom('');
-            jeda();
-          }}
-          className="flex-1"
-        />
-      </div>
-      <div className="px-4 py-3 border-b border-slate-200 flex flex-wrap items-center gap-2">
-        <span className="shrink-0 text-xs font-semibold text-slate-500 w-16">Ruangan</span>
-        <div
-          className="flex gap-1.5 overflow-x-auto pb-1 sm:pb-0 -mx-1 px-1 min-w-0 flex-1"
-          role="group"
-          aria-label="Pilih ruangan"
-        >
-          {['', ...rooms].map((room) => (
-            <button
-              key={room || 'semua'}
-              type="button"
-              onClick={() => pickRoom(room)}
-              aria-pressed={picked === room}
-              className={`shrink-0 inline-flex items-center gap-1.5 ${room ? 'pl-1 pr-3 py-1' : 'px-3 py-[0.4375rem]'} rounded-full text-xs font-semibold border transition ${picked === room ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}`}
-            >
-              {room && (
-                <RuangThumb room={room} className="w-6 h-6 rounded-full" iconClass="text-[13px]" />
-              )}
-              {room ? judulRuang(room) : bagian ? `Semua ruangan ${bagian}` : 'Semua Ruangan'}
-            </button>
-          ))}
-        </div>
-        {autoRotate && (
-          <button
-            type="button"
-            onClick={() => {
-              setAuto((a) => !a);
-              setJedaSampai(0);
+      <div className="px-4 md:px-5 py-3 border-b border-slate-200 bg-slate-50/70 space-y-2.5">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+          <span className="shrink-0 text-[11px] font-bold uppercase tracking-wider text-slate-500 w-16">
+            Bagian
+          </span>
+          <BagianTabs
+            grup={grup}
+            value={bagian}
+            onChange={(b) => {
+              setBagian(b);
+              setAutoRoom('');
+              jeda();
             }}
-            aria-pressed={auto}
-            title={auto ? 'Matikan putar otomatis' : 'Nyalakan putar otomatis'}
-            className={`shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition ${auto ? 'bg-sky-50 text-[#1e3a5f] border-sky-200 hover:bg-sky-100' : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'}`}
+            className="flex-1"
+          />
+        </div>
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+          <span className="shrink-0 text-[11px] font-bold uppercase tracking-wider text-slate-500 w-16">
+            Ruangan
+          </span>
+          <div
+            className="flex gap-1.5 overflow-x-auto pb-1 sm:pb-0 -mx-1 px-1 min-w-0 flex-1"
+            role="group"
+            aria-label="Pilih ruangan"
           >
-            <span className="material-symbols-outlined text-[16px]">
-              {!auto ? 'play_circle' : dijeda ? 'pause_circle' : 'autoplay'}
-            </span>
-            <span aria-live="polite">
-              {!auto
-                ? 'Putar otomatis: mati'
-                : dijeda
-                  ? `Dijeda · lanjut ${sisaJeda} dtk`
-                  : 'Ganti ruangan otomatis · 30 dtk'}
-            </span>
-          </button>
-        )}
+            {['', ...rooms].map((room) => (
+              <button
+                key={room || 'semua'}
+                type="button"
+                onClick={() => pickRoom(room)}
+                aria-pressed={picked === room}
+                className={`shrink-0 inline-flex items-center gap-1.5 ${room ? 'pl-1 pr-3 py-1' : 'px-3 py-[0.4375rem]'} rounded-full text-xs font-semibold border transition ${picked === room ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}`}
+              >
+                {room && (
+                  <RuangThumb
+                    room={room}
+                    className="w-6 h-6 rounded-full"
+                    iconClass="text-[13px]"
+                  />
+                )}
+                {room ? judulRuang(room) : bagian ? `Semua ruangan ${bagian}` : 'Semua Ruangan'}
+              </button>
+            ))}
+          </div>
+          {autoRotate && (
+            <button
+              type="button"
+              onClick={() => {
+                setAuto((a) => !a);
+                setJedaSampai(0);
+              }}
+              aria-pressed={auto}
+              title={auto ? 'Matikan putar otomatis' : 'Nyalakan putar otomatis'}
+              className={`shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition ${auto ? 'bg-sky-50 text-[#1e3a5f] border-sky-200 hover:bg-sky-100' : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'}`}
+            >
+              <span className="material-symbols-outlined text-[16px]">
+                {!auto ? 'play_circle' : dijeda ? 'pause_circle' : 'autoplay'}
+              </span>
+              <span aria-live="polite">
+                {!auto
+                  ? 'Putar otomatis: mati'
+                  : dijeda
+                    ? `Dijeda · lanjut ${sisaJeda} dtk`
+                    : 'Ganti ruangan otomatis · 30 dtk'}
+              </span>
+            </button>
+          )}
+        </div>
+      </div>
+      <div className="px-4 md:px-5 py-2 border-b border-slate-200 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] font-semibold text-slate-600">
+        <span className="text-slate-400 uppercase tracking-wider font-bold">Status surat</span>
+        {LEGENDA.map((k) => (
+          <span key={k.label} className="inline-flex items-center gap-1.5">
+            <span className={`w-2.5 h-2.5 rounded-full ${k.dot}`}></span>
+            {k.label}
+          </span>
+        ))}
       </div>
       {autoRotate && (
         <div className="h-1 bg-slate-100" aria-hidden="true">
@@ -224,19 +246,24 @@ export default function RuangRapatSchedule({ autoRotate = false }) {
         renderItem={(x, date) => (
           <div
             key={x.id}
-            className={`border rounded-lg p-2 select-none ${STATUS[x.status] || STATUS.belum} ${autoRotate ? `border-l-4 shadow-[0_4px_12px_-6px_rgba(14,30,51,.35)] ${STATUS_KIOSK[x.status] || STATUS_KIOSK.belum}` : ''}`}
+            className={`rounded-lg border border-l-4 px-2.5 py-2 select-none shadow-[0_1px_2px_rgba(15,23,42,.06)] ${STATUS_KIOSK[x.status] || STATUS_KIOSK.belum} ${STATUS[x.status] || STATUS.belum}`}
           >
-            <div className="text-[11px] font-bold">
+            <div className="text-[11px] font-bold font-mono tabular-nums opacity-80">
               {x.start} – {x.end}
               {endOf(x) !== x.date && (
-                <span className="font-semibold opacity-75">
+                <span className="font-sans font-semibold opacity-75">
                   {' '}
                   · Hari {dayCount(x.date, date)}/{dayCount(x.date, endOf(x))}
                 </span>
               )}
             </div>
-            <div className="font-bold text-xs mt-1 leading-snug">{x.title}</div>
-            <div className="text-[11px] font-semibold mt-0.5">♙ {x.pic}</div>
+            <div className="font-bold text-[13px] mt-1 leading-snug line-clamp-3">{x.title}</div>
+            {x.pic && (
+              <div className="mt-1 flex items-center gap-1 text-[11px] font-medium opacity-80 min-w-0">
+                <span className="material-symbols-outlined text-[14px] shrink-0">person</span>
+                <span className="truncate">{x.pic}</span>
+              </div>
+            )}
           </div>
         )}
       />

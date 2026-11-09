@@ -15,10 +15,10 @@
   --kuningan: #b8893b;
   --kuningan-soft: #f7efe0;
   --kuningan-ink: #7a5a20;
-  --kanvas: #f3f4f7;
-  --garis: #e2e6ed;
-  --teks: #1b2534;
-  --teks-redup: #5f6b7a;
+  --kanvas: #eef2f7;
+  --garis: #dfe6ef;
+  --teks: #28344a;
+  --teks-redup: #586478;
   --f-display: 'Plus Jakarta Sans', 'Inter Variable', system-ui, 'Segoe UI', Roboto, Arial,
     sans-serif;
   --f-body: 'Inter Variable', Inter, system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
@@ -582,6 +582,84 @@ html:not([data-theme='dark']) .menu-page .menu-stat:focus-visible {
 .menu-page thead select {
   border-radius: 7px !important;
   background: #f8fafc !important;
+}
+
+/* ---- Rapikan tabel data & panel export (Pemeliharaan, Pengadaan, Kendaraan, Akun) ----
+   Sel lebih rapat, tanpa garis tegak (14 kolom jadi tidak seperti kisi-kisi), isi sejajar di tengah
+   vertikal, baris filter menyatu dengan kepala tabel, dan kolom aksi tidak melebar. */
+.menu-tabel table th,
+.menu-tabel table td {
+  padding: 10px 14px !important;
+  vertical-align: middle;
+}
+.menu-tabel table thead tr:first-child th {
+  white-space: nowrap;
+  text-align: left;
+}
+.menu-tabel table tr.divide-x > *,
+.menu-tabel table tr > * {
+  border-left-width: 0 !important;
+  border-right-width: 0 !important;
+}
+.menu-tabel table thead tr:nth-child(2) {
+  background: #f6f8fb !important;
+}
+.menu-tabel table thead tr:nth-child(2) th {
+  padding: 8px 10px !important;
+  border-bottom: 1px solid var(--garis);
+}
+.menu-tabel table thead input:not([type='radio']):not([type='checkbox']),
+.menu-tabel table thead select {
+  height: 32px;
+  min-width: 96px;
+  padding: 0 8px;
+  font-size: 12px;
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: normal;
+}
+.menu-tabel table tbody td {
+  font-size: 13px;
+  line-height: 1.4;
+}
+.menu-tabel table tbody td .rounded-full {
+  font-size: 11.5px;
+  line-height: 1.2;
+  padding: 4px 10px;
+}
+.menu-tabel table tbody td > .flex.justify-center {
+  flex-wrap: nowrap;
+  gap: 6px;
+}
+.menu-tabel table tbody td button.w-9.h-9,
+.menu-tabel table tbody td span.w-9.h-9 {
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  box-shadow: none;
+}
+.menu-toolbar {
+  align-items: flex-end;
+  row-gap: 10px;
+}
+.menu-toolbar label {
+  margin-bottom: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: #5b6677;
+}
+.menu-toolbar input,
+.menu-toolbar select,
+.menu-toolbar button {
+  height: 40px;
+  border-radius: 9px;
+  font-size: 13px;
+}
+.menu-toolbar button {
+  padding: 0 16px;
+  white-space: nowrap;
 }
 
 @media (max-width: 640px) {
@@ -2096,4 +2174,74 @@ html:not([data-theme='dark']) .text-slate-400 {
 html .tema-krem .text-slate-400,
 html .tema-krem .text-slate-500 {
   color: #515b6b;
+}
+
+/* Tabel jadwal di atas krem: tint biru muda (hari ini) dan merah muda (akhir pekan) bawaan komponen
+   terlihat dingin dan "kotor" di atas latar hangat. Diganti nada senada krem: hari ini = emas lembut
+   (kuningan), akhir pekan = terakota lembut. Hanya berlaku di .tema-krem; aplikasi internal tidak berubah. */
+:where(.tema-krem) .bg-sky-50\/70 {
+  background-color: rgba(184, 137, 59, 0.14);
+}
+:where(.tema-krem) .bg-sky-200\/45 {
+  background-color: rgba(184, 137, 59, 0.18);
+}
+:where(.tema-krem) .bg-sky-50 {
+  background-color: #f1e6cc;
+}
+:where(.tema-krem) .bg-sky-100 {
+  background-color: #ecdcb4;
+}
+:where(.tema-krem) .bg-red-50\/40 {
+  background-color: rgba(160, 82, 54, 0.07);
+}
+:where(.tema-krem) .bg-rose-100\/40 {
+  background-color: rgba(160, 82, 54, 0.1);
+}
+:where(.tema-krem) .bg-red-50 {
+  background-color: #f1dfd3;
+}
+
+/* ---- Tema terang yang lebih nyaman dipandang ---------------------------------------------
+   Latar biru-abu lembut dengan semburat biru dinas & kuningan (bukan abu rata), kartu putih
+   sedikit diredam (bukan putih menyilaukan), garis & bayangan halus, baris tabel selang-seling
+   tipis. Hanya untuk tema terang; tema gelap tidak berubah. */
+html:not([data-theme='dark']) body,
+html:not([data-theme='dark']) main.app-main,
+html:not([data-theme='dark']) .app-shell-bg {
+  background-color: var(--kanvas) !important;
+  background-image:
+    radial-gradient(900px 520px at 100% -6%, rgba(30, 58, 95, 0.09), transparent 70%),
+    radial-gradient(760px 480px at -4% 104%, rgba(184, 137, 59, 0.1), transparent 70%) !important;
+  background-attachment: fixed;
+}
+:where(html:not([data-theme='dark'])) .menu-page .bg-white,
+:where(html:not([data-theme='dark'])) .menu-page .bg-white\/75,
+:where(html:not([data-theme='dark'])) .menu-page .bg-white\/80,
+:where(html:not([data-theme='dark'])) .menu-page .bg-white\/85,
+:where(html:not([data-theme='dark'])) .menu-page .bg-white\/90 {
+  background: #fcfdfe !important;
+  border-color: #b4c6de !important;
+  box-shadow:
+    0 1px 2px rgba(14, 30, 51, 0.035),
+    0 10px 28px -16px rgba(30, 58, 95, 0.18);
+}
+:where(html:not([data-theme='dark'])) .menu-page .bg-slate-50,
+:where(html:not([data-theme='dark'])) .menu-page .bg-slate-100 {
+  background: #f3f6fa !important;
+}
+html:not([data-theme='dark']) .menu-tabel table thead,
+html:not([data-theme='dark']) .menu-tabel table thead tr:nth-child(2) {
+  background: #f1f5fa !important;
+}
+html:not([data-theme='dark']) .menu-tabel table tbody tr:nth-child(even) {
+  background: #f8fafd;
+}
+html:not([data-theme='dark']) .menu-page tr:hover {
+  background: #eef3fa !important;
+}
+html:not([data-theme='dark']) .menu-page input:not([type='radio']):not([type='checkbox']),
+html:not([data-theme='dark']) .menu-page select,
+html:not([data-theme='dark']) .menu-page textarea {
+  background: #fdfeff !important;
+  border-color: #d3dce8 !important;
 }

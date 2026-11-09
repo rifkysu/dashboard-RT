@@ -31,6 +31,10 @@ if (!frontendUrl) {
 }
 
 app.disable('x-powered-by');
+// Query string diparse "simple" (querystring bawaan Node), bukan "extended" (qs): ?a[b]=1 tidak lagi
+// menjadi objek { a: { b: '1' } }, jadi nilai dari URL tidak bisa berubah jadi operator Prisma
+// (mis. ?status[not]=x). Semua filter di aplikasi ini memang hanya memakai teks biasa.
+app.set('query parser', 'simple');
 app.set('trust proxy', process.env.TRUST_PROXY === 'true' ? 1 : false);
 app.use(requestHardening);
 app.use((req, res, next) => {

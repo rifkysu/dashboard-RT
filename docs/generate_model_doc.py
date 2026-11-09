@@ -33,7 +33,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 LOGO = os.path.join(ROOT, "frontend", "public", "logo-kemnaker.png")
 
-TANGGAL = "4 November 2026"
+TANGGAL = "9 November 2026"
 SISTEM = "Sistem Layanan Biro Umum & Rumah Tangga"
 
 PW, PH = A4
@@ -863,7 +863,7 @@ def isi_aplikasi():
             ["PIC", "Otomatis: karyawan yang menambahkan permintaan Pemeliharaan/Pengadaan pertamanya "
              "dinaikkan menjadi PIC.",
              "Seperti karyawan + memproses tahapan, mengedit & menghapus **data yang dibuatnya sendiri**; "
-             "mengelola kendaraan."],
+             "hanya melihat data kendaraan (tambah/ubah/hapus kendaraan hanya Admin dan Kabag)."],
             ["Kabag", "Diberikan Admin/Kabag lewat menu Akun & Akses (atau pgAdmin 4).",
              "Setara admin: mengedit/menghapus seluruh data, Mode Maintenance, Akun & Akses, dan tetap dapat "
              "mengakses menu yang sedang maintenance. Pengecualian: akun **Admin** tidak bisa disentuh Kabag "
@@ -922,7 +922,7 @@ def isi_aplikasi():
             "dengan tombol *Putar otomatis*; mati secara default bila dibuka dengan ?ruang=.",
             "**Menu per bagian** (satuan kerja, mis. Biro Umum, Biro Keuangan dan BMN, PPSDM Ketenagakerjaan) di "
             "landing page, kiosk, dan menu Ruang Rapat: hanya ruangan bagian itu yang tampil di kartu status, ringkasan, "
-            "pita agenda, dan tabel jadwal; ada pilihan *Semua bagian*. Putar otomatis kiosk berputar di dalam bagian terpilih.",
+            "pita agenda, dan tabel jadwal; ada pilihan *Semua bagian*. Di kiosk, kartu status untuk *Semua bagian* tampil dalam satu baris yang digeser ke kiri-kanan (jari, trackpad, atau tombol panah) agar tidak memanjang ke bawah; satu bagian tetap berupa grid. Putar otomatis kiosk berputar di dalam bagian terpilih.",
             "Pilihan bagian & ruangan di landing page & kiosk tetap real-time dan tersimpan di URL, mis. "
             "**/jadwal-rapat?bagian=Biro%20Umum** atau **/jadwal-rapat?ruang=SERBAGUNA** (kiosk tiap satuan kerja bisa dibuka dengan link bagiannya).",
             "Layar per ruangan **/ruang/:ruang** (mis. **/ruang/serbaguna**, **/ruang/setjen-ii**) untuk tablet/monitor "
@@ -1624,6 +1624,12 @@ def isi_infra():
             ["Validasi input", "Validasi tipe, panjang, tanggal, nominal di backend (validate.js) dan frontend; "
              "body JSON maks. 25 MB hanya untuk request bertoken sah (pegawai/tamu), tanpa token maks. 256 KB "
              "(mencegah banjir body besar tanpa login); ID di URL di luar batas INTEGER ditolak 400."],
+            ["SQL injection", "Semua query lewat Prisma (ter-parameter); raw SQL hanya tagged template $executeRaw "
+             "untuk advisory lock, tanpa $queryRawUnsafe berisi input pengguna. Query string diparse 'simple' "
+             "(?a[b]=1 tidak menjadi objek) dan setiap field login/token/filter dicek bertipe teks, sehingga "
+             "operator Prisma (mis. {\"not\": \"\"}) tidak bisa disisipkan ke WHERE. Middleware global "
+             "(validateCommonInput) menolak karakter NUL, kunci __proto__/constructor/prototype, dan objek "
+             "bersarang lebih dari 8 level."],
             ["Berkas", "Whitelist MIME + pemeriksaan magic number (foto kendaraan & ruangan hanya JPG/PNG/WEBP); "
              "nama berkas disanitasi; folder uploads tidak dipublikasikan; pratinjau lewat Blob URL."],
             ["Export CSV/Excel", "Sel yang diawali = + - @ diberi awalan ' (backend/src/csv.js, frontend utils/excelCell.js) "
