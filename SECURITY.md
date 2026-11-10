@@ -30,6 +30,8 @@ Versi ini menambahkan hardening dasar untuk deployment produksi:
 - Tabel rate limiter dibatasi 50.000 kunci; bila penuh oleh banjir kunci acak, kunci baru ditolak 429 (mencegah memori server habis).
 - Semua respons `/api` memakai `Cache-Control: no-store` (data pribadi tidak tersimpan di cache browser/proxy komputer bersama); backend juga mengirim HSTS bila request datang lewat HTTPS.
 - Nama file ZIP export surat hanya memuat angka dan `-` dari parameter tanggal.
+- Pratinjau dokumen (DocumentViewer) hanya membuat blob URL dengan tipe PDF/gambar/Office yang dikenal; tipe lain (mis. `text/html`, `image/svg+xml` dari data lama atau yang diisi langsung lewat database) dipaksa jadi `application/octet-stream`, sehingga tombol "Tab Baru" tidak bisa menjalankan script di domain aplikasi.
+- Token reset kata sandi dipakai secara atomik (`updateMany` bersyarat token masih sama): dua request bersamaan dengan link yang sama tidak bisa sama-sama berhasil.
 - `npm audit --omit=dev` backend & frontend: 0 kerentanan (dicek 2026-11-10).
 
 ## Penting

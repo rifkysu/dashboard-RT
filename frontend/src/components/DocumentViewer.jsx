@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 
 function getMime(data = '') {
   const m = String(data).match(/^data:([^;]+);/);
-  return m?.[1] || '';
+  return (m?.[1] || '').trim().toLowerCase();
 }
 
 // Ubah data URL (base64 penuh) jadi Blob URL. Blob URL cuma valid di memori
@@ -10,11 +10,27 @@ function getMime(data = '') {
 // lain (termasuk tanpa login), otomatis gagal dimuat. Ini sengaja dipakai
 // menggantikan data: URI mentah, supaya file BPKB/STNK/invoice/dsb tidak bisa
 // "dibocorkan" lewat address bar preview PDF ke orang yang tidak login.
+// Blob URL mewarisi origin aplikasi: kalau tipenya text/html atau image/svg+xml, membukanya di
+// "Tab Baru" menjalankan script di domain ini (bisa mencuri token login). Server sudah menolak tipe
+// itu saat upload, tapi data lama / yang diisi langsung lewat database bisa saja lolos -> di sini
+// hanya tipe dokumen yang dikenal yang dipertahankan; selain itu dipaksa jadi unduhan biner.
+const SAFE_MIME = new Set([
+  'application/pdf',
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'application/msword',
+  'application/vnd.ms-excel',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+]);
+
 function dataUrlToBlobUrl(dataUrl) {
   const match = String(dataUrl).match(/^data:([^;]+);base64,(.+)$/s);
   if (!match) return null;
   try {
-    const mime = match[1];
+    const claimed = match[1].trim().toLowerCase();
+    const mime = SAFE_MIME.has(claimed) ? claimed : 'application/octet-stream';
     const binary = atob(match[2]);
     const bytes = new Uint8Array(binary.length);
     for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);

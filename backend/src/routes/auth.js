@@ -502,8 +502,10 @@ router.post('/reset-password', resetPasswordLimiter, async (req, res) => {
     }
 
     const password_hash = await passwordHasher.hash(password, 12);
-    await prisma.user.update({
-      where: { id: user.id },
+    // Atomik: token hanya terpakai sekali walau dua request reset datang bersamaan (hash ~300 ms di
+    // atas memberi jeda) -- update hanya berhasil bila token yang sama masih tersimpan & belum kedaluwarsa.
+    const { count } = await prisma.user.updateMany({
+      where: { id: user.id, reset_token: user.reset_token, reset_token_expires: { gt: new Date() } },
       // token_version naik -> semua sesi lama (mis. milik orang yang mencuri sandi) langsung diputus.
       data: {
         password_hash,
@@ -513,6 +515,11 @@ router.post('/reset-password', resetPasswordLimiter, async (req, res) => {
         token_version: { increment: 1 },
       },
     });
+    if (count !== 1) {
+      return res.status(400).json({
+        message: 'Token reset tidak valid atau sudah kedaluwarsa. Silakan minta link reset baru.',
+      });
+    }
 
     res.json({ message: 'Kata sandi berhasil diubah. Silakan login dengan kata sandi baru.' });
   } catch (err) {

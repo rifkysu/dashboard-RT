@@ -1603,6 +1603,9 @@ def isi_infra():
             ["Server web", "Nginx: hanya TLS 1.2/1.3, HTTP dialihkan ke HTTPS, versi Nginx disembunyikan "
              "(server_tokens off), file tersembunyi (.env, .git) ditolak."],
             ["CORS", "Hanya origin FRONTEND_URL; metode GET/POST/PUT/DELETE/OPTIONS."],
+            ["Pratinjau dokumen", "DocumentViewer hanya membuat blob URL bertipe PDF/JPG/PNG/WEBP/Word/Excel; tipe lain dipaksa "
+             "application/octet-stream supaya file HTML/SVG tidak bisa menjalankan script di domain aplikasi. Token reset sandi "
+             "dipakai atomik (sekali pakai walau request bersamaan)."],
             ["Cache & HSTS", "Semua respons /api diberi Cache-Control: no-store (foto ruang publik menimpa dengan cache panjang); "
              "HSTS dikirim backend bila request datang lewat HTTPS (TRUST_PROXY=true)."],
             ["Rate limit", "Global 180 request/menit per akun (per IP bila belum login); login 5/menit per "
