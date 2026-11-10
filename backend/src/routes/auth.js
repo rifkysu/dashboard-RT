@@ -60,6 +60,16 @@ const loginLimiter = createRateLimiter({
   message: 'Terlalu banyak percobaan login. Silakan tunggu 1 menit sebelum mencoba lagi.',
   keyFn: (req) => String(normalizeEmail(req.body?.email) || '').slice(0, 254),
 });
+// Batas per AKUN tanpa melihat IP: penebak yang menyebar percobaan lewat banyak IP (botnet/proxy)
+// tetap dibatasi 20x per 15 menit per email. Longgar secukupnya agar pemilik akun yang lupa sandi
+// tidak mudah terkunci oleh orang iseng; atur lewat LOGIN_ACCOUNT_MAX_PER_15MIN di .env.
+const loginAccountLimiter = createRateLimiter({
+  windowMs: 15 * 60 * 1000,
+  max: Number(process.env.LOGIN_ACCOUNT_MAX_PER_15MIN) || 20,
+  message: 'Terlalu banyak percobaan login untuk akun ini. Silakan tunggu beberapa menit.',
+  keyFn: (req) => String(normalizeEmail(req.body?.email) || '').slice(0, 254),
+  ignoreIp: true,
+});
 // Batas longgar per IP untuk menahan percobaan banyak email sekaligus dari satu sumber.
 // Satu kantor (NAT) = satu IP: batas lama 30/menit membuat pegawai ke-31 yang login di jam masuk
 // kantor tertahan 1 menit. 120/menit masih jauh di bawah kemampuan cek sandi server (~3 login/detik
@@ -251,7 +261,7 @@ router.post('/register', registerLimiter, async (req, res) => {
 // ---------------------------------------------------------
 // POST /api/auth/login
 // ---------------------------------------------------------
-router.post('/login', loginIpLimiter, loginLimiter, async (req, res) => {
+router.post('/login', loginIpLimiter, loginLimiter, loginAccountLimiter, async (req, res) => {
   try {
     const email = normalizeEmail(req.body.email);
     const { password } = req.body;

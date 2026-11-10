@@ -169,6 +169,8 @@ export default function RoomDateGrid({
   kiosk = false,
 }) {
   const { info } = useRuangInfo();
+  // Satu ruangan dipilih: kolom ruangan selebar layar, jadi booking disusun berderet (grid) dan header ruangan dibuat lebih besar.
+  const single = rooms.length === 1;
   const scrollRef = useRef(null);
   const headRef = useRef(null);
   const sentinelRef = useRef(null);
@@ -420,12 +422,24 @@ export default function RoomDateGrid({
                       >
                         <RuangThumb
                           room={room}
-                          className={`w-9 h-9 rounded-lg transition ${kiosk ? '' : 'ring-1 ring-black/5 group-hover:ring-kuningan/60'}`}
+                          className={`${single ? 'w-14 h-14' : 'w-9 h-9'} rounded-lg transition ${kiosk ? '' : 'ring-1 ring-black/5 group-hover:ring-kuningan/60'}`}
                           iconClass="text-[17px]"
                         />
                       </span>
                       <span className="min-w-0">
-                        <span className="line-clamp-2 leading-snug">{judulRuang(room)}</span>
+                        <span
+                          className={`line-clamp-2 leading-snug ${single ? 'text-base font-extrabold' : ''}`}
+                        >
+                          {judulRuang(room)}
+                        </span>
+                        {single && info?.[room]?.kapasitas && (
+                          <span
+                            className={`mt-0.5 inline-flex items-center gap-1 text-[11px] font-semibold normal-case tracking-normal ${kiosk ? 'text-white/60' : 'text-slate-500'}`}
+                          >
+                            <span className="material-symbols-outlined text-[14px]">chair</span>
+                            {info[room].kapasitas} kursi
+                          </span>
+                        )}
                         <RuangMaintenanceTag room={room} dark={kiosk} className="mt-0.5" />
                       </span>
                     </RuangFotoButton>
@@ -515,8 +529,18 @@ export default function RoomDateGrid({
                             key={room}
                             className={`border-b border-l p-1.5 align-top ${kiosk ? 'border-slate-300/60' : 'border-slate-200'} ${rowBg}`}
                           >
-                            <div className="group/cell space-y-1.5 min-h-[44px]">
+                            <div
+                              className={`group/cell min-h-[44px] ${single ? 'grid gap-2 sm:grid-cols-2 xl:grid-cols-3 content-start' : 'space-y-1.5'}`}
+                            >
                               {list.map((x) => renderItem(x, date))}
+                              {single && !list.length && !onAddBooking && (
+                                <span className="col-span-full inline-flex items-center gap-1.5 px-1 py-2.5 text-xs font-medium text-slate-400">
+                                  <span className="material-symbols-outlined text-[15px]">
+                                    event_available
+                                  </span>
+                                  Tidak ada booking
+                                </span>
+                              )}
                               {onAddBooking &&
                                 (list.length ? (
                                   <button

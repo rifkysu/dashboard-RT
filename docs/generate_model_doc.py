@@ -33,7 +33,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 LOGO = os.path.join(ROOT, "frontend", "public", "logo-kemnaker.png")
 
-TANGGAL = "9 November 2026"
+TANGGAL = "10 November 2026"
 SISTEM = "Sistem Layanan Biro Umum & Rumah Tangga"
 
 PW, PH = A4
@@ -1603,8 +1603,10 @@ def isi_infra():
             ["Server web", "Nginx: hanya TLS 1.2/1.3, HTTP dialihkan ke HTTPS, versi Nginx disembunyikan "
              "(server_tokens off), file tersembunyi (.env, .git) ditolak."],
             ["CORS", "Hanya origin FRONTEND_URL; metode GET/POST/PUT/DELETE/OPTIONS."],
+            ["Cache & HSTS", "Semua respons /api diberi Cache-Control: no-store (foto ruang publik menimpa dengan cache panjang); "
+             "HSTS dikirim backend bila request datang lewat HTTPS (TRUST_PROXY=true)."],
             ["Rate limit", "Global 180 request/menit per akun (per IP bila belum login); login 5/menit per "
-             "IP+email dan 30/menit per IP; daftar 50/jam; lupa sandi 5/jam; reset 20/jam; koneksi SSE maks. "
+             "IP+email, 20 per 15 menit per akun (semua IP) dan 120/menit per IP; batas tabel limiter 50.000 kunci (penuh = 429); daftar 50/jam; lupa sandi 5/jam; reset 20/jam; koneksi SSE maks. "
              "200 per IP & 1000 total. Tamu Google: captcha 10/menit, submit booking 6/10 menit per akun & 20/10 menit per IP."],
             ["Captcha & anti-spam tamu", "Captcha 6 angka berupa gambar PNG yang digambar server (jawaban tidak ada di "
              "kode sumber gambar), disimpan sebagai hash, berlaku 5 menit, satu per akun dan hangus setelah sekali dicek. "

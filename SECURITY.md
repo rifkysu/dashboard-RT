@@ -26,6 +26,11 @@ Versi ini menambahkan hardening dasar untuk deployment produksi:
 - Foto kendaraan hanya menerima JPG/PNG/WEBP asli.
 - Dengan `TRUST_PROXY=true`, backend hanya mendengarkan `127.0.0.1` (ubah lewat `HOST` bila Nginx berada di server lain, dan batasi port backend dengan firewall). Tanpa ini, port 4000 yang terbuka ke jaringan memungkinkan pemalsuan header `X-Forwarded-For` untuk lolos dari batas percobaan login.
 - ID di URL di luar batas INTEGER ditolak 400 (bukan error 500).
+- Login dibatasi juga per AKUN tanpa melihat IP (20x per 15 menit per email, `LOGIN_ACCOUNT_MAX_PER_15MIN`), supaya tebak kata sandi yang disebar lewat banyak IP tetap tertahan. Batas per IP+email (5/menit) dan per IP (120/menit) tetap berlaku.
+- Tabel rate limiter dibatasi 50.000 kunci; bila penuh oleh banjir kunci acak, kunci baru ditolak 429 (mencegah memori server habis).
+- Semua respons `/api` memakai `Cache-Control: no-store` (data pribadi tidak tersimpan di cache browser/proxy komputer bersama); backend juga mengirim HSTS bila request datang lewat HTTPS.
+- Nama file ZIP export surat hanya memuat angka dan `-` dari parameter tanggal.
+- `npm audit --omit=dev` backend & frontend: 0 kerentanan (dicek 2026-11-10).
 
 ## Penting
 

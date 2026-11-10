@@ -3,15 +3,26 @@ const crypto = require('crypto');
 // Simple in-process rate limiter. For multi-server deployments, move this to Redis.
 // keyFn opsional: default per IP; login memakai IP + email supaya satu kantor yang keluar lewat
 // IP yang sama (NAT/proxy) tidak saling mengunci saat banyak pegawai login bersamaan.
-function createRateLimiter({ windowMs, max, message, keyFn }) {
+// ignoreIp: kunci hanya dari keyFn (mis. per akun/email, tidak peduli IP) -- untuk menahan tebak
+// kata sandi yang disebar dari banyak IP. Batas memori: bila tabel melewati MAX_KEYS (banjir kunci
+// acak), entri kedaluwarsa dibuang dulu; bila masih penuh, kunci baru ditolak 429 (fail-closed).
+const MAX_KEYS = 50000;
+function createRateLimiter({ windowMs, max, message, keyFn, ignoreIp = false }) {
   const hits = new Map();
   let lastCleanup = Date.now();
 
   return (req, res, next) => {
     const now = Date.now();
     const ip = req.ip || req.socket.remoteAddress || 'unknown';
-    const key = keyFn ? `${ip}|${keyFn(req)}` : ip;
+    const key = keyFn ? (ignoreIp ? `k|${keyFn(req)}` : `${ip}|${keyFn(req)}`) : ip;
     let item = hits.get(key);
+    if (!item && hits.size >= MAX_KEYS) {
+      for (const [k, v] of hits) if (now - v.start >= windowMs) hits.delete(k);
+      if (hits.size >= MAX_KEYS) {
+        res.setHeader('Retry-After', String(Math.ceil(windowMs / 1000)));
+        return res.status(429).json({ message });
+      }
+    }
 
     if (!item || now - item.start >= windowMs) {
       item = { start: now, count: 0 };
@@ -80,6 +91,11 @@ function requestHardening(req, res, next) {
   res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
   res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
   res.setHeader('Cross-Origin-Resource-Policy', 'same-origin');
+  // Respons API berisi data pribadi/sesi: jangan disimpan cache browser/proxy (mis. komputer bersama).
+  // Endpoint yang memang publik & aman di-cache (foto ruang) menimpa header ini sendiri.
+  if (req.path.startsWith('/api')) res.setHeader('Cache-Control', 'no-store');
+  // Di belakang Nginx HTTPS (TRUST_PROXY=true) req.secure benar -> paksa HTTPS di browser.
+  if (req.secure) res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
   res.setHeader(
     'Content-Security-Policy',
     "default-src 'self'; frame-ancestors 'none'; base-uri 'self'; object-src 'none'",

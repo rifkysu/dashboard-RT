@@ -394,7 +394,7 @@ router.get('/surat-export', async (req, res) => {
     res.setHeader('Content-Type', 'application/zip');
     res.setHeader(
       'Content-Disposition',
-      `attachment; filename="surat_ruang_rapat_${req.query.from}_sd_${req.query.to}.zip"`,
+      `attachment; filename="surat_ruang_rapat_${String(req.query.from).replace(/[^0-9-]/g, '')}_sd_${String(req.query.to).replace(/[^0-9-]/g, '')}.zip"`,
     );
     res.setHeader('X-Surat-Count', String(files.length - 1));
     res.send(zip);
