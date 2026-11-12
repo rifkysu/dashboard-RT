@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import api from '../api';
-import BrandMark from '../components/BrandMark';
+import AuthShell from '../components/AuthShell';
 import { passwordIssue } from '../utils/validation';
 import SyaratSandi from '../components/SyaratSandi';
 
@@ -55,117 +55,98 @@ export default function ResetPassword() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col justify-between">
-      <header className="w-full bg-dinas-dark bg-kawung-gelap text-white px-6 py-4 flex items-center justify-between sticky top-0 z-20">
-        <div className="flex items-center gap-3">
-          <BrandMark size="sm" className="!border-white/20" />
-          <div>
-            <h1 className="font-display text-base font-extrabold text-white leading-tight">
-              Biro Umum dan Rumah Tangga
-            </h1>
-            <p className="text-xs text-white/60 mt-0.5">Kementerian Ketenagakerjaan</p>
-          </div>
+    <AuthShell>
+      <div className="auth-kartu auth-kartu-emas w-full max-w-[440px] bg-white rounded-2xl border border-white/40 p-8 sm:p-10">
+        <div className="mb-8">
+          <h2 className="font-display text-2xl font-extrabold text-dinas-ink tracking-tight">
+            Buat Kata Sandi Baru
+          </h2>
+          <p className="text-sm text-slate-500 mt-1.5">Link ini berlaku 1 jam sejak dibuat.</p>
         </div>
-      </header>
 
-      <main className="flex-1 flex items-center justify-center p-6 md:p-10">
-        <div className="w-full max-w-[440px] bg-white rounded-2xl border border-slate-200 p-8 sm:p-10 shadow-[0_1px_2px_rgba(14,30,51,.04),0_20px_50px_-24px_rgba(14,30,51,.3)]">
-          <div className="mb-8">
-            <h2 className="font-display text-2xl font-extrabold text-dinas-ink tracking-tight">
-              Buat Kata Sandi Baru
-            </h2>
-            <p className="text-sm text-slate-500 mt-1.5">Link ini berlaku 1 jam sejak dibuat.</p>
+        {!token && (
+          <div className="mb-4 px-4 py-3 bg-amber-50 border border-amber-200 text-amber-800 text-sm rounded-lg">
+            Link tidak lengkap (token tidak ditemukan). Minta link reset baru.
           </div>
+        )}
 
-          {!token && (
-            <div className="mb-4 px-4 py-3 bg-amber-50 border border-amber-200 text-amber-800 text-sm rounded-lg">
-              Link tidak lengkap (token tidak ditemukan). Minta link reset baru.
-            </div>
-          )}
+        {error && (
+          <div className="mb-4 px-4 py-3 bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg">
+            {error}
+          </div>
+        )}
 
-          {error && (
-            <div className="mb-4 px-4 py-3 bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg">
-              {error}
-            </div>
-          )}
-
-          {done ? (
-            <div className="px-4 py-3 bg-emerald-50 border border-emerald-200 text-emerald-800 text-sm rounded-lg">
-              Kata sandi berhasil diubah. Mengalihkan ke halaman login...
-            </div>
-          ) : (
-            <form className="space-y-5" onSubmit={handleSubmit}>
-              <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-1.5">
-                  Kata Sandi Baru
-                </label>
-                <div className="relative">
-                  <span className="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-[20px]">
-                    key
-                  </span>
-                  <input
-                    type={showPassword ? 'text' : 'password'}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Contoh: Biroumum2026"
-                    className="w-full pl-11 pr-11 py-3 bg-white border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]/15 focus:border-[#1e3a5f] focus:bg-white transition"
-                    required
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword((s) => !s)}
-                    aria-label={showPassword ? 'Sembunyikan kata sandi' : 'Tampilkan kata sandi'}
-                    className="absolute right-1 top-1/2 -translate-y-1/2 w-10 h-10 rounded-md flex items-center justify-center text-slate-400 hover:text-slate-600"
-                  >
-                    <span className="material-symbols-outlined text-[20px]">
-                      {showPassword ? 'visibility_off' : 'visibility'}
-                    </span>
-                  </button>
-                </div>
-                <SyaratSandi value={password} />
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-1.5">
-                  Konfirmasi Kata Sandi
-                </label>
+        {done ? (
+          <div className="px-4 py-3 bg-emerald-50 border border-emerald-200 text-emerald-800 text-sm rounded-lg">
+            Kata sandi berhasil diubah. Mengalihkan ke halaman login...
+          </div>
+        ) : (
+          <form className="space-y-5" onSubmit={handleSubmit}>
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 mb-1.5">
+                Kata Sandi Baru
+              </label>
+              <div className="relative">
+                <span className="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-[20px]">
+                  key
+                </span>
                 <input
                   type={showPassword ? 'text' : 'password'}
-                  value={confirm}
-                  onChange={(e) => setConfirm(e.target.value)}
-                  placeholder="Ulangi kata sandi baru"
-                  className="w-full px-4 py-3 bg-white border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]/15 focus:border-[#1e3a5f] focus:bg-white transition"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Contoh: Biroumum2026"
+                  className="w-full pl-11 pr-11 py-3 bg-white border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]/15 focus:border-[#1e3a5f] focus:bg-white transition"
                   required
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((s) => !s)}
+                  aria-label={showPassword ? 'Sembunyikan kata sandi' : 'Tampilkan kata sandi'}
+                  className="absolute right-1 top-1/2 -translate-y-1/2 w-10 h-10 rounded-md flex items-center justify-center text-slate-400 hover:text-slate-600"
+                >
+                  <span className="material-symbols-outlined text-[20px]">
+                    {showPassword ? 'visibility_off' : 'visibility'}
+                  </span>
+                </button>
               </div>
+              <SyaratSandi value={password} />
+            </div>
 
-              <button
-                type="submit"
-                disabled={loading || !token}
-                className="w-full py-3.5 px-4 bg-[#1e3a5f] hover:bg-[#152b47] disabled:opacity-60 text-white font-semibold rounded-lg text-sm flex items-center justify-center gap-2 transition"
-              >
-                {loading ? 'Menyimpan...' : 'Simpan Kata Sandi Baru'}
-                <span className="material-symbols-outlined text-[18px]">check</span>
-              </button>
-            </form>
-          )}
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 mb-1.5">
+                Konfirmasi Kata Sandi
+              </label>
+              <input
+                type={showPassword ? 'text' : 'password'}
+                value={confirm}
+                onChange={(e) => setConfirm(e.target.value)}
+                placeholder="Ulangi kata sandi baru"
+                className="w-full px-4 py-3 bg-white border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]/15 focus:border-[#1e3a5f] focus:bg-white transition"
+                required
+              />
+            </div>
 
-          <div className="mt-8 pt-6 border-t border-slate-100 text-center">
-            <Link
-              to="/login"
-              className="inline-flex items-center gap-1.5 text-sm text-slate-600 hover:text-slate-900 font-semibold py-2 -my-2"
+            <button
+              type="submit"
+              disabled={loading || !token}
+              className="w-full py-3.5 px-4 bg-[#1e3a5f] hover:bg-[#152b47] disabled:opacity-60 text-white font-semibold rounded-lg text-sm flex items-center justify-center gap-2 transition"
             >
-              <span className="material-symbols-outlined text-[18px]">arrow_back</span>
-              Kembali ke Login
-            </Link>
-          </div>
-        </div>
-      </main>
+              {loading ? 'Menyimpan...' : 'Simpan Kata Sandi Baru'}
+              <span className="material-symbols-outlined text-[18px]">check</span>
+            </button>
+          </form>
+        )}
 
-      <footer className="w-full py-4 text-center text-xs text-slate-400 border-t border-slate-100 bg-white">
-        © {new Date().getFullYear()} Biro Umum dan Rumah Tangga. Sistem Manajemen Fasilitas &amp;
-        Operasional Kantor.
-      </footer>
-    </div>
+        <div className="mt-8 pt-6 border-t border-slate-100 text-center">
+          <Link
+            to="/login"
+            className="inline-flex items-center gap-1.5 text-sm text-slate-600 hover:text-slate-900 font-semibold py-2 -my-2"
+          >
+            <span className="material-symbols-outlined text-[18px]">arrow_back</span>
+            Kembali ke Login
+          </Link>
+        </div>
+      </div>
+    </AuthShell>
   );
 }

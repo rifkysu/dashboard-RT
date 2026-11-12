@@ -2245,3 +2245,122 @@ html:not([data-theme='dark']) .menu-page textarea {
   background: #fdfeff !important;
   border-color: #d3dce8 !important;
 }
+
+/* ---- Halaman akun (Login, Daftar, Lupa/Reset Kata Sandi, Verifikasi) --------
+   Latar biru dinas + motif kawung + dua cahaya lembut (emas & biru) yang bergerak pelan.
+   Kartu putih di atasnya naik perlahan saat halaman dibuka. Lihat components/AuthShell.jsx. */
+.auth-bg {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  background:
+    radial-gradient(900px 500px at 12% -8%, rgba(184, 137, 59, 0.26), transparent 60%),
+    radial-gradient(800px 560px at 100% 100%, rgba(59, 130, 246, 0.22), transparent 58%),
+    linear-gradient(160deg, #0e1e33 0%, #142a47 52%, #1e3a5f 100%);
+}
+.auth-bg::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image: var(--kawung-gelap);
+  -webkit-mask-image: linear-gradient(180deg, #000 0%, rgba(0, 0, 0, 0.35) 70%, transparent 100%);
+  mask-image: linear-gradient(180deg, #000 0%, rgba(0, 0, 0, 0.35) 70%, transparent 100%);
+}
+.auth-orb {
+  position: absolute;
+  z-index: 0;
+  border-radius: 9999px;
+  filter: blur(70px);
+  pointer-events: none;
+}
+.auth-orb-emas {
+  width: 360px;
+  height: 360px;
+  top: 8%;
+  left: -90px;
+  background: rgba(228, 194, 127, 0.22);
+  animation: auth-melayang 16s ease-in-out infinite;
+}
+.auth-orb-biru {
+  width: 420px;
+  height: 420px;
+  bottom: -120px;
+  right: -100px;
+  background: rgba(96, 165, 250, 0.2);
+  animation: auth-melayang 20s ease-in-out infinite reverse;
+}
+@keyframes auth-melayang {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+  50% {
+    transform: translate3d(34px, -28px, 0);
+  }
+}
+.auth-main > * {
+  animation: auth-naik 0.55s cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
+}
+@keyframes auth-naik {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.auth-kartu {
+  box-shadow:
+    0 1px 2px rgba(14, 30, 51, 0.1),
+    0 30px 70px -28px rgba(0, 0, 0, 0.6) !important;
+}
+/* Garis emas tipis di tepi atas kartu. */
+.auth-kartu-emas {
+  position: relative;
+}
+.auth-kartu-emas::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 8%;
+  right: 8%;
+  height: 3px;
+  border-radius: 0 0 6px 6px;
+  background: linear-gradient(90deg, transparent, #b8893b, #e4c27f, #b8893b, transparent);
+}
+.auth-fitur {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+.auth-fitur > .material-symbols-outlined {
+  flex: none;
+  width: 2.25rem;
+  height: 2.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.65rem;
+  font-size: 20px;
+  color: #e4c27f;
+  background: rgba(255, 255, 255, 0.09);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+@media (prefers-reduced-motion: reduce) {
+  .auth-orb,
+  .auth-main > * {
+    animation: none;
+  }
+}
+/* Panel info di kartu Login: gradien biru + motif kawung (dua background-image, jadi tidak bisa lewat utilitas Tailwind). */
+.auth-panel {
+  background-color: #1e3a5f;
+  background-image:
+    var(--kawung-gelap),
+    radial-gradient(420px 300px at 100% 0%, rgba(228, 194, 127, 0.18), transparent 70%),
+    linear-gradient(150deg, #1e3a5f 0%, #142a47 100%);
+}

@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Link, Navigate, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import api from '../api';
 import { useAuth } from '../context/AuthContext';
-import BrandMark from '../components/BrandMark';
+import AuthShell from '../components/AuthShell';
 import { validateLogin } from '../utils/validation';
 import LoginSplash from '../components/LoginSplash';
 
@@ -147,34 +147,30 @@ export default function Login() {
   if (user && !splash) return <Navigate to="/dashboard" replace />;
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#f2f4f7] p-4 sm:p-6">
-      <div className="w-full max-w-4xl">
+    <AuthShell
+      action={
         <Link
           to="/"
-          className="inline-flex items-center gap-1.5 text-sm text-slate-600 hover:text-slate-900 font-semibold py-2 -my-2 mb-2"
+          className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg border border-white/25 text-xs font-semibold text-white/90 hover:bg-white/10 transition"
         >
-          <span className="material-symbols-outlined text-[18px]">arrow_back</span>
-          Kembali ke beranda
+          <span className="material-symbols-outlined text-[16px]">arrow_back</span>
+          Beranda
         </Link>
-
-        <div className="grid md:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)] bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-[0_1px_2px_rgba(14,30,51,.04),0_20px_50px_-24px_rgba(14,30,51,.35)]">
+      }
+    >
+      <div className="w-full max-w-4xl">
+        <div className="auth-kartu auth-kartu-emas grid md:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)] bg-white rounded-2xl border border-white/40 overflow-hidden">
           {/* Kiri: form login */}
           <div className="p-8 sm:p-12 flex flex-col justify-center">
-            <div className="flex items-center gap-3 mb-8">
-              <BrandMark size="sm" />
-              <div>
-                <h1 className="font-display text-sm font-extrabold text-dinas-ink leading-tight">
-                  Biro Umum dan Rumah Tangga
-                </h1>
-                <p className="text-[11px] text-slate-500 mt-0.5">Kementerian Ketenagakerjaan</p>
-              </div>
-            </div>
-
+            <span className="inline-flex w-12 h-12 rounded-2xl bg-dinas-soft text-dinas items-center justify-center mb-5">
+              <span className="material-symbols-outlined text-[26px]">lock_open</span>
+            </span>
             <h2 className="font-display text-[28px] font-extrabold text-dinas-ink tracking-tight">
-              Masuk
+              Selamat datang kembali
             </h2>
             <p className="text-sm text-slate-500 mt-1.5 mb-7">
-              Akses layanan pemeliharaan, pengadaan, kendaraan, dan jadwal ruang rapat.
+              Masuk untuk mengakses layanan pemeliharaan, pengadaan, kendaraan, dan jadwal ruang
+              rapat.
             </p>
 
             {success && !error && (
@@ -321,7 +317,7 @@ export default function Login() {
           </div>
 
           {/* Kanan: info daftar akun, disembunyikan di mobile */}
-          <div className="hidden md:flex flex-col justify-between p-10 bg-dinas bg-kawung-gelap text-white">
+          <div className="hidden md:flex flex-col justify-between p-10 auth-panel text-white">
             <div>
               <div className="flex items-center gap-2 text-sm font-semibold text-[#e4c27f]">
                 <span className="w-6 h-[2px] rounded bg-kuningan"></span>Akun pegawai
@@ -330,9 +326,23 @@ export default function Login() {
                 Belum punya akun?
               </h3>
               <p className="text-sm text-white/80 mt-3 leading-relaxed">
-                Akun pegawai dipakai untuk mengajukan pemeliharaan, pengadaan, dan booking ruang
-                rapat, serta memantau statusnya.
+                Akun pegawai dipakai untuk mengajukan layanan dan memantau statusnya.
               </p>
+              <ul className="mt-5 space-y-3 text-[13px] text-white/90">
+                <li className="auth-fitur">
+                  <span className="material-symbols-outlined">build</span>Pemeliharaan &amp;
+                  perbaikan
+                </li>
+                <li className="auth-fitur">
+                  <span className="material-symbols-outlined">shopping_cart</span>Pengadaan barang
+                </li>
+                <li className="auth-fitur">
+                  <span className="material-symbols-outlined">directions_car</span>Kendaraan dinas
+                </li>
+                <li className="auth-fitur">
+                  <span className="material-symbols-outlined">meeting_room</span>Booking ruang rapat
+                </li>
+              </ul>
               <Link
                 to="/register"
                 className="inline-block mt-6 px-5 py-2.5 rounded-lg bg-white text-dinas text-sm font-bold hover:bg-[#f7efe0] transition"
@@ -347,10 +357,6 @@ export default function Login() {
             </div>
           </div>
         </div>
-
-        <p className="mt-6 text-center text-xs text-slate-500">
-          © {new Date().getFullYear()} Biro Umum dan Rumah Tangga
-        </p>
       </div>
       {banned && (
         <div
@@ -384,6 +390,6 @@ export default function Login() {
       {splash && (
         <LoginSplash name={splash.name} onDone={() => navigate('/dashboard', { replace: true })} />
       )}
-    </div>
+    </AuthShell>
   );
 }
