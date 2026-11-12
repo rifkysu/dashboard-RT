@@ -32,6 +32,8 @@ Versi ini menambahkan hardening dasar untuk deployment produksi:
 - Nama file ZIP export surat hanya memuat angka dan `-` dari parameter tanggal.
 - Pratinjau dokumen (DocumentViewer) hanya membuat blob URL dengan tipe PDF/gambar/Office yang dikenal; tipe lain (mis. `text/html`, `image/svg+xml` dari data lama atau yang diisi langsung lewat database) dipaksa jadi `application/octet-stream`, sehingga tombol "Tab Baru" tidak bisa menjalankan script di domain aplikasi.
 - Token reset kata sandi dipakai secara atomik (`updateMany` bersyarat token masih sama): dua request bersamaan dengan link yang sama tidak bisa sama-sama berhasil.
+- Kata sandi baru (daftar & reset) minimal 10 karakter, diawali huruf besar, berisi angka. Akun lama tetap bisa login dengan sandi lamanya.
+- Nginx membatasi laju request per IP (`limit_req`, lihat `docs/deploy/nginx.conf.example`) sebagai lapisan pertama sebelum rate limiter backend.
 - `npm audit --omit=dev` backend & frontend: 0 kerentanan (dicek 2026-11-10).
 
 ## Penting

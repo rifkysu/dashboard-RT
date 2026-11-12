@@ -984,7 +984,7 @@ def isi_aplikasi():
             "lalu masuk Dashboard; saat logout token dicabut di server, muncul popup \"Sampai jumpa\" lalu kembali ke landing page "
             "(sesi yang berakhir karena hal lain, mis. token kedaluwarsa, diarahkan ke halaman login).",
             "Daftar Akun: nama (min. 3 huruf, boleh gelar), email kedinasan @kemnaker.go.id, nomor HP Indonesia, unit kerja, kata sandi "
-            "diawali huruf besar, berisi angka, min. 7 karakter (maks. 128; daftar syarat tercentang otomatis di bawah kolom sandi). Setelah daftar, pengguna diarahkan ke halaman Login (tidak "
+            "diawali huruf besar, berisi angka, min. 10 karakter (maks. 128; daftar syarat tercentang otomatis di bawah kolom sandi). Setelah daftar, pengguna diarahkan ke halaman Login (tidak "
             "otomatis masuk). **Verifikasi email**: akun baru belum bisa login sampai pemilik email mengklik link verifikasi "
             "(berlaku 24 jam) yang dikirim ke alamat @kemnaker.go.id-nya, jadi orang lain tidak bisa membuat akun memakai email "
             "pegawai lain. Di halaman verifikasi, pemilik email wajib memasukkan kata sandi saat daftar; bila tidak cocok (email sempat "

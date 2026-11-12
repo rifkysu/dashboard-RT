@@ -9,7 +9,7 @@ import { detectFileMime, readFileAsDataUrl } from '../utils/fileSignature';
 import { judulRuang } from '../utils/ruang';
 import { useDaftarRuang } from '../hooks/useRuangInfo';
 import { RuangOptions } from './BagianTabs';
-import { RuangPilihanInfo } from './RuangFoto';
+import { RuangPilihanInfo, periodeMaintenance } from './RuangFoto';
 import MultiDatePicker from './MultiDatePicker';
 
 // Booking ruang rapat dari halaman kiosk /jadwal-rapat untuk TAMU (tanpa akun pegawai) lewat login Google.
@@ -1184,9 +1184,14 @@ export default function GuestBooking() {
   // Tombol "+ Booking" di kalender kiosk (lihat RuangRapatSchedule onAddBooking) mengirim event ini.
   const guestRef = useRef(null);
   guestRef.current = guest;
+  const { rooms: ruangAda, info: ruangInfo } = useDaftarRuang();
+  const ruangRef = useRef({});
+  ruangRef.current = { ruangAda, ruangInfo, formBuka: showForm || !!editing };
   useEffect(() => {
     const onAdd = (e) => {
       const { room, date } = e.detail || {};
+      // Form sudah terbuka: abaikan, supaya isian tamu tidak ter-reset.
+      if (ruangRef.current.formBuka) return;
       if (!room || !/^\d{4}-\d{2}-\d{2}$/.test(date || '')) return;
       if (!guestRef.current) {
         toast('Login dengan Google dulu untuk mengisi form booking.');
@@ -1200,6 +1205,15 @@ export default function GuestBooking() {
             ? 'Tanggal yang sudah lewat tidak bisa dibooking.'
             : `Booking maksimal ${MAX_AHEAD_DAYS} hari ke depan.`,
         );
+        return;
+      }
+      if (!ruangRef.current.ruangAda.includes(room)) {
+        toast('Ruangan ini tidak tersedia untuk dibooking.');
+        return;
+      }
+      const d = ruangRef.current.ruangInfo?.[room];
+      if (d?.maintenance && !periodeMaintenance(d)) {
+        toast(`${judulRuang(room)} sedang maintenance dan tidak bisa dibooking.`);
         return;
       }
       setEditing(null);

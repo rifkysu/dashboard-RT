@@ -47,7 +47,7 @@ export const UNIT_KERJA = ['rt', 'perlengkapan', 'kendaraan', 'protokol', 'lainn
 // Syarat kata sandi baru (Daftar Akun & Reset Kata Sandi), ditampilkan sebagai daftar centang di bawah kolomnya
 // (components/SyaratSandi.jsx). Sama dengan passwordIssue di backend/src/routes/auth.js -- ubah keduanya.
 // Hanya untuk sandi baru: login dengan sandi lama yang tidak memenuhi syarat ini tetap bisa.
-export const PASSWORD_MIN = 7;
+export const PASSWORD_MIN = 10;
 export const PASSWORD_RULES = [
   {
     key: 'awal',

@@ -654,7 +654,7 @@ router.post(
 );
 
 // Tamu mengedit booking MILIKNYA SENDIRI: seluruh pengajuan (semua baris dengan booking_group yang sama)
-// diganti dengan isi form baru -- agenda, nomor surat, PIC, ruangan, tanggal, jam, dan (opsional) file surat.
+// diganti dengan isi form baru -- agenda, nomor surat, PIC, ruangan, tanggal, jam, dan file surat (wajib diunggah ulang).
 // - Hanya pemilik: setiap query memakai guest_id tamu yang login, jadi tamu lain mendapat 404 walau
 //   menebak ID booking.
 // - Hanya sebelum booking berjalan: tanggal & jam pertama belum lewat.
@@ -770,20 +770,13 @@ router.put(
             lama.map((r) => r.id),
           );
 
-          // Surat baru (opsional) disimpan paling akhir, setelah semua validasi & cek bentrok lolos.
-          const surat = surat_file_data
-            ? {
-                surat_name,
-                surat_file_data,
-                surat_file_path: await saveDataUrl(surat_file_data, surat_name, 'ruang-rapat'),
-                surat_status: B.suratStatus(surat_file_data),
-              }
-            : {
-                surat_name: mulai.surat_name,
-                surat_file_data: mulai.surat_file_data,
-                surat_file_path: mulai.surat_file_path,
-                surat_status: mulai.surat_status,
-              };
+          // Surat baru (wajib saat edit) disimpan paling akhir, setelah semua validasi & cek bentrok lolos.
+          const surat = {
+            surat_name,
+            surat_file_data,
+            surat_file_path: await saveDataUrl(surat_file_data, surat_name, 'ruang-rapat'),
+            surat_status: B.suratStatus(surat_file_data),
+          };
           const isi = {
             agenda: title.trim(),
             nomor_surat: nomor_surat.trim(),

@@ -21,6 +21,15 @@
 # Sembunyikan versi Nginx di header & halaman error.
 server_tokens off;
 
+# Batas laju request per IP -- lapisan pertama sebelum rate limiter backend (yang hanya di memori & per proses,
+# hilang saat restart). Angka sengaja longgar karena satu kantor biasanya berbagi satu IP (NAT) dan tiap tab
+# polling beberapa kali per menit; backend tetap menghitung per akun. Naikkan bila pengguna sah kena 429.
+#   api_umum : seluruh /api/ (stream realtime punya location sendiri, tidak dibatasi di sini)
+#   api_auth : login, daftar, lupa/reset sandi, verifikasi email, dan login Google tamu (target brute force/spam)
+limit_req_zone $binary_remote_addr zone=api_umum:10m rate=30r/s;
+limit_req_zone $binary_remote_addr zone=api_auth:10m rate=60r/m;
+limit_req_status 429;
+
 # Kompres JS/CSS/JSON sebelum dikirim (umumnya 70-80% lebih kecil) -> halaman lebih cepat terbuka
 # dan bandwidth server lebih hemat. Respons API (JSON dari backend) ikut dikompres lewat gzip_proxied.
 # Font .woff2 & foto JPG/PNG sudah terkompres, jadi sengaja tidak dimasukkan.
@@ -96,8 +105,23 @@ server {
         add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
     }
 
+    # --- Auth: login, daftar, reset sandi, login Google ------------------------
+    # Lebih ketat dari /api/ umum. burst 20 menampung beberapa pegawai login bersamaan dari satu IP kantor.
+    location ~ ^/api/auth/(login|register|forgot-password|reset-password|verify-email|resend-verification|google) {
+        limit_req zone=api_auth burst=20 nodelay;
+        proxy_pass http://127.0.0.1:4000;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 30s;
+        add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+    }
+
     # --- API backend -----------------------------------------------------------
     location /api/ {
+        limit_req zone=api_umum burst=100 nodelay;
         proxy_pass http://127.0.0.1:4000;
         proxy_http_version 1.1;
         proxy_set_header Host $host;

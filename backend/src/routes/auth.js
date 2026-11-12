@@ -39,14 +39,14 @@ const UNIT_KERJA = ['rt', 'perlengkapan', 'kendaraan', 'protokol', 'lainnya'];
 const EMAIL_MAX = 150;
 // Cari akun tanpa membedakan huruf besar/kecil: akun yang dibuat/diubah lewat pgAdmin bisa saja tersimpan dengan huruf besar.
 const emailWhere = (email) => ({ email: { equals: email, mode: 'insensitive' } });
-// Syarat sandi baru (daftar & reset): diawali huruf besar, ada angka, minimal 7 karakter.
+// Syarat sandi baru (daftar & reset): diawali huruf besar, ada angka, minimal 10 karakter.
 // Sama dengan PASSWORD_RULES di frontend/src/utils/validation.js. Login tidak memakai aturan ini (sandi lama tetap sah).
 function passwordIssue(pw) {
   if (typeof pw !== 'string' || !pw) return 'Kata sandi wajib diisi.';
   if (pw.length > 128) return 'Kata sandi maksimal 128 karakter.';
   if (!/^[A-Z]/.test(pw)) return 'Kata sandi harus diawali huruf besar (A-Z).';
   if (!/\d/.test(pw)) return 'Kata sandi harus berisi minimal 1 angka.';
-  if (pw.length < 7) return 'Kata sandi minimal 7 karakter.';
+  if (pw.length < 10) return 'Kata sandi minimal 10 karakter.';
   return null;
 }
 
