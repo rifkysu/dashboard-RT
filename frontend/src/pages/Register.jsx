@@ -250,6 +250,7 @@ export default function Register() {
                 </label>
                 <input
                   type="password"
+                  autoComplete="new-password"
                   required
                   minLength={PASSWORD_MIN}
                   value={form.password}
@@ -271,6 +272,7 @@ export default function Register() {
                 </label>
                 <input
                   type="password"
+                  autoComplete="new-password"
                   required
                   value={form.confirm}
                   onChange={(e) => update('confirm', e.target.value)}

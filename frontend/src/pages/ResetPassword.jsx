@@ -92,6 +92,7 @@ export default function ResetPassword() {
                 </span>
                 <input
                   type={showPassword ? 'text' : 'password'}
+                  autoComplete="new-password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Contoh: Biroumum2026"
@@ -118,6 +119,7 @@ export default function ResetPassword() {
               </label>
               <input
                 type={showPassword ? 'text' : 'password'}
+                autoComplete="new-password"
                 value={confirm}
                 onChange={(e) => setConfirm(e.target.value)}
                 placeholder="Ulangi kata sandi baru"
