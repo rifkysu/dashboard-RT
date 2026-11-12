@@ -179,7 +179,7 @@ export default function FotoRuang() {
   }
 
   return (
-    <div className="menu-page menu-foto-ruang max-w-6xl mx-auto">
+    <div className="menu-page menu-foto-ruang relative">
       <div className="menu-hero mb-6">
         <div>
           <span className="menu-kicker">Biro Umum / Foto & Fasilitas Ruang</span>
