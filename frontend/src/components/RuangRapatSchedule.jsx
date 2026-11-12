@@ -39,7 +39,7 @@ const dayCount = (a, b) =>
 const AUTO_MS = 30000; // kiosk: ganti ruangan tiap 30 detik
 const JEDA_MS = 30000; // disentuh/digulir -> putar otomatis berhenti 30 detik lalu lanjut sendiri
 
-export default function RuangRapatSchedule({ autoRotate = false }) {
+export default function RuangRapatSchedule({ autoRotate = false, onAddBooking }) {
   const s = useMonthSchedule('/ruang-rapat/public-schedule');
   const { rooms: semua, grup } = useDaftarRuang();
   const [bagian, setBagian, roomsBagian] = useBagian(grup);
@@ -243,6 +243,7 @@ export default function RuangRapatSchedule({ autoRotate = false }) {
         hasMore={s.hasMore}
         onLoadMore={s.loadMore}
         kiosk={autoRotate}
+        onAddBooking={onAddBooking}
         renderItem={(x, date) => (
           <div
             key={x.id}

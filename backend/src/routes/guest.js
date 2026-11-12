@@ -677,7 +677,7 @@ router.put(
       const captchaError = verifyCaptcha(`guest:${req.guest.id}`, req.body?.captcha);
       if (captchaError) return res.status(400).json({ code: 'CAPTCHA', message: captchaError });
 
-      const form = await bacaFormBooking(req.body, { wajibSurat: false });
+      const form = await bacaFormBooking(req.body, { wajibSurat: true });
       if (form.error) return res.status(400).json({ message: form.error });
       const {
         title,

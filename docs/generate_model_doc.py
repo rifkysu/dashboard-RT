@@ -957,9 +957,12 @@ def isi_aplikasi():
             "ke depan, rate limit per akun & IP, serta akun bisa diblokir admin. Daftar *Booking Anda* tampil di "
             "panel yang sama: satu kartu per pengajuan berisi ruangan, jam, jumlah & daftar tanggalnya, dengan tombol *Batalkan* "
             "atau label *Dibatalkan oleh Anda* / *Dibatalkan Biro Umum* + alasannya. Alur lengkap kiosk & booking tamu ada di Gambar 12 (9.7).",
+            "Kalender kiosk punya tombol **+ Booking / Tambah** di setiap sel ruangan-tanggal (seperti di menu Ruang Rapat pegawai): "
+            "bila tamu sudah login Google, form booking terbuka dengan ruangan & tanggal sel itu terisi (tanggal lewat atau lebih dari 90 hari ditolak); "
+            "bila belum login, tamu diarahkan ke tombol *Login dengan Google*. Kalender di landing page tetap hanya-lihat.",
             "Tamu bisa **mengedit booking miliknya sendiri** (tombol *Edit* di kartu *Booking Anda*) selama booking belum berjalan: "
             "semua kolom bisa diubah (agenda, nomor surat, PIC, No. HP, ruangan, tanggal dengan dua cara yang sama, jam, dan file surat; "
-            "surat boleh tidak diganti), wajib captcha, dan berlaku untuk seluruh tanggal pengajuan yang belum lewat "
+            "file surat wajib diunggah ulang), wajib captcha, dan berlaku untuk seluruh tanggal pengajuan yang belum lewat "
             "(tanggal yang sudah lewat, mis. 4 Nov dari pengajuan 4 & 6 Nov, dibiarkan sebagai riwayat). "
             "Judul *Jadwal bentrok* hanya muncul untuk bentrok jadwal sungguhan; penolakan lain punya judulnya sendiri. Bila SMTP di `.env` terisi, tamu menerima **email konfirmasi** ke alamat Google-nya saat mengajukan, mengedit (beserta data sebelumnya) dan membatalkan booking, termasuk bila **Biro Umum yang membatalkan** (seluruh booking atau tanggal tertentu, lengkap dengan alasan). Penjadwal di backend (`src/reminders.js`, tiap 5 menit) juga mengirim **email pengingat** H-1 dan 2 jam sebelum mulai (`REMINDER_JAM_SEBELUM`), satu kali per baris booking (penanda `reminder_h1_at` / `reminder_jam_at`, diklaim lewat UPDATE bersyarat sehingga tidak dobel), dan direset bila jadwal diedit; booking yang baru diajukan setelah batas pengingat lewat tidak diingatkan lagi. Semua email dikirim di latar belakang sehingga gangguan SMTP tidak menggagalkan simpan booking. Server memeriksa pemilik lewat `guest_id`, "
             "jadi tamu lain yang login mendapat 404 walau menebak ID booking. Perubahan dicek bentrok seperti booking baru "

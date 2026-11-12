@@ -24,6 +24,8 @@ const ALLOWED = ['application/pdf', 'image/jpeg', 'image/png'];
 const MAX_SPAN_DAYS = 7;
 const MAX_DATES = 7;
 const MAX_AHEAD_DAYS = 90;
+// Event window: tombol "+ Booking" di kalender kiosk -> form booking tamu (detail: { room, date }).
+export const KIOSK_BOOKING_EVENT = 'kiosk-booking';
 const emptyForm = {
   title: '',
   nomor_surat: '',
@@ -52,7 +54,7 @@ const REQUIRED_KEYS = [
 ];
 
 // Isi form dari booking milik tamu (tombol Edit di "Booking Anda"). Satu rentang -> mode rentang;
-// beberapa rentang (tanggal loncat-loncat) -> mode pilih tanggal. File surat dikosongkan = surat lama dipakai.
+// beberapa rentang (tanggal loncat-loncat) -> mode pilih tanggal. File surat dikosongkan: tamu wajib memilih file surat lagi saat edit.
 function formDariBooking(b) {
   const segs = (b.segments || []).filter((s) => !s.cancelled);
   const daftar = segs.flatMap((s) => listDates(s.from, s.to));
@@ -405,11 +407,20 @@ function PanelKetersediaan({ form, dates, cek, bentrok }) {
 
 // `editing` = booking milik tamu yang sedang diedit (null = pengajuan baru). Server tetap memeriksa
 // bahwa booking itu milik tamu yang login (guest_id), jadi tamu lain tidak bisa mengeditnya.
-function BookingForm({ guest, editing, onClose, onBooked, onSessionEnd }) {
+function BookingForm({ guest, editing, preset, onClose, onBooked, onSessionEnd }) {
   const { grup } = useDaftarRuang();
   const { alert } = useFeedback();
   const [form, setForm] = useState(() =>
-    editing ? formDariBooking(editing) : { ...emptyForm, pic: guest.nama || '' },
+    editing
+      ? formDariBooking(editing)
+      : {
+          ...emptyForm,
+          pic: guest.nama || '',
+          // Dari tombol "+ Booking" di kalender kiosk: ruangan & tanggal sel yang diklik sudah terisi.
+          ...(preset
+            ? { room: preset.room, dateMode: 'range', date: preset.date, end_date: preset.date }
+            : {}),
+        },
   );
   const [captcha, setCaptcha] = useState(null);
   const [captchaLoading, setCaptchaLoading] = useState(false);
@@ -499,10 +510,8 @@ function BookingForm({ guest, editing, onClose, onBooked, onSessionEnd }) {
   const captchaExpired = isCaptchaExpired();
   // Tombol Kirim baru aktif kalau SEMUA kolom (termasuk surat & captcha) sudah diisi.
   // Tanggal wajib diisi lewat SALAH SATU mode (rentang atau pilih beberapa tanggal).
-  // Saat edit, file surat boleh tidak diganti (surat lama tetap dipakai).
-  const wajib = editing
-    ? REQUIRED_KEYS.filter((k) => k !== 'surat_name' && k !== 'surat_file_data')
-    : REQUIRED_KEYS;
+  // Saat edit, surat juga WAJIB diunggah ulang (surat lama tidak dipakai lagi).
+  const wajib = REQUIRED_KEYS;
   const complete =
     wajib.every((k) => String(form[k] || '').trim()) && tanggal.length > 0 && answer.length === 6;
 
@@ -515,7 +524,7 @@ function BookingForm({ guest, editing, onClose, onBooked, onSessionEnd }) {
       ['Ruangan', form.room],
       ['Jam mulai', form.start],
       ['Jam selesai', form.end],
-      ...(editing ? [] : [['File surat permohonan', form.surat_file_data]]),
+      ['File surat permohonan', form.surat_file_data],
     ]);
     if (!/^\d{6}$/.test(answer)) errors.push('Captcha wajib diisi (6 angka).');
     if (form.pic_phone && !HP_RE.test(normalizePhone(form.pic_phone)))
@@ -572,8 +581,8 @@ function BookingForm({ guest, editing, onClose, onBooked, onSessionEnd }) {
       const payload = {
         ...rest,
         ...tanggalPayload,
-        // Edit tanpa file baru -> surat tidak dikirim, server memakai surat lama.
-        ...(surat_file_data ? { surat_name, surat_file_data } : {}),
+        surat_name,
+        surat_file_data,
         pic_phone: normalizePhone(form.pic_phone),
         captcha: answer,
       };
@@ -867,14 +876,13 @@ function BookingForm({ guest, editing, onClose, onBooked, onSessionEnd }) {
             <PanelKetersediaan form={form} dates={tanggal} cek={cek} bentrok={bentrok} />
             <div className="md:col-span-2">
               <span className="block text-xs font-semibold text-slate-700 mb-1.5">
-                Surat Permohonan{' '}
-                {editing ? (
+                Surat Permohonan <span className="text-red-600">*</span>
+                {editing && (
                   <span className="font-normal text-slate-500">
-                    — opsional, pilih file baru hanya bila ingin mengganti
-                    {editing.surat_name ? ` (sekarang: ${editing.surat_name})` : ''}
+                    {' '}
+                    — wajib unggah ulang saat edit
+                    {editing.surat_name ? ` (sebelumnya: ${editing.surat_name})` : ''}
                   </span>
-                ) : (
-                  <span className="text-red-600">*</span>
                 )}
               </span>
               <label className="relative flex items-center gap-4 p-4 rounded-xl border border-dashed border-slate-300 bg-white cursor-pointer hover:border-dinas">
@@ -887,10 +895,7 @@ function BookingForm({ guest, editing, onClose, onBooked, onSessionEnd }) {
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="block text-sm font-semibold text-slate-800 truncate">
-                    {form.surat_name ||
-                      (editing
-                        ? 'Tetap memakai surat lama — klik untuk mengganti'
-                        : 'Pilih file surat permohonan')}
+                    {form.surat_name || 'Pilih file surat permohonan'}
                   </span>
                   <span className="block text-xs text-slate-500 mt-0.5">
                     PDF, JPG, atau PNG · maks. 8 MB
@@ -1114,6 +1119,7 @@ export default function GuestBooking() {
   const [mine, setMine] = useState([]);
   const [cancelling, setCancelling] = useState(null);
   const [editing, setEditing] = useState(null);
+  const [preset, setPreset] = useState(null);
   const panelRef = useRef(null);
 
   const loadMine = useCallback(() => {
@@ -1175,6 +1181,35 @@ export default function GuestBooking() {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
   useRuangRapatLive(loadMine);
 
+  // Tombol "+ Booking" di kalender kiosk (lihat RuangRapatSchedule onAddBooking) mengirim event ini.
+  const guestRef = useRef(null);
+  guestRef.current = guest;
+  useEffect(() => {
+    const onAdd = (e) => {
+      const { room, date } = e.detail || {};
+      if (!room || !/^\d{4}-\d{2}-\d{2}$/.test(date || '')) return;
+      if (!guestRef.current) {
+        toast('Login dengan Google dulu untuk mengisi form booking.');
+        panelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return;
+      }
+      const hariIni = iso();
+      if (date < hariIni || date > addDays(hariIni, MAX_AHEAD_DAYS)) {
+        toast(
+          date < hariIni
+            ? 'Tanggal yang sudah lewat tidak bisa dibooking.'
+            : `Booking maksimal ${MAX_AHEAD_DAYS} hari ke depan.`,
+        );
+        return;
+      }
+      setEditing(null);
+      setPreset({ room, date });
+      setShowForm(true);
+    };
+    window.addEventListener(KIOSK_BOOKING_EVENT, onAdd);
+    return () => window.removeEventListener(KIOSK_BOOKING_EVENT, onAdd);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   async function logout() {
     try {
       await guestApi.post('/guest/logout');
@@ -1186,6 +1221,7 @@ export default function GuestBooking() {
   function booked(res) {
     setShowForm(false);
     setEditing(null);
+    setPreset(null);
     toast(res.message || 'Booking berhasil dikirim.');
     loadMine();
   }
@@ -1248,7 +1284,10 @@ export default function GuestBooking() {
             <>
               <button
                 type="button"
-                onClick={() => setShowForm(true)}
+                onClick={() => {
+                  setPreset(null);
+                  setShowForm(true);
+                }}
                 className="btn-shine inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-dinas text-white text-sm font-bold transition hover:bg-dinas-dark"
               >
                 <span className="material-symbols-outlined text-[18px]">edit_calendar</span>Isi form
@@ -1343,12 +1382,16 @@ export default function GuestBooking() {
       )}
       {(showForm || editing) && guest && (
         <BookingForm
-          key={editing ? `edit-${editing.id}` : 'baru'}
+          key={
+            editing ? `edit-${editing.id}` : `baru-${preset ? `${preset.room}-${preset.date}` : ''}`
+          }
           guest={guest}
           editing={editing}
+          preset={preset}
           onClose={() => {
             setShowForm(false);
             setEditing(null);
+            setPreset(null);
           }}
           onBooked={booked}
           onSessionEnd={endSession}

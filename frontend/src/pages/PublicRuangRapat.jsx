@@ -6,7 +6,7 @@ import { subscribeLive } from '../live';
 import { useAuth } from '../context/AuthContext';
 import BrandMark from '../components/BrandMark';
 import RuangRapatSchedule from '../components/RuangRapatSchedule';
-import GuestBooking from '../components/GuestBooking';
+import GuestBooking, { KIOSK_BOOKING_EVENT } from '../components/GuestBooking';
 import { RuangFotoButton, RuangMaintenanceTag } from '../components/RuangFoto';
 import useRuangRapatLive from '../hooks/useRuangRapatLive';
 import { useDaftarRuang } from '../hooks/useRuangInfo';
@@ -784,7 +784,12 @@ export default function PublicRuangRapat() {
           <h2 className="font-display text-lg font-extrabold text-dinas-ink">Kalender booking</h2>
         </div>
         <div className="rounded-xl shadow-[0_16px_40px_-28px_rgba(14,30,51,.5)]">
-          <RuangRapatSchedule autoRotate />
+          <RuangRapatSchedule
+            autoRotate
+            onAddBooking={(date, room) =>
+              window.dispatchEvent(new CustomEvent(KIOSK_BOOKING_EVENT, { detail: { room, date } }))
+            }
+          />
         </div>
         <div className="mt-4 flex items-start gap-2 text-xs text-slate-500">
           <span className="material-symbols-outlined text-[16px]">info</span>
