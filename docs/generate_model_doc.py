@@ -1360,7 +1360,7 @@ def isi_aplikasi():
              "dan tidak ganda per tanggal; maks. 6 foto. Di modal Detail: mengosongkan tanggal & keluar dari status Servis tanpa "
              "riwayat service minta konfirmasi."],
             ["Ruang Rapat", "Jam selesai > jam mulai; rentang maks. 90 hari; tidak boleh beririsan tanggal+jam "
-             "di ruangan yang sama; Nama & No. HP PIC serta nota dinas PDF wajib (kecuali Admin/Kabag); No. HP PIC format 08... / +628... (sama dengan Daftar Akun; nilai lama seperti \"-\" tetap diterima selama tidak diubah); nomor surat maks. 100 karakter; nama file surat maks. 255 "
+             "di ruangan yang sama; Nama & No. HP PIC serta nota dinas PDF wajib (kecuali Admin/Kabag), nama PIC harus berisi huruf (\"-\" saja ditolak); No. HP PIC format 08... / +628... (sama dengan Daftar Akun; nilai lama seperti \"-\" tetap diterima selama tidak diubah); nomor surat maks. 100 karakter; nama file surat maks. 255 "
              "karakter."],
             ["Berkas", "Hanya PDF/JPG/PNG/WebP/DOC/DOCX/XLS/XLSX; isi dicek magic number di server & browser; "
              "surat rapat maks. 8 MB, dokumen lain maks. 12 MB; nama berkas disanitasi."],

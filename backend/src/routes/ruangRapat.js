@@ -67,6 +67,8 @@ const picOpsional = (req) => isAdminRole(req.user?.role);
 const nodinWajib = (req) => !isAdminRole(req.user?.role);
 const isPdf = (v) => typeof v === 'string' && v.startsWith('data:application/pdf;base64,');
 const kosong = (v) => v == null || (typeof v === 'string' && v.trim() === '');
+// Nama PIC wajib (role selain Admin/Kabag) harus berisi huruf -- isian "-" / "." / angka saja ditolak.
+const validNamaPic = (v) => validText(v, 150) && /\p{L}/u.test(v);
 const NODIN_WAJIB_MSG = 'Nota dinas (PDF) wajib diunggah untuk booking ruang rapat.';
 // Booking hanya boleh diubah / dikelola suratnya / dibatalkan oleh akun yang membuatnya; Admin/Kabag boleh semua.
 // Booking tamu Google & data lama tanpa pembuat (created_by kosong) hanya bisa dikelola Admin/Kabag.
@@ -471,7 +473,7 @@ router.post('/', async (req, res) => {
     if (
       !validText(title, 255) ||
       !validText(room, 150) ||
-      (tanpaPic ? !kosong(pic) && !validText(pic, 150) : !validText(pic, 150)) ||
+      (tanpaPic ? !kosong(pic) && !validText(pic, 150) : !validNamaPic(pic)) ||
       (tanpaPic ? !kosong(pic_phone) && !validPhone(pic_phone) : !validPhone(pic_phone)) ||
       (!picked &&
         (!validDate(startDate) || (end_date != null && end_date !== '' && !validDate(end_date)))) ||
@@ -608,9 +610,12 @@ router.put('/:id', async (req, res) => {
     }
     if (b.pic !== undefined) {
       if (picOpsional(req) && kosong(b.pic)) data.pic = '-';
-      else if (!validText(b.pic, 150))
-        return res.status(400).json({ message: 'Nama PIC tidak valid.' });
-      else data.pic = b.pic.trim();
+      else if (picOpsional(req) ? !validText(b.pic, 150) : !validNamaPic(b.pic)) {
+        // Booking lama bisa berisi PIC "-": nilai yang tidak diubah tetap diterima (sama seperti No. HP).
+        const cur = await prisma.ruangRapat.findUnique({ where: { id }, select: { pic: true } });
+        if (!cur || b.pic !== cur.pic)
+          return res.status(400).json({ message: 'Nama PIC wajib diisi dengan nama yang valid.' });
+      } else data.pic = b.pic.trim();
     }
     if (b.pic_phone !== undefined && picOpsional(req) && kosong(b.pic_phone)) {
       data.pic_phone = '-';

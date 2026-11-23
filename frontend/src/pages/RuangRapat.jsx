@@ -126,7 +126,7 @@ async function bacaSurat(f, alert, pdfOnly = false) {
 // Validasi data booking sebelum dikirim -> daftar pesan untuk popup.
 // oldPhone: No. HP PIC tersimpan saat edit. Booking lama banyak berisi '-' -> tidak dipaksa diganti selama tidak diubah.
 // picOpsional: Admin/Kabag boleh booking tanpa PIC. nodinWajib: Pengelola Ruang Rapat wajib unggah nota dinas (PDF).
-function validateBooking(f, oldPhone, { picOpsional = false, nodinWajib = false } = {}) {
+function validateBooking(f, oldPhone, { picOpsional = false, nodinWajib = false, oldPic } = {}) {
   const errors = requireFields([
     ['Topik / agenda', f.title],
     ['Ruangan', f.room],
@@ -141,6 +141,9 @@ function validateBooking(f, oldPhone, { picOpsional = false, nodinWajib = false 
     ['Jam selesai', f.end],
   ]);
   if (nodinWajib && !f.surat_file_data) errors.push('Nota dinas (PDF) wajib diunggah.');
+  // Nama PIC wajib harus berisi huruf (bukan cuma "-"); nilai lama yang tidak diubah tetap diterima.
+  if (!picOpsional && f.pic?.trim() && f.pic !== oldPic && !/\p{L}/u.test(f.pic))
+    errors.push('Nama PIC harus berisi nama yang valid.');
   if (f.pic_phone && f.pic_phone !== oldPhone && !HP_RE.test(normalizePhone(f.pic_phone)))
     errors.push('No. HP PIC tidak valid (contoh: 081234567890 atau +6281234567890).');
   if (f.start && f.end && f.end <= f.start)
@@ -1142,6 +1145,7 @@ function BookingModal({
   const saveEdit = async () => {
     const errors = validateBooking(form, booking.pic_phone || '', {
       picOpsional: aturan.picOpsional,
+      oldPic: booking.pic || '',
     });
     if (errors.length) {
       await alert({

@@ -173,7 +173,7 @@ export default function FotoRuang() {
   );
   // Tema layar yang dipakai ruangan lain -> peringatan bila admin memilih tema yang sama.
   const temaLain = {};
-  for (const r of rooms) if (r !== room) (temaLain[temaRuang(r, info).key] ||= []).push(r);
+  for (const r of semuaRuang) if (r !== room) (temaLain[temaRuang(r, info).key] ||= []).push(r);
 
   async function hapusRuang() {
     const n = data.foto.length;

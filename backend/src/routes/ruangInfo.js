@@ -288,7 +288,11 @@ router.use(requireAuth, requireRole(RUANG_EDITOR_ROLES));
 
 // Pengelola Ruang Rapat per biro: hanya boleh menambah/mengubah/menghapus ruangan (beserta foto, fasilitas,
 // maintenance) milik biro-nya (users.ruang_satker); ruangan biro lain ditolak 403. Admin/Kabag bebas.
-const samaBiro = (a, b) => !!a && !!b && a.trim().toLowerCase() === b.trim().toLowerCase();
+const samaBiro = (a, b) =>
+  typeof a === 'string' &&
+  typeof b === 'string' &&
+  !!a.trim() &&
+  a.trim().toLowerCase() === b.trim().toLowerCase();
 function biroAkun(req, res) {
   if (isAdminRole(req.user.role)) return true;
   if (!req.user.ruang_satker) {
