@@ -132,6 +132,7 @@ const ROLE = {
   pic: 'PIC',
   kabag: 'Kabag',
   admin: 'Admin',
+  ruang_rapat: 'Pengelola Ruang Rapat',
   tamu: 'Tamu Google',
 };
 // ref = id data; grup = satu pengajuan booking (booking_group) / satu ruangan (nama) -- "Riwayat data ini".

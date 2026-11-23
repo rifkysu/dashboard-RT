@@ -12,6 +12,7 @@ enum UserRole {
   kabag
   pic
   admin
+  ruang_rapat
   @@map("user_role")
 }
 
@@ -30,6 +31,8 @@ model User {
   no_hp           String?   @db.VarChar(30)
   unit_kerja      String?   @db.VarChar(50)
   role            UserRole  @default(karyawan)
+  // Biro yang dikelola akun role ruang_rapat (Pengelola Ruang Rapat per biro), lihat migration 0043.
+  ruang_satker    String?   @db.VarChar(150)
   sso_provider    String?   @db.VarChar(30)
   sso_subject     String?   @db.VarChar(255)
   is_active       Boolean   @default(true)
@@ -345,6 +348,8 @@ model RuangProfil {
   room         String   @id @db.VarChar(150)
   satuan_kerja String   @default("") @db.VarChar(150)
   kapasitas    Int?
+  // Lokasi ruangan: gedung / lantai / nomor ruang (migration 0042).
+  lokasi       String?  @db.VarChar(150)
   link_foto    String?  @db.VarChar(500)
   sort_order   Int      @default(0)
   // Tema layar ruangan "<palet>/<motif>" (lihat migration 0034); NULL = otomatis dari nama.

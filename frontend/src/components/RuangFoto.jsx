@@ -98,10 +98,20 @@ export function RuangInfoDialog({ room, onClose }) {
             <div className="font-display text-2xl font-extrabold leading-tight">
               {judulRuang(room)}
             </div>
-            {d?.kapasitas && (
-              <div className="mt-1 inline-flex items-center gap-1 text-sm text-white/65">
-                <span className="material-symbols-outlined text-[16px]">chair</span>Kapasitas{' '}
-                {d.kapasitas} kursi
+            {(d?.lokasi || d?.kapasitas) && (
+              <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-sm text-white/65">
+                {d.lokasi && (
+                  <span className="inline-flex items-center gap-1">
+                    <span className="material-symbols-outlined text-[16px]">location_on</span>
+                    {d.lokasi}
+                  </span>
+                )}
+                {d.kapasitas && (
+                  <span className="inline-flex items-center gap-1">
+                    <span className="material-symbols-outlined text-[16px]">chair</span>Kapasitas{' '}
+                    {d.kapasitas} kursi
+                  </span>
+                )}
               </div>
             )}
           </div>
@@ -291,9 +301,9 @@ export function RuangPilihanInfo({ room }) {
         )}
         <div className="min-w-0 flex-1">
           <div className="text-xs font-bold text-slate-800 truncate">{judulRuang(room)}</div>
-          {(data?.satuan_kerja || data?.kapasitas) && (
+          {(data?.satuan_kerja || data?.lokasi || data?.kapasitas) && (
             <div className="text-[11px] text-slate-500 truncate">
-              {[data.satuan_kerja, data.kapasitas && `${data.kapasitas} kursi`]
+              {[data.satuan_kerja, data.lokasi, data.kapasitas && `${data.kapasitas} kursi`]
                 .filter(Boolean)
                 .join(' · ')}
             </div>

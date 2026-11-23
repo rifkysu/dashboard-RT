@@ -1,15 +1,16 @@
 import React, { useState } from 'react';
 import api from '../api';
-import { useAuth } from '../context/AuthContext';
+import { useAuth, labelRole } from '../context/AuthContext';
 import { useFeedback } from '../components/Feedback';
 import { NAME_RE, HP_RE, normalizePhone } from '../utils/validation';
 
-const roleLabel = { karyawan: 'Karyawan', kabag: 'Kepala Bagian', pic: 'PIC', admin: 'Admin' };
 const roleDesc = {
   karyawan: 'Dapat mengajukan permintaan dan memakai menu umum.',
   pic: 'Mengelola permintaan yang menjadi tanggung jawabnya.',
   kabag: 'Memantau dan memproses seluruh permintaan bagian.',
   admin: 'Akses penuh, termasuk Akun & Akses dan Settings.',
+  ruang_rapat:
+    'Mengelola jadwal ruang rapat, serta menambah, mengubah, dan menghapus ruangan, foto, dan fasilitas milik biro Anda.',
 };
 // Sama dengan pilihan di halaman Daftar Akun (pages/Register.jsx).
 const unitLabel = {
@@ -137,7 +138,7 @@ export default function Profile() {
             </div>
             <span className="self-start sm:self-auto inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-dinas-soft text-dinas text-xs font-bold">
               <span className="material-symbols-outlined text-[16px]">verified_user</span>
-              {roleLabel[user?.role] || user?.role || '-'}
+              {labelRole(user)}
             </span>
           </div>
           {roleDesc[user?.role] && (

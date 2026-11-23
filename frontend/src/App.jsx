@@ -1,6 +1,6 @@
 import React, { lazy, useEffect } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
-import ProtectedRoute, { MenuGate } from './components/ProtectedRoute';
+import ProtectedRoute, { MenuGate, StaffGate } from './components/ProtectedRoute';
 import { PublicLayout } from './components/PageTransition';
 
 // Tiap halaman jadi file JS terpisah (code splitting): pembukaan pertama cukup mengunduh halaman
@@ -96,33 +96,41 @@ export default function App() {
         <Route
           path="/dashboard"
           element={
-            <MenuGate menuKey="dashboard">
-              <Dashboard />
-            </MenuGate>
+            <StaffGate>
+              <MenuGate menuKey="dashboard">
+                <Dashboard />
+              </MenuGate>
+            </StaffGate>
           }
         />
         <Route
           path="/pemeliharaan"
           element={
-            <MenuGate menuKey="pemeliharaan">
-              <Pemeliharaan />
-            </MenuGate>
+            <StaffGate>
+              <MenuGate menuKey="pemeliharaan">
+                <Pemeliharaan />
+              </MenuGate>
+            </StaffGate>
           }
         />
         <Route
           path="/pengadaan"
           element={
-            <MenuGate menuKey="pengadaan">
-              <Pengadaan />
-            </MenuGate>
+            <StaffGate>
+              <MenuGate menuKey="pengadaan">
+                <Pengadaan />
+              </MenuGate>
+            </StaffGate>
           }
         />
         <Route
           path="/kendaraan"
           element={
-            <MenuGate menuKey="kendaraan">
-              <Kendaraan />
-            </MenuGate>
+            <StaffGate>
+              <MenuGate menuKey="kendaraan">
+                <Kendaraan />
+              </MenuGate>
+            </StaffGate>
           }
         />
         <Route

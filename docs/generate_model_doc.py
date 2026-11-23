@@ -33,7 +33,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 LOGO = os.path.join(ROOT, "frontend", "public", "logo-kemnaker.png")
 
-TANGGAL = "10 November 2026"
+TANGGAL = "23 November 2026"
 SISTEM = "Sistem Layanan Biro Umum & Rumah Tangga"
 
 PW, PH = A4
@@ -852,14 +852,14 @@ def isi_aplikasi():
 
         PageBreak(),
         h1("2. Pengguna & Hak Akses"),
-        p("Sistem mengenal empat peran (*enum* `user_role`). Peran dan status aktif pengguna dibaca ulang dari "
+        p("Sistem mengenal lima peran (*enum* `user_role`). Peran dan status aktif pengguna dibaca ulang dari "
           "database (bukan dari token), dengan cache singkat 5 detik di memori backend: perubahan lewat menu Akun & "
           "Akses langsung berlaku, perubahan lewat pgAdmin 4 berlaku paling lambat 5 detik, dan request yang mengubah "
           "data (POST/PUT/DELETE) selalu dicek langsung ke database. Tidak perlu login ulang."),
         table([25, 62, 87], [
             ["Peran", "Cara mendapatkan", "Ringkasan wewenang"],
             ["Karyawan", "Daftar mandiri lewat halaman Daftar Akun (satu-satunya peran yang bisa dipilih).",
-             "Melihat data, mengajukan permintaan Pemeliharaan/Pengadaan, mengelola booking ruang rapat."],
+             "Melihat data, mengajukan permintaan Pemeliharaan/Pengadaan, booking ruang rapat (edit/surat/cancel hanya booking yang dibuatnya sendiri)."],
             ["PIC", "Otomatis: karyawan yang menambahkan permintaan Pemeliharaan/Pengadaan pertamanya "
              "dinaikkan menjadi PIC.",
              "Seperti karyawan + memproses tahapan, mengedit & menghapus **data yang dibuatnya sendiri**; "
@@ -871,22 +871,30 @@ def isi_aplikasi():
             ["Admin", "Diberikan Admin lain lewat menu Akun & Akses; admin pertama lewat pgAdmin 4 (tidak tersedia di form Daftar).",
              "Mengedit/menghapus seluruh data + Mode Maintenance, Akun & Akses (ban/aktifkan akun, kirim link "
              "reset, ubah role), tetap dapat mengakses menu yang sedang maintenance."],
+            ["Pengelola Ruang Rapat (per biro)", "Diberikan Admin/Kabag lewat menu Akun & Akses dengan memilih *Pengelola Ruang - nama biro* (role `ruang_rapat` + kolom `users.ruang_satker`, migration 0042-0043). Biro Umum tidak punya pengelola karena ruangannya dikelola Admin.",
+             "Setelah login langsung ke Jadwal Ruang Rapat; sidebar **hanya** berisi menu Jadwal Ruang Rapat dan Foto & Fasilitas Ruang. "
+             "Mengelola booking seperti pegawai lain, serta menambah, mengubah, dan menghapus ruangan (termasuk lokasi/lantai, maintenance ruangan), foto, "
+             "dan fasilitas **hanya untuk ruangan biro-nya sendiri**; ruangan biro lain tidak tampil dan ditolak server (403). Dashboard, Pemeliharaan, Pengadaan, dan Kendaraan ditolak (frontend diarahkan "
+             "ke Jadwal Ruang Rapat, API 403)."],
         ]),
         h2("Matriks hak akses per modul"),
-        table([64, 18, 21, 25, 23, 23], [
-            ["Modul / aksi", "Publik", "Karyawan", "PIC", "Kabag", "Admin"],
-            ["Landing page & jadwal rapat publik", "Lihat", "Lihat", "Lihat", "Lihat", "Lihat"],
-            ["Dashboard", "-", "Lihat", "Lihat", "Lihat", "Lihat"],
-            ["Pemeliharaan / Pengadaan: lihat & ajukan", "-", "Ya", "Ya", "Ya", "Ya"],
-            ["Pemeliharaan / Pengadaan: proses tahap, edit, hapus", "-", "-", "Data sendiri", "Semua", "Semua"],
-            ["Kendaraan: lihat", "-", "Ya", "Ya", "Ya", "Ya"],
-            ["Kendaraan: lihat detail", "-", "Ya", "Ya", "Ya", "Ya"],
-            ["Kendaraan: tambah", "-", "-", "-", "Ya", "Ya"],
-            ["Kendaraan: ubah, hapus, foto, dokumen, service", "-", "-", "-", "Ya", "Ya"],
-            ["Ruang Rapat: booking, edit, surat/status, cancel", "-", "Ya", "Ya", "Ya", "Ya"],
-            ["Akun & Akses, Settings (Mode Maintenance)", "-", "-", "-", "Ya", "Ya"],
-            ["Kelola akun Admin (role, ban, link reset, verifikasi)", "-", "-", "-", "-", "Ya"],
-            ["Akses menu saat maintenance", "-", "-", "-", "Ya", "Ya"],
+        table([55, 15, 19, 20, 23, 21, 21], [
+            ["Modul / aksi", "Publik", "Karyawan", "PIC", "Peng. Ruang", "Kabag", "Admin"],
+            ["Landing page & jadwal rapat publik", "Lihat", "Lihat", "Lihat", "Lihat", "Lihat", "Lihat"],
+            ["Dashboard", "-", "Lihat", "Lihat", "-", "Lihat", "Lihat"],
+            ["Pemeliharaan / Pengadaan: lihat & ajukan", "-", "Ya", "Ya", "-", "Ya", "Ya"],
+            ["Pemeliharaan / Pengadaan: proses tahap, edit, hapus", "-", "-", "Data sendiri", "-", "Semua", "Semua"],
+            ["Kendaraan: lihat", "-", "Ya", "Ya", "-", "Ya", "Ya"],
+            ["Kendaraan: lihat detail", "-", "Ya", "Ya", "-", "Ya", "Ya"],
+            ["Kendaraan: tambah", "-", "-", "-", "-", "Ya", "Ya"],
+            ["Kendaraan: ubah, hapus, foto, dokumen, service", "-", "-", "-", "-", "Ya", "Ya"],
+            ["Ruang Rapat: lihat jadwal & booking baru", "-", "Ya", "Ya", "Ya", "Ya", "Ya"],
+            ["Ruang Rapat: edit, surat/status, cancel booking", "-", "Buatan sendiri", "Buatan sendiri", "Buatan sendiri", "Semua", "Semua"],
+            ["Foto & Fasilitas Ruang: tambah & ubah ruangan, foto, fasilitas", "-", "-", "-", "Biro sendiri", "Semua", "Semua"],
+            ["Foto & Fasilitas Ruang: hapus ruangan", "-", "-", "-", "Biro sendiri", "Semua", "Semua"],
+            ["Akun & Akses, Riwayat, Settings (Mode Maintenance)", "-", "-", "-", "-", "Ya", "Ya"],
+            ["Kelola akun Admin (role, ban, link reset, verifikasi)", "-", "-", "-", "-", "-", "Ya"],
+            ["Akses menu saat maintenance", "-", "-", "-", "-", "Ya", "Ya"],
         ]),
         note("Otorisasi diterapkan dua lapis: tombol/menu disembunyikan di frontend, dan setiap endpoint API "
              "memeriksa ulang peran (HTTP 403 bila ditolak)."),
@@ -896,7 +904,9 @@ def isi_aplikasi():
         h2("3.1 Landing Page & Layar Kiosk"),
         *bullets(
             "Halaman awal (**/**) memakai lebar layar penuh (maks. 1800px, tanpa ruang kosong kiri-kanan di monitor lebar; klik logo Biro Umum di navbar/footer kembali ke awal halaman) dan berisi hero, ringkasan modul, dan jadwal ruang rapat (tampilan grid "
-            "ruangan x tanggal per bulan, sama dengan menu Ruang Rapat) yang diperbarui real-time.",
+            "ruangan x tanggal per bulan, sama dengan menu Ruang Rapat) yang diperbarui real-time. Tautan ke kiosk "
+            "(tombol *Kiosk & booking tamu*, tautan footer, sorotan *Tampilan kiosk*) **sementara disembunyikan** dari landing page "
+            "(konstanta `TAMPIL_KIOSK` di Landing.jsx); halaman /jadwal-rapat sendiri tetap ada dan bisa ditutup lewat Mode Maintenance *Kiosk*.",
             "Tampilan landing: hero dengan aurora, grid titik, partikel emas, kata judul berganti, kartu live "
             "*Ruang rapat hari ini* berbingkai cahaya + chip kaca melayang; judul bagian disorot emas; kartu layanan "
             "berikon besar samar; bagian *Cara mengajukan* berupa pita gelap. Bila OS meminta gerakan dikurangi "
@@ -934,10 +944,10 @@ def isi_aplikasi():
             "*Layar per ruangan* (dikelompokkan per bagian) menautkan ke layarnya. Layar menampilkan satuan kerja & kapasitas ruangan, dan **tiap ruangan punya tema layar sendiri** (40 warna dalam 5 kelompok: merah & merah muda, jingga/kuning/cokelat, hijau, biru & ungu, netral; x 40 motif latar dalam 4 kelompok: batik & tradisional (Kawung, Parang, Truntum, Mega Mendung, dll.), garis, titik & lingkaran, geometris & alam; warna & motif dipilih admin dari daftar ringkas yang bisa dicari; isi awal 28 ruangan semuanya beda, migration 0034); warna status tetap hijau/kuning/merah di semua layar. Ruangan yang punya foto (Serbaguna, Setjen II, Biro Umum, serta 11 ruangan satuan kerja lain dari link dokumentasi spreadsheet) menampilkan "
             "**slideshow foto ruangan** (crossfade + zoom pelan, ganti otomatis tiap 5 detik (disentuh = jeda 10 detik), swipe/panah, ketuk = tampilan penuh "
             "yang tertutup sendiri setelah 45 detik) beserta daftar **fasilitas**. Foto & fasilitas diambil dari database "
-            "(`GET /ruang-info`) dan dikelola Admin/Kabag di menu **Foto & Fasilitas Ruang** (lihat 3.9); "
+            "(`GET /ruang-info`) dan dikelola Admin/Kabag & Pengelola Ruang Rapat di menu **Foto & Fasilitas Ruang** (lihat 3.9); "
             "perubahan langsung tampil di layar lewat SSE (topik ruang-info).",
             "**Booking ruang rapat untuk tamu** (tanpa akun pegawai): tombol *Login dengan Google untuk booking* "
-            "di halaman kiosk **/jadwal-rapat** (di atas jadwal; landing page hanya menautkan ke sana). Setelah login Google (OAuth 2.0 + PKCE), "
+            "di halaman kiosk **/jadwal-rapat** (di atas jadwal; tautan dari landing page sementara disembunyikan). Setelah login Google (OAuth 2.0 + PKCE), "
             "panel menampilkan foto & nama akun Google, email, masa berlaku sesi, tombol *Isi form booking* dan *Keluar*. Tamu mengisi form booking "
             "(popup; Esc atau tombol X menutup, klik di luar popup sengaja tidak menutup supaya isian & surat tidak hilang; Nama PIC terisi otomatis dari akun Google) "
             "yang **semua kolomnya wajib** (agenda, nomor surat, PIC, No. HP PIC, ruangan, tanggal, "
@@ -1061,6 +1071,13 @@ def isi_aplikasi():
             "dikelompokkan per **bagian / satuan kerja**: Biro Umum (Biro Umum, Setjen II, Tri Dharma, Serbaguna, Graha Kemnaker, Galeri Kemnaker), "
             "Biro Keuangan dan BMN, Biro Perencanaan, Politeknik Ketenagakerjaan, Biro Hubungan Masyarakat, Biro Kerja Sama, "
             "Biro Organisasi dan SDM Aparatur, PPSDM Ketenagakerjaan, dan Pusat Pasar Kerja.",
+            "**Hak ubah booking**: booking hanya bisa diedit, dikelola suratnya, dan dibatalkan (seluruh/sebagian) oleh **akun yang membuatnya**; "
+            "Admin/Kabag boleh semua booking. Booking buatan orang lain tetap terlihat (detail saja, dengan keterangan terkunci) dan "
+            "server menolak perubahan (HTTP 403). Booking tamu Google & data lama tanpa pembuat hanya bisa dikelola Admin/Kabag.",
+            "**Isian wajib form booking pegawai per peran**: semua peran selain Admin/Kabag (Karyawan, PIC, Pengelola Ruang Rapat) "
+            "wajib mengisi Nama PIC, No. HP PIC, **dan** mengunggah **nota dinas (PDF)** langsung di form booking; bila salah satunya kosong "
+            "booking tidak bisa disimpan (dicek di frontend & backend, HTTP 400), nota dinas tidak bisa dihapus dan penggantinya juga harus PDF. "
+            "*Admin/Kabag* bebas: boleh booking tanpa PIC maupun nota dinas (PIC kosong disimpan \"-\"; No. HP yang diisi tetap harus valid).",
             "Tombol **Bagian** di atas kalender memilih bagian yang ditampilkan (default bagian pertama, ada *Semua bagian*); "
             "pilihan ruangan di form booking pegawai & tamu dikelompokkan per bagian. Backend menolak booking ke ruangan yang tidak ada di daftar.",
             "Kartu ringkasan: booking hari ini, sedang berlangsung, ruang kosong sekarang, dan booking mendatang "
@@ -1120,15 +1137,15 @@ def isi_aplikasi():
             "Akun yang di-ban melihat popup *Akun Anda Diblokir* (melanggar ketentuan / spam berlebihan) saat "
             "login dengan kata sandi yang benar, atau langsung dikeluarkan bila sedang login. "
             "Link reset kata sandi yang masih berlaku ikut dihapus saat akun di-ban."),
-        h2("3.9 Foto & Fasilitas Ruang (Admin)"),
+        h2("3.9 Foto & Fasilitas Ruang (Admin & Pengelola Ruang Rapat)"),
         *bullets(
-            "Menu **/foto-ruang** (Admin/Kabag) untuk mengelola **daftar ruang rapat per bagian** serta slideshow foto & daftar fasilitas yang tampil di "
+            "Menu **/foto-ruang** (Admin/Kabag untuk semua ruangan; Pengelola Ruang Rapat hanya ruangan biro-nya, satuan kerja terkunci ke biro itu) untuk mengelola **daftar ruang rapat per bagian** serta slideshow foto & daftar fasilitas yang tampil di "
             "layar depan tiap ruang rapat (/ruang/:ruang). Ruangan dipilih lewat tombol bagian lalu kartu ruangan (sampul serta jumlah foto & fasilitas).",
-            "**Tambah Ruangan**: nama, satuan kerja / bagian (daftar pilihan yang bisa dicari: satuan kerja yang sudah punya ruangan beserta jumlahnya, lalu unit Sekretariat Jenderal, Inspektorat Jenderal, dan keempat Ditjen dari frontend/src/utils/satuanKerja.js; nama lain tetap boleh diketik), kapasitas kursi, link dokumentasi foto "
+            "**Tambah Ruangan**: nama, satuan kerja / bagian (daftar pilihan yang bisa dicari: satuan kerja yang sudah punya ruangan beserta jumlahnya, lalu unit Sekretariat Jenderal, Inspektorat Jenderal, dan keempat Ditjen dari frontend/src/utils/satuanKerja.js; nama lain tetap boleh diketik), kapasitas kursi, **lokasi / lantai** (gedung, lantai, atau nomor ruang; maks. 150 karakter), link dokumentasi foto "
             "(mis. folder Google Drive), dan fasilitas (satu per baris, ikon dipilih otomatis). Ruangan baru langsung bisa dibooking dan "
             "tampil di jadwal, kiosk, landing, & layar ruangan.",
-            "**Detail ruangan**: ubah nama (semua booking & foto ikut pindah ke nama baru), satuan kerja, kapasitas, dan link foto. "
-            "**Hapus ruangan** ditolak bila masih ada booking aktif hari ini/ke depan; riwayat booking lama tetap tersimpan (dan tetap bisa diedit selama ruangannya tidak diganti), foto ikut dihapus.",
+            "**Detail ruangan**: ubah nama (semua booking & foto ikut pindah ke nama baru), satuan kerja, kapasitas, lokasi / lantai, dan link foto. "
+            "**Hapus ruangan** (Admin/Kabag; Pengelola Ruang Rapat hanya ruangan biro-nya) ditolak bila masih ada booking aktif hari ini/ke depan; riwayat booking lama tetap tersimpan (dan tetap bisa diedit selama ruangannya tidak diganti), foto ikut dihapus.",
             "**Blokir ruangan (maintenance)**: panel di atas Detail ruangan untuk menutup sementara satu ruangan (mis. renovasi, AC rusak) "
             "dengan keterangan opsional. Lama blokir dipilih: *Sampai dibuka lagi*, atau *Pilih tanggal* (dari tanggal - sampai tanggal; "
             "tanggal selesai dikosongkan = 1 hari). Selama periode blokir ruangan tidak bisa dibooking pegawai maupun tamu (dicek di server "
@@ -1139,7 +1156,8 @@ def isi_aplikasi():
             "menghitung ruangan yang diblokir hari ini (tidak dihitung sebagai ruang kosong). Ruangan tanpa batas tanggal dinonaktifkan di "
             "pilihan form booking. Booking yang sudah ada tidak dihapus: admin diberi tahu jumlah booking aktif pada periode blokir supaya "
             "bisa dipindah/dibatalkan. *Buka blokir* mengembalikan ruangan; blokir, ubah periode/keterangan, dan buka blokir tercatat di Riwayat Aktivitas.",
-            "Kapasitas & link dokumentasi foto tampil di popup foto ruangan, kartu ruangan di form booking, dan kartu status kiosk.",
+            "Kapasitas & link dokumentasi foto tampil di popup foto ruangan, kartu ruangan di form booking, dan kartu status kiosk. "
+            "Lokasi / lantai tampil di popup foto ruangan, kartu ruangan di form booking, judul detail ruangan, dan baris atas layar ruangan.",
             "**Tema layar ruangan** di panel Detail ruangan: pilih warna & motif latar dengan pratinjau; tema yang sudah dipakai ruangan lain "
             "ditandai supaya tiap layar tetap beda. Ruangan baru otomatis mendapat tema yang belum dipakai.",
             "Foto: tambah beberapa sekaligus (klik atau seret), maks. 12 per ruangan. Sebelum upload tiap foto "
@@ -1206,17 +1224,19 @@ def isi_aplikasi():
             ["/verifikasi-email", "Verifikasi Email", "Publik", "Tujuan link di email verifikasi (token di #fragment, sekali pakai)"],
             ["/forgot-password, /reset-password", "Lupa & Reset Kata Sandi", "Publik",
              "Link reset berlaku 1 jam; aturan sandi sama dengan Daftar Akun"],
-            ["/dashboard", "Dashboard", "Login", "KPI, status ruang, aktivitas"],
-            ["/pemeliharaan", "Pemeliharaan", "Login", "Daftar, tahapan, export"],
-            ["/pengadaan", "Pengadaan", "Login", "Daftar, tahapan, export"],
-            ["/kendaraan", "Kendaraan", "Login", "Aset, foto, dokumen, service"],
+            ["/dashboard", "Dashboard", "Pegawai*", "KPI, status ruang, aktivitas"],
+            ["/pemeliharaan", "Pemeliharaan", "Pegawai*", "Daftar, tahapan, export"],
+            ["/pengadaan", "Pengadaan", "Pegawai*", "Daftar, tahapan, export"],
+            ["/kendaraan", "Kendaraan", "Pegawai*", "Aset, foto, dokumen, service"],
             ["/ruang-rapat", "Jadwal Ruang Rapat", "Login", "Kalender, booking, surat, export"],
             ["/profile", "Profil", "Login", "Data pengguna yang sedang masuk"],
             ["/akun", "Akun & Akses", "Admin", "Manajemen akun"],
             ["/riwayat", "Riwayat Aktivitas", "Admin/Kabag", "Audit trail semua modul: filter, riwayat per data, unduh CSV"],
             ["/settings", "Settings", "Admin", "Mode Maintenance per menu"],
-            ["/foto-ruang", "Foto & Fasilitas Ruang", "Admin", "Daftar ruang rapat per bagian, foto slideshow & fasilitas"],
+            ["/foto-ruang", "Foto & Fasilitas Ruang", "Admin, Peng. Ruang", "Daftar ruang rapat per bagian, lokasi/lantai, foto slideshow & fasilitas"],
         ]),
+        note("*Pegawai = semua peran login kecuali Pengelola Ruang Rapat (diarahkan ke /ruang-rapat; menunya hanya Jadwal Ruang Rapat "
+             "dan Foto & Fasilitas Ruang)."),
         h2("Komponen bersama"),
         *bullets(
             "**ProtectedRoute** & **Sidebar**: layout halaman login yang dipasang sekali (sidebar tetap di "
@@ -1340,7 +1360,7 @@ def isi_aplikasi():
              "dan tidak ganda per tanggal; maks. 6 foto. Di modal Detail: mengosongkan tanggal & keluar dari status Servis tanpa "
              "riwayat service minta konfirmasi."],
             ["Ruang Rapat", "Jam selesai > jam mulai; rentang maks. 90 hari; tidak boleh beririsan tanggal+jam "
-             "di ruangan yang sama; No. HP PIC format 08... / +628... (sama dengan Daftar Akun; nilai lama seperti \"-\" tetap diterima selama tidak diubah); nomor surat maks. 100 karakter; nama file surat maks. 255 "
+             "di ruangan yang sama; Nama & No. HP PIC serta nota dinas PDF wajib (kecuali Admin/Kabag); No. HP PIC format 08... / +628... (sama dengan Daftar Akun; nilai lama seperti \"-\" tetap diterima selama tidak diubah); nomor surat maks. 100 karakter; nama file surat maks. 255 "
              "karakter."],
             ["Berkas", "Hanya PDF/JPG/PNG/WebP/DOC/DOCX/XLS/XLSX; isi dicek magic number di server & browser; "
              "surat rapat maks. 8 MB, dokumen lain maks. 12 MB; nama berkas disanitasi."],

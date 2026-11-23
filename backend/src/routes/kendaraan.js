@@ -2,14 +2,14 @@ const express = require('express');
 const prisma = require('../prisma');
 const { saveDataUrl, hideFilePaths } = require('../fileStorage');
 const { isGenuineDocumentDataUrl, maxDataUrlLength } = require('../fileSignature');
-const { requireAuth, requireRole, ADMIN_ROLES } = require('../middleware/auth');
+const { requireAuth, requireRole, ADMIN_ROLES, STAFF_ROLES } = require('../middleware/auth');
 const { requireNotInMaintenance } = require('../middleware/maintenance');
 const logger = require('../logger');
 const { cacheGet } = require('../responseCache');
 const { catat, ringkas, pilihKolom } = require('../audit');
 
 const router = express.Router();
-router.use(requireAuth);
+router.use(requireAuth, requireRole(STAFF_ROLES));
 router.use(requireNotInMaintenance('kendaraan'));
 
 const MAX_PHOTO_BYTES = 4 * 1024 * 1024; // foto sudah dikompres di client, 4MB base64 cukup longgar

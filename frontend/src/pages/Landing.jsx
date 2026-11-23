@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Link, Navigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { useAuth, homePath } from '../context/AuthContext';
 import BrandMark from '../components/BrandMark';
 import RuangRapatSchedule from '../components/RuangRapatSchedule';
 import BagianTabs from '../components/BagianTabs';
@@ -63,6 +63,10 @@ const STATUS_CHIPS = [
   { label: 'Selesai', cls: 'bg-emerald-50 text-emerald-700 ring-emerald-200' },
 ];
 
+// Tautan ke halaman kiosk (/jadwal-rapat, termasuk booking tamu Google) sementara disembunyikan dari
+// landing page: di sini cukup tampil jadwal ruang rapat. Ubah ke true untuk menampilkannya lagi.
+const TAMPIL_KIOSK = false;
+
 // Kata yang bergantian di judul hero.
 const ROTASI = ['pemeliharaan.', 'pengadaan.', 'kendaraan dinas.', 'ruang rapat.'];
 
@@ -76,7 +80,7 @@ const SOROTAN = [
   'Riwayat service kendaraan',
   'Surat permohonan rapat',
   'Booking multi-hari',
-  'Tampilan kiosk',
+  ...(TAMPIL_KIOSK ? ['Tampilan kiosk'] : []),
   'Update realtime',
 ];
 
@@ -117,7 +121,9 @@ const FAQ = [
   },
   {
     q: 'Apakah jadwal ruang rapat bisa dilihat tanpa login?',
-    a: 'Bisa. Jadwal di halaman ini dan tampilan layar penuh (kiosk) terbuka untuk umum dan diperbarui otomatis. Untuk booking, masuk dengan akun pegawai, atau buka halaman kiosk (tombol "Kiosk & booking tamu") lalu klik "Login dengan Google untuk booking" bila belum punya akun pegawai.',
+    a: TAMPIL_KIOSK
+      ? 'Bisa. Jadwal di halaman ini dan tampilan layar penuh (kiosk) terbuka untuk umum dan diperbarui otomatis. Untuk booking, masuk dengan akun pegawai, atau buka halaman kiosk (tombol "Kiosk & booking tamu") lalu klik "Login dengan Google untuk booking" bila belum punya akun pegawai.'
+      : 'Bisa. Jadwal ruang rapat di halaman ini terbuka untuk umum dan diperbarui otomatis. Untuk booking, masuk dengan akun pegawai.',
   },
   {
     q: 'Bagaimana cara booking ruang rapat?',
@@ -748,7 +754,7 @@ export default function Landing() {
         Memuat…
       </div>
     );
-  if (user) return <Navigate to="/dashboard" replace />;
+  if (user) return <Navigate to={homePath(user.role)} replace />;
   if (landingDown) return <LandingMaintenanceNotice message={landingDown.message} />;
 
   return (
@@ -1113,17 +1119,20 @@ export default function Landing() {
                 </h2>
                 <p className="text-slate-600 mt-3 leading-relaxed">
                   Cek ruang yang masih kosong sebelum mengajukan booking. Jadwal ini terbuka tanpa
-                  login dan diperbarui otomatis. Belum punya akun pegawai? Booking sebagai tamu
-                  dengan akun Google di halaman kiosk.
+                  login dan diperbarui otomatis.
+                  {TAMPIL_KIOSK &&
+                    ' Belum punya akun pegawai? Booking sebagai tamu dengan akun Google di halaman kiosk.'}
                 </p>
               </div>
-              <Link
-                to="/jadwal-rapat"
-                className="self-start md:self-auto inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl border border-slate-300 text-sm font-semibold text-dinas transition hover:border-dinas hover:bg-dinas hover:text-white shrink-0"
-              >
-                <span className="material-symbols-outlined text-[18px]">tv</span>Kiosk & booking
-                tamu
-              </Link>
+              {TAMPIL_KIOSK && (
+                <Link
+                  to="/jadwal-rapat"
+                  className="self-start md:self-auto inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl border border-slate-300 text-sm font-semibold text-dinas transition hover:border-dinas hover:bg-dinas hover:text-white shrink-0"
+                >
+                  <span className="material-symbols-outlined text-[18px]">tv</span>Kiosk & booking
+                  tamu
+                </Link>
+              )}
             </Reveal>
             <Reveal delay={100} className="mt-8">
               <RuangRapatSchedule />
@@ -1366,14 +1375,16 @@ export default function Landing() {
                   </a>
                 </li>
               ))}
-              <li>
-                <Link
-                  to="/jadwal-rapat"
-                  className="inline-block py-1 transition-colors hover:text-white"
-                >
-                  Tampilan kiosk
-                </Link>
-              </li>
+              {TAMPIL_KIOSK && (
+                <li>
+                  <Link
+                    to="/jadwal-rapat"
+                    className="inline-block py-1 transition-colors hover:text-white"
+                  >
+                    Tampilan kiosk
+                  </Link>
+                </li>
+              )}
               <li>
                 <Link to="/login" className="inline-block py-1 transition-colors hover:text-white">
                   Masuk

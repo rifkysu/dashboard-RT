@@ -4,7 +4,7 @@ const crypto = require('crypto');
 const prisma = require('../prisma');
 const { saveDataUrl, hideFilePaths } = require('../fileStorage');
 const { isGenuineDocumentDataUrl } = require('../fileSignature');
-const { requireAuth, requireRole, EDITOR_ROLES } = require('../middleware/auth');
+const { requireAuth, requireRole, EDITOR_ROLES, STAFF_ROLES } = require('../middleware/auth');
 const { requireNotInMaintenance } = require('../middleware/maintenance');
 const { signToken } = require('../token');
 const logger = require('../logger');
@@ -47,7 +47,7 @@ const POST_FIELDS = [
   'request_document_name',
 ];
 const router = express.Router();
-router.use(requireAuth);
+router.use(requireAuth, requireRole(STAFF_ROLES));
 router.use(requireNotInMaintenance('pengadaan'));
 const MAX = 12 * 1024 * 1024;
 const valid = (v) => v == null || isGenuineDocumentDataUrl(v, MAX);

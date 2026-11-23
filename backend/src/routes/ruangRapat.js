@@ -5,7 +5,7 @@ const { EventEmitter } = require('events');
 const prisma = require('../prisma');
 const { saveDataUrl, hideFilePaths } = require('../fileStorage');
 const { isGenuineDocumentDataUrl, maxDataUrlLength } = require('../fileSignature');
-const { requireAuth } = require('../middleware/auth');
+const { requireAuth, isAdminRole } = require('../middleware/auth');
 const { requireNotInMaintenance } = require('../middleware/maintenance');
 const logger = require('../logger');
 const { createSseLimiter } = require('../middleware/security');
@@ -59,6 +59,25 @@ const validFile = (v) =>
 const DATE_RE = /^[0-9]{4}-[0-9]{2}-[0-9]{2}$/;
 const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
 const validText = (v, m) => typeof v === 'string' && v.trim().length > 0 && v.length <= m;
+// Aturan isian booking per role:
+// - Admin/Kabag: PIC (nama & No. HP) dan nota dinas boleh kosong; PIC kosong disimpan '-' (sama dengan data lama).
+// - Semua role lain (Karyawan, PIC, Pengelola Ruang Rapat): Nama PIC, No. HP PIC, DAN nota dinas (PDF) wajib --
+//   salah satu kosong = tidak bisa booking; nota dinas juga tidak bisa dihapus setelahnya.
+const picOpsional = (req) => isAdminRole(req.user?.role);
+const nodinWajib = (req) => !isAdminRole(req.user?.role);
+const isPdf = (v) => typeof v === 'string' && v.startsWith('data:application/pdf;base64,');
+const kosong = (v) => v == null || (typeof v === 'string' && v.trim() === '');
+const NODIN_WAJIB_MSG = 'Nota dinas (PDF) wajib diunggah untuk booking ruang rapat.';
+// Booking hanya boleh diubah / dikelola suratnya / dibatalkan oleh akun yang membuatnya; Admin/Kabag boleh semua.
+// Booking tamu Google & data lama tanpa pembuat (created_by kosong) hanya bisa dikelola Admin/Kabag.
+const BUKAN_PEMILIK_MSG =
+  'Booking ini dibuat oleh pengguna lain. Hanya pembuatnya atau Admin/Kabag yang bisa mengubah atau membatalkannya.';
+async function cekPemilik(req, id) {
+  if (isAdminRole(req.user.role)) return null;
+  const b = await prisma.ruangRapat.findUnique({ where: { id }, select: { created_by: true } });
+  if (!b) return null; // 404 ditangani di handler masing-masing
+  return b.created_by === req.user.id ? null : BUKAN_PEMILIK_MSG;
+}
 // Nomor surat opsional (boleh kosong), maks. 100 karakter.
 const validNomorSurat = (v) => v == null || (typeof v === 'string' && v.trim().length <= 100);
 // Nama file surat opsional, maks. 255 karakter (kolom surat_name VARCHAR(255)).
@@ -418,7 +437,8 @@ router.get('/:id', async (req, res) => {
     res.status(500).json({ message: 'Gagal mengambil detail booking.' });
   }
 });
-// Semua user login (termasuk karyawan) boleh menambah, mengedit, mengelola surat/status, dan membatalkan booking.
+// Semua user login boleh menambah booking; mengedit, mengelola surat, dan membatalkan hanya pembuatnya atau
+// Admin/Kabag (lihat cekPemilik).
 router.post('/', async (req, res) => {
   try {
     const {
@@ -446,11 +466,13 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ message: `Pilih 1-${MAX_PICKED} tanggal yang valid.` });
     if (!validNomorSurat(nomor_surat))
       return res.status(400).json({ message: 'Nomor surat maksimal 100 karakter.' });
+    // Admin/Kabag boleh mengosongkan PIC; yang diisi tetap harus valid.
+    const tanpaPic = picOpsional(req);
     if (
       !validText(title, 255) ||
       !validText(room, 150) ||
-      !validText(pic, 150) ||
-      !validPhone(pic_phone) ||
+      (tanpaPic ? !kosong(pic) && !validText(pic, 150) : !validText(pic, 150)) ||
+      (tanpaPic ? !kosong(pic_phone) && !validPhone(pic_phone) : !validPhone(pic_phone)) ||
       (!picked &&
         (!validDate(startDate) || (end_date != null && end_date !== '' && !validDate(end_date)))) ||
       !validTime(start) ||
@@ -460,6 +482,8 @@ router.post('/', async (req, res) => {
         message:
           'Data booking tidak lengkap atau No. HP PIC tidak valid (contoh: 081234567890 atau +6281234567890).',
       });
+    if (nodinWajib(req) && !isPdf(surat_file_data))
+      return res.status(400).json({ message: NODIN_WAJIB_MSG });
     if (!(await ruangValid(room)) || !validFile(surat_file_data) || !validSuratName(surat_name))
       return res.status(400).json({ message: 'Ruangan, status, atau surat tidak valid.' });
     if (start >= end)
@@ -507,8 +531,8 @@ router.post('/', async (req, res) => {
                 agenda: title.trim(),
                 nomor_surat: nomor_surat?.trim() || null,
                 room,
-                pic: pic.trim(),
-                pic_phone: normPhone(pic_phone),
+                pic: kosong(pic) ? '-' : pic.trim(),
+                pic_phone: kosong(pic_phone) ? '-' : normPhone(pic_phone),
                 booking_date: bd,
                 end_date: ed,
                 start_time: time(start),
@@ -552,6 +576,8 @@ router.put('/:id', async (req, res) => {
     const id = Number(req.params.id);
     if (!Number.isInteger(id)) return res.status(400).json({ message: 'ID booking tidak valid.' });
     const b = req.body;
+    const tolakPut = await cekPemilik(req, id);
+    if (tolakPut) return res.status(403).json({ message: tolakPut });
     if (
       (b.date !== undefined && !validDate(b.date)) ||
       (b.end_date !== undefined &&
@@ -581,10 +607,14 @@ router.put('/:id', async (req, res) => {
       } else data.room = b.room;
     }
     if (b.pic !== undefined) {
-      if (!validText(b.pic, 150)) return res.status(400).json({ message: 'Nama PIC tidak valid.' });
-      data.pic = b.pic.trim();
+      if (picOpsional(req) && kosong(b.pic)) data.pic = '-';
+      else if (!validText(b.pic, 150))
+        return res.status(400).json({ message: 'Nama PIC tidak valid.' });
+      else data.pic = b.pic.trim();
     }
-    if (b.pic_phone !== undefined) {
+    if (b.pic_phone !== undefined && picOpsional(req) && kosong(b.pic_phone)) {
+      data.pic_phone = '-';
+    } else if (b.pic_phone !== undefined) {
       // Booking lama banyak berisi '-' / nomor format lama: nilai yang tidak diubah tetap diterima apa adanya.
       if (!validPhone(b.pic_phone)) {
         const cur = await prisma.ruangRapat.findUnique({
@@ -604,6 +634,9 @@ router.put('/:id', async (req, res) => {
     }
     if (b.surat_file_data !== undefined && !validFile(b.surat_file_data))
       return res.status(400).json({ message: 'Dokumen surat tidak valid.' });
+    // Pengelola Ruang Rapat tidak boleh menghapus nota dinas; penggantinya juga harus PDF.
+    if (b.surat_file_data !== undefined && nodinWajib(req) && !isPdf(b.surat_file_data))
+      return res.status(400).json({ message: NODIN_WAJIB_MSG });
     const sebelum = await prisma.ruangRapat.findUnique({
       where: { id },
       select: pilihKolom('ruang-rapat'),
@@ -842,6 +875,8 @@ router.post('/:id/cancel-dates', async (req, res) => {
         .json({ message: 'Pilih minimal satu tanggal yang valid untuk dibatalkan.' });
     if (!validReason(req.body?.reason))
       return res.status(400).json({ message: 'Alasan pembatalan maksimal 500 karakter.' });
+    const tolakBatal = await cekPemilik(req, id);
+    if (tolakBatal) return res.status(403).json({ message: tolakBatal });
     const cancel = new Set(dates);
     const include = { updatedBy: { select: { nama_lengkap: true } } };
     const info = await prisma.ruangRapat.findUnique({
@@ -940,6 +975,8 @@ router.delete('/:id', async (req, res) => {
     if (!Number.isInteger(id)) return res.status(400).json({ message: 'ID booking tidak valid.' });
     if (!validReason(req.body?.reason))
       return res.status(400).json({ message: 'Alasan pembatalan maksimal 500 karakter.' });
+    const tolakHapus = await cekPemilik(req, id);
+    if (tolakHapus) return res.status(403).json({ message: tolakHapus });
     const { count } = await prisma.ruangRapat.updateMany({
       where: { id, cancelled_at: null },
       data: cancelData(req),

@@ -3,7 +3,7 @@ const crypto = require('crypto');
 const prisma = require('../prisma');
 const { saveDataUrl, hideFilePaths } = require('../fileStorage');
 const { isGenuineDocumentDataUrl } = require('../fileSignature');
-const { requireAuth, requireRole, EDITOR_ROLES } = require('../middleware/auth');
+const { requireAuth, requireRole, EDITOR_ROLES, STAFF_ROLES } = require('../middleware/auth');
 const { requireNotInMaintenance } = require('../middleware/maintenance');
 const { signToken } = require('../token');
 const logger = require('../logger');
@@ -12,7 +12,7 @@ const { checkFields, validStatusFilter } = require('../validate');
 const { catat, ringkas, pilihKolom } = require('../audit');
 
 const router = express.Router();
-router.use(requireAuth);
+router.use(requireAuth, requireRole(STAFF_ROLES));
 router.use(requireNotInMaintenance('pemeliharaan'));
 const MAX_DOCUMENT_DATA_LENGTH = 12 * 1024 * 1024;
 const validDocumentData = (v) => v == null || isGenuineDocumentDataUrl(v, MAX_DOCUMENT_DATA_LENGTH);

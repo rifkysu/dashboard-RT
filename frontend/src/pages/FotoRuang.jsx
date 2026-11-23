@@ -128,9 +128,15 @@ const inputCls =
 const samaFasilitas = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 
 export default function FotoRuang() {
-  const { user, isAdmin } = useAuth();
+  const { user, isAdmin, canKelolaRuang } = useAuth();
   const { confirm, toast, alert } = useFeedback();
-  const { rooms, grup, info, error, loaded, reload } = useDaftarRuang();
+  const { rooms: semuaRuang, grup: semuaGrup, info, error, loaded, reload } = useDaftarRuang();
+  // Pengelola Ruang Rapat per biro hanya melihat & mengelola ruangan biro-nya sendiri (dicek juga di server).
+  const kunciSatker = isAdmin ? null : user?.ruang_satker || '';
+  const samaBiro = (b) =>
+    (b || '').trim().toLowerCase() === (kunciSatker || '').trim().toLowerCase();
+  const grup = kunciSatker === null ? semuaGrup : semuaGrup.filter((g) => samaBiro(g.bagian));
+  const rooms = kunciSatker === null ? semuaRuang : grup.flatMap((g) => g.rooms);
   const [bagian, setBagian, roomsBagian] = useBagian(grup);
   const [pilih, setPilih] = useState(null);
   const [tambah, setTambah] = useState(false);
@@ -141,7 +147,24 @@ export default function FotoRuang() {
   const gagalMuat = error && !loaded;
   const memuat = !loaded;
 
-  if (user && !isAdmin) return <Navigate to="/dashboard" replace />;
+  if (user && !canKelolaRuang) return <Navigate to="/dashboard" replace />;
+
+  // Akun Pengelola Ruang Rapat lama yang belum diberi biro: belum bisa mengelola apa pun.
+  if (kunciSatker === '')
+    return (
+      <div className="menu-page">
+        <div className="max-w-xl mx-auto mt-16 bg-white border border-amber-200 rounded-2xl p-8 text-center">
+          <span className="material-symbols-outlined text-[40px] text-amber-600">
+            domain_disabled
+          </span>
+          <h2 className="text-xl font-bold text-slate-900 mt-3">Biro belum ditentukan</h2>
+          <p className="text-sm text-slate-500 mt-2">
+            Akun Anda belum diberi biro. Minta Admin mengatur role Anda di menu Akun & Akses
+            (Pengelola Ruang – nama biro).
+          </p>
+        </div>
+      </div>
+    );
 
   const data = info?.[room] || { foto: [], fasilitas: [] };
   // Satuan kerja yang sudah punya ruangan + jumlah ruangannya (pilihan teratas di isian satuan kerja).
@@ -185,9 +208,9 @@ export default function FotoRuang() {
           <span className="menu-kicker">Biro Umum / Foto & Fasilitas Ruang</span>
           <h1 className="text-3xl font-bold">Foto & Fasilitas Ruang</h1>
           <p className="text-sm mt-1">
-            Kelola daftar ruang rapat per bagian (satuan kerja), foto slideshow, kapasitas, link
-            dokumentasi, dan fasilitas. Perubahan langsung muncul di jadwal, kiosk, dan layar
-            ruangan.
+            {kunciSatker
+              ? `Kelola ruang rapat ${kunciSatker}: tambah, ubah, hapus ruangan, foto slideshow, kapasitas, lokasi, dan fasilitas. Ruangan biro lain tidak bisa diubah.`
+              : 'Kelola daftar ruang rapat per bagian (satuan kerja), foto slideshow, kapasitas, link dokumentasi, dan fasilitas. Perubahan langsung muncul di jadwal, kiosk, dan layar ruangan.'}
           </p>
         </div>
         <button
@@ -310,7 +333,7 @@ export default function FotoRuang() {
             <div className="min-w-0">
               <h2 className="text-xl font-bold">{judulRuang(room)}</h2>
               <div className="text-xs text-slate-500 mt-0.5">
-                {[data.satuan_kerja, data.kapasitas && `${data.kapasitas} kursi`]
+                {[data.satuan_kerja, data.lokasi, data.kapasitas && `${data.kapasitas} kursi`]
                   .filter(Boolean)
                   .join(' · ')}
               </div>
@@ -325,14 +348,17 @@ export default function FotoRuang() {
                 <span className="material-symbols-outlined text-[18px]">open_in_new</span>Lihat
                 layar ruangan
               </a>
-              <button
-                type="button"
-                onClick={hapusRuang}
-                disabled={!loaded}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-red-200 bg-white text-sm font-semibold text-red-700 hover:bg-red-50 disabled:opacity-50"
-              >
-                <span className="material-symbols-outlined text-[18px]">delete</span>Hapus ruangan
-              </button>
+              {/* Admin/Kabag: semua ruangan; Pengelola Ruang Rapat: yang tampil memang hanya ruangan biro-nya. */}
+              {canKelolaRuang && (
+                <button
+                  type="button"
+                  onClick={hapusRuang}
+                  disabled={!loaded}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-red-200 bg-white text-sm font-semibold text-red-700 hover:bg-red-50 disabled:opacity-50"
+                >
+                  <span className="material-symbols-outlined text-[18px]">delete</span>Hapus ruangan
+                </button>
+              )}
             </div>
           </div>
 
@@ -351,6 +377,7 @@ export default function FotoRuang() {
             terpakai={terpakai}
             temaLain={temaLain}
             memuat={memuat}
+            kunciSatker={kunciSatker}
             onSaved={async (baru, satker) => {
               await reload();
               if (satker && bagian && satker !== bagian) setBagian(satker);
@@ -382,7 +409,8 @@ export default function FotoRuang() {
       {tambah && (
         <TambahRuangDialog
           terpakai={terpakai}
-          bagianAwal={bagian}
+          bagianAwal={kunciSatker || bagian}
+          kunciSatker={kunciSatker}
           onClose={() => setTambah(false)}
           onDone={async (baru, satker) => {
             setTambah(false);
@@ -651,13 +679,14 @@ function MaintenancePanel({ room, data, memuat, reload }) {
   );
 }
 
-// Detail ruangan: nama, satuan kerja (bagian), kapasitas, link dokumentasi foto, dan tema layar ruangan.
-function DetailPanel({ room, data, terpakai, temaLain, memuat, onSaved }) {
+// Detail ruangan: nama, satuan kerja (bagian), lokasi/lantai, kapasitas, link dokumentasi foto, dan tema layar ruangan.
+function DetailPanel({ room, data, terpakai, temaLain, memuat, onSaved, kunciSatker }) {
   const { toast, alert, confirm } = useFeedback();
   const awal = {
     nama: room,
     satuan_kerja: data.satuan_kerja || '',
     kapasitas: data.kapasitas ?? '',
+    lokasi: data.lokasi || '',
     link_foto: data.link_foto || '',
     tema: temaRuang(room, { [room]: data }).key,
   };
@@ -700,6 +729,7 @@ function DetailPanel({ room, data, terpakai, temaLain, memuat, onSaved }) {
         nama_baru: nama,
         satuan_kerja: form.satuan_kerja,
         kapasitas: form.kapasitas === '' ? null : Number(form.kapasitas),
+        lokasi: form.lokasi,
         link_foto: form.link_foto,
         tema: form.tema,
       });
@@ -729,7 +759,7 @@ function DetailPanel({ room, data, terpakai, temaLain, memuat, onSaved }) {
           </p>
         </div>
       </div>
-      <div className="mt-4 grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="mt-4 grid sm:grid-cols-2 lg:grid-cols-5 gap-3">
         <label className="block">
           <span className="block text-xs font-semibold text-slate-700 mb-1">Nama ruangan</span>
           <input value={form.nama} onChange={set('nama')} maxLength={150} className={inputCls} />
@@ -738,11 +768,20 @@ function DetailPanel({ room, data, terpakai, temaLain, memuat, onSaved }) {
           <span className="block text-xs font-semibold text-slate-700 mb-1">
             Satuan kerja / bagian
           </span>
-          <PilihSatker
-            value={form.satuan_kerja}
-            onChange={(v) => setForm((f) => ({ ...f, satuan_kerja: v }))}
-            terpakai={terpakai}
-          />
+          {kunciSatker ? (
+            <input
+              value={kunciSatker}
+              readOnly
+              title="Ruangan hanya bisa untuk biro Anda"
+              className={`${inputCls} bg-slate-50 text-slate-600 cursor-not-allowed`}
+            />
+          ) : (
+            <PilihSatker
+              value={form.satuan_kerja}
+              onChange={(v) => setForm((f) => ({ ...f, satuan_kerja: v }))}
+              terpakai={terpakai}
+            />
+          )}
         </div>
         <label className="block">
           <span className="block text-xs font-semibold text-slate-700 mb-1">Kapasitas (kursi)</span>
@@ -753,6 +792,16 @@ function DetailPanel({ room, data, terpakai, temaLain, memuat, onSaved }) {
             value={form.kapasitas}
             onChange={set('kapasitas')}
             placeholder="mis. 30"
+            className={inputCls}
+          />
+        </label>
+        <label className="block">
+          <span className="block text-xs font-semibold text-slate-700 mb-1">Lokasi / lantai</span>
+          <input
+            value={form.lokasi}
+            onChange={set('lokasi')}
+            maxLength={150}
+            placeholder="mis. Gedung A Lantai 3"
             className={inputCls}
           />
         </label>
@@ -1030,12 +1079,13 @@ function DaftarTema({ judul, items, aktif, contoh, swatch, dipakai, onPilih }) {
 }
 
 // Dialog tambah ruangan baru: langsung bisa dibooking setelah disimpan.
-function TambahRuangDialog({ terpakai, bagianAwal, onClose, onDone }) {
+function TambahRuangDialog({ terpakai, bagianAwal, onClose, onDone, kunciSatker }) {
   const { alert } = useFeedback();
   const [form, setForm] = useState({
     nama: '',
     satuan_kerja: bagianAwal || '',
     kapasitas: '',
+    lokasi: '',
     link_foto: '',
     fasilitas: '',
   });
@@ -1076,6 +1126,7 @@ function TambahRuangDialog({ terpakai, bagianAwal, onClose, onDone }) {
         room: form.nama,
         satuan_kerja: form.satuan_kerja,
         kapasitas: form.kapasitas === '' ? null : Number(form.kapasitas),
+        lokasi: form.lokasi,
         link_foto: form.link_foto,
         fasilitas,
       });
@@ -1143,12 +1194,21 @@ function TambahRuangDialog({ terpakai, bagianAwal, onClose, onDone }) {
             <span className="block text-xs font-semibold text-slate-700 mb-1">
               Satuan kerja / bagian <span className="text-red-600">*</span>
             </span>
-            <PilihSatker
-              value={form.satuan_kerja}
-              onChange={(v) => setForm((f) => ({ ...f, satuan_kerja: v }))}
-              terpakai={terpakai}
-              placeholder="Pilih dari daftar atau ketik nama baru"
-            />
+            {kunciSatker ? (
+              <input
+                value={kunciSatker}
+                readOnly
+                title="Ruangan hanya bisa untuk biro Anda"
+                className={`${inputCls} bg-slate-50 text-slate-600 cursor-not-allowed`}
+              />
+            ) : (
+              <PilihSatker
+                value={form.satuan_kerja}
+                onChange={(v) => setForm((f) => ({ ...f, satuan_kerja: v }))}
+                terpakai={terpakai}
+                placeholder="Pilih dari daftar atau ketik nama baru"
+              />
+            )}
           </div>
           <label className="block">
             <span className="block text-xs font-semibold text-slate-700 mb-1">
@@ -1161,6 +1221,19 @@ function TambahRuangDialog({ terpakai, bagianAwal, onClose, onDone }) {
               value={form.kapasitas}
               onChange={set('kapasitas')}
               placeholder="mis. 30"
+              className={inputCls}
+            />
+          </label>
+          <label className="block sm:col-span-2">
+            <span className="block text-xs font-semibold text-slate-700 mb-1">
+              Lokasi / lantai{' '}
+              <span className="font-normal text-slate-500">(gedung, lantai, atau nomor ruang)</span>
+            </span>
+            <input
+              value={form.lokasi}
+              onChange={set('lokasi')}
+              maxLength={150}
+              placeholder="mis. Gedung A Lantai 3, sebelah lift"
               className={inputCls}
             />
           </label>

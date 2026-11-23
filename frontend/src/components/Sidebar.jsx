@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { useAuth, labelRole } from '../context/AuthContext';
 import BrandMark from './BrandMark';
 import LoginSplash from './LoginSplash';
 
@@ -14,11 +14,21 @@ const menu = [
     icon: 'calendar_month',
     label: 'Jadwal Ruang Rapat',
     menuKey: 'ruang-rapat',
+    ruang: true,
   },
   { to: '/akun', icon: 'group', label: 'Akun & Akses', adminOnly: true },
   { to: '/riwayat', icon: 'history', label: 'Riwayat Aktivitas', adminOnly: true },
-  { to: '/foto-ruang', icon: 'photo_library', label: 'Foto & Fasilitas Ruang', adminOnly: true },
+  {
+    to: '/foto-ruang',
+    icon: 'photo_library',
+    label: 'Foto & Fasilitas Ruang',
+    adminOnly: true,
+    ruang: true,
+  },
 ];
+// Role Pengelola Ruang Rapat hanya melihat menu bertanda `ruang`; role lain: menu adminOnly khusus Admin/Kabag.
+const tampilMenu = (item, { isAdmin, isRuang }) =>
+  isRuang ? !!item.ruang : !item.adminOnly || isAdmin;
 
 // `collapsed` cuma berlaku di layar md ke atas (mode rail ikon-saja di desktop).
 // Di mobile, sidebar selalu tampil penuh sebagai drawer overlay yang
@@ -33,11 +43,10 @@ export default function Sidebar({
   theme = 'light',
   onThemeChange,
 }) {
-  const { user, isAdmin, logout, isMenuDown, resetRequestCount } = useAuth();
+  const { user, isAdmin, isRuang, logout, isMenuDown, resetRequestCount } = useAuth();
   // Popup animasi logo ~3 detik sebelum benar-benar logout.
   const [leaving, setLeaving] = useState(false);
   const navigate = useNavigate();
-  const roleLabel = { karyawan: 'Karyawan', kabag: 'Kepala Bagian', pic: 'PIC', admin: 'Admin' };
   const hideWhenCollapsed = collapsed ? 'md:hidden' : '';
 
   return (
@@ -88,7 +97,7 @@ export default function Sidebar({
             Menu Utama
           </p>
           {menu
-            .filter((item) => !item.adminOnly || isAdmin)
+            .filter((item) => tampilMenu(item, { isAdmin, isRuang }))
             .map((item) => {
               const down = item.menuKey ? isMenuDown(item.menuKey) : false;
               // Badge permintaan reset kata sandi di menu Akun & Akses (admin).
@@ -204,9 +213,7 @@ export default function Sidebar({
                 <span className="block font-semibold text-white truncate text-sm">
                   {user?.nama_lengkap || '-'}
                 </span>
-                <span className="block text-[11px] text-white/55 truncate">
-                  {roleLabel[user?.role] || user?.role || '-'}
-                </span>
+                <span className="block text-[11px] text-white/55 truncate">{labelRole(user)}</span>
               </span>
             </NavLink>
             {isAdmin && (

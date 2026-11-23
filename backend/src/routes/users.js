@@ -5,7 +5,13 @@ const logger = require('../logger');
 const { catat } = require('../audit');
 // Akun di riwayat aktivitas: kode = email, label = nama.
 const refAkun = (u) => ({ id: u.id, kode: u.email, label: u.nama_lengkap });
-const ROLE_LABEL = { karyawan: 'Karyawan', pic: 'PIC', kabag: 'Kabag', admin: 'Admin' };
+const ROLE_LABEL = {
+  karyawan: 'Karyawan',
+  pic: 'PIC',
+  kabag: 'Kabag',
+  admin: 'Admin',
+  ruang_rapat: 'Pengelola Ruang Rapat',
+};
 const { createResetToken } = require('../token');
 const { isMailConfigured, sendResetPasswordEmail } = require('../mailer');
 
@@ -31,6 +37,7 @@ router.get('/', async (req, res) => {
         no_hp: true,
         unit_kerja: true,
         role: true,
+        ruang_satker: true,
         is_active: true,
         sso_provider: true,
         created_at: true,
@@ -120,27 +127,56 @@ router.put('/:id/status', async (req, res) => {
 // "users" membuat tab pemilik akun memuat ulang datanya. Aturan:
 //   - tidak bisa mengubah role akun sendiri (mencegah admin terakhir tidak sengaja turun role);
 //   - memberi atau mencabut role admin hanya boleh oleh admin (kabag tidak bisa membuat admin baru).
-const ROLES = ['karyawan', 'pic', 'kabag', 'admin'];
+//   - role Pengelola Ruang Rapat (ruang_rapat) selalu per biro: { role: 'ruang_rapat', ruang_satker: 'Biro ...' }.
+//     Biro Umum tidak bisa dipilih (ruangannya dikelola Admin).
+const ROLES = ['karyawan', 'pic', 'kabag', 'admin', 'ruang_rapat'];
+const labelRole = (role, satker) =>
+  role === 'ruang_rapat' && satker
+    ? `${ROLE_LABEL.ruang_rapat} (${satker})`
+    : ROLE_LABEL[role] || role;
 router.put('/:id/role', async (req, res) => {
   try {
     const id = Number(req.params.id);
     if (!Number.isInteger(id)) return res.status(400).json({ message: 'ID akun tidak valid.' });
     const { role } = req.body;
     if (!ROLES.includes(role)) return res.status(400).json({ message: 'Role tidak valid.' });
+    let satker = null;
+    if (role === 'ruang_rapat') {
+      satker =
+        typeof req.body.ruang_satker === 'string'
+          ? req.body.ruang_satker.trim().replace(/\s+/g, ' ')
+          : '';
+      if (satker.length < 2 || satker.length > 150)
+        return res.status(400).json({ message: 'Pilih biro untuk Pengelola Ruang Rapat.' });
+      if (satker.toLowerCase() === 'biro umum')
+        return res.status(400).json({
+          message: 'Ruang rapat Biro Umum dikelola Admin, jadi tidak perlu Pengelola Ruang Rapat.',
+        });
+    }
     if (id === req.user.id)
       return res.status(400).json({ message: 'Tidak bisa mengubah role akun sendiri.' });
 
-    const target = await prisma.user.findUnique({ where: { id }, select: { role: true } });
+    const target = await prisma.user.findUnique({
+      where: { id },
+      select: { role: true, ruang_satker: true },
+    });
     if (!target) return res.status(404).json({ message: 'Akun tidak ditemukan.' });
     if ((role === 'admin' || target.role === 'admin') && req.user.role !== 'admin') {
       return res
         .status(403)
         .json({ message: 'Hanya Admin yang bisa memberi atau mencabut role Admin.' });
     }
-    if (target.role === role) return res.json({ data: { id, role } });
+    if (target.role === role && (target.ruang_satker ?? null) === satker)
+      return res.json({ data: { id, role, ruang_satker: satker } });
 
-    const user = await prisma.user.update({ where: { id }, data: { role } });
-    logger.info('Role akun diubah', { by: req.user.id, user_id: id, from: target.role, to: role });
+    const user = await prisma.user.update({ where: { id }, data: { role, ruang_satker: satker } });
+    logger.info('Role akun diubah', {
+      by: req.user.id,
+      user_id: id,
+      from: target.role,
+      to: role,
+      ruang_satker: satker,
+    });
     await catat(req, {
       modul: 'akun',
       aksi: 'role',
@@ -148,12 +184,12 @@ router.put('/:id/role', async (req, res) => {
       perubahan: [
         {
           label: 'Role',
-          dari: ROLE_LABEL[target.role] || target.role,
-          ke: ROLE_LABEL[role] || role,
+          dari: labelRole(target.role, target.ruang_satker),
+          ke: labelRole(role, satker),
         },
       ],
     });
-    res.json({ data: { id: user.id, role: user.role } });
+    res.json({ data: { id: user.id, role: user.role, ruang_satker: user.ruang_satker } });
   } catch (err) {
     if (err.code === 'P2025') return res.status(404).json({ message: 'Akun tidak ditemukan.' });
     logger.error('PUT user role gagal', { error: err });

@@ -1,12 +1,12 @@
 const { nowLocal } = require('../clock'); // tanggal/jam WIB, bukan zona server
 const express = require('express');
 const prisma = require('../prisma');
-const { requireAuth } = require('../middleware/auth');
+const { requireAuth, requireRole, STAFF_ROLES } = require('../middleware/auth');
 const { requireNotInMaintenance } = require('../middleware/maintenance');
 const { daftarRuang, blokirKena } = require('../ruangList');
 const logger = require('../logger');
 const router = express.Router();
-router.use(requireAuth);
+router.use(requireAuth, requireRole(STAFF_ROLES));
 router.use(requireNotInMaintenance('dashboard'));
 router.use(require('../responseCache').cacheGet());
 router.get('/summary', async (req, res) => {

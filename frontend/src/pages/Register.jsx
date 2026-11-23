@@ -4,7 +4,7 @@ import api from '../api';
 import { validateRegister, normalizePhone, PASSWORD_MIN } from '../utils/validation';
 import AuthShell from '../components/AuthShell';
 import SyaratSandi from '../components/SyaratSandi';
-import { useAuth } from '../context/AuthContext';
+import { useAuth, homePath } from '../context/AuthContext';
 
 export default function Register() {
   const [form, setForm] = useState({
@@ -69,7 +69,7 @@ export default function Register() {
   }
 
   // Sudah login -> tidak perlu daftar lagi.
-  if (user) return <Navigate to="/dashboard" replace />;
+  if (user) return <Navigate to={homePath(user.role)} replace />;
 
   const inputCls = (field, base) =>
     `${base}${fieldErrors[field] ? ' !border-red-400 !bg-red-50/40' : ''}`;

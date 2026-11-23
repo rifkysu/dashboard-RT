@@ -1,27 +1,39 @@
 import React, { useEffect, useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import api from '../api';
-import { useAuth } from '../context/AuthContext';
+import { useAuth, ROLE_LABEL, labelRole, isBiroUmum } from '../context/AuthContext';
+import { useDaftarRuang } from '../hooks/useRuangInfo';
 import { useFeedback } from '../components/Feedback';
 import useLive from '../hooks/useLive';
 import MenuStats from '../components/MenuStats';
 import useIncrementalRows from '../hooks/useIncrementalRows';
 import GuestAccounts from '../components/GuestAccounts';
 
-const roleLabel = { karyawan: 'Karyawan', kabag: 'Kepala Bagian', pic: 'PIC', admin: 'Admin' };
+const roleLabel = ROLE_LABEL;
 const roleBadge = {
   karyawan: 'bg-slate-100 text-slate-700 border border-slate-300',
   pic: 'bg-blue-50 text-blue-700 border border-blue-200',
   kabag: 'bg-violet-50 text-violet-700 border border-violet-200',
   admin: 'bg-amber-50 text-amber-700 border border-amber-200',
+  ruang_rapat: 'bg-emerald-50 text-emerald-700 border border-emerald-200',
 };
 
 const ROLE_OPTIONS = ['karyawan', 'pic', 'kabag', 'admin'];
+// Nilai dropdown role: role biasa, atau "ruang_rapat|<biro>" untuk Pengelola Ruang Rapat per biro.
+const nilaiRole = (u) =>
+  u.role === 'ruang_rapat' ? `ruang_rapat|${u.ruang_satker || ''}` : u.role;
+const bacaNilaiRole = (v) => {
+  const i = v.indexOf('|');
+  return i < 0
+    ? { role: v, ruang_satker: null }
+    : { role: v.slice(0, i), ruang_satker: v.slice(i + 1) || null };
+};
 const avatarTone = {
   karyawan: 'bg-slate-200 text-slate-700',
   pic: 'bg-blue-100 text-blue-700',
   kabag: 'bg-violet-100 text-violet-700',
   admin: 'bg-amber-100 text-amber-700',
+  ruang_rapat: 'bg-emerald-100 text-emerald-700',
 };
 const initials = (nama) =>
   String(nama || '?')
@@ -54,6 +66,11 @@ function waNumber(noHp) {
 
 export default function Akun() {
   const { user, isAdmin, refreshResetRequests } = useAuth();
+  // Biro yang punya ruang rapat (dari daftar ruangan), kecuali Biro Umum -> pilihan Pengelola Ruang Rapat.
+  const { grup: grupRuang } = useDaftarRuang();
+  const daftarBiro = grupRuang
+    .map((g) => g.bagian)
+    .filter((b) => b && b !== 'Lainnya' && !isBiroUmum(b));
   const { confirm, toast } = useFeedback();
   const [resetLink, setResetLink] = useState(null);
   const [copied, setCopied] = useState(false);
@@ -126,12 +143,15 @@ export default function Akun() {
   }
 
   // Ubah role langsung dari tabel (pengganti UPDATE manual lewat pgAdmin4).
-  async function changeRole(target, nextRole) {
-    if (!nextRole || nextRole === target.role) return;
+  async function changeRole(target, nilai) {
+    if (!nilai || nilai === nilaiRole(target)) return;
+    const next = bacaNilaiRole(nilai);
+    const nextRole = next.role;
+    const labelBaru = labelRole(next);
     const ok = await confirm({
       title: 'Ubah role akun?',
-      message: `Role "${target.nama_lengkap}" diubah dari ${roleLabel[target.role] || target.role} menjadi ${roleLabel[nextRole]}. Hak akses barunya langsung berlaku.`,
-      confirmText: `Ya, Jadikan ${roleLabel[nextRole]}`,
+      message: `Role "${target.nama_lengkap}" diubah dari ${labelRole(target)} menjadi ${labelBaru}. Hak akses barunya langsung berlaku.`,
+      confirmText: `Ya, Jadikan ${labelBaru}`,
       tone: 'warning',
       icon: 'manage_accounts',
     });
@@ -139,9 +159,13 @@ export default function Akun() {
     setBusyId(target.id);
     setError('');
     try {
-      await api.put(`/users/${target.id}/role`, { role: nextRole });
-      setData((current) => current.map((u) => (u.id === target.id ? { ...u, role: nextRole } : u)));
-      toast(`Role ${target.nama_lengkap} sekarang ${roleLabel[nextRole]}.`);
+      await api.put(`/users/${target.id}/role`, next);
+      setData((current) =>
+        current.map((u) =>
+          u.id === target.id ? { ...u, role: nextRole, ruang_satker: next.ruang_satker } : u,
+        ),
+      );
+      toast(`Role ${target.nama_lengkap} sekarang ${labelBaru}.`);
     } catch (err) {
       setError(err.response?.data?.message || 'Gagal mengubah role akun.');
     } finally {
@@ -413,11 +437,11 @@ export default function Akun() {
                               : 'Hanya Admin yang bisa mengubah role Admin'
                           }
                         >
-                          {roleLabel[u.role] || u.role}
+                          {labelRole(u)}
                         </span>
                       ) : (
                         <select
-                          value={u.role}
+                          value={nilaiRole(u)}
                           disabled={busyId === u.id}
                           onChange={(e) => changeRole(u, e.target.value)}
                           aria-label={`Role ${u.nama_lengkap}`}
@@ -432,6 +456,21 @@ export default function Akun() {
                               </option>
                             ),
                           )}
+                          {/* Pengelola Ruang Rapat per biro (Biro Umum dikelola Admin). */}
+                          <optgroup label="Pengelola Ruang Rapat (per biro)">
+                            {[
+                              ...new Set([
+                                ...daftarBiro,
+                                ...(u.role === 'ruang_rapat' ? [u.ruang_satker || ''] : []),
+                              ]),
+                            ].map((b) => (
+                              <option key={b} value={`ruang_rapat|${b}`} disabled={!b}>
+                                {b
+                                  ? `Pengelola Ruang – ${b}`
+                                  : 'Pengelola Ruang (belum pilih biro)'}
+                              </option>
+                            ))}
+                          </optgroup>
                         </select>
                       )}
                     </td>

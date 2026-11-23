@@ -10,6 +10,27 @@ const AuthContext = createContext(null);
 export const ADMIN_ROLES = ['admin', 'kabag'];
 export const isAdminRole = (role) => ADMIN_ROLES.includes(role);
 
+// Role "Pengelola Ruang Rapat" (sama dengan RUANG_ROLE di backend): setelah login hanya melihat menu
+// Jadwal Ruang Rapat dan Foto & Fasilitas Ruang, dan boleh menambah/mengubah ruangan & fotonya.
+export const RUANG_ROLE = 'ruang_rapat';
+export const isRuangRole = (role) => role === RUANG_ROLE;
+// Halaman awal setelah login: role ruang rapat langsung ke jadwal (tidak punya akses Dashboard).
+export const homePath = (role) => (isRuangRole(role) ? '/ruang-rapat' : '/dashboard');
+export const ROLE_LABEL = {
+  karyawan: 'Karyawan',
+  kabag: 'Kepala Bagian',
+  pic: 'PIC',
+  admin: 'Admin',
+  ruang_rapat: 'Pengelola Ruang Rapat',
+};
+// Label role lengkap untuk satu akun: Pengelola Ruang Rapat selalu per biro (users.ruang_satker).
+export const labelRole = (u) =>
+  isRuangRole(u?.role) && u?.ruang_satker
+    ? `Pengelola Ruang – ${u.ruang_satker}`
+    : ROLE_LABEL[u?.role] || u?.role || '-';
+// Biro Umum tidak punya Pengelola Ruang Rapat: ruangannya dikelola Admin.
+export const isBiroUmum = (satker) => (satker || '').trim().toLowerCase() === 'biro umum';
+
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(() => {
     // Data localStorage yang rusak jangan sampai membuat seluruh app blank.
@@ -197,6 +218,9 @@ export function AuthProvider({ children }) {
       value={{
         user,
         isAdmin: isAdminRole(user?.role),
+        isRuang: isRuangRole(user?.role),
+        // Boleh kelola ruangan, foto & fasilitas (menu Foto & Fasilitas Ruang).
+        canKelolaRuang: isAdminRole(user?.role) || isRuangRole(user?.role),
         loggedOut,
         loading,
         login,

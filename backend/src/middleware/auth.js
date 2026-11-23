@@ -35,7 +35,14 @@ function loadUser(id, fresh) {
   const query = prisma.user
     .findUnique({
       where: { id },
-      select: { role: true, is_active: true, nama_lengkap: true, email: true, token_version: true },
+      select: {
+        role: true,
+        is_active: true,
+        nama_lengkap: true,
+        email: true,
+        token_version: true,
+        ruang_satker: true,
+      },
     })
     .then((user) => {
       if (generation === startGeneration) {
@@ -83,11 +90,7 @@ async function requireAuth(req, res, next) {
     if (current && !current.is_active) {
       return res.status(401).json({ code: ACCOUNT_BANNED, message: ACCOUNT_BANNED_MESSAGE });
     }
-    if (
-      !current ||
-      !current.is_active ||
-      !['karyawan', 'kabag', 'pic', 'admin'].includes(current.role)
-    ) {
+    if (!current || !current.is_active || !ALL_ROLES.includes(current.role)) {
       return res
         .status(401)
         .json({ message: 'Akun tidak ditemukan atau tidak aktif. Silakan login kembali.' });
@@ -102,6 +105,8 @@ async function requireAuth(req, res, next) {
       email: current.email,
       role: current.role,
       nama_lengkap: current.nama_lengkap,
+      // Biro yang dikelola (khusus role ruang_rapat).
+      ruang_satker: current.ruang_satker ?? null,
       remember: payload.rm === true,
     };
     return next();
@@ -135,6 +140,14 @@ const EDITOR_ROLES = ['kabag', 'pic', 'admin'];
 const ADMIN_ROLES = ['admin', 'kabag'];
 const isAdminRole = (role) => ADMIN_ROLES.includes(role);
 
+// Role khusus "ruang_rapat" (Pengelola Ruang Rapat): hanya menu Jadwal Ruang Rapat dan Foto & Fasilitas
+// Ruang. Menu lain (Dashboard, Pemeliharaan, Pengadaan, Kendaraan) hanya untuk STAFF_ROLES.
+const RUANG_ROLE = 'ruang_rapat';
+const STAFF_ROLES = ['karyawan', 'kabag', 'pic', 'admin'];
+const ALL_ROLES = [...STAFF_ROLES, RUANG_ROLE];
+// Boleh menambah & mengubah ruangan serta foto/fasilitasnya (menu "Foto & Fasilitas Ruang").
+const RUANG_EDITOR_ROLES = [...ADMIN_ROLES, RUANG_ROLE];
+
 module.exports = {
   requireAuth,
   requireRole,
@@ -142,6 +155,10 @@ module.exports = {
   EDITOR_ROLES,
   ADMIN_ROLES,
   isAdminRole,
+  RUANG_ROLE,
+  STAFF_ROLES,
+  ALL_ROLES,
+  RUANG_EDITOR_ROLES,
   ACCOUNT_BANNED,
   ACCOUNT_BANNED_MESSAGE,
 };

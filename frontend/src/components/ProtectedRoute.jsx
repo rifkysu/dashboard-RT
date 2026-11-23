@@ -2,7 +2,7 @@ import React, { useLayoutEffect, useState } from 'react';
 import { Navigate, Outlet } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import PageTransition from './PageTransition';
-import { useAuth } from '../context/AuthContext';
+import { useAuth, isRuangRole } from '../context/AuthContext';
 import { readTheme, saveTheme, applyTheme } from '../theme';
 
 function MaintenanceNotice({ message }) {
@@ -32,6 +32,13 @@ export function MenuGate({ menuKey, children }) {
   ) : (
     children
   );
+}
+
+// Menu khusus pegawai (Dashboard, Pemeliharaan, Pengadaan, Kendaraan): role Pengelola Ruang Rapat
+// tidak punya akses -> diarahkan ke Jadwal Ruang Rapat (backend juga menolak request-nya).
+export function StaffGate({ children }) {
+  const { user } = useAuth();
+  return isRuangRole(user?.role) ? <Navigate to="/ruang-rapat" replace /> : children;
 }
 
 // Layout semua halaman yang butuh login. Dipasang SEKALI sebagai layout route (lihat App.jsx):

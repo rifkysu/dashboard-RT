@@ -51,6 +51,8 @@ const emptyForm = {
   status: 'belum',
   dateMode: 'range',
   dates: [],
+  surat_name: '',
+  surat_file_data: '',
 };
 const MAX_PICKED = 60;
 // Booking multi-hari berlaku tiap hari dari `date` s/d `end_date` pada jam yang sama (sama dengan batas di backend).
@@ -94,18 +96,51 @@ function listDates(from, to) {
 function withStartDate(f, date) {
   return { ...f, date, end_date: f.end_date && date && f.end_date < date ? date : f.end_date };
 }
+// Baca file surat yang dipilih -> { name, data } (data URL), atau null bila ditolak (popup sudah tampil).
+// pdfOnly: role Pengelola Ruang Rapat wajib nota dinas berupa PDF.
+async function bacaSurat(f, alert, pdfOnly = false) {
+  if (f.size > MAX_FILE) {
+    alert({ title: 'File terlalu besar', message: 'Ukuran surat maksimal 8 MB.', tone: 'warning' });
+    return null;
+  }
+  // Jenis file dari isinya (magic number), bukan f.type yang bisa kosong di Windows.
+  const mime = await detectFileMime(f);
+  if (!mime) {
+    alert({
+      title: 'File ditolak',
+      message: 'File tidak terdeteksi sebagai PDF/JPG/PNG asli (kemungkinan file diubah namanya).',
+      tone: 'error',
+    });
+    return null;
+  }
+  if (pdfOnly ? mime !== 'application/pdf' : !ALLOWED.includes(mime)) {
+    alert({
+      title: 'Format tidak didukung',
+      message: pdfOnly ? 'Nota dinas harus berupa file PDF.' : 'Surat harus PDF, JPG, atau PNG.',
+      tone: 'warning',
+    });
+    return null;
+  }
+  return { name: f.name, data: await readFileAsDataUrl(f) };
+}
 // Validasi data booking sebelum dikirim -> daftar pesan untuk popup.
 // oldPhone: No. HP PIC tersimpan saat edit. Booking lama banyak berisi '-' -> tidak dipaksa diganti selama tidak diubah.
-function validateBooking(f, oldPhone) {
+// picOpsional: Admin/Kabag boleh booking tanpa PIC. nodinWajib: Pengelola Ruang Rapat wajib unggah nota dinas (PDF).
+function validateBooking(f, oldPhone, { picOpsional = false, nodinWajib = false } = {}) {
   const errors = requireFields([
     ['Topik / agenda', f.title],
     ['Ruangan', f.room],
-    ['Nama PIC', f.pic],
-    ['No. HP PIC', f.pic_phone],
+    ...(picOpsional
+      ? []
+      : [
+          ['Nama PIC', f.pic],
+          ['No. HP PIC', f.pic_phone],
+        ]),
     ['Tanggal', f.dateMode === 'pick' ? (f.dates.length ? 'ok' : '') : f.date],
     ['Jam mulai', f.start],
     ['Jam selesai', f.end],
   ]);
+  if (nodinWajib && !f.surat_file_data) errors.push('Nota dinas (PDF) wajib diunggah.');
   if (f.pic_phone && f.pic_phone !== oldPhone && !HP_RE.test(normalizePhone(f.pic_phone)))
     errors.push('No. HP PIC tidak valid (contoh: 081234567890 atau +6281234567890).');
   if (f.start && f.end && f.end <= f.start)
@@ -120,11 +155,14 @@ function validateBooking(f, oldPhone) {
 const cutiBersamaLabel = holidayLabel;
 
 export default function RuangRapat() {
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
+  // Admin/Kabag bebas (PIC & nota dinas boleh kosong); role lain wajib Nama PIC, No. HP PIC, dan nota dinas (PDF).
+  const aturan = { picOpsional: isAdmin, nodinWajib: !isAdmin };
   const { confirm, alert, toast } = useFeedback();
-  // Semua user login (termasuk karyawan) boleh menambah, mengedit, mengelola surat/status, dan membatalkan booking.
+  // Semua user login boleh menambah booking. Mengedit, mengelola surat, dan membatalkan hanya untuk booking
+  // yang dibuatnya sendiri; Admin/Kabag boleh semua (server juga menolak, lihat cekPemilik di backend).
   const canBook = !!user;
-  const canManage = canBook;
+  const milikSaya = (b) => !!b && (isAdmin || Number(b.created_by) === Number(user?.id));
   // Jadwal per bulan + infinite scroll (lihat hooks/useMonthSchedule.js).
   // Toggle "Tampilkan yang dibatalkan": booking berstatus batal ikut tampil (abu-abu, dicoret) + alasan.
   const [showCancelled, setShowCancelled] = useState(false),
@@ -197,7 +235,7 @@ export default function RuangRapat() {
   const saveBooking = async (e) => {
     e.preventDefault();
     if (saving) return;
-    const errors = validateBooking(form);
+    const errors = validateBooking(form, undefined, aturan);
     if (errors.length) {
       await alert({
         title: 'Data booking belum lengkap',
@@ -711,6 +749,7 @@ export default function RuangRapat() {
           setForm={setForm}
           saving={saving}
           error={error}
+          aturan={aturan}
           onClose={() => setShowBook(false)}
           onSubmit={saveBooking}
         />
@@ -724,11 +763,10 @@ export default function RuangRapat() {
       {selected && (
         <BookingModal
           booking={selected}
-          canManage={canManage}
-          canEdit={canBook}
-          mode={
-            (mode === 'letter' && !canManage) || (mode === 'edit' && !canBook) ? 'detail' : mode
-          }
+          aturan={aturan}
+          canManage={milikSaya(selected)}
+          canEdit={milikSaya(selected)}
+          mode={milikSaya(selected) ? mode : 'detail'}
           setMode={(m) => {
             setError('');
             setMode(m);
@@ -791,13 +829,29 @@ function Header({ title, subtitle, onClose, icon = 'event' }) {
     </div>
   );
 }
-function BookModal({ form, setForm, saving, onClose, onSubmit }) {
+function BookModal({ form, setForm, saving, onClose, onSubmit, aturan = {} }) {
   const { grup } = useDaftarRuang();
+  const { alert } = useFeedback();
+  const { picOpsional, nodinWajib } = aturan;
+  const pilihNodin = async (e) => {
+    const f = e.target.files?.[0];
+    e.target.value = '';
+    if (!f) return;
+    const hasil = await bacaSurat(f, alert, true);
+    if (hasil) setForm((x) => ({ ...x, surat_name: hasil.name, surat_file_data: hasil.data }));
+  };
+  const opsional = picOpsional ? (
+    <span className="font-normal text-slate-500"> (opsional)</span>
+  ) : null;
   return (
     <ModalShell onClose={onClose} wide>
       <Header
         title="Book Ruangan Rapat"
-        subtitle="Isi agenda, PIC, nomor HP PIC, ruangan, dan waktu"
+        subtitle={
+          nodinWajib
+            ? 'Isi agenda, PIC, nomor HP PIC, ruangan, waktu, dan unggah nota dinas (PDF)'
+            : 'Isi agenda, PIC, nomor HP PIC, ruangan, dan waktu'
+        }
         onClose={onClose}
       />
       <form noValidate onSubmit={onSubmit} className="p-6 space-y-5">
@@ -820,18 +874,18 @@ function BookModal({ form, setForm, saving, onClose, onSubmit }) {
               placeholder="Opsional — contoh: B-123/BU/IX/2026"
             />
           </Field>
-          <Field label="Nama PIC">
+          <Field label={<>Nama PIC{opsional}</>}>
             <input
-              required
+              required={!picOpsional}
               value={form.pic}
               onChange={(e) => setForm({ ...form, pic: e.target.value })}
               className="w-full h-11 px-3 rounded-lg border border-slate-300 bg-white text-sm outline-none focus:border-slate-900"
               placeholder="Nama penanggung jawab"
             />
           </Field>
-          <Field label="No. HP PIC">
+          <Field label={<>No. HP PIC{opsional}</>}>
             <input
-              required
+              required={!picOpsional}
               value={form.pic_phone}
               onChange={(e) =>
                 setForm({ ...form, pic_phone: e.target.value.replace(/[^0-9+ -]/g, '') })
@@ -841,6 +895,50 @@ function BookModal({ form, setForm, saving, onClose, onSubmit }) {
               placeholder="Contoh: 081234567890"
             />
           </Field>
+          {nodinWajib && (
+            <div className="md:col-span-2">
+              <Field
+                label={
+                  <>
+                    Nota Dinas (PDF) <span className="text-red-600">*</span>
+                  </>
+                }
+              >
+                <label
+                  className={`relative flex items-center gap-4 p-4 rounded-xl border border-dashed cursor-pointer ${form.surat_file_data ? 'border-green-300 bg-green-50' : 'border-slate-300 bg-white'}`}
+                >
+                  <span className="w-11 h-11 rounded-xl bg-slate-100 flex items-center justify-center shrink-0">
+                    <span className="material-symbols-outlined text-slate-600">
+                      {form.surat_file_data ? 'task' : 'upload_file'}
+                    </span>
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <div className="text-sm font-semibold truncate">
+                      {form.surat_name || 'Pilih file nota dinas'}
+                    </div>
+                    <div className="text-xs text-slate-500 mt-0.5">
+                      Wajib diisi · PDF · Maks. 8 MB
+                    </div>
+                  </div>
+                  <input
+                    type="file"
+                    className="absolute inset-0 opacity-0"
+                    accept="application/pdf,.pdf"
+                    onChange={pilihNodin}
+                  />
+                </label>
+              </Field>
+              {form.surat_file_data && (
+                <button
+                  type="button"
+                  onClick={() => setForm((x) => ({ ...x, surat_name: '', surat_file_data: '' }))}
+                  className="mt-1.5 text-xs font-semibold text-red-600 hover:underline"
+                >
+                  Hapus file
+                </button>
+              )}
+            </div>
+          )}
           <Field label="Ruangan">
             <select
               value={form.room}
@@ -963,8 +1061,17 @@ function BookModal({ form, setForm, saving, onClose, onSubmit }) {
           </Field>
         </div>
         <div className="rounded-xl bg-slate-100 p-4 text-xs text-slate-600">
-          <b>Status surat otomatis:</b> Merah — Belum Ada Surat. Begitu surat diupload lewat kartu
-          booking (tab Surat), status langsung menjadi Hijau — Surat Diterima.
+          {nodinWajib ? (
+            <>
+              <b>Nama PIC, No. HP PIC, dan nota dinas (PDF) wajib diisi.</b> Booking tidak bisa
+              disimpan bila salah satunya kosong. Status surat langsung Hijau — Surat Diterima.
+            </>
+          ) : (
+            <>
+              <b>Status surat otomatis:</b> Merah — Belum Ada Surat. Begitu surat diupload lewat
+              kartu booking (tab Surat), status langsung menjadi Hijau — Surat Diterima.
+            </>
+          )}
         </div>
         <div className="flex justify-end gap-2 border-t pt-4">
           <button
@@ -987,6 +1094,7 @@ function BookModal({ form, setForm, saving, onClose, onSubmit }) {
 }
 function BookingModal({
   booking,
+  aturan = {},
   canManage,
   canEdit,
   mode,
@@ -1021,34 +1129,9 @@ function BookingModal({
     const f = e.target.files?.[0];
     e.target.value = '';
     if (!f) return;
-    if (f.size > MAX_FILE) {
-      alert({
-        title: 'File terlalu besar',
-        message: 'Ukuran surat maksimal 8 MB.',
-        tone: 'warning',
-      });
-      return;
-    }
-    /* Jenis file dari isinya (magic number), bukan f.type yang bisa kosong di Windows. */ const mime =
-      await detectFileMime(f);
-    if (!mime) {
-      alert({
-        title: 'File ditolak',
-        message:
-          'File tidak terdeteksi sebagai PDF/JPG/PNG asli (kemungkinan file diubah namanya).',
-        tone: 'error',
-      });
-      return;
-    }
-    if (!ALLOWED.includes(mime)) {
-      alert({
-        title: 'Format tidak didukung',
-        message: 'Surat harus PDF, JPG, atau PNG.',
-        tone: 'warning',
-      });
-      return;
-    }
-    const encoded = await readFileAsDataUrl(f);
+    const hasil = await bacaSurat(f, alert, aturan.nodinWajib);
+    if (!hasil) return;
+    const encoded = hasil.data;
     setName(f.name);
     setData(encoded);
     setForm((x) => ({ ...x, surat_name: f.name, surat_file_data: encoded }));
@@ -1057,7 +1140,9 @@ function BookingModal({
     );
   };
   const saveEdit = async () => {
-    const errors = validateBooking(form, booking.pic_phone || '');
+    const errors = validateBooking(form, booking.pic_phone || '', {
+      picOpsional: aturan.picOpsional,
+    });
     if (errors.length) {
       await alert({
         title: 'Data booking belum lengkap',
@@ -1113,6 +1198,15 @@ function BookingModal({
         icon="calendar_month"
       />
       <div className="p-6 space-y-5">
+        {!canEdit && !booking.cancelled && (
+          <div className="flex items-start gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-600">
+            <span className="material-symbols-outlined text-[18px] text-slate-500">lock</span>
+            <span>
+              Booking ini dibuat oleh pengguna lain. Hanya pembuatnya atau Admin/Kabag yang bisa
+              mengubah, mengelola surat, atau membatalkannya.
+            </span>
+          </div>
+        )}
         {canEdit && (
           <div className="flex gap-2 border-b pb-3">
             <button
@@ -1261,12 +1355,20 @@ function BookingModal({
                 <div className="text-sm font-semibold truncate">
                   {name || 'Pilih surat booking'}
                 </div>
-                <div className="text-xs text-slate-500 mt-1">PDF, JPG, PNG · Maks. 8 MB</div>
+                <div className="text-xs text-slate-500 mt-1">
+                  {aturan.nodinWajib
+                    ? 'Nota dinas · PDF · Maks. 8 MB'
+                    : 'PDF, JPG, PNG · Maks. 8 MB'}
+                </div>
               </div>
               <input
                 type="file"
                 className="absolute inset-0 opacity-0"
-                accept="application/pdf,image/jpeg,image/png,.pdf,.jpg,.jpeg,.png"
+                accept={
+                  aturan.nodinWajib
+                    ? 'application/pdf,.pdf'
+                    : 'application/pdf,image/jpeg,image/png,.pdf,.jpg,.jpeg,.png'
+                }
                 onChange={pick}
               />
             </label>
@@ -1291,20 +1393,23 @@ function BookingModal({
                 >
                   Lihat surat
                 </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setName('');
-                    setData('');
-                    setForm((x) => ({ ...x, surat_name: '', surat_file_data: '' }));
-                    setMsg(
-                      'Surat akan dihapus. Klik "Simpan Surat" -- status kembali menjadi Belum Ada Surat.',
-                    );
-                  }}
-                  className="text-xs font-semibold text-red-600 hover:underline"
-                >
-                  Hapus surat
-                </button>
+                {/* Pengelola Ruang Rapat tidak boleh menghapus nota dinas (wajib), hanya menggantinya. */}
+                {!aturan.nodinWajib && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setName('');
+                      setData('');
+                      setForm((x) => ({ ...x, surat_name: '', surat_file_data: '' }));
+                      setMsg(
+                        'Surat akan dihapus. Klik "Simpan Surat" -- status kembali menjadi Belum Ada Surat.',
+                      );
+                    }}
+                    className="text-xs font-semibold text-red-600 hover:underline"
+                  >
+                    Hapus surat
+                  </button>
+                )}
               </div>
             )}
             <div className="flex justify-end">

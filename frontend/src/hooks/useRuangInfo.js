@@ -5,7 +5,7 @@ import { RUANG_AWAL, grupRuang } from '../utils/ruang';
 
 // Daftar ruang rapat + foto & fasilitasnya dari backend (GET /ruang-info), dikelola Admin/Kabag di menu
 // "Foto & Fasilitas Ruang". Ikut diperbarui live begitu admin mengubahnya (topik "ruang-info").
-// info = { "SETJEN II": { satuan_kerja, kapasitas, link_foto, foto: [{ id, caption, src, ... }], fasilitas: [{ icon, label }] }, ... } | null (memuat).
+// info = { "SETJEN II": { satuan_kerja, kapasitas, lokasi, link_foto, foto: [{ id, caption, src, ... }], fasilitas: [{ icon, label }] }, ... } | null (memuat).
 // urutan = nama semua ruangan sesuai urutan tampil | null (memuat).
 //
 // Satu data bersama untuk seluruh tab: banyak komponen (thumbnail di tabel jadwal, landing, form

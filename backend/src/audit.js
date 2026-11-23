@@ -101,7 +101,7 @@ const MODUL = {
   },
   ruangan: {
     fields: {
-      room: ['Nama ruangan'], satuan_kerja: ['Satuan kerja'], kapasitas: ['Kapasitas (kursi)'], link_foto: ['Link dokumentasi foto'],
+      room: ['Nama ruangan'], satuan_kerja: ['Satuan kerja'], kapasitas: ['Kapasitas (kursi)'], lokasi: ['Lokasi / lantai'], link_foto: ['Link dokumentasi foto'],
       tema: ['Tema layar', 'tema'], fasilitas: ['Fasilitas', 'fasilitas'],
     },
     files: {},

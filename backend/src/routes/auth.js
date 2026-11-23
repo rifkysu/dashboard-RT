@@ -505,7 +505,11 @@ router.post('/reset-password', resetPasswordLimiter, async (req, res) => {
     // Atomik: token hanya terpakai sekali walau dua request reset datang bersamaan (hash ~300 ms di
     // atas memberi jeda) -- update hanya berhasil bila token yang sama masih tersimpan & belum kedaluwarsa.
     const { count } = await prisma.user.updateMany({
-      where: { id: user.id, reset_token: user.reset_token, reset_token_expires: { gt: new Date() } },
+      where: {
+        id: user.id,
+        reset_token: user.reset_token,
+        reset_token_expires: { gt: new Date() },
+      },
       // token_version naik -> semua sesi lama (mis. milik orang yang mencuri sandi) langsung diputus.
       data: {
         password_hash,
@@ -561,6 +565,7 @@ router.get('/me', requireAuth, async (req, res) => {
         no_hp: true,
         unit_kerja: true,
         role: true,
+        ruang_satker: true,
         sso_provider: true,
         created_at: true,
       },
@@ -607,6 +612,7 @@ router.put('/me', requireAuth, async (req, res) => {
         no_hp: true,
         unit_kerja: true,
         role: true,
+        ruang_satker: true,
         sso_provider: true,
         created_at: true,
       },

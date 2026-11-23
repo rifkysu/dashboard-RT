@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link, Navigate, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import api from '../api';
-import { useAuth } from '../context/AuthContext';
+import { useAuth, homePath } from '../context/AuthContext';
 import AuthShell from '../components/AuthShell';
 import { validateLogin } from '../utils/validation';
 import LoginSplash from '../components/LoginSplash';
@@ -144,7 +144,7 @@ export default function Login() {
   }
 
   // Sudah login lalu membuka /login -> langsung ke Dashboard (kecuali sedang menampilkan popup selamat datang).
-  if (user && !splash) return <Navigate to="/dashboard" replace />;
+  if (user && !splash) return <Navigate to={homePath(user.role)} replace />;
 
   return (
     <AuthShell
@@ -388,7 +388,10 @@ export default function Login() {
         </div>
       )}
       {splash && (
-        <LoginSplash name={splash.name} onDone={() => navigate('/dashboard', { replace: true })} />
+        <LoginSplash
+          name={splash.name}
+          onDone={() => navigate(homePath(user?.role), { replace: true })}
+        />
       )}
     </AuthShell>
   );

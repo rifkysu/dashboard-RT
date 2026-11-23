@@ -622,6 +622,9 @@ function Layar({ room }) {
         <section className="flex flex-col min-h-0 hero-in">
           <div className="text-sm md:text-base font-semibold uppercase tracking-[0.2em] text-aksen">
             {info?.[room]?.satuan_kerja || 'Ruang rapat'}
+            {info?.[room]?.lokasi ? (
+              <span className="text-white/50"> · {info[room].lokasi}</span>
+            ) : null}
             {info?.[room]?.kapasitas ? (
               <span className="text-white/50"> · {info[room].kapasitas} kursi</span>
             ) : null}
