@@ -905,8 +905,8 @@ def isi_aplikasi():
         *bullets(
             "Halaman awal (**/**) memakai lebar layar penuh (maks. 1800px, tanpa ruang kosong kiri-kanan di monitor lebar; klik logo Biro Umum di navbar/footer kembali ke awal halaman) dan berisi hero, ringkasan modul, dan jadwal ruang rapat (tampilan grid "
             "ruangan x tanggal per bulan, sama dengan menu Ruang Rapat) yang diperbarui real-time. Tautan ke kiosk "
-            "(tombol *Kiosk & booking tamu*, tautan footer, sorotan *Tampilan kiosk*) **sementara disembunyikan** dari landing page "
-            "(konstanta `TAMPIL_KIOSK` di Landing.jsx); halaman /jadwal-rapat sendiri tetap ada dan bisa ditutup lewat Mode Maintenance *Kiosk*.",
+            "(tombol *Kiosk & booking tamu*, tautan footer, sorotan *Tampilan kiosk*, info booking tamu di FAQ) bisa **ditampilkan / disembunyikan** "
+            "Admin/Kabag lewat Settings (panel *Kiosk di Landing Page*; default disembunyikan, berubah real-time); halaman /jadwal-rapat sendiri tetap ada dan bisa ditutup lewat Mode Maintenance *Kiosk*.",
             "Tampilan landing: hero dengan aurora, grid titik, partikel emas, kata judul berganti, kartu live "
             "*Ruang rapat hari ini* berbingkai cahaya + chip kaca melayang; judul bagian disorot emas; kartu layanan "
             "berikon besar samar; bagian *Cara mengajukan* berupa pita gelap. Bila OS meminta gerakan dikurangi "
@@ -1114,6 +1114,10 @@ def isi_aplikasi():
             "(`GET /ruang-rapat/surat-export`)."),
         h2("3.7 Settings - Mode Maintenance (Admin)"),
         *bullets(
+            "Panel **Kiosk di Landing Page** (Admin/Kabag): sakelar tampil/sembunyi tautan kiosk /jadwal-rapat di landing page. "
+            "Disimpan di tabel `maintenance_mode` sebagai baris `kiosk-tampil` (is_active = ditampilkan; belum ada baris = disembunyikan), "
+            "dibaca publik lewat `GET /maintenance/public-status/kiosk-tampil`, diubah lewat `PUT /maintenance/kiosk-tampil` (role lain 403). "
+            "Baris ini bukan maintenance, jadi tidak dihitung di peringatan *menu sedang maintenance* Dashboard.",
             "Menonaktifkan menu Landing, Kiosk Jadwal Rapat, Dashboard, Pemeliharaan, Pengadaan, Kendaraan, Ruang Rapat dengan "
             "pesan khusus.",
             "Kiosk Jadwal Rapat (`kiosk`) menutup halaman publik /jadwal-rapat bagi pengunjung (halaman pemeliharaan "

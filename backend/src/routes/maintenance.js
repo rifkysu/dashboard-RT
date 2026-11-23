@@ -15,9 +15,12 @@ const MENU_KEYS = [
   'ruang-rapat',
   'landing',
   'kiosk',
+  // Bukan maintenance: is_active = tautan kiosk (/jadwal-rapat) DITAMPILKAN di landing page.
+  // Baris belum ada = disembunyikan (default). Diatur Admin/Kabag di Settings.
+  'kiosk-tampil',
 ];
 // Halaman publik (tanpa login) yang status maintenance-nya boleh dibaca siapa saja.
-const PUBLIC_KEYS = ['landing', 'kiosk'];
+const PUBLIC_KEYS = ['landing', 'kiosk', 'kiosk-tampil'];
 
 // Bus internal untuk broadcast SSE tiap admin toggle maintenance, supaya
 // semua user yang sedang buka web langsung ke-update real-time tanpa perlu

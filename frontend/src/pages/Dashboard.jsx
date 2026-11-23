@@ -381,8 +381,9 @@ function TodoItem({ icon, tone, count, title, desc, cta, to }) {
 function AdminPanel({ ready, pm, pg, kd }) {
   const navigate = useNavigate();
   const { user, resetRequestCount, maintenance } = useAuth();
+  // Hanya menu yang benar-benar maintenance (baris lain di tabel yang sama, mis. 'kiosk-tampil', diabaikan).
   const menuMati = Object.entries(maintenance || {})
-    .filter(([, m]) => m?.is_active)
+    .filter(([k, m]) => m?.is_active && MENU_NAMA[k])
     .map(([k]) => MENU_NAMA[k] || k);
   const todo = [
     pm.pending > 0 && {

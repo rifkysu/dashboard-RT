@@ -63,9 +63,9 @@ const STATUS_CHIPS = [
   { label: 'Selesai', cls: 'bg-emerald-50 text-emerald-700 ring-emerald-200' },
 ];
 
-// Tautan ke halaman kiosk (/jadwal-rapat, termasuk booking tamu Google) sementara disembunyikan dari
-// landing page: di sini cukup tampil jadwal ruang rapat. Ubah ke true untuk menampilkannya lagi.
-const TAMPIL_KIOSK = false;
+// Tautan ke halaman kiosk (/jadwal-rapat, termasuk booking tamu Google) di landing page bisa disembunyikan /
+// ditampilkan Admin/Kabag di Settings (baris 'kiosk-tampil'); default disembunyikan.
+const SOROTAN_KIOSK = 'Tampilan kiosk';
 
 // Kata yang bergantian di judul hero.
 const ROTASI = ['pemeliharaan.', 'pengadaan.', 'kendaraan dinas.', 'ruang rapat.'];
@@ -80,7 +80,7 @@ const SOROTAN = [
   'Riwayat service kendaraan',
   'Surat permohonan rapat',
   'Booking multi-hari',
-  ...(TAMPIL_KIOSK ? ['Tampilan kiosk'] : []),
+  SOROTAN_KIOSK,
   'Update realtime',
 ];
 
@@ -121,9 +121,10 @@ const FAQ = [
   },
   {
     q: 'Apakah jadwal ruang rapat bisa dilihat tanpa login?',
-    a: TAMPIL_KIOSK
-      ? 'Bisa. Jadwal di halaman ini dan tampilan layar penuh (kiosk) terbuka untuk umum dan diperbarui otomatis. Untuk booking, masuk dengan akun pegawai, atau buka halaman kiosk (tombol "Kiosk & booking tamu") lalu klik "Login dengan Google untuk booking" bila belum punya akun pegawai.'
-      : 'Bisa. Jadwal ruang rapat di halaman ini terbuka untuk umum dan diperbarui otomatis. Untuk booking, masuk dengan akun pegawai.',
+    // aTanpaKiosk dipakai selama tautan kiosk disembunyikan dari landing page.
+    a: 'Bisa. Jadwal di halaman ini dan tampilan layar penuh (kiosk) terbuka untuk umum dan diperbarui otomatis. Untuk booking, masuk dengan akun pegawai, atau buka halaman kiosk (tombol "Kiosk & booking tamu") lalu klik "Login dengan Google untuk booking" bila belum punya akun pegawai.',
+    aTanpaKiosk:
+      'Bisa. Jadwal ruang rapat di halaman ini terbuka untuk umum dan diperbarui otomatis. Untuk booking, masuk dengan akun pegawai.',
   },
   {
     q: 'Bagaimana cara booking ruang rapat?',
@@ -665,6 +666,9 @@ export default function Landing() {
       ? layarBagian
       : (grup[0]?.bagian ?? '');
   const [landingDown, setLandingDown] = useState(null);
+  // Tautan kiosk di landing page (diatur Admin/Kabag di Settings); default disembunyikan.
+  const [tampilKiosk, setTampilKiosk] = useState(false);
+  const sorotan = tampilKiosk ? SOROTAN : SOROTAN.filter((s) => s !== SOROTAN_KIOSK);
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [active, setActive] = useState('');
@@ -681,6 +685,10 @@ export default function Landing() {
           setLandingDown(res.data?.data?.is_active ? res.data.data : false);
         })
         .catch(() => setLandingDown(false));
+      api
+        .get('/maintenance/public-status/kiosk-tampil')
+        .then((res) => setTampilKiosk(!!res.data?.data?.is_active))
+        .catch(() => setTampilKiosk(false));
     }
     refresh();
     return subscribeLive((topic) => {
@@ -1024,10 +1032,10 @@ export default function Landing() {
           aria-label="Sorotan fitur"
         >
           <div className="landing-marquee-track gap-3 py-1">
-            {[...SOROTAN, ...SOROTAN].map((s, i) => (
+            {[...sorotan, ...sorotan].map((s, i) => (
               <span
                 key={i}
-                aria-hidden={i >= SOROTAN.length ? 'true' : undefined}
+                aria-hidden={i >= sorotan.length ? 'true' : undefined}
                 className="shrink-0 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#f7efdf] border border-[#dccdae] text-sm font-semibold text-dinas-ink shadow-[0_4px_14px_-10px_rgba(14,30,51,.4)]"
               >
                 <span className="w-1.5 h-1.5 rounded-full bg-kuningan"></span>
@@ -1120,11 +1128,11 @@ export default function Landing() {
                 <p className="text-slate-600 mt-3 leading-relaxed">
                   Cek ruang yang masih kosong sebelum mengajukan booking. Jadwal ini terbuka tanpa
                   login dan diperbarui otomatis.
-                  {TAMPIL_KIOSK &&
+                  {tampilKiosk &&
                     ' Belum punya akun pegawai? Booking sebagai tamu dengan akun Google di halaman kiosk.'}
                 </p>
               </div>
-              {TAMPIL_KIOSK && (
+              {tampilKiosk && (
                 <Link
                   to="/jadwal-rapat"
                   className="self-start md:self-auto inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl border border-slate-300 text-sm font-semibold text-dinas transition hover:border-dinas hover:bg-dinas hover:text-white shrink-0"
@@ -1267,7 +1275,9 @@ export default function Landing() {
                       <span className="material-symbols-outlined text-[18px]">add</span>
                     </span>
                   </summary>
-                  <p className="px-5 pb-5 -mt-1 text-sm text-slate-600 leading-relaxed">{f.a}</p>
+                  <p className="px-5 pb-5 -mt-1 text-sm text-slate-600 leading-relaxed">
+                    {(!tampilKiosk && f.aTanpaKiosk) || f.a}
+                  </p>
                 </details>
               ))}
             </Reveal>
@@ -1375,7 +1385,7 @@ export default function Landing() {
                   </a>
                 </li>
               ))}
-              {TAMPIL_KIOSK && (
+              {tampilKiosk && (
                 <li>
                   <Link
                     to="/jadwal-rapat"

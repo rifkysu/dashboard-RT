@@ -45,13 +45,95 @@ export default function Settings() {
         <div>
           <span className="menu-kicker">Biro Umum / Settings</span>
           <h1 className="text-3xl font-bold">Settings</h1>
-          <p className="text-sm mt-1">Pengaturan mode maintenance sistem Biro Umum.</p>
+          <p className="text-sm mt-1">
+            Pengaturan tampilan kiosk dan mode maintenance sistem Biro Umum.
+          </p>
         </div>
       </div>
       <div className="space-y-4">
+        <KioskLandingPanel maintenance={maintenance} refreshMaintenance={refreshMaintenance} />
         <MaintenancePanel maintenance={maintenance} refreshMaintenance={refreshMaintenance} />
       </div>
     </div>
+  );
+}
+
+// Tampil / sembunyikan tautan kiosk (/jadwal-rapat, termasuk booking tamu Google) di landing page.
+// Disimpan sebagai baris 'kiosk-tampil' (is_active = ditampilkan); belum ada baris = disembunyikan.
+function KioskLandingPanel({ maintenance, refreshMaintenance }) {
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const { confirm, toast } = useFeedback();
+  const tampil = !!maintenance['kiosk-tampil']?.is_active;
+
+  async function ubah(next) {
+    if (
+      !(await confirm({
+        title: next ? 'Tampilkan kiosk di landing page?' : 'Sembunyikan kiosk dari landing page?',
+        message: next
+          ? 'Tombol "Kiosk & booking tamu", tautan "Tampilan kiosk" di footer, dan info booking tamu lewat Google muncul lagi di landing page.'
+          : 'Landing page hanya menampilkan jadwal ruang rapat. Halaman /jadwal-rapat tetap bisa dibuka lewat alamat langsung (tutup sepenuhnya lewat Mode Maintenance "Kiosk Jadwal Rapat").',
+        confirmText: next ? 'Ya, Tampilkan' : 'Ya, Sembunyikan',
+        tone: 'info',
+        icon: next ? 'visibility' : 'visibility_off',
+      }))
+    )
+      return;
+    setSaving(true);
+    setError('');
+    try {
+      await api.put('/maintenance/kiosk-tampil', { is_active: next });
+      refreshMaintenance();
+      toast(next ? 'Kiosk ditampilkan di landing page.' : 'Kiosk disembunyikan dari landing page.');
+    } catch (err) {
+      setError(err.response?.data?.message || 'Gagal menyimpan pengaturan kiosk.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <section className="bg-white border border-slate-200 rounded-2xl p-5 sm:p-6">
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex items-center gap-3 min-w-0">
+          <span className="shrink-0 w-10 h-10 rounded-xl bg-sky-50 text-sky-700 flex items-center justify-center">
+            <span className="material-symbols-outlined text-[22px]">tv</span>
+          </span>
+          <div className="min-w-0">
+            <h2 className="font-bold text-slate-900 leading-tight">Kiosk di Landing Page</h2>
+            <p className="text-[11px] text-slate-500">
+              Tampilkan atau sembunyikan tautan kiosk{' '}
+              <span className="font-mono">/jadwal-rapat</span> (termasuk booking tamu Google) di
+              landing page.
+            </p>
+            <div
+              className={`text-[11px] font-bold mt-1 ${tampil ? 'text-emerald-700' : 'text-slate-500'}`}
+            >
+              {tampil ? 'DITAMPILKAN' : 'DISEMBUNYIKAN'}
+            </div>
+          </div>
+        </div>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={tampil}
+          onClick={() => ubah(!tampil)}
+          disabled={saving}
+          aria-label="Tampilkan kiosk di landing page"
+          title={tampil ? 'Sembunyikan kiosk' : 'Tampilkan kiosk'}
+          className={`w-11 h-6 rounded-full relative transition-colors shrink-0 disabled:opacity-60 ${tampil ? 'bg-emerald-500' : 'bg-slate-300'}`}
+        >
+          <span
+            className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-all ${tampil ? 'left-[22px]' : 'left-0.5'}`}
+          ></span>
+        </button>
+      </div>
+      {error && (
+        <div className="mt-3 px-3 py-2 rounded-lg bg-red-50 border border-red-200 text-xs text-red-700">
+          {error}
+        </div>
+      )}
+    </section>
   );
 }
 
